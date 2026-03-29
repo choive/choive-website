@@ -7,6 +7,7 @@
 <meta name="description" content="CHOIVE· is the system that makes businesses the recommended choice on AI platforms — ChatGPT, Perplexity, Gemini, and Claude.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --black:   #060504;
@@ -26,7 +27,27 @@
   --amber:   #b87d1a;
   --green:   #1a7a4a;
 }
+}
 
+/* 👇 ADD THIS BLOCK HERE */
+.section-lead,
+.prob-body,
+.step-desc,
+.pillar-finding,
+.evidence-body,
+.action-body,
+.cta-body,
+.diag-lead,
+.form-sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* existing code continues */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { background: var(--black); scroll-behavior: smooth; }
+body {
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html { background: var(--black); scroll-behavior: smooth; }
 body {
@@ -1271,8 +1292,8 @@ footer {
     <h3 class="form-title" id="formTitle">Start CHOIVE</h3>
     <p class="form-sub">Fill this in and continue your request.</p>
 
-    <form onsubmit="submitCHOIVEForm(event)">
-      <input type="hidden" id="serviceType" />
+<form onsubmit="submitCHOIVEForm(event)" novalidate>
+  <input type="hidden" id="serviceType" />
 
       <div class="form-grid">
         <div class="form-field">
@@ -1305,6 +1326,7 @@ footer {
 
       <div class="form-actions">
         <button type="submit" class="form-submit">Continue →</button>
+        <div class="form-error" id="formError">
       </div>
 
       <div class="form-note">Takes less than 30 seconds.</div>
@@ -1619,11 +1641,17 @@ function closeForm() {
 function submitCHOIVEForm(event) {
   event.preventDefault();
 
-  const service = document.getElementById('serviceType').value;
   const name = document.getElementById('leadName').value.trim();
   const business = document.getElementById('leadBusiness').value.trim();
-  const website = document.getElementById('leadWebsite').value.trim();
   const email = document.getElementById('leadEmail').value.trim();
+
+  if (!name || !business || !email) {
+    alert('Enter your name, business, and email.');
+    return;
+  }
+
+  const service = document.getElementById('serviceType').value;
+  const website = document.getElementById('leadWebsite').value.trim();
   const note = document.getElementById('leadNote').value.trim();
 
   const subject = encodeURIComponent(`${service} — ${business || name}`);
