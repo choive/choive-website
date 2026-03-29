@@ -848,37 +848,143 @@ footer {
   color: var(--parch);
   border-color: rgba(194,240,212,0.3);
 }
-.cta-secondary:hover {
-  color: var(--parch);
-  border-color: rgba(194,240,212,0.3);
-}
 
 /* PASTE FORM CSS HERE */
 
 .form-modal {
-  ...
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: none;
 }
 
 .form-modal.active {
-  ...
+  display: block;
 }
 
-/* all the other form styles */
-
-@media (max-width: 768px) {
-  .form-panel {
-    ...
-  }
-
-  .form-grid {
-    ...
-  }
-
-  .form-title {
-    ...
-  }
+.form-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6,5,4,0.72);
+  backdrop-filter: blur(8px);
 }
 
+.form-panel {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  margin: 80px auto;
+  background: var(--parch);
+  color: var(--ink);
+  padding: 40px;
+  z-index: 2;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+}
+
+.form-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.form-kicker {
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.form-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.form-sub {
+  font-family: 'Cormorant', serif;
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.form-field {
+  margin-bottom: 14px;
+}
+
+.form-field label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.form-field label span {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  border: 1px solid rgba(15,13,10,0.12);
+  background: #fff;
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  padding: 14px 16px;
+  outline: none;
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+  border-color: rgba(15,13,10,0.28);
+}
+
+.form-actions {
+  margin-top: 10px;
+}
+
+.form-submit {
+  background: var(--mint);
+  color: var(--ink);
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  padding: 14px 30px;
+  cursor: pointer;
+}
+
+.form-submit:hover {
+  background: var(--mint-2);
+}
+
+.form-note {
+  margin-top: 14px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
 /* MOBILE */
 @media (max-width: 960px) {
   .offer-grid-3 { grid-template-columns: 1fr; }
@@ -1474,19 +1580,54 @@ function resetDiagnostic() {
   document.getElementById('diagnostic').scrollIntoView({ behavior: 'smooth' });
 }
 function openForm(service, businessName = '', category = '', city = '') {
-  ...
+  document.getElementById('formModal').classList.add('active');
+  document.getElementById('formTitle').textContent = service;
+  document.getElementById('serviceType').value = service;
+
+  if (businessName && !document.getElementById('leadBusiness').value) {
+    document.getElementById('leadBusiness').value = businessName;
+  }
+
+  const noteField = document.getElementById('leadNote');
+  if ((category || city) && !noteField.value) {
+    let noteText = '';
+    if (category) noteText += `Category: ${category}`;
+    if (category && city) noteText += `\n`;
+    if (city) noteText += `Location: ${city}`;
+    noteField.value = noteText;
+  }
 }
 
 function closeForm() {
-  ...
+  document.getElementById('formModal').classList.remove('active');
 }
 
 function submitCHOIVEForm(event) {
-  ...
-}
+  event.preventDefault();
 
+  const service = document.getElementById('serviceType').value;
+  const name = document.getElementById('leadName').value.trim();
+  const business = document.getElementById('leadBusiness').value.trim();
+  const website = document.getElementById('leadWebsite').value.trim();
+  const email = document.getElementById('leadEmail').value.trim();
+  const note = document.getElementById('leadNote').value.trim();
+
+  const subject = encodeURIComponent(`${service} — ${business || name}`);
+  const body = encodeURIComponent(
+`Service: ${service}
+
+Name: ${name}
+Business: ${business}
+Website: ${website}
+Email: ${email}
+
+Notes:
+${note}`
+  );
+
+  window.location.href = `mailto:hello@choive.com?subject=${subject}&body=${body}`;
+}
 /* 👇 THIS WAS ALREADY THERE */
-document.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('dI').style.display !== 'none') runDiagnostic();
 });
