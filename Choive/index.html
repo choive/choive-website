@@ -1153,10 +1153,32 @@ Respond ONLY with a valid JSON object in exactly this structure (no markdown, no
     })
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'API request failed. Please try again.');
+if (!response.ok) {
+  let errMsg = 'Something went wrong. Please try again.';
+
+  try {
+    const err = await response.json();
+
+    if (response.status === 429) {
+      errMsg = 'Too many requests. Please wait a moment and try again.';
+    } 
+    else if (response.status >= 500) {
+      errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
+    } 
+    else if (err?.error?.message) {
+      errMsg = err.error.message;
+    }
+
+  } catch (_) {
+    // fallback if JSON parsing fails
+    if (response.status >= 500) {
+      errMsg = 'AI engine temporarily unavailable.';
+    }
   }
+
+  // 🔴 THIS LINE IS REQUIRED
+  throw new Error(errMsg);
+}
 
   const data = await response.json();
   const text = data.content.map(b => b.text || '').join('');
