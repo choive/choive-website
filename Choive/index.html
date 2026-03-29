@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOIVE· — Be What AI Recommends</title>
+<meta name="description" content="CHOIVE· is the system that makes businesses the recommended choice on AI platforms — ChatGPT, Perplexity, Gemini, and Claude.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ─── TOKENS ─── */
+:root {
+  --black:    #0F0D0A;
+  --black-2:  #1A1714;
+  --parch:    #F5F1EA;
+  --parch-2:  #EDE8DF;
+  --parch-3:  #E4DDD2;
+  --ink:      #0F0D0A;
+  --muted:    #6B6560;
+  --faint:    #B8B0A6;
+  --rule:     rgba(15,13,10,0.1);
+  --rule-s:   rgba(15,13,10,0.06);
+  --mint:     #C2F0D4;
+  --mint-2:   #A8E8C0;
+  --mint-dim: #4A9965;
+
+  /* Status */
+  --red:    #c0392b;
+  --amber:  #b87d1a;
+  --green:  #00C896;
+}
+
+/* ─── BASE ─── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { background: var(--black); scroll-behavior: smooth; }
+body {
+  background: var(--black);
+  color: var(--parch);
+  font-family: 'DM Mono', monospace;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 56px;
+  border-bottom: 1px solid rgba(245,241,234,0.08);
+  background: rgba(15,13,10,0.9);
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.16em;
+  color: var(--parch);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+.logo-dot {
+  color: var(--mint);
+  font-size: 24px;
+  line-height: 1;
+  margin-top: -3px;
+  margin-left: 1px;
+  opacity: 0.9;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+.nav-links a {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.4);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--parch); }
+
+.nav-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--black);
+  background: var(--green);
+  border: none;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  display: inline-block;
+}
+.nav-btn:hover { background: #00e0aa; }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  padding: 60px 56px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  overflow: hidden;
+  background: var(--black);
+}
+
+/* Subtle grid texture */
+.hero::after { content:''; position:absolute; top:-200px; right:-200px; width:600px; height:600px; background: radial-gradient(circle, rgba(0,200,150,0.06) 0%, transparent 65%); pointer-events:none; }
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(245,241,234,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,241,234,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
+}
+
+.hero-top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 80px;
+}
+
+.hero-tag {
+  font-size: 9px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.3);
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  opacity: 0;
+  animation: fadeUp 1s 0.1s ease forwards;
+}
+.hero-tag::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: rgba(245,241,234,0.3);
+}
+
+.hero-h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(72px, 11vw, 160px);
+  letter-spacing: 0.02em;
+  line-height: 0.88;
+  color: var(--parch);
+  margin-bottom: 0;
+  opacity: 0;
+  animation: fadeUp 1s 0.2s ease forwards;
+}
+
+.hero-h1-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.hero-h1-italic {
+  font-family: 'Cormorant', serif;
+  font-size: clamp(68px, 10.5vw, 152px);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 0.9;
+  color: rgba(245,241,234,0.35);
+  margin-left: 0.06em;
+}
+
+.hero-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid rgba(245,241,234,0.08);
+  margin-top: 80px;
+  opacity: 0;
+  animation: fadeUp 1s 0.4s ease forwards;
+}
+
+.hero-cell {
+  padding: 36px 0;
+  border-right: 1px solid rgba(245,241,234,0.08);
+  padding-right: 40px;
+  padding-left: 0;
+}
+.hero-cell:first-child { padding-left: 0; }
+.hero-cell:last-child { border-right: none; padding-left: 40px; padding-right: 0; }
+.hero-cell:nth-child(2) { padding-left: 40px; }
+
+.hero-cell-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.25);
+  margin-bottom: 14px;
+}
+
+.hero-cell-text {
+  font-family: 'Cormorant', serif;
+  font-size: 18px;
+  line-height: 1.55;
+  color: rgba(245,241,234,0.7);
+  font-weight: 300;
+}
+.hero-cell-text strong {
+  color: var(--parch);
+  font-weight: 400;
+}
+
+.hero-cell-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-mint {
+  background: var(--parch);
+  color: var(--black);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 13px 28px;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-mint:hover { background: var(--parch-2); }
+
+.btn-ghost-dark {
+  background: transparent;
+  color: rgba(245,241,234,0.4);
+  border: 1px solid rgba(245,241,234,0.15);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 13px 22px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-ghost-dark:hover {
+  color: var(--parch);
+  border-color: rgba(245,241,234,0.35);
+}
+
+.hero-stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  color: var(--green);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.hero-stat-sub {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.25);
+  line-height: 1.6;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(20px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ─── BODY — white background starts here ─── */
+.body-section { background: var(--parch); color: var(--ink); }
+
+/* ─── MARQUEE STRIP ─── */
+.marquee-strip {
+  background: var(--ink);
+  padding: 14px 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.marquee-inner {
+  display: inline-flex;
+  animation: marquee 20s linear infinite;
+  gap: 0;
+}
+.marquee-item {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.35);
+  padding: 0 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 40px;
+}
+.marquee-item::after {
+  content: '·';
+  color: rgba(245,241,234,0.2);
+  font-size: 16px;
+}
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ─── THE PROBLEM ─── */
+.problem {
+  background: var(--parch);
+  padding: 120px 56px;
+  border-bottom: 1px solid var(--rule);
+}
+.problem-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+}
+.problem-left {}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.eyebrow::before { content:''; width:16px; height:1px; background: var(--muted); }
+
+.section-h2 {
+  font-family: 'Cormorant', serif;
+  font-size: clamp(40px, 4.5vw, 62px);
+  font-weight: 400;
+  line-height: 1.04;
+  color: var(--ink);
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+}
+.section-h2 em { font-style: italic; font-weight: 300; }
+
+.section-lead {
+  font-family: 'Cormorant', serif;
+  font-size: 19px;
+  line-height: 1.72;
+  color: var(--muted);
+  font-weight: 300;
+}
+.section-lead strong { color: var(--ink); font-weight: 500; }
+
+.problem-right {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 52px;
+}
+
+.prob-item {
+  padding: 28px 32px;
+  border: 1px solid var(--rule);
+  position: relative;
+  cursor: default;
+  transition: background 0.2s;
+}
+.prob-item:hover { background: var(--parch-2); }
+.prob-num {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.prob-title {
+  font-family: 'Cormorant', serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.prob-body {
+  font-family: 'Cormorant', serif;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+/* ─── THE METHOD ─── */
+.method {
+  background: var(--parch);
+  border-bottom: 1px solid var(--rule);
+}
+.method-header {
+  padding: 100px 56px 60px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+.method-steps { border-top: 1px solid var(--rule); }
+.method-step {
+  display: grid;
+  grid-template-columns: 64px 320px 1fr;
+  padding: 44px 56px;
+  border-bottom: 1px solid var(--rule);
+  transition: background 0.2s;
+  max-width: 1160px;
+  margin: 0 auto;
+  cursor: default;
+}
+.method-step:hover { background: var(--parch-2); }
+.step-idx {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--faint);
+  padding-top: 5px;
+}
+.step-name-block { padding-right: 60px; }
+.step-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.step-tag {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.step-desc {
+  font-family: 'Cormorant', serif;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--muted);
+  font-weight: 300;
+  padding-left: 60px;
+  border-left: 1px solid var(--rule);
+}
+.step-desc strong { color: var(--ink); font-weight: 500; }
+
+/* ─── DIAGNOSTIC ─── */
+.diag-section {
+  background: var(--black);
+  padding: 100px 56px;
+}
+.diag-inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.diag-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.3);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.diag-eyebrow::before { content:''; width:16px; height:1px; background: rgba(245,241,234,0.3); }
+
+.diag-h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(48px, 6vw, 84px);
+  letter-spacing: 0.04em;
+  line-height: 0.92;
+  color: var(--parch);
+  margin-bottom: 24px;
+}
+
+.diag-lead {
+  font-family: 'Cormorant', serif;
+  font-size: 19px;
+  line-height: 1.7;
+  color: rgba(245,241,234,0.45);
+  font-weight: 300;
+  margin-bottom: 52px;
+}
+.diag-lead strong { color: var(--parch); font-weight: 400; }
+
+/* Input */
+.diag-frame {
+  border: 1px solid rgba(245,241,234,0.1);
+  background: rgba(245,241,234,0.03);
+  padding: 40px;
+  position: relative;
+}
+.diag-frame::before {
+  content: '';
+  position: absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(245,241,234,0.2), transparent);
+}
+.field-lbl {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.25);
+  display: block;
+  margin-bottom: 12px;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.field-row input {
+  background: rgba(245,241,234,0.04);
+  border: 1px solid rgba(245,241,234,0.1);
+  color: var(--parch);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 300;
+  padding: 14px 18px;
+  outline: none;
+  width: 100%;
+  letter-spacing: 0.03em;
+  transition: border-color 0.2s;
+}
+.field-row input::placeholder { color: rgba(245,241,234,0.18); }
+.field-row input:focus { border-color: rgba(245,241,234,0.3); }
+
+.run-btn {
+  width: 100%;
+  background: var(--green);
+  color: var(--black);
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  padding: 18px;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: background 0.15s;
+}
+.run-btn:hover { background: #00e0aa; }
+.run-btn:disabled { background: rgba(245,241,234,0.15); cursor:not-allowed; color: rgba(245,241,234,0.2); }
+
+.diag-note {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(245,241,234,0.2);
+  margin-top: 14px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Scan */
+.scan-zone { display:none; }
+.scan-frame {
+  border: 1px solid rgba(245,241,234,0.1);
+  background: rgba(245,241,234,0.03);
+  padding: 36px 40px;
+}
+.scan-hd { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
+.spin {
+  width:12px; height:12px;
+  border: 1px solid rgba(245,241,234,0.12);
+  border-top-color: var(--mint);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.scan-ttl {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(245,241,234,0.35);
+}
+.log-l {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(245,241,234,0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.2;
+  transition: opacity 0.4s;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(245,241,234,0.5);
+}
+.log-l.active { opacity:1; color: var(--parch); }
+.log-l.done   { opacity:0.35; }
+.li { font-size:8px; width:12px; text-align:center; flex-shrink:0; }
+.log-l.active .li { color: var(--parch); }
+.log-l.done   .li { color: rgba(245,241,234,0.35); }
+.lt {
+  font-style:italic;
+  font-family:'Cormorant',serif;
+  color: rgba(245,241,234,0.25);
+  font-size:14px;
+  margin-left:auto;
+  opacity:0;
+  transition:opacity 0.4s;
+}
+.log-l.active .lt { opacity:1; }
+
+/* Results */
+.res-zone { display:none; }
+
+.verdict {
+  border: 1px solid rgba(245,241,234,0.1);
+  background: rgba(245,241,234,0.03);
+  padding: 36px 40px;
+  margin-bottom: 2px;
+  position: relative;
+}
+.verdict::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(245,241,234,0.2), transparent);
+}
+.v-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.v-biz { font-size:9px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(245,241,234,0.25); margin-bottom:8px; }
+.v-tag { display:inline-block; font-size:8px; letter-spacing:0.18em; text-transform:uppercase; padding:4px 10px; border:1px solid; margin-bottom:12px; }
+.v-tag.absent  { color:rgba(192,57,43,0.8);  border-color:rgba(192,57,43,0.35);  background:rgba(192,57,43,0.05); }
+.v-tag.weak    { color:rgba(184,125,26,0.8); border-color:rgba(184,125,26,0.35); background:rgba(184,125,26,0.05); }
+.v-tag.present { color:rgba(0,200,150,0.8);  border-color:rgba(0,200,150,0.35);  background:rgba(0,200,150,0.05); }
+.v-h { font-family:'Cormorant',serif; font-size:clamp(22px,3vw,34px); font-weight:400; color:var(--parch); line-height:1.1; }
+.v-score-block { text-align:right; }
+.v-score-n { font-family:'Bebas Neue',sans-serif; font-size:72px; font-weight:400; color:var(--green); line-height:1; }
+.v-score-d { font-size:9px; color:rgba(245,241,234,0.25); letter-spacing:0.12em; }
+.v-sum { font-family:'Cormorant',serif; font-size:17px; line-height:1.7; color:rgba(245,241,234,0.45); font-weight:300; border-top:1px solid rgba(245,241,234,0.08); padding-top:18px; }
+
+.sbt { height:1px; background:rgba(245,241,234,0.08); margin-bottom:2px; }
+.sbf { height:100%; background:var(--green); width:0; transition:width 1.4s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 0 6px rgba(0,200,150,0.4); }
+
+.rl { font-size:9px; letter-spacing:0.25em; text-transform:uppercase; color:rgba(245,241,234,0.22); padding:18px 0 10px; display:flex; align-items:center; gap:12px; }
+.rl::after { content:''; flex:1; height:1px; background:rgba(245,241,234,0.07); }
+
+.pg { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-bottom:2px; }
+.pc { background:rgba(245,241,234,0.03); border:1px solid rgba(245,241,234,0.07); padding:18px; text-align:center; }
+.pn { font-size:8px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(245,241,234,0.22); margin-bottom:8px; }
+.pv { font-family:'Cormorant',serif; font-size:17px; font-weight:500; margin-bottom:4px; }
+.pv.absent  { color:rgba(192,57,43,0.7); }
+.pv.weak    { color:rgba(184,125,26,0.7); }
+.pv.present { color:rgba(0,200,150,0.7); }
+.pd { font-size:8px; color:rgba(245,241,234,0.22); letter-spacing:0.04em; line-height:1.5; }
+
+.ev { background:rgba(245,241,234,0.03); border:1px solid rgba(245,241,234,0.07); margin-bottom:2px; }
+.ev-h { padding:14px 22px; border-bottom:1px solid rgba(245,241,234,0.07); font-size:8px; letter-spacing:0.22em; text-transform:uppercase; color:rgba(245,241,234,0.22); }
+.ev-b { padding:20px 22px; font-family:'Cormorant',serif; font-size:16px; line-height:1.75; color:rgba(245,241,234,0.4); font-weight:300; }
+
+.pig { display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:2px; }
+.pi { background:rgba(245,241,234,0.03); border:1px solid rgba(245,241,234,0.07); padding:24px; }
+.pi-n { font-size:8px; letter-spacing:0.2em; color:rgba(245,241,234,0.18); margin-bottom:6px; }
+.pi-name { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.06em; color:var(--parch); margin-bottom:12px; }
+.pi-sr { display:flex; align-items:baseline; gap:4px; margin-bottom:8px; }
+.pi-sn { font-family:'Bebas Neue',sans-serif; font-size:32px; font-weight:400; color:var(--green); line-height:1; }
+.pi-sd { font-size:10px; color:rgba(245,241,234,0.22); }
+.pi-bar { height:1px; background:rgba(245,241,234,0.08); margin-bottom:12px; }
+.pi-bf { height:100%; background:var(--green); width:0; transition:width 1.6s cubic-bezier(0.16,1,0.3,1); }
+.pi-f { font-family:'Cormorant',serif; font-size:14px; line-height:1.65; color:rgba(245,241,234,0.38); font-weight:300; }
+
+.al { margin-bottom:2px; }
+.ai { background:rgba(245,241,234,0.03); border:1px solid rgba(245,241,234,0.07); padding:18px 24px; display:flex; gap:16px; align-items:flex-start; margin-bottom:2px; }
+.ab { font-size:8px; letter-spacing:0.18em; text-transform:uppercase; padding:3px 7px; border:1px solid; white-space:nowrap; flex-shrink:0; margin-top:2px; }
+.ab.critical { color:rgba(192,57,43,0.7); border-color:rgba(192,57,43,0.35); }
+.ab.high     { color:rgba(184,125,26,0.7); border-color:rgba(184,125,26,0.35); }
+.ab.medium   { color:rgba(245,241,234,0.25); border-color:rgba(245,241,234,0.1); }
+.at { font-size:12px; color:var(--parch); margin-bottom:5px; letter-spacing:0.03em; }
+.abt { font-family:'Cormorant',serif; font-size:14px; line-height:1.65; color:rgba(245,241,234,0.38); font-weight:300; }
+
+.rcta { background:rgba(245,241,234,0.05); border:1px solid rgba(245,241,234,0.12); padding:36px 40px; position:relative; }
+.rcta::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(245,241,234,0.2),transparent); }
+.rcta-e { font-size:9px; letter-spacing:0.28em; text-transform:uppercase; color:rgba(245,241,234,0.25); margin-bottom:12px; }
+.rcta-h { font-family:'Cormorant',serif; font-size:32px; font-weight:400; color:var(--parch); margin-bottom:10px; line-height:1.1; }
+.rcta-b { font-family:'Cormorant',serif; font-size:16px; line-height:1.7; color:rgba(245,241,234,0.38); font-weight:300; margin-bottom:24px; max-width:440px; }
+.rcta-btns { display:flex; gap:10px; flex-wrap:wrap; }
+
+.err-b { background:rgba(245,241,234,0.03); border:1px solid rgba(192,57,43,0.25); padding:28px 32px; }
+.err-t { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(192,57,43,0.7); margin-bottom:10px; }
+.err-bd { font-family:'Cormorant',serif; font-size:16px; color:rgba(245,241,234,0.38); line-height:1.6; }
+
+/* ─── OFFER ─── */
+.offer-section {
+  background: var(--parch);
+  padding: 120px 56px;
+  border-bottom: 1px solid var(--rule);
+}
+.offer-inner { max-width: 1160px; margin: 0 auto; }
+
+.offer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 60px;
+}
+.offer-card {
+  padding: 52px;
+  border: 1px solid var(--rule);
+  background: var(--parch);
+  position: relative;
+}
+.offer-card.feat {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.offer-card.feat::after {
+  content: 'Most chosen';
+  position: absolute;
+  top: 0; right: 0;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: var(--green);
+  color: var(--black);
+  padding: 6px 14px;
+}
+.o-tier { font-size:9px; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); margin-bottom:24px; }
+.offer-card.feat .o-tier { color:rgba(245,241,234,0.3); }
+.o-price { font-family:'Bebas Neue',sans-serif; font-size:60px; color:var(--ink); line-height:1; margin-bottom:4px; }
+.offer-card.feat .o-price { color:var(--green); }
+.o-note { font-size:9px; letter-spacing:0.1em; color:var(--muted); margin-bottom:24px; }
+.offer-card.feat .o-note { color:rgba(245,241,234,0.28); }
+.o-name { font-family:'Cormorant',serif; font-size:24px; font-weight:500; color:var(--ink); margin-bottom:16px; }
+.offer-card.feat .o-name { color:var(--parch); }
+.o-desc { font-family:'Cormorant',serif; font-size:16px; line-height:1.65; color:var(--muted); font-weight:300; margin-bottom:28px; padding-top:20px; border-top:1px solid var(--rule); }
+.offer-card.feat .o-desc { color:rgba(245,241,234,0.4); border-top-color:rgba(245,241,234,0.08); }
+.o-list { list-style:none; margin-bottom:40px; display:flex; flex-direction:column; gap:10px; }
+.o-list li { font-size:10px; letter-spacing:0.07em; color:var(--muted); display:flex; align-items:flex-start; gap:10px; line-height:1.5; }
+.o-list li::before { content:'→'; color:var(--faint); flex-shrink:0; }
+.offer-card.feat .o-list li { color:rgba(245,241,234,0.38); }
+.offer-card.feat .o-list li::before { color:rgba(245,241,234,0.18); }
+.o-btn {
+  width:100%; background:var(--ink); color:var(--parch);
+  border:1px solid var(--ink);
+  font-family:'Cormorant',serif; font-size:18px; font-weight:500;
+  letter-spacing:0.06em; padding:16px; cursor:pointer;
+  transition:all 0.15s; text-align:center;
+  text-decoration:none; display:block;
+}
+.o-btn:hover { background:transparent; color:var(--ink); }
+.offer-card.feat .o-btn { background:var(--green); color:var(--black); border-color:var(--green); }
+.offer-card.feat .o-btn:hover { background:#00e0aa; }
+
+/* ─── FINAL ─── */
+.final-section {
+  background: var(--black);
+  padding: 120px 56px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.final-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(245,241,234,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,241,234,0.02) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
+}
+.final-h {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(56px, 8vw, 120px);
+  letter-spacing: 0.03em;
+  line-height: 0.9;
+  color: var(--parch);
+  margin-bottom: 28px;
+}
+.final-h em {
+  font-family: 'Cormorant', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 0.8em;
+  color: rgba(245,241,234,0.4);
+}
+.final-p {
+  font-family: 'Cormorant', serif;
+  font-size: 20px;
+  line-height: 1.7;
+  color: rgba(245,241,234,0.4);
+  font-weight: 300;
+  max-width: 480px;
+  margin: 0 auto 44px;
+}
+
+/* ─── FOOTER ─── */
+footer {
+  background: var(--black);
+  padding: 28px 56px;
+  border-top: 1px solid rgba(245,241,234,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.f-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.16em;
+  color: rgba(245,241,234,0.15);
+}
+.f-note {
+  font-size: 9px;
+  color: rgba(245,241,234,0.18);
+  letter-spacing: 0.08em;
+  max-width: 400px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+/* ─── MOBILE ─── */
+@media (max-width: 900px) {
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .hero { padding: 60px 24px 0; }
+  .hero-bottom { grid-template-columns: 1fr; border-top: 1px solid rgba(245,241,234,0.08); }
+  .hero-cell { border-right: none; border-bottom: 1px solid rgba(245,241,234,0.08); padding: 28px 0; }
+  .hero-cell:last-child { padding-left: 0; }
+  .hero-cell:nth-child(2) { padding-left: 0; }
+  .problem-inner { grid-template-columns: 1fr; gap: 48px; }
+  .method-step { grid-template-columns: 40px 1fr; padding: 32px 24px; }
+  .step-name-block { grid-column: 2; }
+  .step-desc { grid-column: 2; border-left: none; padding-left: 0; padding-top: 12px; }
+  .problem, .method-header, .offer-section { padding-left: 24px; padding-right: 24px; }
+  .diag-section, .final-section { padding: 80px 24px; }
+  .field-row, .pig, .offer-grid { grid-template-columns: 1fr; }
+  .pg { grid-template-columns: 1fr 1fr; }
+  .offer-card { padding: 36px 28px; }
+  footer { flex-direction: column; gap: 12px; padding: 24px; }
+  .f-note { text-align: left; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">CHOIVE<span class="logo-dot">·</span></a>
+  <div class="nav-links">
+    <a href="#problem">The problem</a>
+    <a href="#method">The method</a>
+    <a href="#diagnostic">Free diagnostic</a>
+    <a href="#offer">Get started</a>
+  </div>
+  <a href="#offer" class="nav-btn">Get Started →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-top">
+    <div class="hero-tag">AI Recommendation System</div>
+    <div class="hero-h1">
+      <div>WHEN SOMEONE</div>
+      <div>ASKS AI FOR THE</div>
+      <div class="hero-h1-row">
+        BEST<span class="hero-h1-italic">— are you the answer?</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-bottom">
+    <div class="hero-cell">
+      <div class="hero-cell-label">The shift</div>
+      <div class="hero-cell-text">
+        Google shows your business. <strong>AI chooses for you.</strong> ChatGPT, Perplexity, Gemini, Claude — they're already recommending businesses in your category. Every single day.
+      </div>
+      <div class="hero-cell-actions">
+        <a href="#diagnostic" class="btn-mint">Run Free Diagnostic →</a>
+        <a href="#method" class="btn-ghost-dark">How it works</a>
+      </div>
+    </div>
+    <div class="hero-cell">
+      <div class="hero-cell-label">The number</div>
+      <div class="hero-stat-num">37%</div>
+      <div class="hero-stat-sub">Of product searches now<br>start in AI — not Google</div>
+    </div>
+    <div class="hero-cell">
+      <div class="hero-cell-label">The question</div>
+      <div class="hero-cell-text">
+        When a customer in your city asks AI to recommend the best <em>[your category]</em> — does your business appear? <strong>Most don't. CHOIVE· fixes that.</strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-inner">
+    <span class="marquee-item">ChatGPT Visibility</span>
+    <span class="marquee-item">Perplexity Recommendations</span>
+    <span class="marquee-item">Gemini Discovery</span>
+    <span class="marquee-item">Claude Citations</span>
+    <span class="marquee-item">AI Recommendation System</span>
+    <span class="marquee-item">CHOIVE· Index Diagnostic</span>
+    <span class="marquee-item">Entity Clarity</span>
+    <span class="marquee-item">Citation Authority</span>
+    <span class="marquee-item">ChatGPT Visibility</span>
+    <span class="marquee-item">Perplexity Recommendations</span>
+    <span class="marquee-item">Gemini Discovery</span>
+    <span class="marquee-item">Claude Citations</span>
+    <span class="marquee-item">AI Recommendation System</span>
+    <span class="marquee-item">CHOIVE· Index Diagnostic</span>
+    <span class="marquee-item">Entity Clarity</span>
+    <span class="marquee-item">Citation Authority</span>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<div class="body-section">
+<section class="problem" id="problem">
+  <div class="problem-inner">
+    <div class="problem-left">
+      <div class="eyebrow">The reality</div>
+      <h2 class="section-h2">AI doesn't rank.<br><em>It recommends.</em></h2>
+      <p class="section-lead">
+        Search showed a list — you could optimize your way onto it. <strong>AI gives one answer.</strong> Either your business is in it, or it isn't. Most businesses have never checked. They're invisible on AI and losing customers to competitors who simply got there first.
+      </p>
+    </div>
+    <div class="problem-right">
+      <div class="prob-item">
+        <div class="prob-num">01</div>
+        <div class="prob-title">The customer asks AI</div>
+        <div class="prob-body">"Best coffee shop in London" — typed into ChatGPT. AI returns three businesses. Is yours one of them? Right now, almost certainly not.</div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-num">02</div>
+        <div class="prob-title">AI makes the decision</div>
+        <div class="prob-body">AI selects based on what it knows, trusts, and can describe clearly. Not your ads. Not your SEO. What it actually understands about you.</div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-num">03</div>
+        <div class="prob-title">Your competitor gets chosen</div>
+        <div class="prob-body">They didn't earn it through quality. They got there first. And every day you wait, that position becomes harder to take back.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- METHOD -->
+<section class="method" id="method">
+  <div class="method-header">
+    <div class="eyebrow">The CHOIVE· System</div>
+    <h2 class="section-h2">Four signals determine<br>whether AI <em>recommends you.</em></h2>
+    <p class="section-lead" style="max-width:580px;">
+      Every business that appears reliably in AI recommendations has these four things. <strong>We diagnose all four. Then we build them.</strong>
+    </p>
+  </div>
+  <div class="method-steps">
+    <div class="method-step">
+      <div class="step-idx">01</div>
+      <div class="step-name-block">
+        <div class="step-name">Clarity</div>
+        <div class="step-tag">Entity definition</div>
+      </div>
+      <div class="step-desc">AI can only recommend what it can clearly define. We deploy a single, precise description of your business <strong>identically across every platform</strong> — website, Google, LinkedIn, directories, Wikidata. No conflicting signals. Clean entity clarity AI trusts.</div>
+    </div>
+    <div class="method-step">
+      <div class="step-idx">02</div>
+      <div class="step-name-block">
+        <div class="step-name">Trust</div>
+        <div class="step-tag">Citation authority</div>
+      </div>
+      <div class="step-desc"><strong>85% of AI brand mentions come from third-party sources</strong> — not your own website. We build the citation infrastructure: press coverage, authoritative directories, expert features, Reddit presence. The evidence AI needs to recommend you with confidence.</div>
+    </div>
+    <div class="method-step">
+      <div class="step-idx">03</div>
+      <div class="step-name-block">
+        <div class="step-name">Difference</div>
+        <div class="step-tag">AI positioning</div>
+      </div>
+      <div class="step-desc">AI selects the business it can describe <strong>most specifically</strong>. We create one machine-extractable positioning statement — placed at the opening of every significant content section — that AI uses when recommending you over every competitor.</div>
+    </div>
+    <div class="method-step">
+      <div class="step-idx">04</div>
+      <div class="step-name-block">
+        <div class="step-name">Ease</div>
+        <div class="step-tag">Structured data</div>
+      </div>
+      <div class="step-desc">Schema markup, FAQ architecture, answer-first content, llms.txt. The technical infrastructure that makes it <strong>effortless for AI to surface you</strong>. Businesses with proper structure are cited 2.8× more often in AI responses than those without.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- DIAGNOSTIC -->
+<section class="diag-section" id="diagnostic">
+  <div class="diag-inner">
+    <div class="diag-eyebrow">CHOIVE· Index — Free Diagnostic</div>
+    <h2 class="diag-h2">Find out where<br>you stand.</h2>
+    <p class="diag-lead">
+      Real AI analysis. Enter your business and we diagnose exactly how ChatGPT, Perplexity, Gemini, and Claude see you right now. <strong>Any business. Any category. Anywhere in the world.</strong>
+    </p>
+
+    <!-- Input -->
+    <div id="dI">
+      <div class="diag-frame">
+        <label class="field-lbl">Your business — tell us exactly what you are</label>
+        <div class="field-row">
+          <input type="text" id="bN" placeholder="Business name  (e.g. Volta Coffee)" />
+          <input type="text" id="bC" placeholder="Category  (e.g. specialty coffee shop)" />
+        </div>
+        <div class="field-row">
+          <input type="text" id="bL" placeholder="City, Country  (e.g. London, UK)" />
+          <input type="text" id="bD" placeholder="One line about you  (optional)" />
+        </div>
+        <button class="run-btn" id="rBtn" onclick="go()">Run Free Diagnostic →</button>
+        <div class="diag-note">Real AI analysis · 30 seconds · No account · Works for any business worldwide</div>
+      </div>
+    </div>
+
+    <!-- Scan -->
+    <div class="scan-zone" id="dS">
+      <div class="scan-frame">
+        <div class="scan-hd"><div class="spin"></div><div class="scan-ttl">Running CHOIVE· diagnostic</div></div>
+        <div>
+          <div class="log-l" id="l1"><div class="li">○</div><div>Generating customer queries for your category</div><div class="lt">thinking...</div></div>
+          <div class="log-l" id="l2"><div class="li">○</div><div>Analyzing AI recommendation behavior for this market</div><div class="lt">querying...</div></div>
+          <div class="log-l" id="l3"><div class="li">○</div><div>Checking entity clarity and definition signals</div><div class="lt">analyzing...</div></div>
+          <div class="log-l" id="l4"><div class="li">○</div><div>Evaluating trust and citation footprint</div><div class="lt">checking...</div></div>
+          <div class="log-l" id="l5"><div class="li">○</div><div>Scoring differentiation and recommendation ease</div><div class="lt">scoring...</div></div>
+          <div class="log-l" id="l6"><div class="li">○</div><div>Generating your CHOIVE· Index report</div><div class="lt">writing...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="res-zone" id="dR"></div>
+  </div>
+</section>
+
+<!-- OFFER -->
+<div class="body-section">
+<section class="offer-section" id="offer">
+  <div class="offer-inner">
+    <div class="eyebrow">Choose how you start</div>
+    <h2 class="section-h2">From invisible<br>to <em>the obvious choice.</em></h2>
+    <p class="section-lead">Start with the free diagnostic to see exactly where you stand. Or go straight to the complete system.</p>
+    <div class="offer-grid">
+      <div class="offer-card">
+        <div class="o-tier">CHOIVE· Index</div>
+        <div class="o-price">Free</div>
+        <div class="o-note">Instant · No account · Any business worldwide</div>
+        <div class="o-name">The Free Diagnostic</div>
+        <div class="o-desc">A real AI visibility diagnostic. Find out exactly how ChatGPT, Perplexity, Gemini, and Claude see your business right now — and what is stopping them from recommending you.</div>
+        <ul class="o-list">
+          <li>AI visibility score out of 100</li>
+          <li>Platform-by-platform breakdown</li>
+          <li>Four-pillar gap analysis</li>
+          <li>Specific priority actions</li>
+        </ul>
+        <a href="#diagnostic" class="o-btn">Run Free Diagnostic →</a>
+      </div>
+      <div class="offer-card feat">
+        <div class="o-tier">CHOIVE· Analysis</div>
+        <div class="o-price">£2,500</div>
+        <div class="o-note">One-time · Full build · 30-day tracking</div>
+        <div class="o-name">The Complete System</div>
+        <div class="o-desc">We build everything. Entity definition, citation infrastructure, positioning, structured data — the complete system that makes AI reliably recommend your business over every competitor.</div>
+        <ul class="o-list">
+          <li>Full diagnostic and strategy session</li>
+          <li>Entity definition across all platforms</li>
+          <li>Citation infrastructure build</li>
+          <li>AI-optimised positioning statement</li>
+          <li>Schema markup and structured data</li>
+          <li>30-day AI visibility tracking report</li>
+        </ul>
+        <a href="/cdn-cgi/l/email-protection#650d0009090a25060d0a0c13004b060a085a1610070f00061158262d2a2c3320a7d245240b04091c160c164537001410001611" class="o-btn">Request a CHOIVE· Analysis →</a>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- FINAL CTA -->
+<section class="final-section">
+  <h2 class="final-h">THE AI IS ALREADY<br>RECOMMENDING<br><em>someone.</em></h2>
+  <p class="final-p">Every day you wait, that someone is your competitor. Start with a free diagnostic — know where you stand in 30 seconds.</p>
+  <a href="#diagnostic" class="btn-mint">Start Free — Run Your Diagnostic</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="f-logo">CHOIVE·</div>
+  <div class="f-note">CHOIVE· makes businesses the recommended choice on AI platforms — ChatGPT · Perplexity · Gemini · Claude · choive.com</div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+let biz = {};
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function go() {
+  const n=document.getElementById('bN').value.trim(),
+        c=document.getElementById('bC').value.trim(),
+        l=document.getElementById('bL').value.trim(),
+        d=document.getElementById('bD').value.trim();
+
+  if (!n||!c||!l) { alert('Please fill in business name, category, and location.'); return; }
+
+  biz={n,c,l,d};
+  document.getElementById('rBtn').disabled=true;
+  document.getElementById('dI').style.display='none';
+  document.getElementById('dS').style.display='block';
+  document.getElementById('dR').style.display='none';
+  document.getElementById('dR').innerHTML='';
+
+  scanAnim();
+  try { paint(await engine()); } catch(e) { paintErr(e.message); }
+}
+
+function scanAnim() {
+  const ids=['l1','l2','l3','l4','l5','l6'],
+        t=[0,3000,6500,10500,14000,18000];
+  ids.forEach((id,i)=>{
+    setTimeout(()=>{
+      if(i>0){ const p=document.getElementById(ids[i-1]); if(p){p.classList.remove('active');p.classList.add('done');p.querySelector('.li').textContent='✓';} }
+      const el=document.getElementById(id); if(el) el.classList.add('active');
+    },t[i]);
+  });
+}
+
+async function engine() {
+  const prompt=`You are the CHOIVE· diagnostic engine. Analyze whether this business would be recommended by AI platforms (ChatGPT, Perplexity, Gemini, Claude) when customers search for businesses like theirs.
+
+Business:
+- Name: ${biz.n}
+- Category: ${biz.c}
+- Location: ${biz.l}
+- Description: ${biz.d||'Not provided'}
+
+Be completely specific — use the actual business name, category and location throughout. Never be generic. Think exactly as a real AI recommendation system would.
+
+Return ONLY valid JSON, no markdown:
+{"overallScore":<0-100>,"verdictHeadline":"<6-8 word verdict specific to this business>","verdictLevel":"<absent|weak|present>","summaryParagraph":"<3 honest specific sentences about this exact business>","pillars":{"clarity":{"score":<0-25>,"finding":"<2 specific sentences>"},"trust":{"score":<0-25>,"finding":"<2 specific sentences>"},"difference":{"score":<0-25>,"finding":"<2 specific sentences>"},"ease":{"score":<0-25>,"finding":"<2 specific sentences>"}},"platformCoverage":{"chatgpt":{"status":"<absent|weak|present>","detail":"<one sentence>"},"perplexity":{"status":"<absent|weak|present>","detail":"<one sentence>"},"gemini":{"status":"<absent|weak|present>","detail":"<one sentence>"},"claude":{"status":"<absent|weak|present>","detail":"<one sentence>"}},"evidenceNarrative":"<3-4 sentences naming specific queries like best ${biz.c} in ${biz.l}>","actions":[{"priority":"critical","title":"<action>","body":"<2 sentences>"},{"priority":"high","title":"<action>","body":"<2 sentences>"},{"priority":"high","title":"<action>","body":"<2 sentences>"},{"priority":"medium","title":"<action>","body":"<2 sentences>"}]}`;
+
+  const res=await fetch('/.netlify/functions/claude',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1800,messages:[{role:'user',content:prompt}]})
+  });
+  if(!res.ok){let m='API request failed';try{const e=await res.json();m=e.error?.message||m;}catch(_){}throw new Error(m);}
+  const data=await res.json();
+  const raw=data.content.map(b=>b.text||'').join('');
+  const clean=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  try{return JSON.parse(clean);}catch(_){const m=clean.match(/\{[\s\S]*\}/);if(m)return JSON.parse(m[0]);throw new Error('Could not parse results. Please try again.');}
+}
+
+function paint(r) {
+  document.getElementById('dS').style.display='none';
+  const Z=document.getElementById('dR');
+  Z.style.display='block';
+  const pN={chatgpt:'ChatGPT',perplexity:'Perplexity',gemini:'Gemini',claude:'Claude'};
+  const pD={clarity:{n:'01',name:'Clarity'},trust:{n:'02',name:'Trust'},difference:{n:'03',name:'Difference'},ease:{n:'04',name:'Ease'}};
+
+  Z.innerHTML=`
+    <div class="verdict">
+      <div class="v-top">
+        <div>
+          <div class="v-biz">${esc(biz.n.toUpperCase())} · ${esc(biz.c)} · ${esc(biz.l)}</div>
+          <div class="v-tag ${r.verdictLevel}">${r.verdictLevel==='absent'?'Not being chosen':r.verdictLevel==='weak'?'Rarely chosen':'Sometimes chosen'}</div>
+          <div class="v-h">${esc(r.verdictHeadline)}</div>
+        </div>
+        <div class="v-score-block">
+          <div class="v-score-n" id="vN">0</div>
+          <div class="v-score-d">/ 100</div>
+        </div>
+      </div>
+      <div class="v-sum">${esc(r.summaryParagraph)}</div>
+    </div>
+    <div class="sbt"><div class="sbf" id="vB"></div></div>
+    <div class="rl">AI platform coverage</div>
+    <div class="pg">${Object.entries(r.platformCoverage).map(([k,v])=>`<div class="pc"><div class="pn">${pN[k]}</div><div class="pv ${v.status}">${v.status==='absent'?'Not found':v.status==='weak'?'Weak':'Present'}</div><div class="pd">${esc(v.detail)}</div></div>`).join('')}</div>
+    <div class="rl">What we observed</div>
+    <div class="ev"><div class="ev-h">Diagnostic evidence · CHOIVE· Engine</div><div class="ev-b">${esc(r.evidenceNarrative)}</div></div>
+    <div class="rl">Score breakdown</div>
+    <div class="pig">${Object.entries(r.pillars).map(([k,v])=>`<div class="pi"><div class="pi-n">${pD[k].n}</div><div class="pi-name">${pD[k].name}</div><div class="pi-sr"><div class="pi-sn">${v.score}</div><div class="pi-sd">/ 25</div></div><div class="pi-bar"><div class="pi-bf" data-p="${v.score/25*100}"></div></div><div class="pi-f">${esc(v.finding)}</div></div>`).join('')}</div>
+    <div class="rl">Priority actions</div>
+    <div class="al">${r.actions.map(a=>`<div class="ai"><div class="ab ${a.priority}">${a.priority}</div><div><div class="at">${esc(a.title)}</div><div class="abt">${esc(a.body)}</div></div></div>`).join('')}</div>
+    <div class="rcta">
+      <div class="rcta-e">Your next move</div>
+      <div class="rcta-h">Turn this diagnosis into results.</div>
+      <div class="rcta-b">A CHOIVE· Analysis builds the complete system — making your business the one AI recommends every time someone in your category asks, anywhere in the world.</div>
+      <div class="rcta-btns">
+        <a href="mailto:hello@choive.com?subject=CHOIVE· Analysis — ${encodeURIComponent(biz.n)}" class="btn-mint">Request a CHOIVE· Analysis →</a>
+        <button class="btn-ghost-dark" onclick="reset()">Run another →</button>
+      </div>
+    </div>`;
+
+  setTimeout(()=>{ animN('vN',0,r.overallScore,1200); document.getElementById('vB').style.width=r.overallScore+'%'; },100);
+  setTimeout(()=>{ document.querySelectorAll('.pi-bf').forEach(el=>{ el.style.width=el.dataset.p+'%'; }); },300);
+  document.getElementById('diagnostic').scrollIntoView({behavior:'smooth'});
+}
+
+function paintErr(msg){
+  document.getElementById('dS').style.display='none';
+  const Z=document.getElementById('dR');
+  Z.style.display='block';
+  Z.innerHTML=`<div class="err-b"><div class="err-t">Diagnostic failed</div><div class="err-bd">${esc(msg)}<br><br><button class="btn-ghost-dark" style="margin-top:12px;" onclick="reset()">Try again →</button></div></div>`;
+}
+
+function animN(id,from,to,dur){
+  const el=document.getElementById(id); if(!el)return;
+  const s=performance.now();
+  function t(now){const p=Math.min((now-s)/dur,1),e=1-Math.pow(1-p,3);el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(t);}
+  requestAnimationFrame(t);
+}
+
+function reset(){
+  ['dR','dS'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.display='none';if(id==='dR')el.innerHTML='';}});
+  document.getElementById('dI').style.display='block';
+  document.getElementById('rBtn').disabled=false;
+  ['l1','l2','l3','l4','l5','l6'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active','done');el.querySelector('.li').textContent='○';}});
+  document.getElementById('diagnostic').scrollI
