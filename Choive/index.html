@@ -797,6 +797,57 @@ footer {
   margin-bottom: 34px;
   max-width: 640px;
 }
+.cta-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--mint);
+  margin-bottom: 16px;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cta-primary {
+  background: var(--mint);
+  color: var(--ink);
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  padding: 14px 32px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background 0.15s;
+}
+
+.cta-primary:hover {
+  background: var(--mint-2);
+}
+
+.cta-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(194,240,212,0.15);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 14px 24px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.cta-secondary:hover {
+  color: var(--parch);
+  border-color: rgba(194,240,212,0.3);
+}
 /* MOBILE */
 @media (max-width: 960px) {
   .offer-grid-3 { grid-template-columns: 1fr; }
