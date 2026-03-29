@@ -1024,8 +1024,9 @@ footer {
         <li>AI positioning blueprint</li>
         <li>Full 30-day action roadmap</li>
       </ul>
-      <a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — Request" class="offer-btn offer-btn-outline">Request Analysis →</a>
-    </div>
+<a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — Request" class="offer-btn offer-btn-outline">
+  Begin CHOIVE Analysis™ →
+</a>    </div>
 
     <div class="offer-card featured">
       <div class="offer-tier">CHOIVE System™</div>
@@ -1041,8 +1042,9 @@ footer {
         <li>30-day recommendation tracking</li>
         <li>Monthly performance report</li>
       </ul>
-      <a href="mailto:hello&#64;choive.com?subject=CHOIVE System — Request" class="offer-btn offer-btn-solid">Request System →</a>
-    </div>
+<a href="mailto:hello&#64;choive.com?subject=CHOIVE System — Request" class="offer-btn offer-btn-solid">
+  Begin CHOIVE System™ →
+</a>    </div>
 
   </div>
 </section>
@@ -1154,8 +1156,7 @@ Respond ONLY with a valid JSON object in exactly this structure (no markdown, no
   });
 
 if (!response.ok) {
-  let errMsg = 'Something went wrong. Please try again.';
-
+let errMsg = 'The diagnostic could not be completed. Please try again.';
   try {
     const err = await response.json();
 
@@ -1254,15 +1255,41 @@ function showResults(r) {
           </div>
         </div>`).join('')}
     </div>
-    <div class="cta-block">
-      <div class="cta-eyebrow">Next step</div>
-      <div class="cta-headline">Turn this into a decision.</div>
-      <div class="cta-body">A CHOIVE· Analysis builds the complete system — making your business the one AI recommends every time someone in your category asks. No guesswork. Real results.</div>
-      <div class="cta-buttons">
-        <a href="mailto:hello&#64;choive.com?subject=CHOIVE· Analysis — ${encodeURIComponent(bizData.name)}" class="cta-primary">Request a CHOIVE· Analysis</a>
-        <button class="cta-secondary" onclick="resetDiagnostic()">Run another →</button>
-      </div>
-    </div>`;
+    .cta-block {
+  background: linear-gradient(180deg, rgba(194,240,212,0.05), rgba(194,240,212,0.02));
+  border: 1px solid rgba(194,240,212,0.16);
+  padding: 52px 48px;
+  margin-top: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-block::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(194,240,212,0.7), transparent);
+}
+
+.cta-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 44px;
+  letter-spacing: 0.06em;
+  color: var(--parch);
+  margin-bottom: 16px;
+  line-height: 0.98;
+  max-width: 700px;
+}
+
+.cta-body {
+  font-family: 'Cormorant', serif;
+  font-size: 18px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin-bottom: 34px;
+  max-width: 640px;
+}
 
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
@@ -1276,17 +1303,36 @@ function showResults(r) {
   zone.scrollIntoView({ behavior: 'smooth' });
 }
 
-function showError(msg) {
-  document.getElementById('dS').style.display = 'none';
-  const zone = document.getElementById('dR');
-  zone.style.display = 'block';
-  zone.innerHTML = `
-    <div class="error-frame">
-      <div class="error-title">Diagnostic failed</div>
-      <div class="error-body">${esc(msg)}<br><br>
-        <button class="cta-secondary" onclick="resetDiagnostic()">Try again →</button>
-      </div>
-    </div>`;
+.error-frame {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,107,107,0.22);
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+}
+
+.error-frame::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,107,107,0.6), transparent);
+}
+
+.error-title {
+  font-size: 11px;
+  color: #ff8a8a;
+  letter-spacing: 0.22em;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+.error-body {
+  font-family: 'Cormorant', serif;
+  font-size: 18px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 680px;
 }
 
 function esc(s) {
