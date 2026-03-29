@@ -672,6 +672,14 @@ nav {
   max-width: 1200px;
   margin: 0 auto;
 }
+.offer-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--rule);
+  margin-top: 64px;
+}
+@media (max-width: 960px) { .offer-grid-3 { grid-template-columns: 1fr; } }
 .offer-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -792,7 +800,15 @@ footer {
   .method-steps { grid-template-columns: 1fr; }
   .method-step { grid-template-columns: 40px 1fr; }
   .step-desc { grid-column: 2; }
-  .offer-grid { grid-template-columns: 1fr; }
+  .offer-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--rule);
+  margin-top: 64px;
+}
+@media (max-width: 960px) { .offer-grid-3 { grid-template-columns: 1fr; } }
+.offer-grid { grid-template-columns: 1fr; }
   .platform-row { grid-template-columns: 1fr 1fr; }
   .pillars-grid { grid-template-columns: 1fr; }
   .diag-frame { padding: 24px; }
@@ -980,34 +996,54 @@ footer {
   <h2 class="section-h2">From invisible<br>to <em>the obvious choice.</em></h2>
   <p class="section-lead">Start with the free diagnostic to see exactly where you stand. Or go straight to the complete system.</p>
 
-  <div class="offer-grid">
+  <div class="offer-grid-3">
+
     <div class="offer-card">
-      <div class="offer-tier">Free</div>
+      <div class="offer-tier">CHOIVE Diagnostic™</div>
       <div class="offer-price">$0</div>
-      <div class="offer-price-note">No account required</div>
-      <div class="offer-desc">Run the diagnostic above. See your CHOIVE· Index score and understand exactly where you stand across all four pillars.</div>
+      <div class="offer-price-note">Free · No account required</div>
+      <div class="offer-desc">See exactly where you stand. Real AI analysis — not an algorithm. Shows the problem with precision.</div>
       <ul class="offer-items">
-        <li>Real AI diagnostic — not an estimate</li>
-        <li>Score across all four pillars</li>
-        <li>Platform coverage analysis</li>
-        <li>Priority action recommendations</li>
+        <li>Real AI diagnostic</li>
+        <li>CHOIVE· Index score</li>
+        <li>Platform coverage — all four AIs</li>
+        <li>Priority action list</li>
       </ul>
       <a href="#diagnostic" class="offer-btn offer-btn-outline">Run Free Diagnostic →</a>
     </div>
-    <div class="offer-card featured">
-      <div class="offer-tier">CHOIVE· Analysis</div>
+
+    <div class="offer-card">
+      <div class="offer-tier">CHOIVE Analysis™</div>
       <div class="offer-price">$2,500</div>
-      <div class="offer-price-note">One-time · 30-day tracking included</div>
-      <div class="offer-desc">We build the complete system. Entity definition, citation network, positioning, structured data — everything needed to become the AI recommendation in your category.</div>
+      <div class="offer-price-note">One-time · Strategy only</div>
+      <div class="offer-desc">The blueprint for becoming the AI-recommended choice. Every signal mapped. Every gap identified. Every action sequenced.</div>
       <ul class="offer-items">
-        <li>Complete four-pillar implementation</li>
-        <li>Entity definition across all platforms</li>
-        <li>Citation network build</li>
+        <li>Deep four-pillar audit</li>
+        <li>Entity definition strategy</li>
+        <li>Citation gap analysis</li>
+        <li>AI positioning blueprint</li>
+        <li>Full 30-day action roadmap</li>
+      </ul>
+      <a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — Request" class="offer-btn offer-btn-outline">Request Analysis →</a>
+    </div>
+
+    <div class="offer-card featured">
+      <div class="offer-tier">CHOIVE System™</div>
+      <div class="offer-price">$5,000+</div>
+      <div class="offer-price-note">Full execution · Custom scope</div>
+      <div class="offer-desc">We install the system that makes your business the one AI selects. End-to-end implementation — built, deployed, and tracked.</div>
+      <ul class="offer-items">
+        <li>Complete four-pillar build</li>
+        <li>Entity definition — all platforms</li>
+        <li>Citation network construction</li>
+        <li>AI positioning deployment</li>
         <li>Schema markup + llms.txt</li>
         <li>30-day recommendation tracking</li>
         <li>Monthly performance report</li>
       </ul>
-<a href="mailto:hello&#64;choive.com?subject=CHOIVE· Analysis — $2,500 Request" class="offer-btn offer-btn-solid">Request a $2,500 CHOIVE· Analysis →</a>    </div>
+      <a href="mailto:hello&#64;choive.com?subject=CHOIVE System — Request" class="offer-btn offer-btn-solid">Request System →</a>
+    </div>
+
   </div>
 </section>
 </div>
@@ -1125,14 +1161,15 @@ Respond ONLY with a valid JSON object in exactly this structure (no markdown, no
   const data = await response.json();
   const text = data.content.map(b => b.text || '').join('');
 
-  const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
   try {
     return JSON.parse(clean);
-  } catch(e) {
+  } catch (e) {
     const m = clean.match(/\{[\s\S]*\}/);
     if (m) return JSON.parse(m[0]);
     throw new Error('Could not parse diagnostic results. Please try again.');
+  }
   }
 }
 
