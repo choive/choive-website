@@ -1290,23 +1290,17 @@ function showResults(r) {
           </div>
         </div>`).join('')}
     </div>
-    .cta-block {
-  background: linear-gradient(180deg, rgba(194,240,212,0.05), rgba(194,240,212,0.02));
-  border: 1px solid rgba(194,240,212,0.16);
-  padding: 52px 48px;
-  margin-top: 2px;
-  position: relative;
-  overflow: hidden;
-}
-
-.cta-block::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(194,240,212,0.7), transparent);
-}
-
+       <div class="cta-block">
+      <div class="cta-eyebrow">Next step</div>
+      <div class="cta-headline">Now decide whether to stay invisible.</div>
+      <div class="cta-body">
+        This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.
+      </div>
+      <div class="cta-buttons">
+        <a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — ${encodeURIComponent(bizData.name)}" class="cta-primary">Request CHOIVE Analysis™</a>
+        <a href="mailto:hello&#64;choive.com?subject=CHOIVE System — ${encodeURIComponent(bizData.name)}" class="cta-secondary">Request CHOIVE System™</a>
+      </div>
+    </div>`;
 
 
   setTimeout(() => {
@@ -1321,37 +1315,7 @@ function showResults(r) {
   zone.scrollIntoView({ behavior: 'smooth' });
 }
 
-.error-frame {
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
-  border: 1px solid rgba(255,107,107,0.22);
-  padding: 36px;
-  position: relative;
-  overflow: hidden;
-}
 
-.error-frame::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,107,107,0.6), transparent);
-}
-
-.error-title {
-  font-size: 11px;
-  color: #ff8a8a;
-  letter-spacing: 0.22em;
-  margin-bottom: 14px;
-  text-transform: uppercase;
-}
-
-.error-body {
-  font-family: 'Cormorant', serif;
-  font-size: 18px;
-  color: var(--muted);
-  line-height: 1.65;
-  max-width: 680px;
-}
 
 function esc(s) {
   if (!s) return '';
@@ -1370,7 +1334,28 @@ function animateNum(id, from, to, dur) {
   }
   requestAnimationFrame(tick);
 }
+function showError(msg) {
+  document.getElementById('dS').style.display = 'none';
+  const zone = document.getElementById('dR');
+  zone.style.display = 'block';
 
+  zone.innerHTML = `
+    <div class="error-frame">
+      <div class="error-title">DIAGNOSTIC INTERRUPTED</div>
+      <div class="error-body">
+        ${esc(msg)}
+      </div>
+
+      <div style="margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="cta-primary" onclick="resetDiagnostic()">Try again →</button>
+        <a href="mailto:hello&#64;choive.com?subject=CHOIVE Diagnostic Support" class="cta-secondary">Contact support</a>
+      </div>
+
+      <div style="margin-top: 18px; font-size: 10px; letter-spacing: 0.08em; color: var(--muted);">
+        The CHOIVE· engine could not complete this run. Your inputs were not lost.
+      </div>
+    </div>`;
+}
 function resetDiagnostic() {
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
