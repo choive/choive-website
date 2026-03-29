@@ -848,6 +848,41 @@ footer {
   color: var(--parch);
   border-color: rgba(194,240,212,0.3);
 }
+.cta-secondary:hover {
+  color: var(--parch);
+  border-color: rgba(194,240,212,0.3);
+}
+
+/* PASTE FORM CSS HERE */
+
+.form-modal {
+  ...
+}
+
+.form-modal.active {
+  ...
+}
+
+/* all the other form styles */
+
+@media (max-width: 768px) {
+  .form-panel {
+    ...
+  }
+
+  .form-grid {
+    ...
+  }
+
+  .form-title {
+    ...
+  }
+}
+
+/* MOBILE */
+@media (max-width: 960px) {
+  .offer-grid-3 { grid-template-columns: 1fr; }
+}  
 /* MOBILE */
 @media (max-width: 960px) {
   .offer-grid-3 { grid-template-columns: 1fr; }
@@ -1080,9 +1115,9 @@ footer {
         <li>AI positioning blueprint</li>
         <li>Full 30-day action roadmap</li>
       </ul>
-<a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — Request" class="offer-btn offer-btn-outline">
-  Begin CHOIVE Analysis™ →
-</a>    </div>
+<button class="offer-btn offer-btn-outline" onclick="openForm('CHOIVE Analysis™')">
+  Start CHOIVE Analysis™ →
+</button>    </div>
 
     <div class="offer-card featured">
       <div class="offer-tier">CHOIVE System™</div>
@@ -1098,9 +1133,9 @@ footer {
         <li>30-day recommendation tracking</li>
         <li>Monthly performance report</li>
       </ul>
-<a href="mailto:hello&#64;choive.com?subject=CHOIVE System — Request" class="offer-btn offer-btn-solid">
-  Begin CHOIVE System™ →
-</a>    </div>
+<button class="offer-btn offer-btn-solid" onclick="openForm('CHOIVE System™')">
+  Start CHOIVE System™ →
+</button>    </div>
 
   </div>
 </section>
@@ -1111,7 +1146,56 @@ footer {
   <div class="footer-mark">CHOIVE<span>·</span></div>
   <div class="footer-note">Real diagnostic powered by the CHOIVE· AI engine. Results reflect AI recommendation likelihood based on your current digital presence signals.</div>
 </footer>
+<div class="form-modal" id="formModal">
+  <div class="form-overlay" onclick="closeForm()"></div>
 
+  <div class="form-panel">
+    <button class="form-close" onclick="closeForm()">×</button>
+
+    <div class="form-kicker">Get started</div>
+    <h3 class="form-title" id="formTitle">Start CHOIVE</h3>
+    <p class="form-sub">Fill this in and continue your request.</p>
+
+    <form onsubmit="submitCHOIVEForm(event)">
+      <input type="hidden" id="serviceType" />
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Your name</label>
+          <input type="text" id="leadName" required>
+        </div>
+
+        <div class="form-field">
+          <label>Business name</label>
+          <input type="text" id="leadBusiness" required>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Website or profile link</label>
+          <input type="text" id="leadWebsite" placeholder="https://">
+        </div>
+
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="leadEmail" required>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>What do you want help with? <span>(optional)</span></label>
+        <textarea id="leadNote" rows="4" placeholder="Tell us briefly what you want to improve."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="form-submit">Continue →</button>
+      </div>
+
+      <div class="form-note">Takes less than 30 seconds.</div>
+    </form>
+  </div>
+</div>
 <script>
 const API_URL = '/.netlify/functions/claude';
 let bizData = {};
@@ -1318,9 +1402,9 @@ function showResults(r) {
         This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.
       </div>
       <div class="cta-buttons">
-        <a href="mailto:hello&#64;choive.com?subject=CHOIVE Analysis — ${encodeURIComponent(bizData.name)}" class="cta-primary">Request CHOIVE Analysis™</a>
-        <a href="mailto:hello&#64;choive.com?subject=CHOIVE System — ${encodeURIComponent(bizData.name)}" class="cta-secondary">Request CHOIVE System™</a>
-      </div>
+  <button class="cta-primary" onclick="openForm('CHOIVE Analysis™', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Start CHOIVE Analysis™</button>
+  <button class="cta-secondary" onclick="openForm('CHOIVE System™', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Start CHOIVE System™</button>
+</div>
     </div>`;
 
 
@@ -1389,7 +1473,20 @@ function resetDiagnostic() {
   });
   document.getElementById('diagnostic').scrollIntoView({ behavior: 'smooth' });
 }
+function openForm(service, businessName = '', category = '', city = '') {
+  ...
+}
 
+function closeForm() {
+  ...
+}
+
+function submitCHOIVEForm(event) {
+  ...
+}
+
+/* 👇 THIS WAS ALREADY THERE */
+document.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('dI').style.display !== 'none') runDiagnostic();
 });
