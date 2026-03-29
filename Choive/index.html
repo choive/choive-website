@@ -824,6 +824,10 @@ footer {
   max-width: 640px;
 }
 /* MOBILE */
+@media (max-width: 960px) {
+  .offer-grid-3 { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 768px) {
   nav { padding: 0 20px; }
   .nav-links { display: none; }
@@ -835,15 +839,7 @@ footer {
   .method-steps { grid-template-columns: 1fr; }
   .method-step { grid-template-columns: 40px 1fr; }
   .step-desc { grid-column: 2; }
-  .offer-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--rule);
-  margin-top: 64px;
-}
-@media (max-width: 960px) { .offer-grid-3 { grid-template-columns: 1fr; } }
-.offer-grid { grid-template-columns: 1fr; }
+  .offer-grid { grid-template-columns: 1fr; }
   .platform-row { grid-template-columns: 1fr 1fr; }
   .pillars-grid { grid-template-columns: 1fr; }
   .diag-frame { padding: 24px; }
