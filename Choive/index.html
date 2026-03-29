@@ -988,10 +988,6 @@ footer {
 /* MOBILE */
 @media (max-width: 960px) {
   .offer-grid-3 { grid-template-columns: 1fr; }
-}  
-/* MOBILE */
-@media (max-width: 960px) {
-  .offer-grid-3 { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
@@ -1014,6 +1010,19 @@ footer {
   .footer-note { text-align: left; }
   .verdict-top { flex-direction: column; gap: 16px; }
   .verdict-score-block { text-align: left; }
+  .form-panel {
+    width: calc(100vw - 24px);
+    margin: 24px auto;
+    padding: 24px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-title {
+    font-size: 32px;
+  }
 }
 </style>
 </head>
@@ -1530,7 +1539,12 @@ function showResults(r) {
 
 function esc(s) {
   if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 function animateNum(id, from, to, dur) {
