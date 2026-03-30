@@ -540,9 +540,10 @@ nav {
   opacity: 0.4;
 }
 .verdict-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 20px;
+  align-items: start;
   margin-bottom: 24px;
 }
 .verdict-biz {
@@ -567,17 +568,25 @@ nav {
 .verdict-headline {
   font-family: 'Inter', sans-serif;
   font-size: clamp(28px, 4vw, 44px);
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--parch);
-  line-height: 1;
+  line-height: 1.05;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
-.verdict-score-block { text-align: right; flex-shrink: 0; }
+.verdict-score-block {
+  text-align: right;
+  width: 140px;
+  justify-self: end;
+}
 .verdict-score-num {
   font-family: 'Inter', sans-serif;
-  font-size: 72px;
+  font-size: 56px;
+  font-weight: 700;
   line-height: 1;
   color: var(--parch);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
 }
 .verdict-score-denom { font-size: 10px; color: var(--muted); letter-spacing: 0.15em; }
 .verdict-summary {
