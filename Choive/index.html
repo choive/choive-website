@@ -55,7 +55,7 @@ nav {
   backdrop-filter: blur(12px);
 }
 .logo {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 22px;
   letter-spacing: 0.14em;
   color: var(--parch);
@@ -82,7 +82,7 @@ nav {
 .nav-cta {
   background: var(--mint);
   color: var(--ink);
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   letter-spacing: 0.12em;
   padding: 10px 22px;
@@ -126,10 +126,11 @@ nav {
   background: var(--mint);
 }
 .hero h1 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: clamp(64px, 10vw, 128px);
-  letter-spacing: 0.03em;
-  line-height: 0.92;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
   color: var(--parch);
   margin-bottom: 40px;
   max-width: 900px;
@@ -144,36 +145,43 @@ nav {
   line-height: 1.6;
   color: var(--muted);
   max-width: 520px;
-  margin-bottom: 52px;
+  margin-bottom: 40px;
 }
 .hero-sub strong { color: var(--parch); font-weight: 400; }
-.hero-actions { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
-.btn-primary {
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 40px;
+}
+ .btn-primary {
   background: var(--mint);
   color: var(--ink);
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.12em;
-  padding: 16px 36px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 14px 28px;
   border: none;
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
   transition: background 0.15s;
 }
-.btn-primary:hover { background: var(--mint-2); }
-.btn-ghost {
-  background: transparent;
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 16px 24px;
-  border: 1px solid rgba(194,240,212,0.15);
+.btn-primary {
+  background: var(--mint);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 16px 36px;
+  border: none;
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background 0.15s;
 }
 .btn-ghost:hover { color: var(--parch); border-color: rgba(194,240,212,0.3); }
 .hero-scroll {
@@ -249,7 +257,7 @@ nav {
   line-height: 1.7;
   color: var(--muted);
   max-width: 600px;
-  margin-bottom: 64px;
+  margin-bottom: 48px;
 }
 .section-lead strong { color: var(--ink); font-weight: 500; }
 .problem-grid {
@@ -293,7 +301,7 @@ nav {
 .stat-item { padding: 24px 32px; border-right: 1px solid rgba(194,240,212,0.08); }
 .stat-item:last-child { border-right: none; }
 .stat-num {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 52px;
   letter-spacing: 0.04em;
   color: var(--mint);
@@ -318,7 +326,7 @@ nav {
   grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   background: var(--rule);
-  margin-top: 64px;
+  margin-top: 48px;
 }
 .method-step {
   background: var(--parch);
@@ -336,7 +344,7 @@ nav {
 }
 .step-name-block {}
 .step-name {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 24px;
   letter-spacing: 0.08em;
   color: var(--ink);
@@ -370,7 +378,7 @@ nav {
   margin-bottom: 24px;
 }
 .diag-h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: clamp(48px, 7vw, 88px);
   letter-spacing: 0.04em;
   line-height: 0.95;
@@ -432,7 +440,7 @@ nav {
   background: var(--mint);
   color: var(--ink);
   border: none;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: '.hero h!', sans-serif;
   font-size: 20px;
   letter-spacing: 0.15em;
   padding: 18px;
@@ -552,7 +560,7 @@ nav {
 .verdict-tag.weak { color: #ffc966; border-color: #ffc966; background: rgba(255,201,102,0.06); }
 .verdict-tag.present { color: var(--mint); border-color: var(--mint); background: rgba(194,240,212,0.06); }
 .verdict-headline {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: clamp(28px, 4vw, 44px);
   letter-spacing: 0.05em;
   color: var(--parch);
@@ -560,7 +568,7 @@ nav {
 }
 .verdict-score-block { text-align: right; flex-shrink: 0; }
 .verdict-score-num {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 72px;
   line-height: 1;
   color: var(--parch);
@@ -602,7 +610,7 @@ nav {
   text-align: center;
 }
 .platform-name { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-.platform-verdict { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.08em; margin-bottom: 4px; }
+.platform-verdict { font-family: 'Inter', sans-serif; font-size: 15px; letter-spacing: 0.08em; margin-bottom: 4px; }
 .platform-verdict.absent { color: #ff6b6b; }
 .platform-verdict.weak { color: #ffc966; }
 .platform-verdict.present { color: var(--mint); }
@@ -614,9 +622,9 @@ nav {
   padding: 28px;
 }
 .pillar-num { font-size: 9px; letter-spacing: 0.2em; color: var(--mint-dim); margin-bottom: 8px; }
-.pillar-name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.08em; color: var(--parch); margin-bottom: 14px; }
+.pillar-name { font-family: 'Inter', sans-serif; font-size: 22px; letter-spacing: 0.08em; color: var(--parch); margin-bottom: 14px; }
 .pillar-score-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 10px; }
-.pillar-score-n { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--parch); letter-spacing: 0.04em; line-height: 1; }
+.pillar-score-n { font-family: 'Inter', sans-serif; font-size: 36px; color: var(--parch); letter-spacing: 0.04em; line-height: 1; }
 .pillar-score-d { font-size: 11px; color: var(--muted); }
 .pillar-bar { height: 1px; background: rgba(194,240,212,0.1); margin-bottom: 16px; }
 .pillar-bar-fill { height: 100%; background: var(--mint); width: 0; transition: width 1.6s cubic-bezier(0.16,1,0.3,1); }
@@ -660,7 +668,7 @@ nav {
   grid-template-columns: 1fr 1fr;
   gap: 2px;
   background: var(--rule);
-  margin-top: 64px;
+  margin-top: 48px;
 }
 .offer-card {
   background: var(--parch);
@@ -680,7 +688,7 @@ nav {
 }
 .offer-card.featured .offer-tier { color: var(--mint); }
 .offer-price {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 52px;
   letter-spacing: 0.04em;
   color: var(--ink);
@@ -717,10 +725,11 @@ nav {
   display: block;
   width: 100%;
   text-align: center;
-  padding: 16px;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.12em;
+  padding: 14px 28px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   cursor: pointer;
   text-decoration: none;
   border: none;
@@ -748,7 +757,7 @@ footer {
   border-top: 1px solid rgba(194,240,212,0.08);
 }
 .footer-mark {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 18px;
   letter-spacing: 0.12em;
   color: rgba(194,240,212,0.2);
@@ -781,7 +790,7 @@ footer {
 }
 
 .cta-headline {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 44px;
   letter-spacing: 0.06em;
   color: var(--parch);
@@ -816,9 +825,10 @@ footer {
   background: var(--mint);
   color: var(--ink);
   border: none;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.12em;
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   padding: 14px 32px;
   cursor: pointer;
   text-decoration: none;
@@ -902,7 +912,7 @@ footer {
 }
 
 .form-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 42px;
   letter-spacing: 0.05em;
   color: var(--ink);
@@ -969,10 +979,11 @@ footer {
   background: var(--mint);
   color: var(--ink);
   border: none;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.12em;
-  padding: 14px 30px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 14px 28px;
   cursor: pointer;
 }
 
@@ -1060,27 +1071,53 @@ footer {
   <div class="hero-kicker">AI Recommendation System</div>
   <h1>When someone asks AI<br>for the best —<br><em>are you the answer?</em></h1>
 <p class="hero-sub">
-Google shows your business. <strong>AI chooses for you.</strong><br><br>
-When someone asks for the best, AI gives one answer.  
-CHOIVE shows why you are not being chosen — and installs what makes you the obvious option.
+AI chooses one business.<br><br>
+CHOIVE shows why it’s not you — and installs what makes you the obvious answer.
 </p>
   <div class="hero-actions">
-    <a href="#diagnostic" class="btn-primary">See if AI chooses you →</a>
-    <a href="#method" class="btn-ghost">Understand How It Works</a>
+    <a href="#diagnostic" class="btn-primary">Run your CHOIVE· Index →</a>
+    <a href="#method" class="btn-ghost">How CHOIVE· Works</a>
   </div>
   <div style="
+  margin-top:16px;
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+">
+  Most businesses have never checked if they are being chosen
+</div>
+<div style="
   margin-top:28px;
   font-size:10px;
   letter-spacing:0.18em;
   text-transform:uppercase;
   color:var(--muted);
 ">
-We've analysed 47 businesses · Average CHOIVE· Index: 31 / 100
-Most businesses fall into the “Weak” range.
-  </div>
+  We've analysed 47 businesses · Average CHOIVE· Index: 31 / 100
+</div>  </div>
   <div class="hero-scroll">Scroll</div>
 </section>
 
+<section style="
+  padding:32px 48px;
+  border-top:1px solid rgba(194,240,212,0.08);
+  border-bottom:1px solid rgba(194,240,212,0.08);
+  text-align:center;
+  background:var(--black);
+">
+  <div style="
+    font-size:10px;
+    letter-spacing:0.25em;
+    text-transform:uppercase;
+    color:var(--muted);
+    opacity:0.85;
+  ">
+    Google helps people search.
+    <span style="color:var(--mint); margin-left:12px;">AI helps them choose.</span>
+  </div>
+</section>
+  
 <!-- MARQUEE -->
 <div class="marquee-wrap">
   <div class="marquee-track">
@@ -1212,10 +1249,18 @@ Most businesses fall into the “Weak” range.
 <!-- DIAGNOSTIC -->
 <section class="diag-section" id="diagnostic">
   <div class="diag-inner">
-    <div class="diag-eyebrow">CHOIVE· Index — Free Diagnostic</div>
-    <h2 class="diag-h2">Find out where<br>you stand.</h2>
+    <div class="diag-eyebrow">CHOIVE· Index</div>
+    <h2 class="diag-h2">See if AI would<br>choose you.</h2>
+  <div style="
+  margin-bottom:20px;
+  font-size:11px;
+  color:var(--muted);
+">
+Most businesses have never checked if AI would choose them.
+</div>
     <p class="diag-lead">
-      Real AI analysis. Enter your business and we diagnose exactly how ChatGPT, Perplexity, Gemini, and Claude see you right now. <strong>Any business. Any category. Anywhere in the world.</strong>
+      Real AI diagnostic. Enter your business and see if AI would recommend it on ChatGPT, Perplexity, Gemini, and Claude.
+      <strong>Any business. Any category. Anywhere in the world.</strong>
     </p>
 
     <div id="dI">
@@ -1229,17 +1274,20 @@ Most businesses fall into the “Weak” range.
 CHOIVE· INDEX — LIVE DIAGNOSTIC
 </div>
       <div class="diag-frame">
-        <label class="field-lbl">Enter your business exactly as a customer would search it</label>
+        <label class="field-lbl">
+        Enter your business name, category, and location</label>
         <div class="field-row">
-          <input type="text" id="bN" placeholder="Business name  (e.g. Volta Coffee)" />
-          <input type="text" id="bC" placeholder="Category  (e.g. specialty coffee shop)" />
+          <input type="text" id="bN" placeholder="Business name (e.g. Volta Coffee)" />
+          <input type="text" id="bC" placeholder="What you do (e.g. specialty coffee shop)" />
         </div>
         <div class="field-row">
-          <input type="text" id="bL" placeholder="City, Country  (e.g. London, UK)" />
+          <input type="text" id="bL" placeholder="Location (e.g. London, UK)" />
           <input type="text" id="bD" placeholder="One line about you  (optional)" />
         </div>
-        <button class="run-btn" id="rBtn" onclick="runDiagnostic()">Run CHOIVE Diagnostic →</button>
-        <div class="diag-note">Real AI analysis · 30 seconds · No account required · Used by businesses globally</div>
+        <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
+          Run your CHOIVE· Index →
+        </button>
+        <div class="diag-note">Real AI analysis · 30 seconds · No account required </div>
       </div>
     </div>
 
@@ -1599,9 +1647,10 @@ function showResults(r) {
        <div class="cta-block">
       <div class="cta-eyebrow">Next step</div>
       <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">
-      Most businesses stop here. The ones that continue become the recommendation.
+      Most businesses stop here.
+      The ones that continue become the one AI recommends.
       </div>
-      <div class="cta-headline">Now decide whether to stay invisible.</div>
+      <div class="cta-headline">Now decide what happens next.</div>
       <div class="cta-body">
         This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.
       </div>
@@ -1705,7 +1754,7 @@ function closeForm() {
   document.getElementById('formModal').classList.remove('active');
 }
 
-function submitCHOIVEForm(event) {
+async function submitCHOIVEForm(event) {
   event.preventDefault();
 
   const name = document.getElementById('leadName').value.trim();
@@ -1714,31 +1763,33 @@ function submitCHOIVEForm(event) {
   const website = document.getElementById('leadWebsite').value.trim();
   const note = document.getElementById('leadNote').value.trim();
   const service = document.getElementById('serviceType').value;
-  const errorBox = document.getElementById('formError');
 
+  const errorBox = document.getElementById('formError');
   errorBox.textContent = '';
-  errorBox.style.color = '#c0392b';
 
   if (!name || !business || !email) {
     errorBox.textContent = 'Enter your name, business name, and email.';
     return;
   }
 
-  errorBox.style.color = '#1a7a4a';
-  errorBox.textContent = 'Your CHOIVE· Blueprint is being prepared. We will contact you within 24 hours.';
+  try {
+    await fetch('/.netlify/functions/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, business, email, website, note, service })
+    });
 
-  document.getElementById('leadName').value = '';
-  document.getElementById('leadBusiness').value = '';
-  document.getElementById('leadWebsite').value = '';
-  document.getElementById('leadEmail').value = '';
-  document.getElementById('leadNote').value = '';
-  document.getElementById('serviceType').value = '';
+    errorBox.style.color = '#1a7a4a';
+    errorBox.textContent = 'Your CHOIVE· Blueprint is being prepared.';
 
-  setTimeout(() => {
-    closeForm();
-    errorBox.textContent = '';
-    errorBox.style.color = '#c0392b';
-  }, 1800);
+    setTimeout(() => {
+      closeForm();
+      errorBox.textContent = '';
+    }, 1500);
+
+  } catch (err) {
+    errorBox.textContent = 'Something went wrong. Try again.';
+  }
 }
  
 /* 👇 THIS WAS ALREADY THERE */
