@@ -27,15 +27,18 @@
   --amber:   #b87d1a;
   --green:   #1a7a4a;
 }
-/* 👇 ADD THIS BLOCK HERE */
 
-/* existing code continues */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html { background: var(--black); scroll-behavior: smooth; }
 body {
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-html { background: var(--black); scroll-behavior: smooth; }
-body {
+  background: var(--black);
+  color: var(--parch);
+  font-family: 'DM Mono', monospace;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
   background: var(--black);
   color: var(--parch);
   font-family: 'DM Mono', monospace;
@@ -1324,13 +1327,11 @@ footer {
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="form-submit">Continue →</button>
-        <div class="form-error" id="formError">
-      </div>
+  <button type="submit" class="form-submit">Continue →</button>
+</div>
 
-      <div class="form-note">Takes less than 30 seconds.</div>
-    </form>
-  </div>
+<div class="form-error" id="formError"></div>
+<div class="form-note">Takes less than 30 seconds.
 </div>
 <script>
 const API_URL = '/.netlify/functions/claude';
