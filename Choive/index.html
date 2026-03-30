@@ -195,6 +195,10 @@ nav {
   align-items: center;
   gap: 12px;
 }
+.btn-ghost:hover {
+  color: var(--parch);
+  border-color: rgba(194,240,212,0.3);
+}
 .hero-scroll::after {
   content: '';
   width: 1px;
@@ -440,7 +444,8 @@ nav {
   background: var(--mint);
   color: var(--ink);
   border: none;
-  font-family: '.hero h!', sans-serif;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
   font-size: 20px;
   letter-spacing: 0.15em;
   padding: 18px;
@@ -1034,8 +1039,16 @@ footer {
   .field-row { grid-template-columns: 1fr; }
   footer { flex-direction: column; gap: 16px; padding: 32px 24px; }
   .footer-note { text-align: left; }
-  .verdict-top { flex-direction: column; gap: 16px; }
-  .verdict-score-block { text-align: left; }
+  .verdict-top {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.verdict-score-block {
+  text-align: left;
+  width: auto;
+  justify-self: start;
+}
   .form-panel {
     width: calc(100vw - 24px);
     margin: 24px auto;
@@ -1287,7 +1300,7 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
         <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
           Run your CHOIVE· Index →
         </button>
-        <div class="diag-note">Real AI analysis · 30 seconds · No account required </div>
+        <div class="diag-note">Real AI diagnostic · Takes 30 seconds · No signup</div>
       </div>
     </div>
 
@@ -1433,13 +1446,15 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
         <textarea id="leadNote" rows="4" placeholder="Tell us briefly what you want to improve."></textarea>
       </div>
 
-      <div class="form-actions">
-  <button type="submit" class="form-submit">Continue to Blueprint →</button>
-        <div class="form-note">
-Takes 30 seconds · Your CHOIVE· Blueprint is prepared next
-</div>
+            <div class="form-actions">
+        <button type="submit" class="form-submit">Continue to Blueprint →</button>
+      </div>
 
-<div class="form-error" id="formError"></div>
+      <div class="form-error" id="formError"></div>
+      <div class="form-note">Takes 30 seconds · Your CHOIVE· Blueprint is prepared next</div>
+    </form>
+  </div>
+</div>
 <div class="form-note">Takes less than 30 seconds.
 </form>
 </div>
