@@ -1644,12 +1644,35 @@ function submitCHOIVEForm(event) {
   const name = document.getElementById('leadName').value.trim();
   const business = document.getElementById('leadBusiness').value.trim();
   const email = document.getElementById('leadEmail').value.trim();
+  const website = document.getElementById('leadWebsite').value.trim();
+  const note = document.getElementById('leadNote').value.trim();
+  const service = document.getElementById('serviceType').value;
+  const errorBox = document.getElementById('formError');
+
+  errorBox.textContent = '';
+  errorBox.style.color = '#c0392b';
 
   if (!name || !business || !email) {
-    alert('Enter your name, business, and email.');
+    errorBox.textContent = 'Enter your name, business name, and email.';
     return;
   }
 
+  errorBox.style.color = '#1a7a4a';
+  errorBox.textContent = 'Thank you. Your request has been received. We will contact you soon.';
+
+  document.getElementById('leadName').value = '';
+  document.getElementById('leadBusiness').value = '';
+  document.getElementById('leadWebsite').value = '';
+  document.getElementById('leadEmail').value = '';
+  document.getElementById('leadNote').value = '';
+  document.getElementById('serviceType').value = '';
+
+  setTimeout(() => {
+    closeForm();
+    errorBox.textContent = '';
+    errorBox.style.color = '#c0392b';
+  }, 1800);
+}
   const service = document.getElementById('serviceType').value;
   const website = document.getElementById('leadWebsite').value.trim();
   const note = document.getElementById('leadNote').value.trim();
