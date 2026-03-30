@@ -39,14 +39,6 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
-  background: var(--black);
-  color: var(--parch);
-  font-family: 'DM Mono', monospace;
-  font-weight: 300;
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
 
 /* NAV */
 nav {
@@ -1332,6 +1324,8 @@ footer {
 
 <div class="form-error" id="formError"></div>
 <div class="form-note">Takes less than 30 seconds.
+</form>
+</div>
 </div>
 <script>
 const API_URL = '/.netlify/functions/claude';
@@ -1673,25 +1667,7 @@ function submitCHOIVEForm(event) {
     errorBox.style.color = '#c0392b';
   }, 1800);
 }
-  const service = document.getElementById('serviceType').value;
-  const website = document.getElementById('leadWebsite').value.trim();
-  const note = document.getElementById('leadNote').value.trim();
-
-  const subject = encodeURIComponent(`${service} — ${business || name}`);
-  const body = encodeURIComponent(
-`Service: ${service}
-
-Name: ${name}
-Business: ${business}
-Website: ${website}
-Email: ${email}
-
-Notes:
-${note}`
-  );
-
-  window.location.href = `mailto:hello@choive.com?subject=${subject}&body=${body}`;
-}
+ 
 /* 👇 THIS WAS ALREADY THERE */
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('dI').style.display !== 'none') runDiagnostic();
