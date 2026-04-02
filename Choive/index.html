@@ -6,1072 +6,626 @@
 <title>CHOIVE· — Be What AI Recommends</title>
 <meta name="description" content="CHOIVE· is the system that makes businesses the recommended choice on AI platforms — ChatGPT, Perplexity, Gemini, and Claude.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+
+/* ─── TOKENS ─────────────────────────────────── */
 :root {
-  --black:   #060504;
-  --black-2: #0e0c0b;
-  --parch:   #F5F1EA;
-  --parch-2: #EDE8DF;
-  --parch-3: #E4DDD2;
-  --ink:     #0F0D0A;
-  --muted:   #6B6560;
-  --faint:   #B8B3AD;
-  --rule:    rgba(15,13,10,0.1);
-  --rule-s:  rgba(15,13,10,0.06);
-  --mint:    #C2F0D4;
-  --mint-2:  #A8E8C0;
-  --mint-dim:#4A9965;
-  --red:     #c0392b;
-  --amber:   #b87d1a;
-  --green:   #1a7a4a;
+  --dk:      #0E0E11;
+  --dk-2:    #121216;
+  --dk-3:    #0A0A0D;
+  --lt:      #F4F2EE;
+  --lt-2:    #EFEAE3;
+  --lt-3:    #E8E3DB;
+  --td:      #1A1A1A;
+  --tdm:     #4A4A50;
+  --tp:      #F4F2EE;
+  --tb:      #B3B3BA;
+  --tm:      #9A9AA3;
+  --an:      #CFCAC2;
+  --ac:      #C2F0D4;
+  --ac2:     #A8E8C0;
+  --acd:     #4A9965;
+  --rule:    rgba(26,26,26,0.09);
+  --rule-d:  rgba(255,255,255,0.07);
+  --red:     #f87171;
+  --amber:   #fbbf24;
 }
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-html { background: var(--black); scroll-behavior: smooth; }
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+html { background:var(--dk-3); scroll-behavior:smooth; }
 body {
-  background: var(--black);
-  color: var(--parch);
-  font-family: 'DM Mono', monospace;
-  font-weight: 300;
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
+  font-family:'Inter',sans-serif;
+  font-weight:400;
+  background:var(--dk);
+  color:var(--tp);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
 }
 
-/* NAV */
+/* ─── NAV ────────────────────────────────────── */
 nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 200;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 48px;
-  border-bottom: 1px solid rgba(194,240,212,0.08);
-  background: rgba(6,5,4,0.92);
-  backdrop-filter: blur(12px);
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  height:64px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 56px;
+  background:rgba(10,10,13,0.96);
+  border-bottom:1px solid var(--rule-d);
+  backdrop-filter:blur(20px);
 }
 .logo {
-  font-family: 'Inter', sans-serif;
-  font-size: 22px;
-  letter-spacing: 0.14em;
-  color: var(--parch);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:20px; letter-spacing:0.12em;
+  color:var(--tp); text-decoration:none;
 }
-.logo-dot { color: var(--mint); }
-.nav-links {
-  display: flex;
-  gap: 36px;
-  align-items: center;
-}
+.logo-dot { color:var(--ac); }
+.nav-links { display:flex; gap:40px; align-items:center; }
 .nav-links a {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--muted);
-  text-decoration: none;
-  transition: color 0.2s;
+  font-size:11px; font-weight:500; letter-spacing:0.08em;
+  text-transform:uppercase; color:var(--tm);
+  text-decoration:none; transition:color 0.2s;
 }
-.nav-links a:hover { color: var(--parch); }
+.nav-links a:hover { color:var(--tp); }
 .nav-cta {
-  background: var(--mint);
-  color: var(--ink);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.12em;
-  padding: 10px 22px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s;
+  background:var(--ac); color:var(--dk);
+  font-size:12px; font-weight:600; letter-spacing:0.06em;
+  padding:10px 22px; border:none; cursor:pointer;
+  text-decoration:none; transition:background 0.15s;
 }
-.nav-cta:hover { background: var(--mint-2); }
+.nav-cta:hover { background:var(--ac2); }
 
-/* HERO */
+/* ─── HERO ───────────────────────────────────── */
 .hero {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 120px 48px 80px;
-  position: relative;
-  overflow: hidden;
-}
-.hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 20% 80%, rgba(194,240,212,0.04) 0%, transparent 60%);
-  pointer-events: none;
+  min-height:100vh;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  padding:140px 56px 88px;
+  background:var(--dk-3);
+  border-bottom:1px solid var(--rule-d);
+  position:relative;
 }
 .hero-kicker {
-  font-size: 9px;
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  color: var(--mint);
-  margin-bottom: 32px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-size:11px; font-weight:600; letter-spacing:0.16em;
+  text-transform:uppercase; color:var(--ac);
+  margin-bottom:28px; display:flex; align-items:center; gap:14px;
 }
-.hero-kicker::before {
-  content: '';
-  width: 32px; height: 1px;
-  background: var(--mint);
-}
+.hero-kicker::before { content:''; width:24px; height:1px; background:var(--ac); }
 .hero h1 {
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(64px, 10vw, 128px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 0.95;
-  color: var(--parch);
-  margin-bottom: 40px;
-  max-width: 900px;
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:clamp(52px,7.5vw,96px);
+  letter-spacing:-0.03em; line-height:0.92;
+  color:var(--tp); margin-bottom:36px; max-width:900px;
 }
-.hero h1 em {
-  font-style: normal;
-  color: var(--mint);
-}
+.hero h1 em { font-style:normal; color:var(--ac); }
 .hero-sub {
-  font-family: 'Cormorant', serif;
-  font-size: 22px;
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 520px;
-  margin-bottom: 40px;
+  font-size:18px; font-weight:400; line-height:1.7;
+  color:var(--tb); max-width:460px; margin-bottom:48px;
 }
-.hero-sub strong { color: var(--parch); font-weight: 400; }
-.hero-actions {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-bottom: 40px;
-}
- .btn-primary {
-  background: var(--mint);
-  color: var(--ink);
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 14px 28px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background 0.15s;
-}
+.hero-sub strong { color:var(--tp); font-weight:600; }
+.hero-actions { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:48px; }
 .btn-primary {
-  background: var(--mint);
-  color: var(--ink);
-  font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  padding: 16px 36px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background 0.15s;
+  background:var(--ac); color:var(--dk);
+  font-size:13px; font-weight:600; letter-spacing:0.06em;
+  padding:15px 32px; border:none; cursor:pointer;
+  text-decoration:none; display:inline-block; transition:background 0.15s;
 }
-.btn-ghost:hover { color: var(--parch); border-color: rgba(194,240,212,0.3); }
+.btn-primary:hover { background:var(--ac2); }
+.btn-ghost {
+  background:transparent; color:var(--tm);
+  font-size:12px; font-weight:500; letter-spacing:0.04em;
+  padding:15px 24px; border:1px solid rgba(255,255,255,0.1);
+  cursor:pointer; text-decoration:none; display:inline-block;
+  transition:color 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { color:var(--tp); border-color:rgba(255,255,255,0.22); }
+.hero-meta {
+  font-size:10px; font-weight:500; letter-spacing:0.12em;
+  text-transform:uppercase; color:var(--tm);
+}
 .hero-scroll {
-  position: absolute;
-  bottom: 40px; right: 48px;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  writing-mode: vertical-rl;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  position:absolute; bottom:44px; right:56px;
+  font-size:10px; font-weight:500; letter-spacing:0.12em;
+  color:rgba(255,255,255,0.2);
+  writing-mode:vertical-rl; display:flex; align-items:center; gap:12px;
 }
-.btn-ghost:hover {
-  color: var(--parch);
-  border-color: rgba(194,240,212,0.3);
-}
-.hero-scroll::after {
-  content: '';
-  width: 1px;
-  height: 48px;
-  background: var(--muted);
-}
+.hero-scroll::after { content:''; width:1px; height:40px; background:rgba(255,255,255,0.15); }
 
-/* BODY SECTIONS (parchment) */
-.body-section { background: var(--parch); color: var(--ink); }
+/* ─── GOOGLE/AI STRIP ────────────────────────── */
+.ga-strip {
+  background:var(--dk-2);
+  padding:20px 56px;
+  border-bottom:1px solid var(--rule-d);
+  text-align:center;
+}
+.ga-strip-text {
+  font-size:11px; font-weight:500; letter-spacing:0.12em;
+  text-transform:uppercase; color:var(--tm);
+}
+.ga-strip-text span { color:var(--ac); margin-left:16px; }
 
-/* MARQUEE */
+/* ─── MARQUEE ─────────────────────────────────── */
 .marquee-wrap {
-  background: var(--ink);
-  overflow: hidden;
-  padding: 16px 0;
-  border-top: 1px solid rgba(194,240,212,0.1);
-  border-bottom: 1px solid rgba(194,240,212,0.1);
+  background:var(--dk-2); overflow:hidden; padding:14px 0;
+  border-bottom:1px solid var(--rule-d);
 }
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 28s linear infinite;
-}
+.marquee-track { display:flex; width:max-content; animation:marquee 32s linear infinite; }
 .marquee-item {
-  font-size: 10px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 0 40px;
-  white-space: nowrap;
+  font-size:11px; font-weight:500; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); padding:0 44px; white-space:nowrap;
 }
-.marquee-item span { color: var(--mint); margin-right: 40px; }
-@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-item span { color:var(--ac); margin-right:44px; }
+@keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 
-/* PROBLEM SECTION */
-.problem-section {
-  padding: 120px 48px;
-  max-width: 1200px;
-  margin: 0 auto;
+/* ─── SHIFT MANIFESTO (merged into light section) ─ */
+.shift-section {
+  max-width:1280px; margin:0 auto;
+  padding:96px 56px 0;
 }
+.shift-manifesto {
+  padding-bottom:64px;
+  border-bottom:1px solid var(--rule);
+  margin-bottom:0;
+}
+.shift-manifesto-columns {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:64px;
+  align-items:start;
+  margin-top:32px;
+}
+.shift-manifesto-left {}
+.shift-close-line {
+  margin-top:40px;
+  padding-top:24px;
+  border-top:1px solid var(--rule);
+  font-size:12px; font-weight:700;
+  letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--tdm);
+  display:flex; align-items:center; gap:12px;
+}
+.shift-close-line::before {
+  content:''; width:16px; height:1px; background:var(--tdm);
+}
+.shift-manifesto-right {
+  font-size:16px; font-weight:400; line-height:1.8;
+  color:var(--tdm);
+  border-left:2px solid var(--rule);
+  padding-left:32px;
+}
+.shift-manifesto-right p { margin-bottom:18px; }
+.shift-manifesto-right p:last-child { margin-bottom:0; }
+.shift-manifesto-right strong { color:var(--td); font-weight:600; }
+
+/* ─── LIGHT BODY ─────────────────────────────── */
+.body-lt { background:var(--lt); color:var(--td); }
+
+/* ─── SHIFT / PROBLEM ────────────────────────── */
 .eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 32px;
+  font-size:10px; font-weight:600; letter-spacing:0.18em;
+  text-transform:uppercase; color:var(--tdm); margin-bottom:28px;
 }
 .section-h2 {
-  font-family: 'Cormorant', serif;
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 400;
-  line-height: 1.1;
-  color: var(--ink);
-  margin-bottom: 24px;
+  font-family:'Inter',sans-serif; font-weight:500;
+  font-size:clamp(40px,5vw,64px);
+  letter-spacing:-0.03em; line-height:0.96;
+  color:var(--td); margin-bottom:20px;
 }
-.section-h2 em { font-style: italic; color: var(--muted); }
+.section-h2 em { font-style:normal; color:var(--tdm); }
 .section-lead {
-  font-family: 'Cormorant', serif;
-  font-size: 20px;
-  line-height: 1.7;
-  color: var(--muted);
-  max-width: 600px;
-  margin-bottom: 48px;
+  font-size:16px; font-weight:400; line-height:1.75;
+  color:var(--tdm); max-width:580px; margin-bottom:0;
 }
-.section-lead strong { color: var(--ink); font-weight: 500; }
-.problem-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--rule);
-}
-.problem-card {
-  background: var(--parch);
-  padding: 40px 32px;
-}
-.prob-num {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: var(--faint);
-  margin-bottom: 20px;
-}
-.prob-head {
-  font-family: 'Cormorant', serif;
-  font-size: 26px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 14px;
-  line-height: 1.2;
-}
-.prob-body {
-  font-family: 'Cormorant', serif;
-  font-size: 17px;
-  line-height: 1.7;
-  color: var(--muted);
-}
-.stat-strip {
-  margin-top: 1px;
-  background: var(--ink);
-  padding: 40px 48px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-}
-.stat-item { padding: 24px 32px; border-right: 1px solid rgba(194,240,212,0.08); }
-.stat-item:last-child { border-right: none; }
-.stat-num {
-  font-family: 'Inter', sans-serif;
-  font-size: 52px;
-  letter-spacing: 0.04em;
-  color: var(--mint);
-  line-height: 1;
-  margin-bottom: 8px;
-}
-.stat-label {
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
+.section-lead strong { color:var(--td); font-weight:600; }
 
-/* METHOD SECTION */
-.method-section {
-  padding: 120px 48px;
-  max-width: 1200px;
-  margin: 0 auto;
+/* Evidence cards */
+.problem-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:1px; background:var(--rule); margin-top:56px;
 }
-.method-steps {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1px;
-  background: var(--rule);
-  margin-top: 48px;
+.problem-card { background:var(--lt); padding:44px 36px; }
+.prob-num {
+  font-size:10px; font-weight:700; letter-spacing:0.14em;
+  color:var(--an); margin-bottom:20px;
+  display:flex; align-items:center; gap:10px;
+}
+.prob-num::after { content:''; flex:1; height:1px; background:var(--rule); }
+.prob-head {
+  font-size:20px; font-weight:600;
+  color:var(--td); margin-bottom:12px; line-height:1.2;
+}
+.prob-body { font-size:15px; font-weight:400; line-height:1.75; color:var(--tdm); }
+
+/* Stat strip — dark inside light body for contrast */
+.stat-strip {
+  background:var(--dk);
+  display:grid; grid-template-columns:repeat(3,1fr);
+  margin-top:1px;
+}
+.stat-item {
+  padding:44px 40px;
+  border-right:1px solid var(--rule-d);
+}
+.stat-item:last-child { border-right:none; }
+.stat-num {
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:52px; letter-spacing:-0.02em;
+  color:var(--ac); line-height:1; margin-bottom:10px;
+}
+.stat-label { font-size:12px; font-weight:500; letter-spacing:0.04em; color:var(--tb); }
+
+/* ─── METHOD ─────────────────────────────────── */
+.method-section {
+  max-width:1280px; margin:0 auto;
+  padding:96px 56px;
+}
+.method-grid {
+  display:grid; grid-template-columns:repeat(2,1fr);
+  gap:1px; background:var(--rule); margin-top:48px;
 }
 .method-step {
-  background: var(--parch);
-  padding: 48px 40px;
-  display: grid;
-  grid-template-columns: 48px 1fr 1fr;
-  gap: 24px;
-  align-items: start;
+  background:var(--lt);
+  padding:48px 40px;
+  display:grid;
+  grid-template-columns:48px 1fr 1fr;
+  gap:24px;
+  align-items:start;
+  border-left:3px solid transparent;
+  transition:background 0.22s, border-left-color 0.22s;
 }
+.method-step:hover { background:var(--lt-2); border-left-color:var(--ac); }
 .step-idx {
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  color: var(--faint);
-  padding-top: 4px;
+  font-size:10px; font-weight:700; letter-spacing:0.12em;
+  color:var(--an); padding-top:4px; transition:color 0.2s;
 }
+.method-step:hover .step-idx { color:var(--acd); }
 .step-name-block {}
 .step-name {
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  margin-bottom: 4px;
+  font-size:22px; font-weight:600; letter-spacing:0.02em;
+  color:var(--td); margin-bottom:4px; line-height:1;
 }
 .step-tag {
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  color: var(--mint-dim);
-  text-transform: uppercase;
+  font-size:10px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--acd);
 }
-.step-desc {
-  font-family: 'Cormorant', serif;
-  font-size: 17px;
-  line-height: 1.7;
-  color: var(--muted);
-}
-.step-desc strong { color: var(--ink); font-weight: 500; }
+.step-desc { font-size:14px; font-weight:400; line-height:1.8; color:var(--tdm); }
+.step-desc strong { color:var(--td); font-weight:600; }
 
-/* DIAGNOSTIC SECTION */
+/* ─── DIAGNOSTIC ─────────────────────────────── */
 .diag-section {
-  background: var(--black);
-  padding: 120px 48px;
+  background:var(--dk);
+  padding:96px 56px;
+  border-top:1px solid var(--rule-d);
+  border-bottom:1px solid var(--rule-d);
 }
-.diag-inner { max-width: 800px; margin: 0 auto; }
+.diag-inner { max-width:760px; margin:0 auto; }
 .diag-eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--mint);
-  margin-bottom: 24px;
+  font-size:11px; font-weight:600; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--ac); margin-bottom:20px;
 }
 .diag-h2 {
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(48px, 7vw, 88px);
-  letter-spacing: 0.04em;
-  line-height: 0.95;
-  color: var(--parch);
-  margin-bottom: 24px;
+  font-family:'Inter',sans-serif; font-weight:500;
+  font-size:clamp(44px,6vw,76px);
+  letter-spacing:-0.03em; line-height:0.94;
+  color:var(--tp); margin-bottom:16px;
+}
+.diag-pre-lead {
+  font-size:13px; font-weight:400; color:var(--tm); margin-bottom:20px;
 }
 .diag-lead {
-  font-family: 'Cormorant', serif;
-  font-size: 20px;
-  line-height: 1.65;
-  color: var(--muted);
-  margin-bottom: 48px;
+  font-size:16px; font-weight:400; line-height:1.75;
+  color:var(--tb); margin-bottom:40px;
 }
-.diag-lead strong { color: var(--parch); font-weight: 400; }
+.diag-lead strong { color:var(--tp); font-weight:600; }
+.diag-index-label {
+  font-size:10px; font-weight:700; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--ac); margin-bottom:16px;
+}
 .diag-frame {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(194,240,212,0.12);
-  padding: 40px;
-  position: relative;
-}
-.diag-frame::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--mint), transparent);
-  opacity: 0.3;
+  background:var(--dk-2); border:1px solid var(--rule-d); padding:36px;
 }
 .field-lbl {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 12px;
-  display: block;
+  font-size:10px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:10px; display:block;
 }
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
-}
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
 .field-row input {
-  background: var(--black);
-  border: 1px solid rgba(194,240,212,0.12);
-  color: var(--parch);
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
-  font-weight: 300;
-  padding: 14px 16px;
-  outline: none;
-  width: 100%;
-  transition: border-color 0.2s;
-  letter-spacing: 0.03em;
+  background:var(--dk-3); border:1px solid rgba(255,255,255,0.1);
+  color:var(--tp); font-family:'Inter',sans-serif;
+  font-size:14px; font-weight:400; padding:14px 16px;
+  outline:none; width:100%; transition:border-color 0.2s;
 }
-.field-row input::placeholder { color: rgba(194,240,212,0.2); }
-.field-row input:focus { border-color: rgba(194,240,212,0.3); }
+.field-row input::placeholder { color:rgba(255,255,255,0.18); }
+.field-row input:focus { border-color:rgba(194,240,212,0.35); }
 .run-btn {
-  width: 100%;
-  background: var(--mint);
-  color: var(--ink);
-  border: none;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 20px;
-  letter-spacing: 0.15em;
-  padding: 18px;
-  cursor: pointer;
-  margin-top: 16px;
-  transition: background 0.15s;
+  width:100%; background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:14px; font-weight:700;
+  letter-spacing:0.04em; padding:16px; cursor:pointer;
+  margin-top:14px; transition:background 0.15s;
 }
-.run-btn:hover { background: var(--mint-2); }
-.run-btn:disabled { background: var(--mint-dim); cursor: not-allowed; opacity: 0.5; }
-.diag-note {
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-  margin-top: 14px;
-  text-align: center;
-}
+.run-btn:hover { background:var(--ac2); }
+.run-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.diag-note { font-size:12px; font-weight:400; color:var(--tm); margin-top:12px; text-align:center; }
 
-/* SCAN */
-.scan-zone { display: none; }
-.scan-frame {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(194,240,212,0.12);
-  padding: 40px;
-}
-.scan-hd {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 32px;
-}
+/* ─── SCAN ───────────────────────────────────── */
+.scan-zone { display:none; }
+.scan-frame { background:var(--dk-2); border:1px solid var(--rule-d); padding:36px; }
+.scan-hd { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
 .spin {
-  width: 14px; height: 14px;
-  border: 1px solid rgba(194,240,212,0.2);
-  border-top-color: var(--mint);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  width:14px; height:14px;
+  border:1px solid rgba(194,240,212,0.18);
+  border-top-color:var(--ac); border-radius:50%;
+  animation:spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.scan-ttl {
-  font-size: 9px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--mint);
-}
+@keyframes spin { to{transform:rotate(360deg)} }
+.scan-ttl { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--ac); }
 .log-l {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(194,240,212,0.06);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: rgba(194,240,212,0.25);
-  transition: color 0.4s;
+  padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+  display:flex; align-items:center; gap:12px;
+  font-size:13px; font-weight:400; color:rgba(255,255,255,0.18); transition:color 0.4s;
 }
-.log-l.active { color: var(--parch); }
-.log-l.done { color: rgba(194,240,212,0.4); }
-.li {
-  font-size: 8px;
-  width: 14px;
-  text-align: center;
-  flex-shrink: 0;
-  color: rgba(194,240,212,0.25);
-}
-.log-l.active .li { color: var(--mint); }
-.log-l.done .li { color: var(--mint); }
-.lt {
-  margin-left: auto;
-  font-size: 9px;
-  font-style: italic;
-  color: var(--muted);
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-.log-l.active .lt { opacity: 1; }
+.log-l.active { color:var(--tp); }
+.log-l.done { color:rgba(255,255,255,0.35); }
+.li { font-size:10px; width:14px; text-align:center; flex-shrink:0; }
+.log-l.active .li { color:var(--ac); }
+.log-l.done .li { color:var(--ac); }
+.lt { margin-left:auto; font-size:11px; font-style:italic; color:var(--tm); opacity:0; transition:opacity 0.4s; }
+.log-l.active .lt { opacity:1; }
 
-/* RESULTS */
-.res-zone { display: none; }
+/* ─── RESULTS ────────────────────────────────── */
+.res-zone { display:none; }
 .verdict-banner {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(194,240,212,0.12);
-  padding: 40px;
-  margin-bottom: 2px;
-  position: relative;
-  overflow: hidden;
-}
-.verdict-banner::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--mint), transparent);
-  opacity: 0.4;
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:36px; margin-bottom:2px;
 }
 .verdict-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 20px;
-  align-items: start;
-  margin-bottom: 24px;
+  display:grid; grid-template-columns:1fr 140px;
+  gap:20px; align-items:start; margin-bottom:20px;
 }
 .verdict-biz {
-  font-size: 9px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 12px;
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:10px;
 }
 .verdict-tag {
-  display: inline-block;
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  border: 1px solid;
-  margin-bottom: 16px;
+  display:inline-block; font-size:10px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:5px 12px; border:1px solid; margin-bottom:12px;
 }
-.verdict-tag.absent { color: #ff6b6b; border-color: #ff6b6b; background: rgba(255,107,107,0.06); }
-.verdict-tag.weak { color: #ffc966; border-color: #ffc966; background: rgba(255,201,102,0.06); }
-.verdict-tag.present { color: var(--mint); border-color: var(--mint); background: rgba(194,240,212,0.06); }
+.verdict-tag.absent { color:var(--red); border-color:rgba(248,113,113,0.35); background:rgba(248,113,113,0.06); }
+.verdict-tag.weak { color:var(--amber); border-color:rgba(251,191,36,0.35); background:rgba(251,191,36,0.06); }
+.verdict-tag.present { color:var(--ac); border-color:rgba(194,240,212,0.35); background:rgba(194,240,212,0.06); }
 .verdict-headline {
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(28px, 4vw, 44px);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--parch);
-  line-height: 1.05;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:clamp(24px,3.5vw,38px);
+  letter-spacing:-0.02em; color:var(--tp); line-height:1.1;
+  overflow-wrap:break-word;
 }
-.verdict-score-block {
-  text-align: right;
-  width: 140px;
-  justify-self: end;
-}
+.verdict-score-block { text-align:right; }
 .verdict-score-num {
-  font-family: 'Inter', sans-serif;
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--parch);
-  letter-spacing: 0.01em;
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:64px; line-height:1; color:var(--tp); letter-spacing:-0.03em;
+  display:block;
 }
-.verdict-score-denom { font-size: 10px; color: var(--muted); letter-spacing: 0.15em; }
+.verdict-score-denom { font-size:12px; font-weight:500; color:var(--tm); }
+.verdict-scale { font-size:9px; font-weight:500; letter-spacing:0.06em; color:var(--tm); margin-top:8px; line-height:1.7; }
 .verdict-summary {
-  font-family: 'Cormorant', serif;
-  font-size: 18px;
-  line-height: 1.7;
-  color: var(--muted);
-  border-top: 1px solid rgba(194,240,212,0.08);
-  padding-top: 20px;
+  font-size:15px; font-weight:400; line-height:1.8;
+  color:var(--tb); border-top:1px solid var(--rule-d); padding-top:18px;
 }
-.score-bar-track { height: 2px; background: rgba(255,255,255,0.06); margin-bottom: 2px; }
-.score-bar-fill { height: 100%; background: var(--mint); width: 0; transition: width 1.4s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 0 8px var(--mint); }
+.score-bar-track { height:1px; background:rgba(255,255,255,0.06); margin-bottom:2px; }
+.score-bar-fill { height:100%; background:var(--ac); width:0; transition:width 1.4s cubic-bezier(0.16,1,0.3,1); }
 .section-label {
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 24px;
+  font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--tm); margin-bottom:8px; display:flex; align-items:center; gap:16px; padding-top:20px;
 }
-.section-label::after { content: ''; flex: 1; height: 1px; background: rgba(194,240,212,0.08); }
-.platform-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  margin-bottom: 2px;
-}
-.platform-cell {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(194,240,212,0.08);
-  padding: 20px;
-  text-align: center;
-}
-.platform-name { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-.platform-verdict { font-family: 'Inter', sans-serif; font-size: 15px; letter-spacing: 0.08em; margin-bottom: 4px; }
-.platform-verdict.absent { color: #ff6b6b; }
-.platform-verdict.weak { color: #ffc966; }
-.platform-verdict.present { color: var(--mint); }
-.platform-detail { font-size: 9px; color: var(--muted); letter-spacing: 0.06em; line-height: 1.5; }
-.pillars-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 2px; }
-.pillar-card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(194,240,212,0.08);
-  padding: 28px;
-}
-.pillar-num { font-size: 9px; letter-spacing: 0.2em; color: var(--mint-dim); margin-bottom: 8px; }
-.pillar-name { font-family: 'Inter', sans-serif; font-size: 22px; letter-spacing: 0.08em; color: var(--parch); margin-bottom: 14px; }
-.pillar-score-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 10px; }
-.pillar-score-n { font-family: 'Inter', sans-serif; font-size: 36px; color: var(--parch); letter-spacing: 0.04em; line-height: 1; }
-.pillar-score-d { font-size: 11px; color: var(--muted); }
-.pillar-bar { height: 1px; background: rgba(194,240,212,0.1); margin-bottom: 16px; }
-.pillar-bar-fill { height: 100%; background: var(--mint); width: 0; transition: width 1.6s cubic-bezier(0.16,1,0.3,1); }
-.pillar-finding { font-family: 'Cormorant', serif; font-size: 15px; line-height: 1.65; color: var(--muted); }
-.pillar-finding strong { color: var(--parch); font-weight: 400; }
-.evidence-block { background: rgba(255,255,255,0.02); border: 1px solid rgba(194,240,212,0.08); margin-bottom: 2px; }
-.evidence-header { padding: 16px 28px; border-bottom: 1px solid rgba(194,240,212,0.06); font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
-.evidence-body { padding: 24px 28px; font-family: 'Cormorant', serif; font-size: 16px; line-height: 1.75; color: var(--muted); }
-.actions-block { margin-bottom: 2px; }
-.action-row { background: rgba(255,255,255,0.02); border: 1px solid rgba(194,240,212,0.08); padding: 22px 28px; display: flex; gap: 20px; align-items: flex-start; margin-bottom: 2px; }
-.action-badge { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; padding: 4px 8px; border: 1px solid; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
-.action-badge.critical { color: #ff6b6b; border-color: #ff6b6b; }
-.action-badge.high { color: #ffc966; border-color: #ffc966; }
-.action-badge.medium { color: var(--muted); border-color: rgba(194,240,212,0.2); }
-.action-title { font-size: 13px; color: var(--parch); margin-bottom: 6px; letter-spacing: 0.03em; }
-.action-body { font-family: 'Cormorant', serif; font-size: 15px; line-height: 1.65; color: var(--muted); }
-.error-frame {
-  background: rgba(255,107,107,0.05);
-  border: 1px solid rgba(255,107,107,0.2);
-  padding: 32px;
-}
-.error-title { font-size: 12px; color: #ff6b6b; letter-spacing: 0.1em; margin-bottom: 10px; }
-.error-body { font-family: 'Cormorant', serif; font-size: 16px; color: var(--muted); line-height: 1.6; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--rule-d); }
+.platform-row { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-bottom:2px; }
+.platform-cell { background:var(--dk-2); border:1px solid var(--rule-d); padding:20px; text-align:center; }
+.platform-name { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--tm); margin-bottom:10px; }
+.platform-verdict { font-family:'Inter',sans-serif; font-weight:600; font-size:13px; letter-spacing:0.04em; margin-bottom:6px; }
+.platform-verdict.absent { color:var(--red); }
+.platform-verdict.weak { color:var(--amber); }
+.platform-verdict.present { color:var(--ac); }
+.platform-detail { font-size:12px; font-weight:400; color:var(--tm); line-height:1.55; }
+.pillars-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:2px; }
+.pillar-card { background:var(--dk-2); border:1px solid var(--rule-d); padding:28px; }
+.pillar-num { font-size:10px; font-weight:700; letter-spacing:0.1em; color:var(--acd); margin-bottom:8px; }
+.pillar-name { font-family:'Inter',sans-serif; font-weight:600; font-size:18px; letter-spacing:-0.01em; color:var(--tp); margin-bottom:12px; }
+.pillar-score-row { display:flex; align-items:baseline; gap:4px; margin-bottom:10px; }
+.pillar-score-n { font-family:'Inter',sans-serif; font-weight:600; font-size:36px; color:var(--tp); letter-spacing:-0.02em; line-height:1; }
+.pillar-score-d { font-size:12px; font-weight:500; color:var(--tm); }
+.pillar-bar { height:1px; background:rgba(255,255,255,0.08); margin-bottom:16px; }
+.pillar-bar-fill { height:100%; background:var(--ac); width:0; transition:width 1.6s cubic-bezier(0.16,1,0.3,1); }
+.pillar-finding { font-size:13px; font-weight:400; line-height:1.75; color:var(--tb); }
+.pillar-finding strong { color:var(--tp); font-weight:600; }
+.evidence-block { background:var(--dk-2); border:1px solid var(--rule-d); margin-bottom:2px; }
+.evidence-header { padding:14px 24px; border-bottom:1px solid var(--rule-d); font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--tm); }
+.evidence-body { padding:22px 24px; font-size:14px; font-weight:400; line-height:1.8; color:var(--tb); }
+.actions-block { margin-bottom:2px; }
+.action-row { background:var(--dk-2); border:1px solid var(--rule-d); padding:20px 24px; display:flex; gap:18px; align-items:flex-start; margin-bottom:2px; }
+.action-badge { font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 10px; border:1px solid; white-space:nowrap; flex-shrink:0; margin-top:2px; }
+.action-badge.critical { color:var(--red); border-color:rgba(248,113,113,0.3); }
+.action-badge.high { color:var(--amber); border-color:rgba(251,191,36,0.3); }
+.action-badge.medium { color:var(--tm); border-color:var(--rule-d); }
+.action-content {}
+.action-title { font-size:14px; font-weight:600; color:var(--tp); margin-bottom:6px; }
+.action-body { font-size:13px; font-weight:400; line-height:1.75; color:var(--tb); }
+.error-frame { background:rgba(248,113,113,0.04); border:1px solid rgba(248,113,113,0.15); padding:32px; }
+.error-title { font-size:12px; font-weight:700; color:var(--red); letter-spacing:0.08em; margin-bottom:10px; }
+.error-body { font-size:15px; font-weight:400; color:var(--tb); line-height:1.65; }
 
-/* OFFER SECTION */
+/* ─── CTA RESULTS ────────────────────────────── */
+.cta-block {
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:44px; margin-top:2px;
+}
+.cta-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--ac); margin-bottom:12px; }
+.cta-sub-note { font-size:12px; font-weight:400; color:var(--tm); margin-bottom:16px; font-style:italic; }
+.cta-headline {
+  font-family:'Inter',sans-serif; font-weight:500;
+  font-size:36px; letter-spacing:-0.02em; color:var(--tp); margin-bottom:14px; line-height:1.05;
+}
+.cta-body { font-size:15px; font-weight:400; line-height:1.75; color:var(--tb); margin-bottom:28px; max-width:520px; }
+.cta-buttons { display:flex; gap:12px; flex-wrap:wrap; }
+.cta-primary {
+  background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+  letter-spacing:0.06em; padding:14px 28px; cursor:pointer;
+  text-decoration:none; display:inline-block; transition:background 0.15s;
+  white-space:nowrap;
+}
+.cta-primary:hover { background:var(--ac2); }
+.cta-secondary {
+  background:transparent; color:var(--tm);
+  border:1px solid var(--rule-d);
+  font-family:'Inter',sans-serif; font-size:12px; font-weight:500;
+  letter-spacing:0.04em; text-transform:uppercase; padding:14px 22px; cursor:pointer;
+  text-decoration:none; display:inline-block;
+  transition:color 0.15s, border-color 0.15s; white-space:nowrap;
+}
+.cta-secondary:hover { color:var(--tp); border-color:rgba(255,255,255,0.22); }
+
+/* ─── OFFER ──────────────────────────────────── */
 .offer-section {
-  padding: 120px 48px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width:1280px; margin:0 auto;
+  padding:96px 56px;
+}
+.offer-currently {
+  margin-top:20px; font-size:11px; font-weight:700;
+  letter-spacing:0.14em; text-transform:uppercase; color:var(--acd);
 }
 .offer-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--rule);
-  margin-top: 64px;
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:1px; background:var(--rule); margin-top:56px;
 }
-@media (max-width: 960px) { .offer-grid-3 { grid-template-columns: 1fr; } }
-.offer-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  background: var(--rule);
-  margin-top: 48px;
-}
-.offer-card {
-  background: var(--parch);
-  padding: 48px 40px;
-  position: relative;
-}
-.offer-card.featured {
-  background: var(--ink);
-  color: var(--parch);
-}
+.offer-card { background:var(--lt); padding:48px 36px; }
+.offer-card.featured { background:var(--dk); color:var(--tp); }
 .offer-tier {
-  font-size: 9px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 16px;
+  font-size:10px; font-weight:600; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--tdm); margin-bottom:20px;
 }
-.offer-card.featured .offer-tier { color: var(--mint); }
+.offer-card.featured .offer-tier { color:var(--ac); }
 .offer-price {
-  font-family: 'Inter', sans-serif;
-  font-size: 52px;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-  line-height: 1;
-  margin-bottom: 4px;
+  font-family:'Inter',sans-serif; font-weight:700;
+  font-size:48px; letter-spacing:-0.03em;
+  color:var(--td); line-height:1; margin-bottom:4px;
 }
-.offer-card.featured .offer-price { color: var(--parch); }
-.offer-price-note { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 28px; }
+.offer-card.featured .offer-price { color:var(--tp); }
+.offer-price-note { font-size:12px; font-weight:500; color:var(--tdm); margin-bottom:24px; }
+.offer-card.featured .offer-price-note { color:var(--tm); }
 .offer-desc {
-  font-family: 'Cormorant', serif;
-  font-size: 17px;
-  line-height: 1.7;
-  color: var(--muted);
-  margin-bottom: 32px;
+  font-size:15px; font-weight:400; line-height:1.75;
+  color:var(--tdm); margin-bottom:24px;
+  padding-bottom:24px; border-bottom:1px solid var(--rule);
 }
-.offer-card.featured .offer-desc { color: rgba(244,241,236,0.6); }
-.offer-items { list-style: none; margin-bottom: 40px; }
+.offer-card.featured .offer-desc { color:var(--tb); border-bottom-color:var(--rule-d); }
+.offer-before-after {
+  margin-bottom:24px; padding:16px 0;
+  border-bottom:1px solid var(--rule);
+}
+.offer-before-after-label {
+  font-size:10px; font-weight:700; letter-spacing:0.12em;
+  text-transform:uppercase; color:var(--acd); margin-bottom:10px;
+}
+.offer-before-after-body { font-size:13px; font-weight:400; line-height:1.7; color:var(--tdm); }
+.offer-before-after-body strong { color:var(--td); font-weight:600; }
+.offer-items { list-style:none; margin-bottom:36px; }
 .offer-items li {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  gap: 10px;
-  align-items: center;
+  font-size:13px; font-weight:400; color:var(--tdm);
+  padding:9px 0; border-bottom:1px solid var(--rule);
+  display:flex; gap:10px; align-items:flex-start;
 }
-.offer-card.featured .offer-items li {
-  color: rgba(244,241,236,0.6);
-  border-bottom-color: rgba(244,241,236,0.08);
-}
-.offer-items li::before { content: '→'; font-size: 10px; color: var(--mint); flex-shrink: 0; }
+.offer-card.featured .offer-items li { color:var(--tb); border-bottom-color:var(--rule-d); }
+.offer-items li::before { content:'→'; font-size:11px; font-weight:700; color:var(--acd); flex-shrink:0; margin-top:1px; }
+.offer-card.featured .offer-items li::before { color:var(--ac); }
 .offer-btn {
-  display: block;
-  width: 100%;
-  text-align: center;
-  padding: 14px 28px;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  text-decoration: none;
-  border: none;
-  transition: background 0.15s, color 0.15s;
+  display:block; width:100%; text-align:center; padding:15px;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:700;
+  letter-spacing:0.04em; cursor:pointer; text-decoration:none; border:none;
+  transition:background 0.15s, color 0.15s, border-color 0.15s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.offer-btn-outline {
-  border: 1px solid var(--rule);
-  background: transparent;
-  color: var(--muted);
-}
-.offer-btn-outline:hover { border-color: var(--ink); color: var(--ink); }
-.offer-btn-solid {
-  background: var(--mint);
-  color: var(--ink);
-}
-.offer-btn-solid:hover { background: var(--mint-2); }
+.offer-btn-outline { border:1px solid var(--rule); background:transparent; color:var(--tdm); }
+.offer-btn-outline:hover { border-color:var(--td); color:var(--td); }
+.offer-btn-solid { background:var(--ac); color:var(--dk); }
+.offer-btn-solid:hover { background:var(--ac2); }
 
-/* FOOTER */
+/* ─── FOOTER ─────────────────────────────────── */
 footer {
-  background: var(--ink);
-  padding: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid rgba(194,240,212,0.08);
+  background:var(--dk-3); padding:44px 56px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-top:1px solid var(--rule-d);
 }
-.footer-mark {
-  font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.12em;
-  color: rgba(194,240,212,0.2);
-}
-.footer-mark span { color: var(--mint); }
-.footer-note {
-  font-size: 9px;
-  color: rgba(194,240,212,0.3);
-  letter-spacing: 0.08em;
-  max-width: 400px;
-  text-align: right;
-  line-height: 1.6;
-}
-/* CTA BLOCK (RESULTS SECTION) */
-.cta-block {
-  background: linear-gradient(180deg, rgba(194,240,212,0.05), rgba(194,240,212,0.02));
-  border: 1px solid rgba(194,240,212,0.16);
-  padding: 52px 48px;
-  margin-top: 2px;
-  position: relative;
-  overflow: hidden;
-}
+.footer-mark { font-family:'Inter',sans-serif; font-weight:600; font-size:16px; letter-spacing:0.04em; color:rgba(255,255,255,0.14); }
+.footer-mark span { color:var(--ac); opacity:0.5; }
+.footer-note { font-size:11px; font-weight:400; color:rgba(255,255,255,0.2); max-width:400px; text-align:right; line-height:1.65; }
 
-.cta-block::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(194,240,212,0.7), transparent);
-}
-
-.cta-headline {
-  font-family: 'Inter', sans-serif;
-  font-size: 44px;
-  letter-spacing: 0.06em;
-  color: var(--parch);
-  margin-bottom: 16px;
-  line-height: 0.98;
-  max-width: 700px;
-}
-
-.cta-body {
-  font-family: 'Cormorant', serif;
-  font-size: 18px;
-  line-height: 1.75;
-  color: var(--muted);
-  margin-bottom: 34px;
-  max-width: 640px;
-}
-.cta-eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--mint);
-  margin-bottom: 16px;
-}
-
-.cta-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.cta-primary {
-  background: var(--mint);
-  color: var(--ink);
-  border: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 14px 32px;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background 0.15s;
-}
-
-.cta-primary:hover {
-  background: var(--mint-2);
-}
-
-.cta-secondary {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid rgba(194,240,212,0.15);
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 14px 24px;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.cta-secondary:hover {
-  color: var(--parch);
-  border-color: rgba(194,240,212,0.3);
-}
-
-/* PASTE FORM CSS HERE */
-
-.form-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  display: none;
-}
-
-.form-modal.active {
-  display: block;
-}
-
-.form-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(6,5,4,0.72);
-  backdrop-filter: blur(8px);
-}
-
+/* ─── FORM MODAL ─────────────────────────────── */
+.form-modal { position:fixed; inset:0; z-index:999; display:none; }
+.form-modal.active { display:block; }
+.form-overlay { position:absolute; inset:0; background:rgba(10,10,13,0.88); backdrop-filter:blur(16px); }
 .form-panel {
-  position: relative;
-  width: min(720px, calc(100vw - 32px));
-  margin: 80px auto;
-  background: var(--parch);
-  color: var(--ink);
-  padding: 40px;
-  z-index: 2;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  position:relative; width:min(680px, calc(100vw - 32px));
+  margin:72px auto; background:var(--lt); color:var(--td);
+  padding:48px; z-index:2; box-shadow:0 32px 80px rgba(0,0,0,0.4);
 }
-
-.form-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.form-kicker {
-  font-size: 9px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
-
-.form-title {
-  font-family: 'Inter', sans-serif;
-  font-size: 42px;
-  letter-spacing: 0.05em;
-  color: var(--ink);
-  margin-bottom: 10px;
-  line-height: 1;
-}
-
-.form-sub {
-  font-family: 'Cormorant', serif;
-  font-size: 20px;
-  line-height: 1.5;
-  color: var(--muted);
-  margin-bottom: 28px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.form-field {
-  margin-bottom: 14px;
-}
-
-.form-field label {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
-
-.form-field label span {
-  text-transform: none;
-  letter-spacing: 0;
-}
-
+.form-close { position:absolute; top:20px; right:22px; border:none; background:transparent; color:var(--tdm); font-size:26px; line-height:1; cursor:pointer; }
+.form-kicker { font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--tdm); margin-bottom:14px; }
+.form-title { font-family:'Inter',sans-serif; font-weight:600; font-size:36px; letter-spacing:-0.02em; color:var(--td); margin-bottom:10px; line-height:1.05; }
+.form-sub { font-size:15px; font-weight:400; line-height:1.65; color:var(--tdm); margin-bottom:28px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.form-field { margin-bottom:14px; }
+.form-field label { display:block; font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--tdm); margin-bottom:8px; }
+.form-field label span { text-transform:none; letter-spacing:0; font-weight:400; }
 .form-field input,
 .form-field textarea {
-  width: 100%;
-  border: 1px solid rgba(15,13,10,0.12);
-  background: #fff;
-  color: var(--ink);
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
-  padding: 14px 16px;
-  outline: none;
-  resize: vertical;
+  width:100%; border:1px solid rgba(26,26,26,0.14);
+  background:#fff; color:var(--td);
+  font-family:'Inter',sans-serif; font-size:14px; font-weight:400;
+  padding:13px 16px; outline:none; resize:vertical;
 }
-
 .form-field input:focus,
-.form-field textarea:focus {
-  border-color: rgba(15,13,10,0.28);
-}
-
-.form-actions {
-  margin-top: 10px;
-}
-
+.form-field textarea:focus { border-color:rgba(26,26,26,0.3); }
+.form-actions { margin-top:10px; }
 .form-submit {
-  background: var(--mint);
-  color: var(--ink);
-  border: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 14px 28px;
-  cursor: pointer;
+  background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:14px; font-weight:700;
+  letter-spacing:0.04em; padding:14px 28px; cursor:pointer;
+}
+.form-submit:hover { background:var(--ac2); }
+.form-note { margin-top:14px; font-size:11px; font-weight:400; letter-spacing:0.06em; color:var(--tdm); }
+.form-error { margin-top:10px; font-size:13px; font-weight:500; }
+
+/* ─── MOBILE ─────────────────────────────────── */
+@media (max-width:960px) { .offer-grid-3 { grid-template-columns:1fr; } }
+@media (max-width:768px) {
+  nav { padding:0 20px; }
+  .nav-links { display:none; }
+  .hero { padding:100px 24px 60px; }
+  .shift-section,.method-section,.offer-section { padding:64px 24px 64px; }
+  .diag-section { padding:64px 24px; }
+  .ga-strip { padding:18px 24px; }
+  .shift-manifesto-columns { grid-template-columns:1fr; gap:32px; }
+  .shift-manifesto-right { border-left:none; padding-left:0; border-top:1px solid var(--rule); padding-top:24px; }
+  .problem-grid { grid-template-columns:1fr; }
+  .stat-strip { grid-template-columns:1fr; }
+  .stat-item { border-right:none; border-bottom:1px solid var(--rule-d); }
+  .stat-item:last-child { border-bottom:none; }
+  .method-header { grid-template-columns:1fr; gap:24px; }
+  .method-grid { grid-template-columns:1fr; }
+  .method-step { grid-template-columns:36px 1fr; }
+  .step-desc { grid-column:2; }
+  .field-row { grid-template-columns:1fr; }
+  .platform-row { grid-template-columns:1fr 1fr; }
+  .pillars-grid { grid-template-columns:1fr; }
+  .verdict-top { grid-template-columns:1fr; gap:16px; }
+  .verdict-score-block { text-align:left; }
+  footer { flex-direction:column; gap:16px; padding:32px 24px; }
+  .footer-note { text-align:left; }
+  .cta-block { padding:32px 24px; }
+  .form-panel { width:calc(100vw - 24px); margin:24px auto; padding:28px; }
+  .form-grid { grid-template-columns:1fr; }
+  .form-title { font-size:32px; }
 }
 
-.form-submit:hover {
-  background: var(--mint-2);
-}
-
-.form-note {
-  margin-top: 14px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-.section-lead,
-.prob-body,
-.step-desc,
-.pillar-finding,
-.evidence-body,
-.action-body,
-.cta-body,
-.diag-lead,
-.form-sub 
-{
-  font-family: 'Inter', sans-serif !important;
-  font-size: 16px !important;
-  line-height: 1.7 !important;
-}
-/* MOBILE */
-@media (max-width: 960px) {
-  .offer-grid-3 { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 768px) {
-  nav { padding: 0 20px; }
-  .nav-links { display: none; }
-  .hero { padding: 100px 24px 60px; }
-  .problem-section, .method-section, .offer-section { padding: 80px 24px; }
-  .diag-section { padding: 80px 24px; }
-  .problem-grid { grid-template-columns: 1fr; }
-  .stat-strip { grid-template-columns: 1fr; padding: 24px; }
-  .method-steps { grid-template-columns: 1fr; }
-  .method-step { grid-template-columns: 40px 1fr; }
-  .step-desc { grid-column: 2; }
-  .offer-grid { grid-template-columns: 1fr; }
-  .platform-row { grid-template-columns: 1fr 1fr; }
-  .pillars-grid { grid-template-columns: 1fr; }
-  .diag-frame { padding: 24px; }
-  .field-row { grid-template-columns: 1fr; }
-  footer { flex-direction: column; gap: 16px; padding: 32px 24px; }
-  .footer-note { text-align: left; }
-  .verdict-top {
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-.verdict-score-block {
-  text-align: left;
-  width: auto;
-  justify-self: start;
-}
-  .form-panel {
-    width: calc(100vw - 24px);
-    margin: 24px auto;
-    padding: 24px;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-title {
-    font-size: 32px;
-  }
-}
 </style>
 </head>
 <body>
@@ -1088,59 +642,29 @@ footer {
   <a href="#diagnostic" class="nav-cta">Run Free Diagnostic →</a>
 </nav>
 
-<!-- HERO -->
+<!-- HERO — dark -->
 <section class="hero">
   <div class="hero-kicker">AI Recommendation System</div>
   <h1>When someone asks AI<br>for the best —<br><em>are you the answer?</em></h1>
-<p class="hero-sub">
-AI chooses one business.<br><br>
-CHOIVE shows why it’s not you — and installs what makes you the obvious answer.
-</p>
+  <p class="hero-sub">
+    <strong>AI chooses one business.</strong><br><br>
+    CHOIVE shows why it's not you — and installs what makes you the obvious answer.
+  </p>
   <div class="hero-actions">
     <a href="#diagnostic" class="btn-primary">Run your CHOIVE· Index →</a>
     <a href="#method" class="btn-ghost">How CHOIVE· Works</a>
   </div>
-  <div style="
-  margin-top:16px;
-  font-size:10px;
-  letter-spacing:0.14em;
-  text-transform:uppercase;
-  color:var(--muted);
-">
-  Most businesses have never checked if they are being chosen
-</div>
-<div style="
-  margin-top:28px;
-  font-size:10px;
-  letter-spacing:0.18em;
-  text-transform:uppercase;
-  color:var(--muted);
-">
-  We've analysed 47 businesses · Average CHOIVE· Index: 31 / 100
-</div>  </div>
+  <div class="hero-meta" style="margin-bottom:12px;">Most businesses have never checked if they are being chosen</div>
+  <div class="hero-meta">We've analysed 47 businesses · Average CHOIVE· Index: 31 / 100</div>
   <div class="hero-scroll">Scroll</div>
 </section>
 
-<section style="
-  padding:32px 48px;
-  border-top:1px solid rgba(194,240,212,0.08);
-  border-bottom:1px solid rgba(194,240,212,0.08);
-  text-align:center;
-  background:var(--black);
-">
-  <div style="
-    font-size:10px;
-    letter-spacing:0.25em;
-    text-transform:uppercase;
-    color:var(--muted);
-    opacity:0.85;
-  ">
-    Google helps people search.
-    <span style="color:var(--mint); margin-left:12px;">AI helps them choose.</span>
-  </div>
-</section>
-  
-<!-- MARQUEE -->
+<!-- GOOGLE/AI STRIP — dark-2 -->
+<div class="ga-strip">
+  <div class="ga-strip-text">Google helps people search.<span>AI helps them choose.</span></div>
+</div>
+
+<!-- MARQUEE — dark-2 -->
 <div class="marquee-wrap">
   <div class="marquee-track">
     <div class="marquee-item"><span>·</span> AI doesn't rank. It recommends.</div>
@@ -1156,42 +680,30 @@ CHOIVE shows why it’s not you — and installs what makes you the obvious answ
   </div>
 </div>
 
-  <div style="height:1px; width:120px; background:rgba(194,240,212,0.2); margin:0 auto 60px;"></div>
+<!-- THE SHIFT — merged manifesto + evidence (light) -->
+<div class="body-lt">
+<div class="shift-section" id="problem">
 
-<section style="padding:160px 48px; max-width:1000px; margin:0 auto; text-align:center;">
-  <p style="font-family:'Cormorant', serif; font-style:italic; font-size:32px; line-height:1.8; color:var(--parch); letter-spacing:0.01em;">
+  <!-- Manifesto opening -->
+  <div class="shift-manifesto">
+    <div class="eyebrow">The Shift</div>
+    <div class="shift-manifesto-columns">
+      <div class="shift-manifesto-left">
+        <h2 class="section-h2">AI doesn't rank.<br><em>It recommends.</em></h2>
+        <div class="shift-close-line">This is not marketing. This is infrastructure.</div>
+      </div>
+      <div class="shift-manifesto-right">
+        <p>AI doesn't reward the best business. It recommends the one it understands most clearly.</p>
+        <p>For decades, the game was visibility — show up, rank high, get found. <strong>That game is over.</strong> AI doesn't show a list. It makes a choice. One business. One answer. Every time someone asks.</p>
+        <p>Most businesses have never thought about what AI knows about them. Whether it can describe them precisely. Whether it trusts them enough to recommend them. Whether it even knows they exist.</p>
+        <p>CHOIVE· exists because that gap — between being good and being chosen — is now the most important gap in business. We close it. Systematically.</p>
+      </div>
+    </div>
+  </div>
 
-    <span style="display:block; margin-bottom:28px;">
-      AI doesn't reward the best business. It recommends the one it understands most clearly.
-    </span>
-
-    <span style="display:block; margin-bottom:28px;">
-      For decades, the game was visibility — show up, rank high, get found. That game is over. AI doesn't show a list. It makes a choice. One business. One answer. Every time someone asks.
-    </span>
-
-    <span style="display:block; margin-bottom:28px;">
-      Most businesses have never thought about what AI knows about them. Whether it can describe them precisely. Whether it trusts them enough to recommend them. Whether it even knows they exist.
-    </span>
-
-    <span style="display:block; margin-bottom:28px;">
-      CHOIVE· exists because that gap — between being good and being chosen — is now the most important gap in business. We close it. Systematically. With a process that installs the signals AI needs to select you, every time someone in your category asks.
-    </span>
-
-    <span style="display:block;">
-      This is not marketing. This is infrastructure.
-    </span>
-
-  </p>
-</section>
-  
-<!-- PROBLEM -->
-<div class="body-section">
-<section class="problem-section" id="problem">
-  <div class="eyebrow">The Shift</div>
-  <h2 class="section-h2">AI doesn't rank.<br><em>It recommends.</em></h2>
-  <p class="section-lead">Search showed a list — you could optimise your way onto it. <strong>AI gives one answer.</strong> Either your business is in it, or it isn't. Most businesses have never checked.</p>
-
-  <div class="problem-grid">
+</div>
+<div style="max-width:1280px;margin:0 auto;padding:0 56px;">
+  <div class="problem-grid" style="margin-top:56px;">
     <div class="problem-card">
       <div class="prob-num">01</div>
       <div class="prob-head">The customer asks AI</div>
@@ -1208,7 +720,6 @@ CHOIVE shows why it’s not you — and installs what makes you the obvious answ
       <div class="prob-body">They didn't earn it through quality. They got there first. And every day you wait, that position becomes harder to take back.</div>
     </div>
   </div>
-
   <div class="stat-strip">
     <div class="stat-item">
       <div class="stat-num">37%</div>
@@ -1223,15 +734,14 @@ CHOIVE shows why it’s not you — and installs what makes you the obvious answ
       <div class="stat-label">More citations for businesses with structured data</div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- METHOD -->
+<!-- METHOD — light -->
 <section class="method-section" id="method">
   <div class="eyebrow">The CHOIVE· Method</div>
   <h2 class="section-h2">Four pillars.<br><em>One outcome.</em></h2>
   <p class="section-lead">AI recommends businesses it understands, trusts, and can describe specifically. The CHOIVE· system builds each signal deliberately.</p>
-
-  <div class="method-steps">
+  <div class="method-grid">
     <div class="method-step">
       <div class="step-idx">01</div>
       <div class="step-name-block">
@@ -1268,36 +778,20 @@ CHOIVE shows why it’s not you — and installs what makes you the obvious answ
 </section>
 </div>
 
-<!-- DIAGNOSTIC -->
+<!-- DIAGNOSTIC — dark -->
 <section class="diag-section" id="diagnostic">
   <div class="diag-inner">
     <div class="diag-eyebrow">CHOIVE· Index</div>
     <h2 class="diag-h2">See if AI would<br>choose you.</h2>
-  <div style="
-  margin-bottom:20px;
-  font-size:11px;
-  color:var(--muted);
-">
-Most businesses have never checked if AI would choose them.
-</div>
+    <div class="diag-pre-lead">Most businesses have never checked if AI would choose them.</div>
     <p class="diag-lead">
       Real AI diagnostic. Enter your business and see if AI would recommend it on ChatGPT, Perplexity, Gemini, and Claude.
       <strong>Any business. Any category. Anywhere in the world.</strong>
     </p>
-
     <div id="dI">
-      <div style="
-  margin-bottom:18px;
-  font-size:10px;
-  letter-spacing:0.25em;
-  text-transform:uppercase;
-  color:var(--mint);
-">
-CHOIVE· INDEX — LIVE DIAGNOSTIC
-</div>
+      <div class="diag-index-label">CHOIVE· INDEX — LIVE DIAGNOSTIC</div>
       <div class="diag-frame">
-        <label class="field-lbl">
-        Enter your business name, category, and location</label>
+        <label class="field-lbl">Enter your business name, category, and location</label>
         <div class="field-row">
           <input type="text" id="bN" placeholder="Business name (e.g. Volta Coffee)" />
           <input type="text" id="bC" placeholder="What you do (e.g. specialty coffee shop)" />
@@ -1306,13 +800,10 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
           <input type="text" id="bL" placeholder="Location (e.g. London, UK)" />
           <input type="text" id="bD" placeholder="One line about you  (optional)" />
         </div>
-        <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
-          Run your CHOIVE· Index →
-        </button>
+        <button class="run-btn" id="rBtn" onclick="runDiagnostic()">Run your CHOIVE· Index →</button>
         <div class="diag-note">Real AI diagnostic · Takes 30 seconds · No signup</div>
       </div>
     </div>
-
     <div class="scan-zone" id="dS">
       <div class="scan-frame">
         <div class="scan-hd"><div class="spin"></div><div class="scan-ttl">Running CHOIVE· diagnostic</div></div>
@@ -1326,29 +817,18 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
         </div>
       </div>
     </div>
-
     <div class="res-zone" id="dR"></div>
   </div>
 </section>
 
-<!-- OFFER -->
-<div class="body-section">
+<!-- OFFER — light -->
+<div class="body-lt">
 <section class="offer-section" id="offer">
   <div class="eyebrow">Choose how you start</div>
   <h2 class="section-h2">From invisible<br>to <em>the obvious choice.</em></h2>
   <p class="section-lead">Start with the free diagnostic to see exactly where you stand. Or go straight to the complete system.</p>
-<div style="
-  margin-top:20px;
-  font-size:10px;
-  letter-spacing:0.18em;
-  text-transform:uppercase;
-  color:var(--mint);
-">
-  Currently accepting 5 new clients per month
-</div>
-  
+  <div class="offer-currently">Currently accepting 5 new clients per month</div>
   <div class="offer-grid-3">
-
     <div class="offer-card">
       <div class="offer-tier">CHOIVE Diagnostic™</div>
       <div class="offer-price">$0</div>
@@ -1362,19 +842,18 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
       </ul>
       <a href="#diagnostic" class="offer-btn offer-btn-outline">Run Free Diagnostic →</a>
     </div>
-
     <div class="offer-card">
       <div class="offer-tier">CHOIVE Analysis™</div>
       <div class="offer-price">$2,500</div>
       <div class="offer-price-note">One-time · Strategy only</div>
       <div class="offer-desc">The blueprint for becoming the AI-recommended choice. Every signal mapped. Every gap identified. Every action sequenced.</div>
-      <div style="margin-bottom:28px; padding:18px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);">
-  <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">Before / After</div>
-  <div style="font-family:'Inter', sans-serif; font-size:14px; line-height:1.7; color:var(--muted);">
-    <strong style="color:var(--ink);">Before:</strong> AI does not understand why your business should be chosen.<br>
-    <strong style="color:var(--ink);">After:</strong> You get the CHOIVE· Blueprint™ — a clear plan for becoming recommendable.
-  </div>
-</div>
+      <div class="offer-before-after">
+        <div class="offer-before-after-label">Before / After</div>
+        <div class="offer-before-after-body">
+          <strong>Before:</strong> AI does not understand why your business should be chosen.<br>
+          <strong>After:</strong> You get the CHOIVE· Blueprint™ — a clear plan for becoming recommendable.
+        </div>
+      </div>
       <ul class="offer-items">
         <li>Deep four-pillar audit</li>
         <li>Entity definition strategy</li>
@@ -1382,10 +861,8 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
         <li>AI positioning blueprint</li>
         <li>Full 30-day action roadmap</li>
       </ul>
-<button class="offer-btn offer-btn-outline" onclick="openForm('CHOIVE Analysis™')">
-  Continue CHOIVE Analysis™ →
-</button>    </div>
-
+      <button class="offer-btn offer-btn-outline" onclick="openForm('CHOIVE Analysis™')">Continue CHOIVE Analysis™ →</button>
+    </div>
     <div class="offer-card featured">
       <div class="offer-tier">CHOIVE System™</div>
       <div class="offer-price">$5,000+</div>
@@ -1400,74 +877,61 @@ CHOIVE· INDEX — LIVE DIAGNOSTIC
         <li>30-day recommendation tracking</li>
         <li>Monthly performance report</li>
       </ul>
-<button class="offer-btn offer-btn-solid" onclick="openForm('CHOIVE System™')">
-  Install CHOIVE System™ →
-</button>    </div>
-
+      <button class="offer-btn offer-btn-solid" onclick="openForm('CHOIVE System™')">Install CHOIVE System™ →</button>
+    </div>
   </div>
 </section>
 </div>
 
-<!-- FOOTER -->
+<!-- FOOTER — darkest -->
 <footer>
   <div class="footer-mark">CHOIVE<span>·</span></div>
   <div class="footer-note">Real diagnostic powered by the CHOIVE· AI engine. Results reflect AI recommendation likelihood based on your current digital presence signals.</div>
 </footer>
+
+<!-- FORM MODAL -->
 <div class="form-modal" id="formModal">
   <div class="form-overlay" onclick="closeForm()"></div>
-
   <div class="form-panel">
     <button class="form-close" onclick="closeForm()">×</button>
-
     <div class="form-kicker">Get started</div>
-   <h3 class="form-title" id="formTitle">Continue your CHOIVE· Index</h3>
+    <h3 class="form-title" id="formTitle">Continue your CHOIVE· Index</h3>
     <p class="form-sub">We use this to continue your CHOIVE· Index and prepare your Blueprint.</p>
-
-<form onsubmit="submitCHOIVEForm(event)" novalidate>
-  <input type="hidden" id="serviceType" />
-
+    <form onsubmit="submitCHOIVEForm(event)" novalidate>
+      <input type="hidden" id="serviceType" />
       <div class="form-grid">
         <div class="form-field">
           <label>Your name</label>
           <input type="text" id="leadName" required>
         </div>
-
         <div class="form-field">
           <label>Business name</label>
           <input type="text" id="leadBusiness" required>
         </div>
       </div>
-
       <div class="form-grid">
         <div class="form-field">
           <label>Website or profile link</label>
           <input type="text" id="leadWebsite" placeholder="https://">
         </div>
-
         <div class="form-field">
           <label>Email</label>
           <input type="email" id="leadEmail" required>
         </div>
       </div>
-
       <div class="form-field">
         <label>What do you want help with? <span>(optional)</span></label>
         <textarea id="leadNote" rows="4" placeholder="Tell us briefly what you want to improve."></textarea>
       </div>
-
-            <div class="form-actions">
+      <div class="form-actions">
         <button type="submit" class="form-submit">Continue to Blueprint →</button>
       </div>
-
       <div class="form-error" id="formError"></div>
       <div class="form-note">Takes 30 seconds · Your CHOIVE· Blueprint is prepared next</div>
     </form>
   </div>
 </div>
-<div class="form-note">Takes less than 30 seconds.
-</form>
-</div>
-</div>
+
 <script>
 const API_URL = '/.netlify/functions/claude';
 let bizData = {};
@@ -1477,22 +941,17 @@ async function runDiagnostic() {
   const category = document.getElementById('bC').value.trim();
   const city = document.getElementById('bL').value.trim();
   const description = document.getElementById('bD').value.trim();
-
   if (!name || !category || !city) {
     alert('Please fill in your business name, category, and city.');
     return;
   }
-
   bizData = { name, category, city, description };
-
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').style.display = 'block';
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
   document.getElementById('rBtn').disabled = true;
-
   animateScanLog();
-
   try {
     const result = await callCHOIVEEngine(bizData);
     showResults(result);
@@ -1518,18 +977,15 @@ function animateScanLog() {
 
 async function callCHOIVEEngine(biz) {
   const prompt = `You are the CHOIVE· diagnostic engine. You specialize in AI recommendation visibility — analyzing whether a business appears when potential customers ask AI platforms like ChatGPT, Perplexity, Gemini, or Claude for recommendations.
-
 Analyze this business for AI recommendation visibility:
 - Business name: ${biz.name}
 - Category: ${biz.category}
 - Location: ${biz.city}
 - Description: ${biz.description || 'Not provided'}
-
 Your task: Think deeply as an AI recommendation system would. Consider:
 1. What questions would real customers ask AI about this category in this city?
 2. Would a well-trained AI model know about, trust, and recommend this business?
 3. What signals are likely missing that prevent AI from recommending it?
-
 Respond ONLY with a valid JSON object in exactly this structure (no markdown, no preamble):
 {
   "overallScore": <number 0-100>,
@@ -1567,37 +1023,26 @@ Respond ONLY with a valid JSON object in exactly this structure (no markdown, no
     })
   });
 
-if (!response.ok) {
-let errMsg = 'The diagnostic could not be completed. Please try again.';
-  try {
-    const err = await response.json();
-
-    if (response.status === 429) {
-      errMsg = 'Too many requests. Please wait a moment and try again.';
-    } 
-    else if (response.status >= 500) {
-      errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
-    } 
-    else if (err?.error?.message) {
-      errMsg = err.error.message;
+  if (!response.ok) {
+    let errMsg = 'The diagnostic could not be completed. Please try again.';
+    try {
+      const err = await response.json();
+      if (response.status === 429) {
+        errMsg = 'Too many requests. Please wait a moment and try again.';
+      } else if (response.status >= 500) {
+        errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
+      } else if (err?.error?.message) {
+        errMsg = err.error.message;
+      }
+    } catch (_) {
+      if (response.status >= 500) errMsg = 'AI engine temporarily unavailable.';
     }
-
-  } catch (_) {
-    // fallback if JSON parsing fails
-    if (response.status >= 500) {
-      errMsg = 'AI engine temporarily unavailable.';
-    }
+    throw new Error(errMsg);
   }
-
-  // 🔴 THIS LINE IS REQUIRED
-  throw new Error(errMsg);
-}
 
   const data = await response.json();
   const text = data.content.map(b => b.text || '').join('');
-
-    const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
+  const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   try {
     return JSON.parse(clean);
   } catch (e) {
@@ -1605,13 +1050,12 @@ let errMsg = 'The diagnostic could not be completed. Please try again.';
     if (m) return JSON.parse(m[0]);
     throw new Error('Could not parse diagnostic results. Please try again.');
   }
-  }
+}
 
 function showResults(r) {
   document.getElementById('dS').style.display = 'none';
   const zone = document.getElementById('dR');
   zone.style.display = 'block';
-
   const pN = { chatgpt:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini', claude:'Claude' };
   const pD = { clarity:{n:'01',name:'Clarity'}, trust:{n:'02',name:'Trust'}, difference:{n:'03',name:'Difference'}, ease:{n:'04',name:'Ease'} };
 
@@ -1620,13 +1064,13 @@ function showResults(r) {
       <div class="verdict-top">
         <div>
           <div class="verdict-biz">${esc(bizData.name.toUpperCase())} · ${esc(bizData.category)} · ${esc(bizData.city)}</div>
-<div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Critical recommendation weakness' : r.verdictLevel === 'weak' ? 'Weak recommendation authority' : 'Established recommendation presence'}</div>          <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
+          <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Critical recommendation weakness' : r.verdictLevel === 'weak' ? 'Weak recommendation authority' : 'Established recommendation presence'}</div>
+          <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
         </div>
         <div class="verdict-score-block">
-          <div class="verdict-score-num" id="scoreNum">0</div>
+          <span class="verdict-score-num" id="scoreNum">0</span>
           <div class="verdict-score-denom">/ 100</div>
-          <div style="margin-top:10px; font-size:9px; letter-spacing:0.12em; color:var(--muted);">
-  0–30 Critical · 31–55 Weak · 56–75 Present · 76–100 Dominant
+          <div class="verdict-scale">0–30 Critical · 31–55 Weak<br>56–75 Present · 76–100 Dominant</div>
         </div>
       </div>
       <div class="verdict-summary">${esc(r.summaryParagraph)}</div>
@@ -1668,22 +1112,16 @@ function showResults(r) {
           </div>
         </div>`).join('')}
     </div>
-       <div class="cta-block">
+    <div class="cta-block">
       <div class="cta-eyebrow">Next step</div>
-      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">
-      Most businesses stop here.
-      The ones that continue become the one AI recommends.
-      </div>
+      <div class="cta-sub-note">Most businesses stop here. The ones that continue become the one AI recommends.</div>
       <div class="cta-headline">Now decide what happens next.</div>
-      <div class="cta-body">
-        This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.
-      </div>
+      <div class="cta-body">This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.</div>
       <div class="cta-buttons">
- <button class="cta-primary" onclick="openForm('CHOIVE Analysis·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Continue CHOIVE· Index →</button>
- <button class="cta-secondary" onclick="openForm('CHOIVE System·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Install CHOIVE· System →</button>
-</div>
+        <button class="cta-primary" onclick="openForm('CHOIVE Analysis·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Continue CHOIVE· Index →</button>
+        <button class="cta-secondary" onclick="openForm('CHOIVE System·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Install CHOIVE· System →</button>
+      </div>
     </div>`;
-
 
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
@@ -1697,16 +1135,11 @@ function showResults(r) {
   zone.scrollIntoView({ behavior: 'smooth' });
 }
 
-
-
 function esc(s) {
   if (!s) return '';
   return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function animateNum(id, from, to, dur) {
@@ -1721,28 +1154,23 @@ function animateNum(id, from, to, dur) {
   }
   requestAnimationFrame(tick);
 }
+
 function showError(msg) {
   document.getElementById('dS').style.display = 'none';
   const zone = document.getElementById('dR');
   zone.style.display = 'block';
-
   zone.innerHTML = `
     <div class="error-frame">
       <div class="error-title">DIAGNOSTIC INTERRUPTED</div>
-      <div class="error-body">
-        ${esc(msg)}
-      </div>
-
-      <div style="margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <div class="error-body">${esc(msg)}</div>
+      <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;">
         <button class="cta-primary" onclick="resetDiagnostic()">Try again →</button>
         <a href="mailto:hello&#64;choive.com?subject=CHOIVE Diagnostic Support" class="cta-secondary">Contact support</a>
       </div>
-
-      <div style="margin-top: 18px; font-size: 10px; letter-spacing: 0.08em; color: var(--muted);">
-        The CHOIVE· engine could not complete this run. Your inputs were not lost.
-      </div>
+      <div style="margin-top:18px;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--tm);">The CHOIVE· engine could not complete this run. Your inputs were not lost.</div>
     </div>`;
 }
+
 function resetDiagnostic() {
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
@@ -1755,15 +1183,14 @@ function resetDiagnostic() {
   });
   document.getElementById('diagnostic').scrollIntoView({ behavior: 'smooth' });
 }
+
 function openForm(service, businessName = '', category = '', city = '') {
   document.getElementById('formModal').classList.add('active');
   document.getElementById('formTitle').textContent = service;
   document.getElementById('serviceType').value = service;
-
   if (businessName && !document.getElementById('leadBusiness').value) {
     document.getElementById('leadBusiness').value = businessName;
   }
-
   const noteField = document.getElementById('leadNote');
   if ((category || city) && !noteField.value) {
     let noteText = '';
@@ -1780,43 +1207,32 @@ function closeForm() {
 
 async function submitCHOIVEForm(event) {
   event.preventDefault();
-
   const name = document.getElementById('leadName').value.trim();
   const business = document.getElementById('leadBusiness').value.trim();
   const email = document.getElementById('leadEmail').value.trim();
   const website = document.getElementById('leadWebsite').value.trim();
   const note = document.getElementById('leadNote').value.trim();
   const service = document.getElementById('serviceType').value;
-
   const errorBox = document.getElementById('formError');
   errorBox.textContent = '';
-
   if (!name || !business || !email) {
     errorBox.textContent = 'Enter your name, business name, and email.';
     return;
   }
-
   try {
     await fetch('/.netlify/functions/lead', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, business, email, website, note, service })
     });
-
-    errorBox.style.color = '#1a7a4a';
+    errorBox.style.color = '#4A9965';
     errorBox.textContent = 'Your CHOIVE· Blueprint is being prepared.';
-
-    setTimeout(() => {
-      closeForm();
-      errorBox.textContent = '';
-    }, 1500);
-
+    setTimeout(() => { closeForm(); errorBox.textContent = ''; }, 1500);
   } catch (err) {
     errorBox.textContent = 'Something went wrong. Try again.';
   }
 }
- 
-/* 👇 THIS WAS ALREADY THERE */
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('dI').style.display !== 'none') runDiagnostic();
 });
