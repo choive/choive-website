@@ -107,25 +107,22 @@ Rules:
       .join('')
       .trim();
 
-      const clean = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+      if (raw.content && Array.isArray(raw.content)) {
+  const text = raw.content
+    .filter(block => block.type === 'text')
+    .map(block => block.text || '')
+    .join('')
+    .trim();
 
-      try {
-        output = JSON.parse(clean);
-      } catch (e) {
-        const match = clean.match(/\{[\s\S]*\}/);
-        if (match) {
-          output = JSON.parse(match[0]);
-        }
-      }
+  const clean = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+
+  try {
+    output = JSON.parse(clean);
+  } catch (e) {
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (match) {
+      output = JSON.parse(match[0]);
     }
-const clean = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-
-try {
-  output = JSON.parse(clean);
-} catch (e) {
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (match) {
-    output = JSON.parse(match[0]);
   }
 }
 
