@@ -95,17 +95,15 @@ Rules:
 
     const raw = await anthropicResponse.json();
     if (!anthropicResponse.ok) {
-      throw new Error(raw?.error?.message || `Anthropic API error (${anthropicResponse.status})`);
-    }
+  console.error('ANTHROPIC STATUS:', anthropicResponse.status);
+  console.error('ANTHROPIC RAW:', JSON.stringify(raw));
+
+  throw new Error(
+    raw?.error?.message || `Anthropic API error (${anthropicResponse.status})`
+  );
+}
 
     let output = raw;
-
-    if (raw.content && Array.isArray(raw.content)) {
-    const text = raw.content
-      .filter(block => block.type === 'text')
-      .map(block => block.text || '')
-      .join('')
-      .trim();
 
       if (raw.content && Array.isArray(raw.content)) {
   const text = raw.content
@@ -251,8 +249,9 @@ if (!hasValidShape) {
       body: JSON.stringify(safeOutput)
     };
   } catch (error) {
-    return {
-      statusCode: 500,
+  console.error('CHOIVE FUNCTION ERROR:', error);
+  return {
+    statusCode: 500,
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json'
