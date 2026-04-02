@@ -997,15 +997,27 @@ async function callCHOIVEEngine(biz) {
   });
 
   if (!response.ok) {
-    let errMsg = 'The diagnostic could not be completed. Please try again.';
-    try {
-      const err = await response.json();
-      if (response.status === 429) errMsg = 'Too many requests. Please wait a moment and try again.';
-      else if (response.status >= 500) errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
-      else if (err?.error?.message) errMsg = err.error.message;
-    } catch (_) {}
-    throw new Error(errMsg);
+  let errMsg = 'The diagnostic could not be completed. Please try again.';
+  try {
+    const err = await response.json();
+    if (response.status === 429) {
+      errMsg = 'Too many requests. Please wait a moment and try again.';
+    } else if (err?.summaryParagraph) {
+      errMsg = err.summaryParagraph;
+    } else if (err?.error) {
+      errMsg = err.error;
+    } else if (err?.details) {
+      errMsg = err.details;
+    } else if (err?.message) {
+      errMsg = err.message;
+    } else if (response.status >= 500) {
+      errMsg = `Server error (${response.status})`;
+    }
+  } catch (_) {
+    if (response.status >= 500) errMsg = `Server error (${response.status})`;
   }
+  throw new Error(errMsg);
+}
 
   const data = await response.json();
 
