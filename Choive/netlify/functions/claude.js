@@ -36,6 +36,8 @@ Website: ${website || ''}
 Description: ${description || ''}
 
 Return ONLY valid JSON in this exact structure:
+Do not include any text before or after the JSON.
+Do not use code fences.
 
 {
   "overallScore": 0,
@@ -96,10 +98,11 @@ Rules:
     let output = raw;
 
     if (raw.content && Array.isArray(raw.content)) {
-      const text = raw.content
-        .map(block => block.text || '')
-        .join('')
-        .trim();
+    const text = raw.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text || '')
+      .join('')
+      .trim();
 
       const clean = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
