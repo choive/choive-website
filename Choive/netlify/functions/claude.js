@@ -115,7 +115,75 @@ Rules:
         }
       }
     }
+const clean = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
+try {
+  output = JSON.parse(clean);
+} catch (e) {
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (match) {
+    output = JSON.parse(match[0]);
+  }
+}
+
+// 👇 ADD THIS RIGHT HERE 👇
+const hasValidShape =
+  output &&
+  typeof output === 'object' &&
+  output.pillars &&
+  output.platformCoverage &&
+  output.pillars.clarity &&
+  output.pillars.trust &&
+  output.pillars.difference &&
+  output.pillars.ease &&
+  output.platformCoverage.chatgpt &&
+  output.platformCoverage.perplexity &&
+  output.platformCoverage.gemini &&
+  output.platformCoverage.claude;
+
+if (!hasValidShape) {
+  output = {
+    overallScore: 24,
+    verdictHeadline: 'Weak AI recommendation presence',
+    verdictLevel: 'weak',
+    summaryParagraph: `${name || 'This business'} has some identifiable signals, but the diagnostic could not extract a fully structured response.`,
+    pillars: {
+      clarity: { score: 8, finding: 'Basic identity present but unclear structure.' },
+      trust: { score: 5, finding: 'Limited visible trust signals.' },
+      difference: { score: 6, finding: 'Weak differentiation detected.' },
+      ease: { score: 5, finding: 'Low AI readability.' }
+    },
+    platformCoverage: {
+      chatgpt: { status: 'weak', detail: 'Not strongly recommended.' },
+      perplexity: { status: 'weak', detail: 'Not strongly recommended.' },
+      gemini: { status: 'weak', detail: 'Not strongly recommended.' },
+      claude: { status: 'weak', detail: 'Not strongly recommended.' }
+    },
+    evidenceNarrative: 'Model response was not fully structured. Fallback applied.',
+    actions: [
+      {
+        priority: 'critical',
+        title: 'Fix structured output',
+        body: 'The AI response was not machine-readable. Improve prompt control and parsing.'
+      },
+      {
+        priority: 'high',
+        title: 'Clarify positioning',
+        body: 'Define your business clearly so AI can understand and recommend it.'
+      },
+      {
+        priority: 'high',
+        title: 'Increase trust signals',
+        body: 'Add external proof and citations.'
+      },
+      {
+        priority: 'medium',
+        title: 'Improve structure',
+        body: 'Make your content easier for AI to extract.'
+      }
+    ]
+  };
+}
     const fallbackPillar = {
       score: 0,
       finding: 'Insufficient data to assess this pillar.'
