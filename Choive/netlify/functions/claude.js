@@ -261,7 +261,7 @@ if (!hasValidShape) {
         overallScore: 0,
         verdictHeadline: 'Diagnostic failed',
         verdictLevel: 'absent',
-        summaryParagraph: error.message || 'The diagnostic could not be completed.',
+        summaryParagraph: 'DEBUG ERROR: ' + error.message,
         pillars: {
           clarity: { score: 0, finding: 'No result returned.' },
           trust: { score: 0, finding: 'No result returned.' },
