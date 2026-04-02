@@ -94,6 +94,9 @@ Rules:
     });
 
     const raw = await anthropicResponse.json();
+    if (!anthropicResponse.ok) {
+      throw new Error(raw?.error?.message || `Anthropic API error (${anthropicResponse.status})`);
+    }
 
     let output = raw;
 
