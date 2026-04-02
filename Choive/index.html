@@ -327,6 +327,7 @@ nav {
   text-transform:uppercase; color:var(--tm); margin-bottom:10px; display:block;
 }
 .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.field-row input:only-child { grid-column:1 / -1; }
 .field-row input {
   background:var(--dk-3); border:1px solid rgba(255,255,255,0.1);
   color:var(--tp); font-family:'Inter',sans-serif;
@@ -798,18 +799,21 @@ footer {
         </div>
         <div class="field-row">
           <input type="text" id="bL" placeholder="Location (e.g. London, UK)" />
+          <input type="text" id="bW" placeholder="Your website URL (e.g. https://yourbrand.com)" />
+        </div>
+        <div class="field-row">
           <input type="text" id="bD" placeholder="One line about you  (optional)" />
         </div>
         <button class="run-btn" id="rBtn" onclick="runDiagnostic()">Run your CHOIVE· Index →</button>
-        <div class="diag-note">Real AI diagnostic · Takes 30 seconds · No signup</div>
+        <div class="diag-note">Real AI diagnostic · Searches your actual online presence · Takes 30–45 seconds · No signup</div>
       </div>
     </div>
     <div class="scan-zone" id="dS">
       <div class="scan-frame">
         <div class="scan-hd"><div class="spin"></div><div class="scan-ttl">Running CHOIVE· diagnostic</div></div>
         <div>
-          <div class="log-l" id="l1"><div class="li">○</div><div>Generating customer queries for your category</div><div class="lt">thinking...</div></div>
-          <div class="log-l" id="l2"><div class="li">○</div><div>Analyzing AI recommendation behavior for this market</div><div class="lt">querying...</div></div>
+          <div class="log-l" id="l1"><div class="li">○</div><div>Searching your online presence and citations</div><div class="lt">searching...</div></div>
+          <div class="log-l" id="l2"><div class="li">○</div><div>Checking third-party mentions and directory listings</div><div class="lt">querying...</div></div>
           <div class="log-l" id="l3"><div class="li">○</div><div>Checking entity clarity and definition signals</div><div class="lt">analyzing...</div></div>
           <div class="log-l" id="l4"><div class="li">○</div><div>Evaluating trust and citation footprint</div><div class="lt">checking...</div></div>
           <div class="log-l" id="l5"><div class="li">○</div><div>Scoring differentiation and recommendation ease</div><div class="lt">scoring...</div></div>
@@ -936,29 +940,33 @@ footer {
 const API_URL = '/.netlify/functions/claude';
 let bizData = {};
 
-async function runDiagnostic() {
+function runDiagnostic() {
   const name = document.getElementById('bN').value.trim();
   const category = document.getElementById('bC').value.trim();
   const city = document.getElementById('bL').value.trim();
-  const description = document.getElementById('bD').value.trim();
+  const website = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
+  const description = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
+
   if (!name || !category || !city) {
     alert('Please fill in your business name, category, and city.');
     return;
   }
-  bizData = { name, category, city, description };
+
+  bizData = { name, category, city, website, description };
+
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').style.display = 'block';
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
   document.getElementById('rBtn').disabled = true;
+
   animateScanLog();
-  try {
-    const result = await callCHOIVEEngine(bizData);
-    showResults(result);
-  } catch (err) {
-    showError(err.message);
-  }
+
+  callCHOIVEEngine(bizData)
+    .then(showResults)
+    .catch(err => showError(err.message));
 }
+
 
 function animateScanLog() {
   const logs = ['l1','l2','l3','l4','l5','l6'];
@@ -976,50 +984,15 @@ function animateScanLog() {
 }
 
 async function callCHOIVEEngine(biz) {
-  const prompt = `You are the CHOIVE· diagnostic engine. You specialize in AI recommendation visibility — analyzing whether a business appears when potential customers ask AI platforms like ChatGPT, Perplexity, Gemini, or Claude for recommendations.
-Analyze this business for AI recommendation visibility:
-- Business name: ${biz.name}
-- Category: ${biz.category}
-- Location: ${biz.city}
-- Description: ${biz.description || 'Not provided'}
-Your task: Think deeply as an AI recommendation system would. Consider:
-1. What questions would real customers ask AI about this category in this city?
-2. Would a well-trained AI model know about, trust, and recommend this business?
-3. What signals are likely missing that prevent AI from recommending it?
-Respond ONLY with a valid JSON object in exactly this structure (no markdown, no preamble):
-{
-  "overallScore": <number 0-100>,
-  "verdictHeadline": "<short punchy verdict sentence, max 8 words>",
-  "verdictLevel": "<one of: absent|weak|present>",
-  "summaryParagraph": "<2-3 sentences honest assessment of their AI visibility situation>",
-  "pillars": {
-    "clarity": { "score": <0-25>, "finding": "<2 specific sentences>" },
-    "trust": { "score": <0-25>, "finding": "<2 specific sentences>" },
-    "difference": { "score": <0-25>, "finding": "<2 specific sentences>" },
-    "ease": { "score": <0-25>, "finding": "<2 specific sentences>" }
-  },
-  "platformCoverage": {
-    "chatgpt": { "status": "<absent|weak|present>", "detail": "<one sentence>" },
-    "perplexity": { "status": "<absent|weak|present>", "detail": "<one sentence>" },
-    "gemini": { "status": "<absent|weak|present>", "detail": "<one sentence>" },
-    "claude": { "status": "<absent|weak|present>", "detail": "<one sentence>" }
-  },
-  "evidenceNarrative": "<3-4 sentences naming specific queries like best ${biz.category} in ${biz.city}>",
-  "actions": [
-    { "priority": "critical", "title": "<action>", "body": "<2 sentences>" },
-    { "priority": "high", "title": "<action>", "body": "<2 sentences>" },
-    { "priority": "high", "title": "<action>", "body": "<2 sentences>" },
-    { "priority": "medium", "title": "<action>", "body": "<2 sentences>" }
-  ]
-}`;
-
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1800,
-      messages: [{ role: 'user', content: prompt }]
+      name: biz.name,
+      category: biz.category,
+      city: biz.city,
+      website: biz.website || '',
+      description: biz.description || ''
     })
   });
 
@@ -1027,30 +1000,29 @@ Respond ONLY with a valid JSON object in exactly this structure (no markdown, no
     let errMsg = 'The diagnostic could not be completed. Please try again.';
     try {
       const err = await response.json();
-      if (response.status === 429) {
-        errMsg = 'Too many requests. Please wait a moment and try again.';
-      } else if (response.status >= 500) {
-        errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
-      } else if (err?.error?.message) {
-        errMsg = err.error.message;
-      }
-    } catch (_) {
-      if (response.status >= 500) errMsg = 'AI engine temporarily unavailable.';
-    }
+      if (response.status === 429) errMsg = 'Too many requests. Please wait a moment and try again.';
+      else if (response.status >= 500) errMsg = 'AI engine temporarily unavailable. Please try again shortly.';
+      else if (err?.error?.message) errMsg = err.error.message;
+    } catch (_) {}
     throw new Error(errMsg);
   }
 
   const data = await response.json();
-  const text = data.content.map(b => b.text || '').join('');
-  const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    const m = clean.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
-    throw new Error('Could not parse diagnostic results. Please try again.');
+
+  if (data.content) {
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    try { return JSON.parse(clean); }
+    catch (e) {
+      const m = clean.match(/\{[\s\S]*\}/);
+      if (m) return JSON.parse(m[0]);
+      throw new Error('Could not parse diagnostic results. Please try again.');
+    }
   }
+
+  return data;
 }
+
 
 function showResults(r) {
   document.getElementById('dS').style.display = 'none';
