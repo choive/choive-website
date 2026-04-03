@@ -27,6 +27,9 @@ exports.handler = async function (event) {
     const prompt = `
 You are CHOIVE™ — a decision intelligence engine.
 
+Your job is NOT to audit.
+Your job is to explain WHY this business is NOT CHOSEN.
+
 Analyze this business:
 
 Name: ${name || ''}
@@ -35,7 +38,14 @@ Location: ${city || ''}
 Website: ${website || ''}
 Description: ${description || ''}
 
-Return ONLY valid JSON in this exact structure:
+You must evaluate based on:
+
+1. Clarity (Is it immediately understood?)
+2. Trust (Does it feel credible and real?)
+3. Difference (Is it distinct or interchangeable?)
+4. Ease (Is it simple to choose?)
+
+Return ONLY valid JSON.
 Do not include any text before or after the JSON.
 Do not use code fences.
 
@@ -66,14 +76,12 @@ Do not use code fences.
 }
 
 Rules:
-- Use scores from 0 to 25 for each pillar
-- overallScore must equal clarity + trust + difference + ease
-- verdictLevel must be one of: absent, weak, present
-- platform status must be one of: absent, weak, present
-- Do not return markdown
-- Do not return explanation outside JSON
+- Scores from 0–25 per pillar
+- overallScore = sum of pillars
+- verdictLevel: absent, weak, present
+- Be sharp, decisive, and strategic
+- Focus on decision failure, not surface errors
 `;
-
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
