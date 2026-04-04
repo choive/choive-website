@@ -386,11 +386,11 @@ const hasValidShape =
 if (!hasValidShape) {
   output = {
     overallScore: 24,
-    verdictHeadline: 'Weak AI recommendation presence',
+    verdictHeadline: 'Not consistently the obvious choice',
     verdictLevel: 'weak',
     summaryParagraph: `${name || 'This business'} is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options. People will choose something else instead.`,
     pillars: {
-      cclarity: { score: 8, finding: 'This business is not clear enough.' },
+      clarity: { score: 8, finding: 'This business is not clear enough.' },
       trust: { score: 5, finding: 'This business is not trusted enough.' },
       difference: { score: 6, finding: 'This business is not strong enough compared to others.' },
       ease: { score: 5, finding: 'This business is not simple enough to choose.' }
@@ -424,6 +424,8 @@ if (!hasValidShape) {
         body: 'Reduce confusion and make the business simpler to understand and act on.'
       }
     ]
+  };
+  }  
     const fallbackPillar = {
       score: 0,
       finding: 'Insufficient data to assess this pillar.'
