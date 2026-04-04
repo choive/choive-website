@@ -141,6 +141,29 @@ Instead:
 
 --------------------------------
 
+LANGUAGE RULE (CRITICAL):
+
+Every sentence must sound like how a normal person speaks.
+
+Replace complex or strategic words with simple everyday words.
+
+Examples:
+- “friction” → “difficulty”
+- “ubiquity” → “everywhere”
+- “visibility” → “shows up”
+- “prominence” → “shows first”
+- “differentiation” → “what makes it different”
+
+If a sentence sounds like a consultant wrote it, rewrite it.
+
+The output must feel like:
+→ “I understand this instantly”
+
+NOT:
+→ “This sounds intelligent”
+
+--------------------------------
+
 OUTPUT STYLE:
 
 Your output must feel:
