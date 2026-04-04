@@ -48,7 +48,7 @@ Description: ${description || ''}
 
 CHOIVE PRINCIPLE:
 
-Businesses are not chosen because they are the best.
+Businesses are not the obvious choice because they are the best.
 They are chosen because they create the least doubt.
 
 Your task is to identify where doubt is created.
@@ -70,6 +70,35 @@ You must evaluate across 4 pillars:
 
 4. Ease  
 → Is it simple and frictionless to choose?
+
+--------------------------------
+
+AI SELECTION SIMULATION (CRITICAL):
+
+Before scoring, you must simulate how AI systems would answer this question:
+
+"Best ${category || 'business'} in ${city || 'this location'}"
+
+Generate a short representation of how:
+- ChatGPT
+- Perplexity
+- Gemini
+
+would respond.
+
+Then determine:
+
+- Would this business appear in those answers?
+- How prominently?
+- In what context?
+
+Use THIS as the primary basis for scoring.
+
+Scoring must reflect:
+- likelihood of appearing in AI answers
+- likelihood of being selected from those answers
+
+Do NOT score based only on the business description.
 
 --------------------------------
 
@@ -121,7 +150,7 @@ The summaryParagraph MUST:
 
 Example structure:
 
-“This business is not chosen because…”
+“This business is not the obvious choice because…”
 
 Then explain WHY.
 
@@ -196,8 +225,34 @@ RULES:
 - overallScore must equal sum of all pillars
 - verdictLevel must be: absent, weak, present
 - Be sharp, decisive, and strategic
-- Focus on WHY the business is NOT chosen
+- Focus on WHY the business is NOT the obvious choice
 - Eliminate all generic phrasing
+- Use short, direct sentences
+- No technical language
+- No abstract words
+- Write like a final verdict, not an explanation
+- Every sentence must be instantly understood on first read
+
+PILLAR LANGUAGE RULES (MANDATORY):
+- Each pillar finding must be ONE short sentence
+- Do NOT explain
+- Do NOT justify
+- Do NOT add extra detail
+
+Use EXACT phrasing:
+
+Clarity: "This business is not clear enough."
+Trust: "This business is not trusted enough."
+Difference: "This business is not strong enough compared to others."
+Ease: "This business is not simple enough to choose."
+
+SUMMARY RULE:
+- The summary must be one short paragraph
+- No technical words
+- No mention of AI, model, system, signals, or data
+
+Write like this:
+"This business is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options."
 
 `;
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -255,7 +310,7 @@ RULES:
         overallScore: 12,
         verdictHeadline: 'AI does not recommend you',
         verdictLevel: 'absent',
-        summaryParagraph: `${name || 'This business'} is not chosen because the model did not return a fully valid machine-readable response, and the visible signals still create substantial doubt.`,
+        evidenceNarrative: 'The available signals are incomplete, unclear, or inconsistent, preventing a confident recommendation across AI systems.',
         pillars: {
           clarity: { score: 3, finding: 'The business is not immediately understood.' },
           trust: { score: 2, finding: 'Credibility is weakened by incomplete or broken signals.' },
@@ -273,7 +328,7 @@ RULES:
           {
             priority: 'critical',
             title: 'Remove decision ambiguity',
-            body: 'Clarify exactly what the business is and why it should be chosen.'
+            body: 'Clarify exactly what the business is and why it should be the obvious choice.'
           },
           {
             priority: 'critical',
@@ -316,7 +371,7 @@ if (!hasValidShape) {
     overallScore: 24,
     verdictHeadline: 'Weak AI recommendation presence',
     verdictLevel: 'weak',
-    summaryParagraph: `${name || 'This business'} has some identifiable signals, but the diagnostic could not extract a fully structured response.`,
+    summaryParagraph: `${name || 'This business'} is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options.`,
     pillars: {
       clarity: { score: 8, finding: 'Basic identity present but unclear structure.' },
       trust: { score: 5, finding: 'Limited visible trust signals.' },
@@ -329,7 +384,7 @@ if (!hasValidShape) {
       gemini: { status: 'weak', detail: 'Not strongly recommended.' },
       claude: { status: 'weak', detail: 'Not strongly recommended.' }
     },
-    evidenceNarrative: 'Model response was not fully structured. Fallback applied.',
+    evidenceNarrative: 'The business does not present enough clear, reliable, or strong information for people to confidently choose it.',
     actions: [
       {
         priority: 'critical',
@@ -432,12 +487,12 @@ if (!hasValidShape) {
         overallScore: 0,
         verdictHeadline: 'Diagnostic failed',
         verdictLevel: 'absent',
-        summaryParagraph: 'DEBUG ERROR: ' + error.message,
+        summaryParagraph: 'This diagnostic could not be completed. Please try again.',
         pillars: {
-          clarity: { score: 0, finding: 'No result returned.' },
-          trust: { score: 0, finding: 'No result returned.' },
-          difference: { score: 0, finding: 'No result returned.' },
-          ease: { score: 0, finding: 'No result returned.' }
+          clarity: { score: 3, finding: 'This business is not clear enough.' },
+          trust: { score: 2, finding: 'This business is not trusted enough.' },
+          difference: { score: 4, finding: 'This business is not strong enough compared to others.' },
+          ease: { score: 3, finding: 'This business is not simple enough to choose.' }
         },
         platformCoverage: {
           chatgpt: { status: 'absent', detail: 'No result returned.' },
