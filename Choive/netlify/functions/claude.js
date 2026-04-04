@@ -229,8 +229,25 @@ OUTPUT FORMAT:
 
 Return ONLY valid JSON.
 
-Do not include any text before or after JSON.
-Do not use code fences.
+CRITICAL:
+- Do NOT include any text before or after JSON
+- Do NOT explain anything
+- Do NOT add comments
+- Do NOT use markdown
+- Do NOT break JSON format
+
+If you cannot follow this, return a minimal valid JSON with all required fields.
+
+--------------------------------
+
+JSON SAFETY RULE:
+
+All strings must:
+- use double quotes only
+- not contain line breaks
+- not contain unescaped characters
+
+If needed, shorten sentences to keep JSON valid.
 
 {
   "overallScore": 0,
