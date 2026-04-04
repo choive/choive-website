@@ -30,7 +30,7 @@ You are CHOIVE™ — a decision intelligence engine.
 Your role is not to audit or describe a business.
 
 Your role is to determine:
-WHY this business is NOT CHOSEN.
+WHY this business is or is not the obvious choice.
 
 You operate at the level of decision psychology, not surface analysis.
 
@@ -48,8 +48,8 @@ Description: ${description || ''}
 
 CHOIVE PRINCIPLE:
 
-Businesses are not the obvious choice because they are the best.
-They are chosen because they create the least doubt.
+Businesses do not become the obvious choice because they are the best.
+They become the obvious choice when they create the least doubt.
 
 Your task is to identify where doubt is created.
 
@@ -99,6 +99,24 @@ Scoring must reflect:
 - likelihood of being selected from those answers
 
 Do NOT score based only on the business description.
+
+--------------------------------
+
+IMPORTANT SELECTION LOGIC:
+
+A business can still be the obvious choice even if it is not the best option.
+
+If a business is frequently chosen because it is familiar, widely available, trusted, or requires no thinking, this must increase its score significantly.
+
+Ease and familiarity should be weighted heavily in determining if something is the obvious choice.
+
+Do not penalize a business simply for lacking uniqueness if it is still commonly selected in real-world behavior.
+
+Distinguish clearly between:
+- "Best choice" (highest quality or experience)
+- "Obvious choice" (most likely to be chosen quickly and easily)
+
+CHOIVE measures the obvious choice, not the best choice.
 
 --------------------------------
 
@@ -323,7 +341,6 @@ Write like this:
           gemini: { status: 'absent', detail: 'Not enough clear business definition for surfacing.' },
           claude: { status: 'absent', detail: 'Decision confidence is blocked by missing clarity and trust.' }
         },
-        evidenceNarrative: 'The model response was not fully valid JSON, so a controlled fallback decision output was applied instead of allowing the engine to fail.',
         actions: [
           {
             priority: 'critical',
@@ -371,12 +388,12 @@ if (!hasValidShape) {
     overallScore: 24,
     verdictHeadline: 'Weak AI recommendation presence',
     verdictLevel: 'weak',
-    summaryParagraph: `${name || 'This business'} is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options.`,
+    summaryParagraph: `${name || 'This business'} is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options. People will choose something else instead.`,
     pillars: {
-      clarity: { score: 8, finding: 'Basic identity present but unclear structure.' },
-      trust: { score: 5, finding: 'Limited visible trust signals.' },
-      difference: { score: 6, finding: 'Weak differentiation detected.' },
-      ease: { score: 5, finding: 'Low AI readability.' }
+      cclarity: { score: 8, finding: 'This business is not clear enough.' },
+      trust: { score: 5, finding: 'This business is not trusted enough.' },
+      difference: { score: 6, finding: 'This business is not strong enough compared to others.' },
+      ease: { score: 5, finding: 'This business is not simple enough to choose.' }
     },
     platformCoverage: {
       chatgpt: { status: 'weak', detail: 'Not strongly recommended.' },
@@ -388,27 +405,25 @@ if (!hasValidShape) {
     actions: [
       {
         priority: 'critical',
-        title: 'Fix structured output',
-        body: 'The AI response was not machine-readable. Improve prompt control and parsing.'
+        title: 'Clarify what this business is',
+        body: 'Make it instantly clear what the business offers and why someone should choose it.'
       },
       {
         priority: 'high',
-        title: 'Clarify positioning',
-        body: 'Define your business clearly so AI can understand and recommend it.'
+        title: 'Strengthen trust',
+        body: 'Add clear signs that the business is real, reliable, and easy to verify.'
       },
       {
         priority: 'high',
-        title: 'Increase trust signals',
-        body: 'Add external proof and citations.'
+        title: 'Show why it is different',
+        body: 'Make the reason to choose this business over others obvious.'
       },
       {
         priority: 'medium',
-        title: 'Improve structure',
-        body: 'Make your content easier for AI to extract.'
+        title: 'Make it easier to choose',
+        body: 'Reduce confusion and make the business simpler to understand and act on.'
       }
     ]
-  };
-}
     const fallbackPillar = {
       score: 0,
       finding: 'Insufficient data to assess this pillar.'
@@ -458,13 +473,13 @@ if (!hasValidShape) {
 
     if (total <= 30) {
       safeOutput.verdictLevel = 'absent';
-      safeOutput.verdictHeadline = 'AI does not recommend you';
+      safeOutput.verdictHeadline = 'Not the obvious choice';
     } else if (total <= 55) {
       safeOutput.verdictLevel = 'weak';
-      safeOutput.verdictHeadline = 'Weak AI recommendation presence';
+      safeOutput.verdictHeadline = 'Not consistently the obvious choice';
     } else {
       safeOutput.verdictLevel = 'present';
-      safeOutput.verdictHeadline = 'You are being recommended';
+      safeOutput.verdictHeadline = 'The obvious choice';
     }
 
     return {
@@ -500,14 +515,14 @@ if (!hasValidShape) {
           gemini: { status: 'absent', detail: 'No result returned.' },
           claude: { status: 'absent', detail: 'No result returned.' }
         },
-        evidenceNarrative: 'The backend returned an error before a structured diagnostic could be completed.',
-        actions: [
-          {
-            priority: 'critical',
-            title: 'Check backend configuration',
-            body: error.message || 'Verify your backend response structure and API configuration.'
-          }
-        ]
+        evidenceNarrative: 'The diagnostic could not be completed this time.',
+          actions: [
+        {
+          priority: 'critical',
+          title: 'Try the diagnostic again',
+          body: 'The diagnostic could not be completed this time. Please try again in a moment.'
+        }
+      ]
       })
     };
   }
