@@ -120,6 +120,29 @@ CHOIVE measures the obvious choice, not the best choice.
 
 --------------------------------
 
+DIFFERENCE SCORING RULE (CRITICAL):
+
+Difference must be scored independently from familiarity.
+
+A business can be:
+- widely chosen
+- highly visible
+- frequently returned by AI
+
+AND still have low difference.
+
+Do NOT increase the difference score just because the business is popular or commonly selected.
+
+If a business is interchangeable with many others, difference must remain low.
+
+CHOIVE separates:
+- being chosen (ease, familiarity, trust)
+- from being distinct (difference)
+
+These are NOT the same.
+
+--------------------------------
+
 CRITICAL INSTRUCTIONS:
 
 You are NOT allowed to:
@@ -201,14 +224,25 @@ PLATFORM COVERAGE RULE:
 
 For each platform (ChatGPT, Perplexity, Gemini, Claude):
 
-- Do NOT output generic labels
-- Each platform must explain WHY the business is not surfaced
-- Each must use DIFFERENT reasoning
-- Tie reasoning to:
-  → visibility
-  → structure
-  → trust signals
-  → data availability
+- The statement must reflect reality (present, weak, or absent)
+- The tone must be decisive, not explanatory
+- Use short, direct sentences
+- No long reasoning
+- No soft language
+
+If PRESENT:
+"ChatGPT returns this business early. Familiarity wins."
+
+If WEAK:
+"Perplexity includes it but does not favor it. Stronger options exist."
+
+If ABSENT:
+"Gemini does not surface this business. It lacks strong signals."
+
+Each platform must:
+- sound like a verdict
+- be short
+- be different
 
 --------------------------------
 
@@ -292,25 +326,42 @@ RULES:
 - Every sentence must be instantly understood on first read
 
 PILLAR LANGUAGE RULES (MANDATORY):
+
 - Each pillar finding must be ONE short sentence
-- Do NOT explain
-- Do NOT justify
-- Do NOT add extra detail
-
-Use EXACT phrasing:
-
-Clarity: "This business is not clear enough."
-Trust: "This business is not trusted enough."
-Difference: "This business is not strong enough compared to others."
-Ease: "This business is not simple enough to choose."
-
-SUMMARY RULE:
-- The summary must be one short paragraph
-- No technical words
-- No mention of AI, model, system, signals, or data
+- Maximum 6–8 words
+- No explanation
+- No second sentence
+- No connectors like “and”, “because”
 
 Write like this:
-"This business is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options."
+
+Clarity: "Instantly understood."
+Trust: "Widely trusted and predictable."
+Difference: "Not distinct from alternatives."
+Ease: "Easy to choose everywhere."
+
+Every pillar must feel:
+- fast
+- obvious
+- human
+
+SUMMARY RULE:
+
+- Maximum 2–3 sentences
+- No explanation tone
+- No storytelling
+- No filler words
+
+Write like a verdict:
+
+"This business is the obvious choice because it removes decision friction. It is familiar, everywhere, and requires no thinking."
+
+Each sentence must feel like a conclusion, not an explanation.
+
+Each summary must end with a consequence:
+"People will choose something else instead."
+
+Short. Sharp. Final.
 
 `;
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -515,13 +566,13 @@ if (!hasValidShape) {
 
     if (total <= 30) {
       safeOutput.verdictLevel = 'absent';
-      safeOutput.verdictHeadline = 'Not the obvious choice';
+      safeOutput.verdictHeadline = 'Not the obvious choice — losing decisions';
     } else if (total <= 55) {
       safeOutput.verdictLevel = 'weak';
-      safeOutput.verdictHeadline = 'Not consistently the obvious choice';
+      safeOutput.verdictHeadline = 'Not consistently the obvious choice — losing opportunities';
     } else {
       safeOutput.verdictLevel = 'present';
-      safeOutput.verdictHeadline = 'The obvious choice';
+      safeOutput.verdictHeadline = 'The obvious choice — winning decisions';
     }
 
     return {
