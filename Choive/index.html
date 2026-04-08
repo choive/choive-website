@@ -1100,21 +1100,26 @@ function showResults(r) {
           </div>
         </div>`).join('')}
     </div>
-    <div class="cta-block">
+        <div class="cta-block">
       <div class="cta-eyebrow">NEXT STEP</div>
 
       <div class="cta-sub-note">
-      Most businesses stop here. The ones that act become the ones chosen.
-      </div>
-      
-      <div class="cta-headline">
-      Fix what is stopping your business from being chosen.
-      </div>
-      
-      <div class="cta-body">
-      You have seen the result. Now remove the doubt. CHOIVE Analysis™ shows exactly what is blocking selection. CHOIVE System™ installs the structure that makes you the obvious choice.
+        Most businesses stop here. The ones that act become the ones chosen.
       </div>
 
+      <div class="cta-headline">
+        Fix what is stopping your business from being chosen.
+      </div>
+
+      <div class="cta-body">
+        You have seen the result. Now remove the doubt. CHOIVE Analysis™ shows exactly what is blocking selection. CHOIVE System™ installs the structure that makes you the obvious choice.
+      </div>
+
+      <div class="cta-buttons">
+        <button class="cta-primary" onclick="openForm('CHOIVE Analysis™', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">See what is costing you decisions →</button>
+        <button class="cta-secondary" onclick="openForm('CHOIVE System™', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Fix it and become the obvious choice →</button>
+      </div>
+    </div>`;
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
     document.getElementById('scoreBar').style.width = r.overallScore + '%';
