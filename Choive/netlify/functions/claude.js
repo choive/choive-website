@@ -23,7 +23,38 @@ exports.handler = async function (event) {
 
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
+const searchResponse = await fetch('https://google.serper.dev/search', {
+  method: 'POST',
+  headers: {
+    'X-API-KEY': process.env.SERPER_API_KEY,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    q: `${name} ${category} ${city}`,
+    num: 5
+  })
+});
 
+const searchData = await searchResponse.json();
+    let websiteContent = '';
+
+if (website) {
+  try {
+    const siteRes = await fetch(website);
+    const html = await siteRes.text();
+
+    // VERY SIMPLE TEXT EXTRACTION
+    websiteContent = html
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000); // limit size
+  } catch (e) {
+    websiteContent = '';
+  }
+}
     const prompt = `
 You are CHOIVE™ — a decision intelligence engine.
 
@@ -44,6 +75,11 @@ Location: ${city || ''}
 Website: ${website || ''}
 Description: ${description || ''}
 
+REAL WORLD DATA:
+
+Search results:
+${JSON.stringify(searchData)}
+
 --------------------------------
 
 CHOIVE PRINCIPLE:
@@ -62,6 +98,15 @@ You must evaluate across 4 pillars:
 1. Clarity  
 → Is the business immediately understood without effort?
 
+CLARITY SCORING RULE:
+
+- High clarity = clearly states what it is and who it serves
+- Medium clarity = understandable but generic
+- Low clarity = ambiguous, vague, or undefined
+
+IMPORTANT:
+Do NOT assign low clarity if the website clearly explains the business.
+
 2. Trust  
 → Does it feel real, credible, and verifiable?
 
@@ -75,10 +120,58 @@ You must evaluate across 4 pillars:
 
 AI SELECTION SIMULATION (CRITICAL):
 
+REAL DATA USAGE (MANDATORY):
+
+You must use the provided search results before scoring.
+
+Do NOT assume absence if search data exists.
+Do NOT ignore external mentions, directories, reviews, or public profiles found in search results.
+
+Base your judgment on:
+- the website
+- the provided search results
+- external evidence found in those results
+
+If the business appears in search results but is not strongly recommended, describe it as:
+- present but weak
+- known but not selected
+- visible but not favored
+
+Do NOT invent facts beyond the supplied evidence.
+
+
+Simulate how AI platforms...
+...
+
 Before scoring, you must simulate how AI systems would answer this question:
 
-"Best ${category || 'business'} in ${city || 'this location'}"
+QUERY CONTEXT CALIBRATION (MANDATORY):
 
+You must simulate TWO types of AI queries:
+
+1. Broad / consumer query:
+"Best ${category} in ${city}"
+
+2. Specific / niche query:
+"Top ${category} providers for [relevant use case]"
+
+Then determine:
+
+- Is the business visible in broad queries?
+- Is the business visible in niche or industry-specific queries?
+
+IMPORTANT:
+
+- A business may be absent in broad queries but present in niche queries
+- Do NOT treat niche presence as full absence
+- Score based on how often the business is selected across both contexts
+
+WEBSITE INTERPRETATION RULE:
+
+If website content is provided:
+- You MUST use it to determine what the business does
+- Do NOT say "unclear" if the website clearly explains it
+- Prefer website content over assumptions
 Generate a short representation of how:
 - ChatGPT
 - Perplexity
@@ -99,6 +192,24 @@ Scoring must reflect:
 - likelihood of being selected from those answers
 
 Do NOT score based only on the business description.
+
+--------------------------------
+
+TRUTH VALIDATION LAYER (CRITICAL):
+
+Before evaluating scores:
+
+1. If the business website or description clearly explains what it does:
+→ You MUST treat clarity as at least moderate.
+→ You MUST NOT say the business is unclear or undefined.
+
+2. If the business exists but is not recommended:
+→ You MUST describe it as "not selected" or "not surfaced"
+→ You MUST NOT say it is unknown or does not exist.
+
+3. Distinguish clearly:
+- Exists ≠ Selected
+- Clear ≠ Recommended
 
 --------------------------------
 
@@ -164,6 +275,20 @@ Instead:
 
 --------------------------------
 
+LANGUAGE GUARDRAIL (MANDATORY):
+
+- Do NOT say a business is unknown if it clearly exists
+- Do NOT say "no one knows it" or similar absolute statements
+- Do NOT say the website gives no signal if it clearly explains the business
+
+Instead, use accurate language:
+
+- "Not selected in AI recommendations"
+- "Not surfaced in common queries"
+- "Not positioned to be chosen"
+
+--------------------------------
+
 LANGUAGE RULE (CRITICAL):
 
 Every sentence must sound like how a normal person speaks.
@@ -217,6 +342,25 @@ Example structure:
 “This business is not the obvious choice because…”
 
 Then explain WHY.
+
+--------------------------------
+
+DECISION TRUTH (MANDATORY):
+
+The summary must make the consequence clear.
+
+Do NOT only describe the problem.
+You must show what it causes.
+
+Examples:
+
+- "This business is not the obvious choice, so it is being skipped in real decisions."
+- "This business is not selected, so customers are choosing alternatives instead."
+- "This business is clear, but not positioned to be chosen, so it loses opportunities."
+
+Every summary must include:
+→ what is happening
+→ what it leads to
 
 --------------------------------
 
