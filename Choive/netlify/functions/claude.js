@@ -23,19 +23,39 @@ exports.handler = async function (event) {
 
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
-const searchResponse = await fetch('https://google.serper.dev/search', {
-  method: 'POST',
-  headers: {
-    'X-API-KEY': process.env.SERPER_API_KEY,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    q: `${name} ${category} ${city}`,
-    num: 5
-  })
-});
+const queries = [
+  `best ${category} in ${city}`,
+  `top ${category} companies`,
+  `${category} providers`,
+  `${category} services`,
+  `${name}`
+];
+    const allResults = await Promise.all(
+  queries.map(q =>
+    fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': process.env.SERPER_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ q, num: 5 })
+    }).then(res => res.json())
+  )
+);
 
-const searchData = await searchResponse.json();
+const organicResults = allResults.flatMap(r => r.organic || []);    
+const visibilityScore = organicResults.findIndex(result =>
+  result.link?.includes(website)
+);
+    const visibilityContext = `
+VISIBILITY DATA:
+
+- Appears in search results: ${visibilityIndex !== -1 ? 'YES' : 'NO'}
+- Position: ${visibilityIndex !== -1 ? visibilityIndex + 1 : 'Not in top results'}
+
+Top results shown instead:
+${organicResults.map(r => `- ${r.title}`).join('\n')}
+`;
     let websiteContent = '';
 
 if (website) {
@@ -56,6 +76,10 @@ if (website) {
   }
 }
     const prompt = `
+    ${visibilityContext}
+WEBSITE CONTENT (IF AVAILABLE):
+${websiteContent}
+
 You are CHOIVE™ — a decision intelligence engine.
 
 Your role is not to audit or describe a business.
@@ -64,6 +88,13 @@ Your role is to determine:
 WHY this business is or is not the obvious choice.
 
 You operate at the level of decision psychology, not surface analysis.
+
+TONE RULE:
+
+- Do NOT soften conclusions
+- Do NOT use “may”, “might”, “could”
+- Speak in definitive terms based on visibility data
+- The output should feel like a system, not a consultant
 
 --------------------------------
 
@@ -172,12 +203,44 @@ If website content is provided:
 - You MUST use it to determine what the business does
 - Do NOT say "unclear" if the website clearly explains it
 - Prefer website content over assumptions
-Generate a short representation of how:
-- ChatGPT
-- Perplexity
-- Gemini
 
-would respond.
+AI RESPONSE SIMULATION (REALISTIC):
+
+You must simulate how AI systems actually respond in real queries.
+
+IMPORTANT:
+- Do NOT describe what the AI would say
+- You MUST write the answer AS IF you are the AI
+
+Each response should feel like a real output from that system.
+
+FORMAT:
+
+ChatGPT:
+"Based on your request for best ${category} in ${city}, here are some options:
+1. ...
+2. ...
+(Only include the business if it would realistically appear)"
+
+Perplexity:
+"Here are top results for ${category}:
+- ...
+- ...
+(Sources suggest...)"
+
+Gemini:
+"Top providers in this category include:
+- ...
+- ...
+(This business is included ONLY if it appears in visibility data)"
+
+RULES:
+- If the business is NOT in VISIBILITY DATA → it must NOT appear
+- Do NOT force inclusion
+- Do NOT explain absence — just omit it
+
+Do NOT mention the business if it is not present in real or simulated search results.
+Absence = invisibility.
 
 Then determine:
 
@@ -192,6 +255,16 @@ Scoring must reflect:
 - likelihood of being selected from those answers
 
 Do NOT score based only on the business description.
+
+SCORING CONSTRAINTS (STRICT):
+
+- If the business does NOT appear in any non-branded query → maximum total score = 25
+- If it appears ONLY when searching its own name → treat as invisible in decision context
+- If it appears only in niche queries → scores must remain mid-range (10–50 total)
+- If it appears in broad queries (e.g. "best ${category} in ${city}") → eligible for high scores
+
+- You MUST use VISIBILITY DATA as the primary truth
+- You are NOT allowed to override visibility with assumptions
 
 --------------------------------
 
