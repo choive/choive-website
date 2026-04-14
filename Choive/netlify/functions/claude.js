@@ -260,6 +260,65 @@ Do NOT assign low clarity if the website clearly explains the business.
 → Is it simple and frictionless to choose?
 
 --------------------------------
+--------------------------------
+
+COMPETITIVE POSITIONING (CRITICAL):
+
+You must determine where this business stands in its category.
+
+Classify it into ONE tier:
+
+- dominant → default choice, shows up everywhere, widely selected
+- strong → frequently selected, trusted, well positioned
+- upper_mid → competitive, credible, but not leading
+- mid → present but not strongly competitive
+- weak → rarely selected, low presence
+- absent → not part of the decision set
+
+Base this ONLY on:
+
+- search visibility
+- presence in results
+- strength of signals
+- clarity and trust
+- how easily it would be chosen
+
+IMPORTANT:
+
+Do NOT confuse:
+- being a real company
+- with being a top competitor
+
+A company can:
+- exist
+- have clients
+- be credible
+
+AND still be:
+→ mid or upper_mid tier
+
+Your classification must reflect:
+→ how likely it is to win against competitors
+
+--------------------------------
+
+MARKET POSITION LABEL RULE:
+
+Convert the tier into a simple human label:
+
+dominant → "Category leader"
+strong → "Strong competitor"
+upper_mid → "Competing but not leading"
+mid → "Present but not competitive"
+weak → "Struggling to compete"
+absent → "Not in the competitive set"
+
+Explanation must be:
+- 1 short sentence
+- direct
+- no fluff
+
+--------------------------------
 
 REAL SCORING FOUNDATION (CRITICAL):
 
@@ -533,6 +592,11 @@ If needed, shorten sentences to keep JSON valid.
   "verdictLevel": "absent",
   "summaryParagraph": "",
   "businessUnderstanding": "",
+  "marketPosition": {
+    "tier": "",
+    "label": "",
+    "explanation": ""
+  },
   "pillars": {
     "clarity": { "score": 0, "finding": "" },
     "trust": { "score": 0, "finding": "" },
@@ -777,6 +841,11 @@ if (!hasValidShape) {
       verdictLevel: output?.verdictLevel || 'absent',
       summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
       businessUnderstanding: output?.businessUnderstanding || '',
+      marketPosition: output?.marketPosition || {
+        tier: 'unknown',
+        label: 'Unknown position',
+        explanation: 'Not enough data to determine position.'
+      },
       evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
       pillars: {
         clarity: output?.pillars?.clarity || { ...fallbackPillar },
