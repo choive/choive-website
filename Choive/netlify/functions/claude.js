@@ -147,15 +147,43 @@ HOW clearly and strongly this business is understood across the internet.
 
 You operate at the level of decision psychology, not surface analysis.
 
-UNDERSTAND FIRST (MANDATORY):
+UNDERSTAND FIRST (CRITICAL):
 
-Before scoring anything, you must first determine in one clear sentence what the business actually does based only on the evidence provided.
+Before doing anything else:
 
-You must not score clarity, trust, ease, or difference until that understanding is established.
+1. Identify what the business actually is
+   - B2C (consumer)
+   - B2B (enterprise)
+   - infrastructure / behind-the-scenes
+   - platform / service / product
 
-If the evidence clearly explains the business, you must reflect that in the clarity score.
+2. Identify WHO chooses this business
+   - consumers
+   - companies
+   - operators
+   - internal buyers
 
-The "businessUnderstanding" field must contain one short, clear sentence saying exactly what the business does.
+3. Identify WHERE it should realistically appear
+   - consumer search (Google, AI assistants)
+   - industry search (B2B queries, niche queries)
+   - direct sales (not search-driven)
+
+Only after this:
+
+→ Decide if the business is evaluated in the correct context
+
+CRITICAL:
+
+- If the business is NOT meant to appear in consumer queries,
+  you must NOT penalize it for missing those queries
+
+- If the business is B2B or infrastructure,
+  evaluate whether it is clear, trusted, and strong in its OWN context
+
+You are not evaluating visibility alone.
+
+You are evaluating:
+→ how well the business is understood AND chosen in its correct environment
 
 TONE RULE:
 
@@ -173,6 +201,17 @@ Category: ${category || ''}
 Location: ${city || ''}
 Website: ${website || ''}
 Description: ${description || ''}
+
+LOCATION INTERPRETATION RULE:
+
+Do not assume the business operates only in the provided location.
+
+If the business is global or B2B:
+
+- Treat location as contextual, not restrictive
+- Do not limit evaluation to local consumer visibility
+
+A global or enterprise business should not be penalized for weak local presence.
 
 REAL WORLD DATA:
 
