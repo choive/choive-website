@@ -43,18 +43,64 @@ const queries = [
   )
 );
 
-const organicResults = allResults.flatMap(r => r.organic || []);    
-const visibilityScore = organicResults.findIndex(result =>
-  result.link?.includes(website)
+const organicResults = allResults.flatMap(r => r.organic || []); 
+
+const topResults = organicResults.slice(0, 5);
+
+const pageContents = await Promise.all(
+  topResults.map(r => {
+    if (!r.link) return '';
+    return fetch(r.link)
+      .then(res => res.text())
+      .then(html =>
+        html
+          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 3000)
+      )
+      .catch(() => '');
+  })
 );
+
+const combinedData = topResults.map((r, i) => ({
+  title: r.title || '',
+  snippet: r.snippet || '',
+  link: r.link || '',
+  content: pageContents[i] || ''
+}));
+
+    const normalizeUrl = (url) => {
+  if (!url) return '';
+  return url
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+};
+
+const targetDomain = normalizeUrl(website);
+
+const visibilityIndex = organicResults.findIndex(result => {
+  const resultDomain = normalizeUrl(result.link || '');
+  return targetDomain && resultDomain.includes(targetDomain);
+});
     const visibilityContext = `
 VISIBILITY DATA:
 
-- Appears in search results: ${visibilityIndex !== -1 ? 'YES' : 'NO'}
-- Position: ${visibilityIndex !== -1 ? visibilityIndex + 1 : 'Not in top results'}
+- Brand appears in search results: ${visibilityIndex !== -1 ? 'YES' : 'NO'}
+- First appearance position: ${visibilityIndex !== -1 ? visibilityIndex + 1 : 'Not in top results'}
+- Brand domain checked: ${targetDomain || 'No website provided'}
 
-Top results shown instead:
-${organicResults.map(r => `- ${r.title}`).join('\n')}
+TOP RESULTS SHOWN:
+${topResults.map((r, i) => `${i + 1}. ${r.title} — ${r.link}`).join('\n')}
+
+VISIBILITY INTERPRETATION:
+- If the business does not appear in non-branded results, it is weak in discovery.
+- If it appears only in branded results, it is known but not broadly selected.
+- If it appears early in broad results, it is strongly visible.
 `;
     let websiteContent = '';
 
@@ -76,18 +122,40 @@ if (website) {
   }
 }
     const prompt = `
-    ${visibilityContext}
-WEBSITE CONTENT (IF AVAILABLE):
+    REAL EVIDENCE:
+
+${visibilityContext}
+
+PRIMARY WEBSITE CONTENT:
 ${websiteContent}
+
+SEARCH RESULTS (STRUCTURED):
+
+${combinedData.map(r => `
+Title: ${r.title}
+Snippet: ${r.snippet}
+Link: ${r.link}
+Content: ${r.content}
+`).join('\n\n')}
 
 You are CHOIVE™ — a decision intelligence engine.
 
 Your role is not to audit or describe a business.
 
 Your role is to determine:
-WHY this business is or is not the obvious choice.
+HOW clearly and strongly this business is understood across the internet.
 
 You operate at the level of decision psychology, not surface analysis.
+
+UNDERSTAND FIRST (MANDATORY):
+
+Before scoring anything, you must first determine in one clear sentence what the business actually does based only on the evidence provided.
+
+You must not score clarity, trust, ease, or difference until that understanding is established.
+
+If the evidence clearly explains the business, you must reflect that in the clarity score.
+
+The "businessUnderstanding" field must contain one short, clear sentence saying exactly what the business does.
 
 TONE RULE:
 
@@ -108,9 +176,14 @@ Description: ${description || ''}
 
 REAL WORLD DATA:
 
-Search results:
-${JSON.stringify(searchData)}
+SEARCH RESULTS (STRUCTURED):
 
+${combinedData.map(r => `
+Title: ${r.title}
+Snippet: ${r.snippet}
+Link: ${r.link}
+Content: ${r.content}
+`).join('\n\n')}
 --------------------------------
 
 CHOIVE PRINCIPLE:
@@ -149,122 +222,37 @@ Do NOT assign low clarity if the website clearly explains the business.
 
 --------------------------------
 
-AI SELECTION SIMULATION (CRITICAL):
+REAL SCORING FOUNDATION (CRITICAL):
 
-REAL DATA USAGE (MANDATORY):
+Score this business based only on the real evidence provided above.
 
-You must use the provided search results before scoring.
+Use only:
+- search visibility
+- search result titles and snippets
+- website content
+- external source presence
 
-Do NOT assume absence if search data exists.
-Do NOT ignore external mentions, directories, reviews, or public profiles found in search results.
+Do NOT simulate ChatGPT, Claude, Gemini, or Perplexity responses.
+Do NOT guess what AI would say.
+Do NOT invent missing facts.
 
-Base your judgment on:
-- the website
-- the provided search results
-- external evidence found in those results
+Your job is to determine how clearly and strongly this business exists across the internet, and how likely it is to be selected because of that evidence.
 
-If the business appears in search results but is not strongly recommended, describe it as:
-- present but weak
-- known but not selected
-- visible but not favored
+SCORING RULES:
 
-Do NOT invent facts beyond the supplied evidence.
+- Clarity = how clearly the business explains what it does
+- Trust = how credible and legitimate it appears across sources
+- Ease = how easy it is to find and understand quickly
+- Difference = how clearly it stands apart from alternatives
 
+VISIBILITY RULES:
 
-Simulate how AI platforms...
-...
+- If the business does not appear in non-branded search results, total score cannot exceed 25
+- If it appears only in branded search, treat it as known but not broadly discoverable
+- If it appears in niche results, score can be moderate
+- If it appears strongly in broad results, score can be high
 
-Before scoring, you must simulate how AI systems would answer this question:
-
-QUERY CONTEXT CALIBRATION (MANDATORY):
-
-You must simulate TWO types of AI queries:
-
-1. Broad / consumer query:
-"Best ${category} in ${city}"
-
-2. Specific / niche query:
-"Top ${category} providers for [relevant use case]"
-
-Then determine:
-
-- Is the business visible in broad queries?
-- Is the business visible in niche or industry-specific queries?
-
-IMPORTANT:
-
-- A business may be absent in broad queries but present in niche queries
-- Do NOT treat niche presence as full absence
-- Score based on how often the business is selected across both contexts
-
-WEBSITE INTERPRETATION RULE:
-
-If website content is provided:
-- You MUST use it to determine what the business does
-- Do NOT say "unclear" if the website clearly explains it
-- Prefer website content over assumptions
-
-AI RESPONSE SIMULATION (REALISTIC):
-
-You must simulate how AI systems actually respond in real queries.
-
-IMPORTANT:
-- Do NOT describe what the AI would say
-- You MUST write the answer AS IF you are the AI
-
-Each response should feel like a real output from that system.
-
-FORMAT:
-
-ChatGPT:
-"Based on your request for best ${category} in ${city}, here are some options:
-1. ...
-2. ...
-(Only include the business if it would realistically appear)"
-
-Perplexity:
-"Here are top results for ${category}:
-- ...
-- ...
-(Sources suggest...)"
-
-Gemini:
-"Top providers in this category include:
-- ...
-- ...
-(This business is included ONLY if it appears in visibility data)"
-
-RULES:
-- If the business is NOT in VISIBILITY DATA → it must NOT appear
-- Do NOT force inclusion
-- Do NOT explain absence — just omit it
-
-Do NOT mention the business if it is not present in real or simulated search results.
-Absence = invisibility.
-
-Then determine:
-
-- Would this business appear in those answers?
-- How prominently?
-- In what context?
-
-Use THIS as the primary basis for scoring.
-
-Scoring must reflect:
-- likelihood of appearing in AI answers
-- likelihood of being selected from those answers
-
-Do NOT score based only on the business description.
-
-SCORING CONSTRAINTS (STRICT):
-
-- If the business does NOT appear in any non-branded query → maximum total score = 25
-- If it appears ONLY when searching its own name → treat as invisible in decision context
-- If it appears only in niche queries → scores must remain mid-range (10–50 total)
-- If it appears in broad queries (e.g. "best ${category} in ${city}") → eligible for high scores
-
-- You MUST use VISIBILITY DATA as the primary truth
-- You are NOT allowed to override visibility with assumptions
+Do not override evidence with assumptions.
 
 --------------------------------
 
@@ -505,6 +493,7 @@ If needed, shorten sentences to keep JSON valid.
   "verdictHeadline": "",
   "verdictLevel": "absent",
   "summaryParagraph": "",
+  "businessUnderstanding": "",
   "pillars": {
     "clarity": { "score": 0, "finding": "" },
     "trust": { "score": 0, "finding": "" },
@@ -534,7 +523,6 @@ RULES:
 - overallScore must equal sum of all pillars
 - verdictLevel must be: absent, weak, present
 - Be sharp, decisive, and strategic
-- Focus on WHY the business is NOT the obvious choice
 - Eliminate all generic phrasing
 - Use short, direct sentences
 - No technical language
@@ -749,6 +737,7 @@ if (!hasValidShape) {
       verdictHeadline: output?.verdictHeadline || 'Diagnostic incomplete',
       verdictLevel: output?.verdictLevel || 'absent',
       summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
+      businessUnderstanding: output?.businessUnderstanding || '',
       evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
       pillars: {
         clarity: output?.pillars?.clarity || { ...fallbackPillar },
