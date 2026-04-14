@@ -29,43 +29,40 @@ export async function handler(event) {
       searchData.organic.map(r => fetchPage(r.link))
     );
 
-    // 🧠 3. AI ANALYSIS
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an AI evaluating how clearly and strongly a business is understood across the internet."
-          },
-          {
-            role: "user",
-            content: `
-Evaluate this company based on the data below.
+    // 🧠 3. AI ANALYSIS (CLAUDE)
+const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+  method: "POST",
+  headers: {
+    "x-api-key": process.env.CLAUDE_API_KEY,
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "claude-3-sonnet-20240229",
+    max_tokens: 1000,
+    messages: [
+      {
+        role: "user",
+        content: `
+You are evaluating how AI systems understand a company across the internet.
 
 Score from 0–25 each:
-- Clarity
-- Trust
-- Ease
-- Difference
+- Clarity (is it obvious what they do?)
+- Trust (do they feel credible and legitimate?)
+- Ease (is it easy to understand quickly?)
+- Difference (are they clearly distinct?)
 
-Also explain why.
+Also explain the reasoning clearly.
 
 DATA:
 ${JSON.stringify(pages).slice(0, 8000)}
-            `
-          }
-        ]
-      })
-    });
+        `
+      }
+    ]
+  })
+});
 
-    const aiData = await aiRes.json();
+const aiData = await aiRes.json();
 
     // 📊 4. RETURN RESULT
     return {
