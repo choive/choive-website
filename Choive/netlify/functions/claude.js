@@ -24,10 +24,18 @@ exports.handler = async function (event) {
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
 const queries = [
+  // BROAD / CONSUMER
   `best ${category} in ${city}`,
-  `top ${category} companies`,
-  `${category} providers`,
   `${category} services`,
+
+  // INDUSTRY / COMPETITIVE
+  `${category} platform providers`,
+  `${category} software companies`,
+  `${category} solutions for operators`,
+  `${category} middleware companies`,
+  `${category} B2B providers`,
+
+  // BRAND
   `${name}`
 ];
     const allResults = await Promise.all(
@@ -71,6 +79,11 @@ const combinedData = topResults.map((r, i) => ({
   link: r.link || '',
   content: pageContents[i] || ''
 }));
+
+const competitorSignals = combinedData
+  .map(r => `${r.title} ${r.snippet}`)
+  .join(' ')
+  .toLowerCase();
 
     const normalizeUrl = (url) => {
   if (!url) return '';
@@ -924,10 +937,17 @@ if (!hasValidShape) {
     const total = c + t + d + e;
     safeOutput.overallScore = total;
 
+    const easeScore = Number(safeOutput.pillars.ease?.score || 0);
+    const marketTier = safeOutput.marketPosition?.tier || '';
+    
     if (total <= 30) {
       safeOutput.verdictLevel = 'absent';
       safeOutput.verdictHeadline = 'Not the obvious choice — losing decisions';
-    } else if (total <= 55) {
+    } else if (
+      total <= 55 ||
+      easeScore < 12 ||
+      ['upper_mid', 'mid', 'weak', 'absent', 'unknown'].includes(marketTier)
+    ) {
       safeOutput.verdictLevel = 'weak';
       safeOutput.verdictHeadline = 'Not consistently the obvious choice — losing opportunities';
     } else {
