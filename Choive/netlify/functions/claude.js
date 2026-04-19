@@ -1,4 +1,40 @@
 exports.handler = async function (event) {
+
+  const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+  const ANTHROPIC_MODEL = 'claude-sonnet-4-5';
+
+  async function callClaude(messages, tools = undefined) {
+  const response = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 2000,
+      messages,
+      ...(tools ? { tools } : {})
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `Anthropic API error (${response.status})`);
+  }
+
+  return data;
+}
+
+  const CLAUDE_WEB_TOOLS = [
+  {
+    type: 'web_search_20260209',
+    name: 'web_search'
+  }
+];
+  
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -135,7 +171,21 @@ if (website) {
   }
 }
     const prompt = `
-    REAL EVIDENCE:
+REAL EVIDENCE:
+
+LIVE WEB RULE (MANDATORY):
+
+Use live web search to verify the business, understand what it does, and assess how it is represented online.
+
+Use web evidence to:
+- confirm what the business is
+- confirm whether it is credible
+- confirm how easily it is understood
+- confirm how it compares with alternatives
+
+Do not rely only on the provided website field.
+Do not invent facts.
+If live web evidence conflicts with assumptions, follow the live web evidence.
 
 ${visibilityContext}
 
@@ -161,6 +211,25 @@ HOW clearly and strongly this business is understood across the internet.
 You operate at the level of decision psychology, not surface analysis.
 
 UNDERSTAND FIRST (CRITICAL):
+
+LIVE EVIDENCE PRIORITY:
+
+First, use live web evidence to determine:
+
+1. What the business actually does
+2. Who the business serves
+3. Whether it is B2B, B2C, infrastructure, platform, service, or product
+4. What context it should realistically compete in
+
+Only after that:
+- score clarity
+- score trust
+- score ease
+- score difference
+
+If the website is clear and live evidence confirms it, clarity must stay high.
+If the business has real clients, partnerships, or proof, trust must stay moderate to high.
+Ease must reflect how easily it is encountered and chosen in real decision moments.
 
 Before doing anything else:
 
@@ -623,6 +692,22 @@ Each action must fix a specific failure.
 
 OUTPUT FORMAT:
 
+STRICT OUTPUT MODE (MANDATORY):
+
+You must return ONLY valid JSON.
+
+Do not include:
+- explanations
+- extra text
+- markdown
+- commentary
+
+If you cannot complete the task, still return valid JSON with all required fields.
+
+The JSON must strictly follow the schema provided.
+
+No text is allowed before or after the JSON.
+
 Return ONLY valid JSON.
 
 CRITICAL:
@@ -731,35 +816,15 @@ Each summary must end with a consequence:
 Short. Sharp. Final.
 
 `;
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      })
-    });
-
-    const raw = await anthropicResponse.json();
-    if (!anthropicResponse.ok) {
-  console.error('ANTHROPIC STATUS:', anthropicResponse.status);
-  console.error('ANTHROPIC RAW:', JSON.stringify(raw));
-
-  throw new Error(
-    raw?.error?.message || `Anthropic API error (${anthropicResponse.status})`
-  );
-}
-
+    const raw = await callClaude(
+  [
+    {
+      role: 'user',
+      content: prompt
+    }
+  ],
+  CLAUDE_WEB_TOOLS
+);
     let output = raw;
 
       if (raw.content && Array.isArray(raw.content)) {
