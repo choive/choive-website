@@ -1,7 +1,7 @@
 exports.handler = async function (event) {
 
   const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-  const ANTHROPIC_MODEL = 'claude-sonnet-4-5-20250929';
+  const ANTHROPIC_MODEL = 'claude-3-7-sonnet-latest';
   async function callClaude(messages, tools = undefined) {
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -10,13 +10,14 @@ exports.handler = async function (event) {
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1200,
-      temperature: 0.2,
-      messages,
-      ...(tools ? { tools } : {})
-    })
+  body: JSON.stringify({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1200,
+    temperature: 0.2,
+    messages,
+    ...(tools ? { tools } : {}),
+    tool_choice: { type: 'auto' }
+  })
   });
 
   const data = await response.json();
@@ -646,18 +647,6 @@ If needed, shorten sentences to keep JSON valid.
     "gemini": { "status": "absent", "detail": "" },
     "claude": { "status": "absent", "detail": "" }
   },
-  PLATFORM COVERAGE SCHEMA RULE:
-
-These fields do NOT represent direct API results from each platform.
-
-They represent CHOIVE's interpretation of how strongly the business is positioned to be returned in those environments.
-
-Use:
-- present = strongly positioned
-- weak = somewhat understood but not favored
-- absent = not strongly positioned to be returned
-
-Do not use "absent" to mean the business does not exist.
 
   "evidenceNarrative": "",
   "actions": [
@@ -948,8 +937,50 @@ return {
   },
   body: JSON.stringify(safeOutput)
 };
+    
+} catch (error) {
   console.error('CHOIVE FUNCTION ERROR:', error);
   return {
+    statusCode: 500,
+    
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      overallScore: 0,
+      verdictHeadline: 'Diagnostic failed',
+      verdictLevel: 'weak',
+      summaryParagraph: 'The system could not complete this analysis.',
+      businessUnderstanding: '',
+      marketPosition: {
+        tier: 'unknown',
+        label: 'Unknown position',
+        explanation: 'System error during evaluation.'
+      },
+      evidenceNarrative: 'The diagnostic failed due to a backend error.',
+      pillars: {
+        clarity: { score: 0, finding: 'No result returned.' },
+        trust: { score: 0, finding: 'No result returned.' },
+        difference: { score: 0, finding: 'No result returned.' },
+        ease: { score: 0, finding: 'No result returned.' }
+      },
+      platformCoverage: {
+        chatgpt: { status: 'weak', detail: 'No result returned.' },
+        perplexity: { status: 'weak', detail: 'No result returned.' },
+        gemini: { status: 'weak', detail: 'No result returned.' },
+        claude: { status: 'weak', detail: 'No result returned.' }
+      },
+      actions: [
+        {
+          priority: 'critical',
+          title: 'Retry diagnostic',
+          body: 'System error occurred. Try again.'
+        }
+      ]
+    })
+  };
+}
     statusCode: 500,
       headers: {
         ...corsHeaders,
