@@ -847,50 +847,53 @@ const raw = await callClaude(
       } else {
         throw e;
       }
-    } catch (_) {
-      output = {
-        overallScore: 12,
-        verdictHeadline: 'AI does not recommend you',
-        verdictLevel: 'absent',
-        evidenceNarrative: 'The available signals are incomplete, unclear, or inconsistent, preventing a confident recommendation across AI systems.',
-        pillars: {
-          clarity: { score: 3, finding: 'The business is not immediately understood.' },
-          trust: { score: 2, finding: 'Credibility is weakened by incomplete or broken signals.' },
-          difference: { score: 4, finding: 'The offer is not clearly distinct from alternatives.' },
-          ease: { score: 3, finding: 'Decision friction is too high for confident selection.' }
-        },
-        platformCoverage: {
-          chatgpt: { status: 'absent', detail: 'Insufficient structured confidence for recommendation.' },
-          perplexity: { status: 'absent', detail: 'Weak searchable and verifiable signal density.' },
-          gemini: { status: 'absent', detail: 'Not enough clear business definition for surfacing.' },
-          claude: { status: 'absent', detail: 'Decision confidence is blocked by missing clarity and trust.' }
-        },
-        actions: [
-          {
-            priority: 'critical',
-            title: 'Remove decision ambiguity',
-            body: 'Clarify exactly what the business is and why it should be the obvious choice.'
-          },
-          {
-            priority: 'critical',
-            title: 'Repair trust signals',
-            body: 'Fix broken or unverifiable infrastructure and establish legitimate web presence.'
-          },
-          {
-            priority: 'high',
-            title: 'Define differentiation',
-            body: 'State what makes the business meaningfully different from alternatives.'
-          },
-          {
-            priority: 'medium',
-            title: 'Improve AI readability',
-            body: 'Make the business easier to understand, verify, and select.'
-          }
-        ]
-      };
+    output = {
+  overallScore: 20,
+  verdictHeadline: 'Not strongly positioned to be chosen',
+  verdictLevel: 'weak',
+  summaryParagraph: 'This business could not be fully verified with enough confidence from the available evidence. It is not strongly positioned to be chosen.',
+  businessUnderstanding: '',
+  marketPosition: {
+    tier: 'unknown',
+    label: 'Unclear position',
+    explanation: 'Evidence was incomplete.'
+  },
+  evidenceNarrative: 'The available evidence was incomplete or could not be structured cleanly enough for a stronger result.',
+  pillars: {
+    clarity: { score: 6, finding: 'Not verified clearly enough.' },
+    trust: { score: 5, finding: 'Trust signals are incomplete.' },
+    difference: { score: 4, finding: 'Difference is not clear.' },
+    ease: { score: 5, finding: 'Not easy to encounter.' }
+  },
+  platformCoverage: {
+    chatgpt: { status: 'weak', detail: 'Understood weakly, not favored.' },
+    perplexity: { status: 'weak', detail: 'Positioning is not strong.' },
+    gemini: { status: 'weak', detail: 'Not strongly positioned.' },
+    claude: { status: 'weak', detail: 'Evidence is incomplete.' }
+  },
+  actions: [
+    {
+      priority: 'critical',
+      title: 'Strengthen business definition',
+      body: 'Make the business easier to identify and verify from available evidence.'
+    },
+    {
+      priority: 'high',
+      title: 'Improve trust signals',
+      body: 'Add stronger visible proof, references, and supporting signals.'
+    },
+    {
+      priority: 'high',
+      title: 'Clarify positioning',
+      body: 'Make what the business does and why it is different easier to understand.'
+    },
+    {
+      priority: 'medium',
+      title: 'Increase discoverability',
+      body: 'Improve how easily the business is encountered in relevant decision contexts.'
     }
-  }
-}
+  ]
+};
 
 // 👇 ADD THIS RIGHT HERE 👇
 const hasValidShape =
@@ -908,48 +911,53 @@ const hasValidShape =
   output.platformCoverage.claude;
 
 if (!hasValidShape) {
-  output = {
-    overallScore: 24,
-    verdictHeadline: 'Not consistently the obvious choice',
-    verdictLevel: 'weak',
-    summaryParagraph: `${name || 'This business'} is not the obvious choice because it is not clear enough, not trusted enough, and not strong enough compared to other options. People will choose something else instead.`,
-    pillars: {
-      clarity: { score: 8, finding: 'This business is not clear enough.' },
-      trust: { score: 5, finding: 'This business is not trusted enough.' },
-      difference: { score: 6, finding: 'This business is not strong enough compared to others.' },
-      ease: { score: 5, finding: 'This business is not simple enough to choose.' }
+output = {
+  overallScore: 24,
+  verdictHeadline: 'Not strongly positioned to be chosen',
+  verdictLevel: 'weak',
+  summaryParagraph: `${name || 'This business'} is understood only weakly from the available evidence and is not strongly positioned to be chosen. Stronger alternatives are easier to encounter and trust.`,
+  businessUnderstanding: '',
+  marketPosition: {
+    tier: 'unknown',
+    label: 'Unclear position',
+    explanation: 'The evidence does not support a stronger competitive conclusion.'
+  },
+  evidenceNarrative: 'The business does not yet show enough clear, credible, and easy-to-verify signals to support a stronger result.',
+  pillars: {
+    clarity: { score: 8, finding: 'Not defined clearly enough.' },
+    trust: { score: 6, finding: 'Trust signals are limited.' },
+    difference: { score: 5, finding: 'Difference is not clear.' },
+    ease: { score: 5, finding: 'Hard to encounter quickly.' }
+  },
+  platformCoverage: {
+    chatgpt: { status: 'weak', detail: 'Understood, but not favored.' },
+    perplexity: { status: 'weak', detail: 'Not strongly positioned.' },
+    gemini: { status: 'weak', detail: 'Positioning is limited.' },
+    claude: { status: 'weak', detail: 'Evidence supports only a weak position.' }
+  },
+  actions: [
+    {
+      priority: 'critical',
+      title: 'Clarify the business fast',
+      body: 'Make what the business is and who it serves easier to understand immediately.'
     },
-    platformCoverage: {
-      chatgpt: { status: 'weak', detail: 'Not strongly recommended.' },
-      perplexity: { status: 'weak', detail: 'Not strongly recommended.' },
-      gemini: { status: 'weak', detail: 'Not strongly recommended.' },
-      claude: { status: 'weak', detail: 'Not strongly recommended.' }
+    {
+      priority: 'high',
+      title: 'Strengthen visible trust',
+      body: 'Add stronger proof, references, and credibility signals people can verify quickly.'
     },
-    evidenceNarrative: 'The business does not present enough clear, reliable, or strong information for people to confidently choose it.',
-    actions: [
-      {
-        priority: 'critical',
-        title: 'Clarify what this business is',
-        body: 'Make it instantly clear what the business offers and why someone should choose it.'
-      },
-      {
-        priority: 'high',
-        title: 'Strengthen trust',
-        body: 'Add clear signs that the business is real, reliable, and easy to verify.'
-      },
-      {
-        priority: 'high',
-        title: 'Show why it is different',
-        body: 'Make the reason to choose this business over others obvious.'
-      },
-      {
-        priority: 'medium',
-        title: 'Make it easier to choose',
-        body: 'Reduce confusion and make the business simpler to understand and act on.'
-      }
-    ]
-  };
-  }  
+    {
+      priority: 'high',
+      title: 'Sharpen difference',
+      body: 'Make the reason to choose this business over alternatives more obvious.'
+    },
+    {
+      priority: 'medium',
+      title: 'Improve encounter strength',
+      body: 'Increase how easily the business is found and understood in relevant decision contexts.'
+    }
+  ]
+};
     const fallbackPillar = {
       score: 0,
       finding: 'Insufficient data to assess this pillar.'
@@ -1037,32 +1045,35 @@ if (!hasValidShape) {
         ...corsHeaders,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        overallScore: 0,
-        verdictHeadline: 'Diagnostic failed',
-        verdictLevel: 'absent',
-        summaryParagraph: 'This diagnostic could not be completed. Please try again.',
-        pillars: {
-          clarity: { score: 3, finding: 'This business is not clear enough.' },
-          trust: { score: 2, finding: 'This business is not trusted enough.' },
-          difference: { score: 4, finding: 'This business is not strong enough compared to others.' },
-          ease: { score: 3, finding: 'This business is not simple enough to choose.' }
-        },
-        platformCoverage: {
-          chatgpt: { status: 'absent', detail: 'No result returned.' },
-          perplexity: { status: 'absent', detail: 'No result returned.' },
-          gemini: { status: 'absent', detail: 'No result returned.' },
-          claude: { status: 'absent', detail: 'No result returned.' }
-        },
-        evidenceNarrative: 'The diagnostic could not be completed this time.',
-          actions: [
-        {
-          priority: 'critical',
-          title: 'Try the diagnostic again',
-          body: 'The diagnostic could not be completed this time. Please try again in a moment.'
-        }
-      ]
-      })
-    };
-  }
-};
+body: JSON.stringify({
+  overallScore: 0,
+  verdictHeadline: 'Diagnostic could not be completed',
+  verdictLevel: 'weak',
+  summaryParagraph: 'This diagnostic could not be completed from the available evidence at this time. Please try again.',
+  businessUnderstanding: '',
+  marketPosition: {
+    tier: 'unknown',
+    label: 'Unknown position',
+    explanation: 'The diagnostic did not complete successfully.'
+  },
+  evidenceNarrative: 'The diagnostic could not complete its evidence review.',
+  pillars: {
+    clarity: { score: 0, finding: 'No result returned.' },
+    trust: { score: 0, finding: 'No result returned.' },
+    difference: { score: 0, finding: 'No result returned.' },
+    ease: { score: 0, finding: 'No result returned.' }
+  },
+  platformCoverage: {
+    chatgpt: { status: 'weak', detail: 'No completed result.' },
+    perplexity: { status: 'weak', detail: 'No completed result.' },
+    gemini: { status: 'weak', detail: 'No completed result.' },
+    claude: { status: 'weak', detail: 'No completed result.' }
+  },
+  actions: [
+    {
+      priority: 'critical',
+      title: 'Run the diagnostic again',
+      body: 'The diagnostic did not complete successfully this time. Please try again.'
+    }
+  ]
+})
