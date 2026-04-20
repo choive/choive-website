@@ -28,10 +28,11 @@ exports.handler = async function (event) {
   return data;
 }
 
-  const CLAUDE_WEB_TOOLS = [
+const CLAUDE_WEB_TOOLS = [
   {
-    type: 'web_search_20260209',
-    name: 'web_search'
+    type: 'web_search_20250305',
+    name: 'web_search',
+    max_uses: 3
   }
 ];
   
@@ -60,6 +61,26 @@ exports.handler = async function (event) {
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
 
+const externalContext = `
+BUSINESS INPUT:
+
+Name: ${name || ''}
+Category: ${category || ''}
+Location: ${city || ''}
+Website: ${website || 'not provided'}
+Description: ${description || ''}
+
+INSTRUCTION:
+
+Use live web search to:
+- identify the business
+- verify what it does
+- assess its presence
+- compare it with alternatives
+
+Do not rely only on the submitted input.
+`;
+    
 const prompt = `
 ${externalContext}
 
@@ -710,9 +731,10 @@ const raw = await callClaude(
   ],
   CLAUDE_WEB_TOOLS
 );
-    let output = raw;
 
-      if (raw.content && Array.isArray(raw.content)) {
+let output = raw;
+
+if (raw.content && Array.isArray(raw.content)) {
   const text = raw.content
     .filter(block => block.type === 'text')
     .map(block => block.text || '')
@@ -731,55 +753,58 @@ const raw = await callClaude(
       } else {
         throw e;
       }
-    output = {
-  overallScore: 20,
-  verdictHeadline: 'Not strongly positioned to be chosen',
-  verdictLevel: 'weak',
-  summaryParagraph: 'This business could not be fully verified with enough confidence from the available evidence. It is not strongly positioned to be chosen.',
-  businessUnderstanding: '',
-  marketPosition: {
-    tier: 'unknown',
-    label: 'Unclear position',
-    explanation: 'Evidence was incomplete.'
-  },
-  evidenceNarrative: 'The available evidence was incomplete or could not be structured cleanly enough for a stronger result.',
-  pillars: {
-    clarity: { score: 6, finding: 'Not verified clearly enough.' },
-    trust: { score: 5, finding: 'Trust signals are incomplete.' },
-    difference: { score: 4, finding: 'Difference is not clear.' },
-    ease: { score: 5, finding: 'Not easy to encounter.' }
-  },
-  platformCoverage: {
-    chatgpt: { status: 'weak', detail: 'Understood weakly, not favored.' },
-    perplexity: { status: 'weak', detail: 'Positioning is not strong.' },
-    gemini: { status: 'weak', detail: 'Not strongly positioned.' },
-    claude: { status: 'weak', detail: 'Evidence is incomplete.' }
-  },
-  actions: [
-    {
-      priority: 'critical',
-      title: 'Strengthen business definition',
-      body: 'Make the business easier to identify and verify from available evidence.'
-    },
-    {
-      priority: 'high',
-      title: 'Improve trust signals',
-      body: 'Add stronger visible proof, references, and supporting signals.'
-    },
-    {
-      priority: 'high',
-      title: 'Clarify positioning',
-      body: 'Make what the business does and why it is different easier to understand.'
-    },
-    {
-      priority: 'medium',
-      title: 'Increase discoverability',
-      body: 'Improve how easily the business is encountered in relevant decision contexts.'
+    } catch (_) {
+      output = {
+        overallScore: 20,
+        verdictHeadline: 'Not strongly positioned to be chosen',
+        verdictLevel: 'weak',
+        summaryParagraph: 'This business could not be fully verified with enough confidence from the available evidence. It is not strongly positioned to be chosen.',
+        businessUnderstanding: '',
+        marketPosition: {
+          tier: 'unknown',
+          label: 'Unclear position',
+          explanation: 'Evidence was incomplete.'
+        },
+        evidenceNarrative: 'The available evidence was incomplete or could not be structured cleanly enough for a stronger result.',
+        pillars: {
+          clarity: { score: 6, finding: 'Not verified clearly enough.' },
+          trust: { score: 5, finding: 'Trust signals are incomplete.' },
+          difference: { score: 4, finding: 'Difference is not clear.' },
+          ease: { score: 5, finding: 'Not easy to encounter.' }
+        },
+        platformCoverage: {
+          chatgpt: { status: 'weak', detail: 'Understood weakly, not favored.' },
+          perplexity: { status: 'weak', detail: 'Positioning is not strong.' },
+          gemini: { status: 'weak', detail: 'Not strongly positioned.' },
+          claude: { status: 'weak', detail: 'Evidence is incomplete.' }
+        },
+        actions: [
+          {
+            priority: 'critical',
+            title: 'Strengthen business definition',
+            body: 'Make the business easier to identify and verify from available evidence.'
+          },
+          {
+            priority: 'high',
+            title: 'Improve trust signals',
+            body: 'Add stronger visible proof, references, and supporting signals.'
+          },
+          {
+            priority: 'high',
+            title: 'Clarify positioning',
+            body: 'Make what the business does and why it is different easier to understand.'
+          },
+          {
+            priority: 'medium',
+            title: 'Increase discoverability',
+            body: 'Improve how easily the business is encountered in relevant decision contexts.'
+          }
+        ]
+      };
     }
-  ]
-};
+  }
+}
 
-// 👇 ADD THIS RIGHT HERE 👇
 const hasValidShape =
   output &&
   typeof output === 'object' &&
@@ -795,133 +820,134 @@ const hasValidShape =
   output.platformCoverage.claude;
 
 if (!hasValidShape) {
-output = {
-  overallScore: 24,
-  verdictHeadline: 'Not strongly positioned to be chosen',
-  verdictLevel: 'weak',
-  summaryParagraph: `${name || 'This business'} is understood only weakly from the available evidence and is not strongly positioned to be chosen. Stronger alternatives are easier to encounter and trust.`,
-  businessUnderstanding: '',
-  marketPosition: {
+  output = {
+    overallScore: 24,
+    verdictHeadline: 'Not strongly positioned to be chosen',
+    verdictLevel: 'weak',
+    summaryParagraph: `${name || 'This business'} is understood only weakly from the available evidence and is not strongly positioned to be chosen. Stronger alternatives are easier to encounter and trust.`,
+    businessUnderstanding: '',
+    marketPosition: {
+      tier: 'unknown',
+      label: 'Unclear position',
+      explanation: 'The evidence does not support a stronger competitive conclusion.'
+    },
+    evidenceNarrative: 'The business does not yet show enough clear, credible, and easy-to-verify signals to support a stronger result.',
+    pillars: {
+      clarity: { score: 8, finding: 'Not defined clearly enough.' },
+      trust: { score: 6, finding: 'Trust signals are limited.' },
+      difference: { score: 5, finding: 'Difference is not clear.' },
+      ease: { score: 5, finding: 'Hard to encounter quickly.' }
+    },
+    platformCoverage: {
+      chatgpt: { status: 'weak', detail: 'Understood, but not favored.' },
+      perplexity: { status: 'weak', detail: 'Not strongly positioned.' },
+      gemini: { status: 'weak', detail: 'Positioning is limited.' },
+      claude: { status: 'weak', detail: 'Evidence supports only a weak position.' }
+    },
+    actions: [
+      {
+        priority: 'critical',
+        title: 'Clarify the business fast',
+        body: 'Make what the business is and who it serves easier to understand immediately.'
+      },
+      {
+        priority: 'high',
+        title: 'Strengthen visible trust',
+        body: 'Add stronger proof, references, and credibility signals people can verify quickly.'
+      },
+      {
+        priority: 'high',
+        title: 'Sharpen difference',
+        body: 'Make the reason to choose this business over alternatives more obvious.'
+      },
+      {
+        priority: 'medium',
+        title: 'Improve encounter strength',
+        body: 'Increase how easily the business is found and understood in relevant decision contexts.'
+      }
+    ]
+  };
+}
+
+const fallbackPillar = {
+  score: 0,
+  finding: 'Insufficient data to assess this pillar.'
+};
+
+const fallbackPlatform = {
+  status: 'absent',
+  detail: 'No data available.'
+};
+
+const safeOutput = {
+  overallScore: typeof output?.overallScore === 'number' ? output.overallScore : 0,
+  verdictHeadline: output?.verdictHeadline || 'Diagnostic incomplete',
+  verdictLevel: output?.verdictLevel || 'absent',
+  summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
+  businessUnderstanding: output?.businessUnderstanding || '',
+  marketPosition: output?.marketPosition || {
     tier: 'unknown',
-    label: 'Unclear position',
-    explanation: 'The evidence does not support a stronger competitive conclusion.'
+    label: 'Unknown position',
+    explanation: 'Not enough data to determine position.'
   },
-  evidenceNarrative: 'The business does not yet show enough clear, credible, and easy-to-verify signals to support a stronger result.',
+  evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
   pillars: {
-    clarity: { score: 8, finding: 'Not defined clearly enough.' },
-    trust: { score: 6, finding: 'Trust signals are limited.' },
-    difference: { score: 5, finding: 'Difference is not clear.' },
-    ease: { score: 5, finding: 'Hard to encounter quickly.' }
+    clarity: output?.pillars?.clarity || { ...fallbackPillar },
+    trust: output?.pillars?.trust || { ...fallbackPillar },
+    difference: output?.pillars?.difference || { ...fallbackPillar },
+    ease: output?.pillars?.ease || { ...fallbackPillar }
   },
   platformCoverage: {
-    chatgpt: { status: 'weak', detail: 'Understood, but not favored.' },
-    perplexity: { status: 'weak', detail: 'Not strongly positioned.' },
-    gemini: { status: 'weak', detail: 'Positioning is limited.' },
-    claude: { status: 'weak', detail: 'Evidence supports only a weak position.' }
+    chatgpt: output?.platformCoverage?.chatgpt || { ...fallbackPlatform },
+    perplexity: output?.platformCoverage?.perplexity || { ...fallbackPlatform },
+    gemini: output?.platformCoverage?.gemini || { ...fallbackPlatform },
+    claude: output?.platformCoverage?.claude || { ...fallbackPlatform }
   },
-  actions: [
-    {
-      priority: 'critical',
-      title: 'Clarify the business fast',
-      body: 'Make what the business is and who it serves easier to understand immediately.'
-    },
-    {
-      priority: 'high',
-      title: 'Strengthen visible trust',
-      body: 'Add stronger proof, references, and credibility signals people can verify quickly.'
-    },
-    {
-      priority: 'high',
-      title: 'Sharpen difference',
-      body: 'Make the reason to choose this business over alternatives more obvious.'
-    },
-    {
-      priority: 'medium',
-      title: 'Improve encounter strength',
-      body: 'Increase how easily the business is found and understood in relevant decision contexts.'
-    }
-  ]
+  actions: Array.isArray(output?.actions) && output.actions.length > 0
+    ? output.actions
+    : [
+        {
+          priority: 'critical',
+          title: 'Retry diagnostic',
+          body: 'The engine did not return a complete structured response. Retry the diagnostic after checking the backend response.'
+        }
+      ]
 };
-    const fallbackPillar = {
-      score: 0,
-      finding: 'Insufficient data to assess this pillar.'
-    };
 
-    const fallbackPlatform = {
-      status: 'absent',
-      detail: 'No data available.'
-    };
+const c = Number(safeOutput.pillars.clarity?.score || 0);
+const t = Number(safeOutput.pillars.trust?.score || 0);
+const d = Number(safeOutput.pillars.difference?.score || 0);
+const e = Number(safeOutput.pillars.ease?.score || 0);
 
-    const safeOutput = {
-      overallScore: typeof output?.overallScore === 'number' ? output.overallScore : 0,
-      verdictHeadline: output?.verdictHeadline || 'Diagnostic incomplete',
-      verdictLevel: output?.verdictLevel || 'absent',
-      summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
-      businessUnderstanding: output?.businessUnderstanding || '',
-      marketPosition: output?.marketPosition || {
-        tier: 'unknown',
-        label: 'Unknown position',
-        explanation: 'Not enough data to determine position.'
-      },
-      evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
-      pillars: {
-        clarity: output?.pillars?.clarity || { ...fallbackPillar },
-        trust: output?.pillars?.trust || { ...fallbackPillar },
-        difference: output?.pillars?.difference || { ...fallbackPillar },
-        ease: output?.pillars?.ease || { ...fallbackPillar }
-      },
-      platformCoverage: {
-        chatgpt: output?.platformCoverage?.chatgpt || { ...fallbackPlatform },
-        perplexity: output?.platformCoverage?.perplexity || { ...fallbackPlatform },
-        gemini: output?.platformCoverage?.gemini || { ...fallbackPlatform },
-        claude: output?.platformCoverage?.claude || { ...fallbackPlatform }
-      },
-      actions: Array.isArray(output?.actions) && output.actions.length > 0
-        ? output.actions
-        : [
-            {
-              priority: 'critical',
-              title: 'Retry diagnostic',
-              body: 'The engine did not return a complete structured response. Retry the diagnostic after checking the backend response.'
-            }
-          ]
-    };
+const total = c + t + d + e;
+safeOutput.overallScore = total;
 
-    const c = Number(safeOutput.pillars.clarity?.score || 0);
-    const t = Number(safeOutput.pillars.trust?.score || 0);
-    const d = Number(safeOutput.pillars.difference?.score || 0);
-    const e = Number(safeOutput.pillars.ease?.score || 0);
+const easeScore = Number(safeOutput.pillars.ease?.score || 0);
+const marketTier = safeOutput.marketPosition?.tier || '';
 
-    const total = c + t + d + e;
-    safeOutput.overallScore = total;
+if (total <= 30) {
+  safeOutput.verdictLevel = 'absent';
+  safeOutput.verdictHeadline = 'Not the obvious choice — losing decisions';
+} else if (
+  total <= 55 ||
+  easeScore < 12 ||
+  ['upper_mid', 'mid', 'weak', 'absent', 'unknown'].includes(marketTier)
+) {
+  safeOutput.verdictLevel = 'weak';
+  safeOutput.verdictHeadline = 'Not consistently the obvious choice — losing opportunities';
+} else {
+  safeOutput.verdictLevel = 'present';
+  safeOutput.verdictHeadline = 'The obvious choice — winning decisions';
+}
 
-    const easeScore = Number(safeOutput.pillars.ease?.score || 0);
-    const marketTier = safeOutput.marketPosition?.tier || '';
-    
-    if (total <= 30) {
-      safeOutput.verdictLevel = 'absent';
-      safeOutput.verdictHeadline = 'Not the obvious choice — losing decisions';
-    } else if (
-      total <= 55 ||
-      easeScore < 12 ||
-      ['upper_mid', 'mid', 'weak', 'absent', 'unknown'].includes(marketTier)
-    ) {
-      safeOutput.verdictLevel = 'weak';
-      safeOutput.verdictHeadline = 'Not consistently the obvious choice — losing opportunities';
-    } else {
-      safeOutput.verdictLevel = 'present';
-      safeOutput.verdictHeadline = 'The obvious choice — winning decisions';
-    }
-
-    return {
-      statusCode: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(safeOutput)
-    };
-  } catch (error) {
+return {
+  statusCode: 200,
+  headers: {
+    ...corsHeaders,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(safeOutput)
+};
   console.error('CHOIVE FUNCTION ERROR:', error);
   return {
     statusCode: 500,
