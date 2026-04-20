@@ -647,7 +647,6 @@ If needed, shorten sentences to keep JSON valid.
     "gemini": { "status": "absent", "detail": "" },
     "claude": { "status": "absent", "detail": "" }
   },
-
   "evidenceNarrative": "",
   "actions": [
     { "priority": "critical", "title": "", "body": "" },
@@ -937,12 +936,12 @@ return {
   },
   body: JSON.stringify(safeOutput)
 };
-    
+
 } catch (error) {
   console.error('CHOIVE FUNCTION ERROR:', error);
   return {
-    statusCode: 500,
     
+    statusCode: 500, 
     headers: {
       ...corsHeaders,
       'Content-Type': 'application/json'
@@ -981,40 +980,3 @@ return {
     })
   };
 }
-    statusCode: 500,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-body: JSON.stringify({
-  overallScore: 0,
-  verdictHeadline: 'Diagnostic could not be completed',
-  verdictLevel: 'weak',
-  summaryParagraph: 'This diagnostic could not be completed from the available evidence at this time. Please try again.',
-  businessUnderstanding: '',
-  marketPosition: {
-    tier: 'unknown',
-    label: 'Unknown position',
-    explanation: 'The diagnostic did not complete successfully.'
-  },
-  evidenceNarrative: 'The diagnostic could not complete its evidence review.',
-  pillars: {
-    clarity: { score: 0, finding: 'No result returned.' },
-    trust: { score: 0, finding: 'No result returned.' },
-    difference: { score: 0, finding: 'No result returned.' },
-    ease: { score: 0, finding: 'No result returned.' }
-  },
-  platformCoverage: {
-    chatgpt: { status: 'weak', detail: 'No completed result.' },
-    perplexity: { status: 'weak', detail: 'No completed result.' },
-    gemini: { status: 'weak', detail: 'No completed result.' },
-    claude: { status: 'weak', detail: 'No completed result.' }
-  },
-  actions: [
-    {
-      priority: 'critical',
-      title: 'Run the diagnostic again',
-      body: 'The diagnostic did not complete successfully this time. Please try again.'
-    }
-  ]
-})
