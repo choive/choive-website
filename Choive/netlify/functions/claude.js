@@ -816,14 +816,13 @@ Each summary must end with a consequence:
 Short. Sharp. Final.
 
 `;
-    const raw = await callClaude(
+const raw = await callClaude(
   [
     {
       role: 'user',
       content: prompt
     }
-  ],
-  CLAUDE_WEB_TOOLS
+  ]
 );
     let output = raw;
 
