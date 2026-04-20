@@ -12,11 +12,10 @@ exports.handler = async function (event) {
     },
   body: JSON.stringify({
     model: ANTHROPIC_MODEL,
-    max_tokens: 1200,
+    max_tokens: 2000,
     temperature: 0.2,
     messages,
     ...(tools ? { tools } : {}),
-    tool_choice: { type: 'auto' }
   })
   });
 
