@@ -170,36 +170,32 @@ if (website) {
     websiteContent = '';
   }
 }
-    const prompt = `
-REAL EVIDENCE:
+const prompt = `
+REAL INPUT:
+
+Business name: ${name || ''}
+Category: ${category || ''}
+Location: ${city || ''}
+Website: ${website || ''}
+Description: ${description || ''}
 
 LIVE WEB RULE (MANDATORY):
 
-Use live web search to verify the business, understand what it does, and assess how it is represented online.
+Use live web search to identify the business, understand what it does, and assess how it is represented online.
 
-Use web evidence to:
-- confirm what the business is
-- confirm whether it is credible
-- confirm how easily it is understood
-- confirm how it compares with alternatives
+Use live evidence to determine:
+- what the business is
+- who it serves
+- whether it is credible
+- how easy it is to understand
+- how easy it is to choose
+- how it compares with alternatives
 
-Do not rely only on the provided website field.
+If a website is provided, use it as supporting evidence.
+If no website is provided, still identify the business from live web evidence.
+
 Do not invent facts.
-If live web evidence conflicts with assumptions, follow the live web evidence.
-
-${visibilityContext}
-
-PRIMARY WEBSITE CONTENT:
-${websiteContent}
-
-SEARCH RESULTS (STRUCTURED):
-
-${combinedData.map(r => `
-Title: ${r.title}
-Snippet: ${r.snippet}
-Link: ${r.link}
-Content: ${r.content}
-`).join('\n\n')}
+Do not rely on assumptions when live web evidence is available.    
 
 You are CHOIVE™ — a decision intelligence engine.
 
@@ -295,16 +291,14 @@ If the business is global or B2B:
 
 A global or enterprise business should not be penalized for weak local presence.
 
-REAL WORLD DATA:
+REAL WORLD EVIDENCE:
 
-SEARCH RESULTS (STRUCTURED):
+Use live web evidence as the primary source of truth.
 
-${combinedData.map(r => `
-Title: ${r.title}
-Snippet: ${r.snippet}
-Link: ${r.link}
-Content: ${r.content}
-`).join('\n\n')}
+If a website is provided, use it as supporting evidence.
+If no website is provided, do not treat that as absence.
+Use live search to identify the business and evaluate it accurately.
+
 --------------------------------
 
 CHOIVE PRINCIPLE:
@@ -404,35 +398,34 @@ Explanation must be:
 
 REAL SCORING FOUNDATION (CRITICAL):
 
-Score this business based only on the real evidence provided above.
+Score this business based on live web evidence first.
 
-Use only:
-- search visibility
-- search result titles and snippets
-- website content
-- external source presence
+Use:
+- live web search
+- the business website if provided
+- visible third-party mentions
+- competitive context
+- clear business signals
 
-Do NOT simulate ChatGPT, Claude, Gemini, or Perplexity responses.
-Do NOT guess what AI would say.
-Do NOT invent missing facts.
+Do not pretend to know how other AI systems would rank the business.
 
-Your job is to determine how clearly and strongly this business exists across the internet, and how likely it is to be selected because of that evidence.
+Your job is to determine, from real live evidence:
+
+- how clearly this business is understood
+- how credible it is
+- how easy it is to encounter and choose
+- how distinct it is from alternatives
 
 SCORING RULES:
 
-- Clarity = how clearly the business explains what it does
-- Trust = how credible and legitimate it appears across sources
-- Ease = how easy it is to find and understand quickly
+- Clarity = how clearly the business is defined and understood
+- Trust = how credible, real, and verifiable it appears
+- Ease = how easily it is encountered and chosen in real decision moments
 - Difference = how clearly it stands apart from alternatives
 
-VISIBILITY RULES:
-
-- If the business does not appear in non-branded search results, total score cannot exceed 25
-- If it appears only in branded search, treat it as known but not broadly discoverable
-- If it appears in niche results, score can be moderate
-- If it appears strongly in broad results, score can be high
-
-Do not override evidence with assumptions.
+Do not invent missing facts.
+Do not force low scores if live evidence clearly supports the business.
+Do not force high scores if live evidence does not support them.
 
 --------------------------------
 
@@ -651,30 +644,25 @@ Every summary must include:
 
 --------------------------------
 
-PLATFORM COVERAGE RULE:
+AI INTERPRETATION RULE (CRITICAL):
 
-For each platform (ChatGPT, Perplexity, Gemini, Claude):
+This diagnostic is based on real Claude evaluation using live web evidence.
 
-- The statement must reflect reality (present, weak, or absent)
-- The tone must be decisive, not explanatory
-- Use short, direct sentences
-- No long reasoning
-- No soft language
+Do not pretend to speak for ChatGPT, Perplexity, or Gemini.
 
-If PRESENT:
-"ChatGPT returns this business early. Familiarity wins."
+Use the platformCoverage fields as diagnostic interpretation states only.
 
-If WEAK:
-"Perplexity includes it but does not favor it. Stronger options exist."
+Set each platform status using these meanings:
 
-If ABSENT:
-"Gemini does not surface this business. It lacks strong signals."
+- present = strongly understood and likely to be returned in relevant decision contexts
+- weak = understood but not likely to be prioritized
+- absent = not strongly positioned to be returned in decision contexts
 
-Each platform must:
-- sound like a verdict
-- be short
-- be different
-
+For each platform detail:
+- keep it short
+- keep it direct
+- do not claim certainty about another model's private ranking system
+- describe selection likelihood, not hidden model behavior
 --------------------------------
 
 ACTIONS RULE:
@@ -753,6 +741,19 @@ If needed, shorten sentences to keep JSON valid.
     "gemini": { "status": "absent", "detail": "" },
     "claude": { "status": "absent", "detail": "" }
   },
+  PLATFORM COVERAGE SCHEMA RULE:
+
+These fields do NOT represent direct API results from each platform.
+
+They represent CHOIVE's interpretation of how strongly the business is positioned to be returned in those environments.
+
+Use:
+- present = strongly positioned
+- weak = somewhat understood but not favored
+- absent = not strongly positioned to be returned
+
+Do not use "absent" to mean the business does not exist.
+
   "evidenceNarrative": "",
   "actions": [
     { "priority": "critical", "title": "", "body": "" },
@@ -822,7 +823,8 @@ const raw = await callClaude(
       role: 'user',
       content: prompt
     }
-  ]
+  ],
+  CLAUDE_WEB_TOOLS
 );
     let output = raw;
 
