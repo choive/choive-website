@@ -1069,7 +1069,7 @@ function showResults(r) {
       ${Object.entries(r.platformCoverage).map(([key, val]) => `
         <div class="platform-cell">
           <div class="platform-name">${pN[key]}</div>
-          <div class="platform-verdict ${val.status}">${val.status === 'absent' ? 'NOT FOUND' : val.status === 'weak' ? 'WEAK' : 'PRESENT'}</div>
+          <div class="platform-verdict ${val.status}">${val.status === 'absent' ? 'NOT STRONGLY POSITIONED' : val.status === 'weak' ? 'UNDERSTOOD BUT NOT FAVORED' : 'STRONGLY POSITIONED'}</div>
           <div class="platform-detail">${esc(val.detail)}</div>
         </div>`).join('')}
     </div>
