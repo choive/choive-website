@@ -13,7 +13,8 @@ exports.handler = async function (event) {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 2000,
+      max_tokens: 1200,
+      temperature: 0.2,
       messages,
       ...(tools ? { tools } : {})
     })
@@ -59,125 +60,9 @@ exports.handler = async function (event) {
 
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
-const queries = [
-  // BROAD / CONSUMER
-  `best ${category} in ${city}`,
-  `${category} services`,
 
-  // INDUSTRY / COMPETITIVE
-  `${category} platform providers`,
-  `${category} software companies`,
-  `${category} solutions for operators`,
-  `${category} middleware companies`,
-  `${category} B2B providers`,
-
-  // BRAND
-  `${name}`
-];
-    const allResults = await Promise.all(
-  queries.map(q =>
-    fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': process.env.SERPER_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ q, num: 5 })
-    }).then(res => res.json())
-  )
-);
-
-const organicResults = allResults.flatMap(r => r.organic || []); 
-
-const topResults = organicResults.slice(0, 5);
-
-const pageContents = await Promise.all(
-  topResults.map(r => {
-    if (!r.link) return '';
-    return fetch(r.link)
-      .then(res => res.text())
-      .then(html =>
-        html
-          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .slice(0, 3000)
-      )
-      .catch(() => '');
-  })
-);
-
-const combinedData = topResults.map((r, i) => ({
-  title: r.title || '',
-  snippet: r.snippet || '',
-  link: r.link || '',
-  content: pageContents[i] || ''
-}));
-
-const competitorSignals = combinedData
-  .map(r => `${r.title} ${r.snippet}`)
-  .join(' ')
-  .toLowerCase();
-
-    const normalizeUrl = (url) => {
-  if (!url) return '';
-  return url
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/$/, '')
-    .toLowerCase();
-};
-
-const targetDomain = normalizeUrl(website);
-
-const visibilityIndex = organicResults.findIndex(result => {
-  const resultDomain = normalizeUrl(result.link || '');
-  return targetDomain && resultDomain.includes(targetDomain);
-});
-    const visibilityContext = `
-VISIBILITY DATA:
-
-- Brand appears in search results: ${visibilityIndex !== -1 ? 'YES' : 'NO'}
-- First appearance position: ${visibilityIndex !== -1 ? visibilityIndex + 1 : 'Not in top results'}
-- Brand domain checked: ${targetDomain || 'No website provided'}
-
-TOP RESULTS SHOWN:
-${topResults.map((r, i) => `${i + 1}. ${r.title} — ${r.link}`).join('\n')}
-
-VISIBILITY INTERPRETATION:
-- If the business does not appear in non-branded results, it is weak in discovery.
-- If it appears only in branded results, it is known but not broadly selected.
-- If it appears early in broad results, it is strongly visible.
-`;
-    let websiteContent = '';
-
-if (website) {
-  try {
-    const siteRes = await fetch(website);
-    const html = await siteRes.text();
-
-    // VERY SIMPLE TEXT EXTRACTION
-    websiteContent = html
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 4000); // limit size
-  } catch (e) {
-    websiteContent = '';
-  }
-}
 const prompt = `
-REAL INPUT:
-
-Business name: ${name || ''}
-Category: ${category || ''}
-Location: ${city || ''}
-Website: ${website || ''}
-Description: ${description || ''}
+${externalContext}
 
 LIVE WEB RULE (MANDATORY):
 
