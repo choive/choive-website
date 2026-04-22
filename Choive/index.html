@@ -1061,6 +1061,7 @@ function showResults(r) {
         <div>
           <div class="verdict-biz">${esc(bizData.name.toUpperCase())} · ${esc(bizData.category)} · ${esc(bizData.city)}</div>
           <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Critical recommendation weakness' : r.verdictLevel === 'weak' ? 'Weak recommendation authority' : 'Established recommendation presence'}</div>
+          <div class="verdict-decision">${formatDecisionState(r.decisionState)}</div>
           <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
           <div class="verdict-state">${esc(r.signatureLine || '')}</div>
         </div>
