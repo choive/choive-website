@@ -399,6 +399,14 @@ nav {
   letter-spacing:-0.02em; color:var(--tp); line-height:1.1;
   overflow-wrap:break-word;
 }
+.verdict-state {
+  margin-top:12px;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  color:var(--ac);
+}
 .verdict-score-block { text-align:right; }
 .verdict-score-num {
   font-family:'Inter',sans-serif; font-weight:600;
@@ -1054,6 +1062,7 @@ function showResults(r) {
           <div class="verdict-biz">${esc(bizData.name.toUpperCase())} · ${esc(bizData.category)} · ${esc(bizData.city)}</div>
           <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Critical recommendation weakness' : r.verdictLevel === 'weak' ? 'Weak recommendation authority' : 'Established recommendation presence'}</div>
           <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
+          <div class="verdict-state">${esc(r.signatureLine || '')}</div>
         </div>
         <div class="verdict-score-block">
           <span class="verdict-score-num" id="scoreNum">0</span>
