@@ -935,10 +935,6 @@ return {
   },
   body: JSON.stringify(safeOutput)
 };
-
-} catch (error) {
-  console.error('CHOIVE FUNCTION ERROR:', error);
-  return {
     
   } catch (error) {
   console.error('CHOIVE FUNCTION ERROR:', error);
