@@ -1,7 +1,7 @@
 exports.handler = async function (event) {
 
   const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-  const ANTHROPIC_MODEL = 'claude-3-7-sonnet-latest';
+  const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
   async function callClaude(messages, tools = undefined) {
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -32,7 +32,7 @@ const CLAUDE_WEB_TOOLS = [
   {
     type: 'web_search_20250305',
     name: 'web_search',
-    max_uses: 3
+    max_uses: 1
   }
 ];
   
