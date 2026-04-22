@@ -940,7 +940,10 @@ return {
   console.error('CHOIVE FUNCTION ERROR:', error);
   return {
     
-    statusCode: 500, 
+  } catch (error) {
+  console.error('CHOIVE FUNCTION ERROR:', error);
+  return {
+    statusCode: 500,
     headers: {
       ...corsHeaders,
       'Content-Type': 'application/json'
