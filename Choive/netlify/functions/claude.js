@@ -505,6 +505,53 @@ Then explain WHY.
 
 --------------------------------
 
+SIGNATURE LINE RULE:
+
+Return one short CHOIVE decision line.
+
+It must be 3–6 words.
+It must feel final.
+It must describe the decision state, not the business.
+
+Examples:
+- Trusted — but not chosen.
+- Clear — but not picked.
+- Seen — but not selected.
+- Real — but not recommended.
+- Chosen before comparison.
+
+Do not explain.
+Do not use filler words.
+
+--------------------------------
+
+DECISION STATE RULE:
+
+Return one decision state label.
+
+It must describe the exact selection condition of the business.
+
+Choose ONE:
+
+- not_seen
+- seen_not_considered
+- considered_not_chosen
+- trusted_not_chosen
+- chosen_by_default
+
+Rules:
+- use lowercase
+- use underscores
+- no explanation
+- must match the signature line
+
+Examples:
+- "trusted_not_chosen"
+- "considered_not_chosen"
+- "not_seen"
+
+--------------------------------
+
 DECISION CONSEQUENCE RULE (CRITICAL):
 
 Every summary must end with a real-world consequence.
@@ -627,6 +674,8 @@ If needed, shorten sentences to keep JSON valid.
   "overallScore": 0,
   "verdictHeadline": "",
   "verdictLevel": "absent",
+  "signatureLine": "",
+  "decisionState": "",
   "summaryParagraph": "",
   "businessUnderstanding": "",
   "marketPosition": {
@@ -672,41 +721,70 @@ RULES:
 
 PILLAR LANGUAGE RULES (MANDATORY):
 
-- Each pillar finding must be ONE short sentence
-- Maximum 6–8 words
+Each pillar finding must be ONE short sentence.
+
+Rules:
+- 3 to 6 words only
+- No commas
+- No connectors (and, because, but)
 - No explanation
-- No second sentence
-- No connectors like “and”, “because”
+- No soft words
+- Must feel final and obvious
 
-Write like this:
+Write like a conclusion, not a description.
 
-Clarity: "Instantly understood."
-Trust: "Widely trusted and predictable."
-Difference: "Not distinct from alternatives."
-Ease: "Easy to choose everywhere."
+Bad:
+"Clear on the website but not visible in search."
 
-Every pillar must feel:
-- fast
-- obvious
-- human
+Good:
+"Clear when seen. Not seen enough."
 
-SUMMARY RULE:
+Bad:
+"Has strong credibility and known clients."
 
-- Maximum 2–3 sentences
+Good:
+"Credible. Proven. Trusted."
+
+Bad:
+"Not very easy to find in comparison paths."
+
+Good:
+"Hard to choose quickly."
+
+Each pillar must feel:
+- instant
+- sharp
+- undeniable
+
+SUMMARY RULE (MANDATORY):
+
+The summaryParagraph MUST follow this exact structure:
+
+Sentence 1:
+State the decision failure.
+Must start with:
+"This business is not the obvious choice because..."
+
+Sentence 2:
+State the reason in simple terms.
+No explanation tone. No filler.
+
+Sentence 3:
+State the real-world consequence.
+Must clearly say what happens because of this.
+
+Rules:
+- Maximum 3 sentences total
+- No brand introduction at the start
+- No soft language
 - No explanation tone
 - No storytelling
-- No filler words
+- Every sentence must feel final
 
-Write like a verdict:
+Example:
 
-"This business is the obvious choice because it removes decision friction. It is familiar, everywhere, and requires no thinking."
+"This business is not the obvious choice because it does not show up where decisions are made. It is clear and credible, but not present in comparison paths or AI recommendations. Buyers choose stronger-positioned competitors instead."
 
-Each sentence must feel like a conclusion, not an explanation.
-
-Each summary must end with a consequence:
-"People will choose something else instead."
-
-Short. Sharp. Final.
 
 `;
 const raw = await callClaude(
@@ -870,6 +948,7 @@ const safeOutput = {
   overallScore: typeof output?.overallScore === 'number' ? output.overallScore : 0,
   verdictHeadline: output?.verdictHeadline || 'Diagnostic incomplete',
   verdictLevel: output?.verdictLevel || 'absent',
+  signatureLine: output?.signatureLine || 'Present — but not chosen.',
   summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
   businessUnderstanding: output?.businessUnderstanding || '',
   marketPosition: output?.marketPosition || {
