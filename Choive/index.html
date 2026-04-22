@@ -1145,10 +1145,20 @@ function showResults(r) {
 function esc(s) {
   if (!s) return '';
   return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
-
+  
+  function formatDecisionState(state) {
+  if (!state) return '';
+  return state
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+}
+  
 function animateNum(id, from, to, dur) {
   const el = document.getElementById(id);
   if (!el) return;
