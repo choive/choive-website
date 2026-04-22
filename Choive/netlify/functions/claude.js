@@ -9,7 +9,8 @@ exports.handler = async function (event) {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
-    },
+    },} catch (error
+               
   body: JSON.stringify({
     model: ANTHROPIC_MODEL,
     max_tokens: 2000,
@@ -936,7 +937,7 @@ return {
   body: JSON.stringify(safeOutput)
 };
     
-  } catch (error) {
+} catch (error) {
   console.error('CHOIVE FUNCTION ERROR:', error);
   return {
     statusCode: 500,
