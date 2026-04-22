@@ -12,7 +12,7 @@ const response = await fetch(ANTHROPIC_API_URL, {
   },
   body: JSON.stringify({
     model: ANTHROPIC_MODEL,
-    max_tokens: 2000,
+    max_tokens: 700,
     temperature: 0.2,
     messages,
     ...(tools ? { tools } : {})
@@ -785,16 +785,15 @@ Example:
 
 "This business is not the obvious choice because it does not show up where decisions are made. It is clear and credible, but not present in comparison paths or AI recommendations. Buyers choose stronger-positioned competitors instead."
 
-
 `;
+    
 const raw = await callClaude(
   [
     {
       role: 'user',
       content: prompt
     }
-  ],
-  CLAUDE_WEB_TOOLS
+  ]
 );
 
 let output = raw;
