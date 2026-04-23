@@ -1,0 +1,7 @@
+[functions]
+  directory = "netlify/functions"
+  timeout = 26
+
+# run-diagnostic runs as a background function — no user-facing timeout
+[functions."run-diagnostic"]
+  timeout = 900
