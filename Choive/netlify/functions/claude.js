@@ -1020,8 +1020,8 @@ return {
 };
     
 } catch (error) {
-  console.error('CHOIVE FUNCTION ERROR:', error);
-  return {
+  console.error('CHOIVE FUNCTION ERROR:', error?.message || error, error?.stack || '');
+    return {
     statusCode: 500,
     headers: {
       ...corsHeaders,
@@ -1031,7 +1031,8 @@ return {
       overallScore: 0,
       verdictHeadline: 'Diagnostic failed',
       verdictLevel: 'weak',
-      summaryParagraph: 'The system could not complete this analysis.',
+      summaryParagraph: error?.message || 'The system could not complete this analysis.',
+      error: error?.message || 'Unknown backend error',
       businessUnderstanding: '',
       marketPosition: {
         tier: 'unknown',
