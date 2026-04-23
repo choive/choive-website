@@ -402,7 +402,7 @@ Return ONLY valid JSON.
 `;
     const raw = await callClaude(
       [{ role: 'user', content: prompt }],
-      true  // enable Anthropic web search alongside Serper evidence
+      false  // enable Anthropic web search alongside Serper evidence
     );
     let output = raw;
     if (raw.content && Array.isArray(raw.content)) {
