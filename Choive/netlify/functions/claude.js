@@ -27,14 +27,6 @@ const response = await fetch(ANTHROPIC_API_URL, {
 
   return data;
 }
-
-const CLAUDE_WEB_TOOLS = [
-  {
-    type: 'web_search_20250305',
-    name: 'web_search',
-    max_uses: 1
-  }
-];
   
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -196,13 +188,31 @@ If the business is global or B2B:
 
 A global or enterprise business should not be penalized for weak local presence.
 
+--------------------------------
+
 REAL WORLD EVIDENCE:
 
-Use live web evidence as the primary source of truth.
+Use available evidence to identify and evaluate the business.
 
 If a website is provided, use it as supporting evidence.
 If no website is provided, do not treat that as absence.
-Use live search to identify the business and evaluate it accurately.
+
+Score the business from the strongest evidence available.
+
+--------------------------------
+
+WEBSITE EVIDENCE RULE (MANDATORY):
+
+The website is supporting evidence, not required evidence.
+
+If a website is provided:
+- use it to strengthen clarity, trust, and positioning accuracy
+
+If no website is provided:
+- still identify and score the business from live web evidence
+
+Do not reduce a score only because the website field is empty.
+Reduce scores only when the overall evidence is weak.
 
 --------------------------------
 
