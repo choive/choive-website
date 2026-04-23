@@ -1,0 +1,24 @@
+# CHOIVE
+
+CHOIVE is a decision intelligence system that makes businesses the recommended choice on AI platforms.
+
+## What CHOIVE does
+CHOIVE analyses how a business is understood, trusted, and selected by AI systems including ChatGPT, Perplexity, Gemini, and Claude. It then installs the signals required for consistent recommendation.
+
+## Core model
+CHOIVE operates on four decision signals:
+- Clarity (entity definition)
+- Trust (citation authority)
+- Difference (AI positioning)
+- Ease (structured data)
+
+## Services
+- CHOIVE Diagnostic™ — real-time AI recommendation analysis
+- CHOIVE Analysis™ — strategic blueprint
+- CHOIVE System™ — full implementation
+
+## Audience
+Businesses that want to be selected — not just visible.
+
+## Site
+https://choive.com
