@@ -2,30 +2,43 @@ exports.handler = async function (event) {
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-async function callClaude(messages, tools = undefined) {
-const response = await fetch(ANTHROPIC_API_URL, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-api-key': process.env.ANTHROPIC_API_KEY,
-    'anthropic-version': '2023-06-01'
-  },
-  body: JSON.stringify({
-    model: ANTHROPIC_MODEL,
-    max_tokens: 700,
-    temperature: 0.2,
-    messages,
-    ...(tools ? { tools } : {})
-  })
-});
+async function callClaude(messages) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000); // 9 seconds
 
-  const data = await response.json();
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 700,
+        temperature: 0.2,
+        messages
+      }),
+      signal: controller.signal
+    });
 
-  if (!response.ok) {
-    throw new Error(data?.error?.message || `Anthropic API error (${response.status})`);
+    clearTimeout(timeout);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `Anthropic API error (${response.status})`);
+    }
+
+    return data;
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
   }
-
-  return data;
 }
   
   const corsHeaders = {
@@ -53,7 +66,7 @@ const response = await fetch(ANTHROPIC_API_URL, {
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
 
-const externalContext = `
+LIVE WEB RULE = `
 BUSINESS INPUT:
 
 Name: ${name || ''}
@@ -64,23 +77,20 @@ Description: ${description || ''}
 
 INSTRUCTION:
 
-Use live web search to:
-- identify the business
-- verify what it does
-- assess its presence
-- compare it with alternatives
+Use the submitted business details and the strongest available evidence to evaluate the business.
 
+If a website is provided, use it as supporting evidence.
 Do not rely only on the submitted input.
 `;
     
 const prompt = `
 ${externalContext}
 
-LIVE WEB RULE (MANDATORY):
+EVIDENCE RULE (MANDATORY):
 
-Use live web search to identify the business, understand what it does, and assess how it is represented online.
+Use the strongest available evidence to identify the business, understand what it does, and assess how it is represented.
 
-Use live evidence to determine:
+Use available evidence to determine:
 - what the business is
 - who it serves
 - whether it is credible
@@ -89,10 +99,10 @@ Use live evidence to determine:
 - how it compares with alternatives
 
 If a website is provided, use it as supporting evidence.
-If no website is provided, still identify the business from live web evidence.
+If no website is provided, do not treat that as absence.
 
 Do not invent facts.
-Do not rely on assumptions when live web evidence is available.    
+Do not rely on assumptions when evidence is weak.   
 
 You are CHOIVE™ — a decision intelligence engine.
 
@@ -209,7 +219,7 @@ If a website is provided:
 - use it to strengthen clarity, trust, and positioning accuracy
 
 If no website is provided:
-- still identify and score the business from live web evidence
+- still identify and score the business from the strongest available evidence
 
 Do not reduce a score only because the website field is empty.
 Reduce scores only when the overall evidence is weak.
@@ -316,11 +326,11 @@ REAL SCORING FOUNDATION (CRITICAL):
 Score this business based on live web evidence first.
 
 Use:
-- live web search
 - the business website if provided
 - visible third-party mentions
 - competitive context
 - clear business signals
+- the strongest available evidence
 
 Do not pretend to know how other AI systems would rank the business.
 
@@ -496,22 +506,6 @@ Not like:
 
 But like:
 → a clear judgment
-
---------------------------------
-
-SUMMARY RULE (VERY IMPORTANT):
-
-The summaryParagraph MUST:
-
-- start with the core decision failure
-- NOT start with context
-- NOT describe the business first
-
-Example structure:
-
-“This business is not the obvious choice because…”
-
-Then explain WHY.
 
 --------------------------------
 
@@ -829,11 +823,12 @@ if (raw.content && Array.isArray(raw.content)) {
       }
     } catch (_) {
       output = {
-        overallScore: 20,
-        verdictHeadline: 'Not strongly positioned to be chosen',
-        verdictLevel: 'weak',
-        summaryParagraph: 'This business could not be fully verified with enough confidence from the available evidence. It is not strongly positioned to be chosen.',
-        businessUnderstanding: '',
+  overallScore: 20,
+  verdictHeadline: 'Not strongly positioned to be chosen',
+  verdictLevel: 'weak',
+  signatureLine: 'Present — but not chosen.',
+  decisionState: 'considered_not_chosen',
+  summaryParagraph: 'This business is not the obvious choice because the available evidence is too weak to support stronger selection. It is not understood strongly enough to be favored. Buyers choose clearer alternatives instead.',
         marketPosition: {
           tier: 'unknown',
           label: 'Unclear position',
@@ -895,10 +890,12 @@ const hasValidShape =
 
 if (!hasValidShape) {
   output = {
-    overallScore: 24,
-    verdictHeadline: 'Not strongly positioned to be chosen',
-    verdictLevel: 'weak',
-    summaryParagraph: `${name || 'This business'} is understood only weakly from the available evidence and is not strongly positioned to be chosen. Stronger alternatives are easier to encounter and trust.`,
+  overallScore: 24,
+  verdictHeadline: 'Not strongly positioned to be chosen',
+  verdictLevel: 'weak',
+  signatureLine: 'Understood — but not favored.',
+  decisionState: 'seen_not_considered',
+  summaryParagraph: 'This business is not the obvious choice because the available evidence does not make it strong enough to be favored. It is understood only weakly compared with stronger alternatives. Buyers choose clearer and more trusted options instead.',
     businessUnderstanding: '',
     marketPosition: {
       tier: 'unknown',
@@ -958,6 +955,7 @@ const safeOutput = {
   verdictHeadline: output?.verdictHeadline || 'Diagnostic incomplete',
   verdictLevel: output?.verdictLevel || 'absent',
   signatureLine: output?.signatureLine || 'Present — but not chosen.',
+  decisionState: output?.decisionState || 'considered_not_chosen',
   summaryParagraph: output?.summaryParagraph || 'The diagnostic could not fully assess this business.',
   businessUnderstanding: output?.businessUnderstanding || '',
   marketPosition: output?.marketPosition || {
