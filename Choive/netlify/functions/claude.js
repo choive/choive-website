@@ -19,7 +19,7 @@ exports.handler = async function (event) {
   }
   async function callClaude(messages) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
+    const timeout = setTimeout(() => controller.abort(), 35000);
     try {
       const response = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
@@ -55,7 +55,7 @@ exports.handler = async function (event) {
       throw new Error('Missing SERPER_API_KEY');
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
+    const timeout = setTimeout(() => controller.abort(), 3000);
     const query = [name, category, city].filter(Boolean).join(' ').trim();
     try {
       const response = await fetch('https://google.serper.dev/search', {
@@ -66,7 +66,7 @@ exports.handler = async function (event) {
         },
         body: JSON.stringify({
           q: query,
-          num: 5
+          num: 3
         }),
         signal: controller.signal
       });
@@ -77,7 +77,7 @@ exports.handler = async function (event) {
       }
       const data = await response.json();
       return {
-        organic: Array.isArray(data?.organic) ? data.organic.slice(0, 4) : [],
+        organic: Array.isArray(data?.organic) ? data.organic.slice(0, 3) : [],
         knowledgeGraph: data?.knowledgeGraph || null
       };
     } catch (error) {
@@ -95,7 +95,7 @@ exports.handler = async function (event) {
       url = 'https://' + url;
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 3000);
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -114,7 +114,7 @@ exports.handler = async function (event) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 1800);
+        .slice(0, 1000);
     } catch (_) {
       clearTimeout(timeout);
       return '';
