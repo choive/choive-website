@@ -66,7 +66,8 @@ async function callClaude(messages) {
   try {
     const { name, category, city, website, description } = JSON.parse(event.body || '{}');
 
-LIVE WEB RULE = `
+const externalContext = `
+
 BUSINESS INPUT:
 
 Name: ${name || ''}
@@ -115,10 +116,8 @@ You operate at the level of decision psychology, not surface analysis.
 
 UNDERSTAND FIRST (CRITICAL):
 
-LIVE EVIDENCE PRIORITY:
-
-First, use live web evidence to determine:
-
+EVIDENCE PRIORITY:
+First, use the strongest available evidence to determine:
 1. What the business actually does
 2. Who the business serves
 3. Whether it is B2B, B2C, infrastructure, platform, service, or product
@@ -130,7 +129,7 @@ Only after that:
 - score ease
 - score difference
 
-If the website is clear and live evidence confirms it, clarity must stay high.
+If the website is clear and the available evidence supports it, clarity must stay high.
 If the business has real clients, partnerships, or proof, trust must stay moderate to high.
 Ease must reflect how easily it is encountered and chosen in real decision moments.
 
@@ -323,8 +322,7 @@ Explanation must be:
 
 REAL SCORING FOUNDATION (CRITICAL):
 
-Score this business based on live web evidence first.
-
+Score this business based on the strongest available evidence first.
 Use:
 - the business website if provided
 - visible third-party mentions
@@ -334,8 +332,7 @@ Use:
 
 Do not pretend to know how other AI systems would rank the business.
 
-Your job is to determine, from real live evidence:
-
+Your job is to determine, from the strongest available evidence:
 - how clearly this business is understood
 - how credible it is
 - how easy it is to encounter and choose
@@ -602,7 +599,7 @@ Every summary must include:
 
 AI INTERPRETATION RULE (CRITICAL):
 
-This diagnostic is based on real Claude evaluation using live web evidence.
+This diagnostic is based on Claude evaluation using the strongest available evidence.
 
 Do not pretend to speak for ChatGPT, Perplexity, or Gemini.
 
