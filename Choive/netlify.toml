@@ -11,3 +11,13 @@
 
 [functions."run-diagnostic-background"]
   timeout = 900
+
+[[redirects]]
+  from = "/result"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
