@@ -1,10 +1,6 @@
-[build]
-  command = "npm run build"
-  publish = "."
-
 [functions]
-  directory = "netlify/functions"
-  timeout = 26
+directory = "netlify/functions"
+timeout = 26
 
-[functions."run-diagnostic-background"]
-  timeout = 900
+[functions.run-diagnostic-background]
+timeout = 900
