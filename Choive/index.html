@@ -2354,6 +2354,28 @@ function buildDisplacementBlock(r) {
 }
 
 
+function getShareUrl() {
+  var jobId = window.__choiveShareJobId || '';
+  if (!jobId) return '';
+  return window.location.origin + '/result?jobId=' + encodeURIComponent(jobId);
+}
+
+function buildShareBlock(jobId) {
+  if (!jobId) return '';
+  window.__choiveShareJobId = jobId;
+  return [
+    '<div class="share-block" id="shareBlock">',
+    '  <div class="share-label">Share this result</div>',
+    '  <div class="share-url" id="shareUrl"></div>',
+    '  <div style="display:flex;gap:8px;flex-shrink:0;">',
+    '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy Diagnostic Link</button>',
+    '    <button class="share-btn" onclick="openShareUrl()">Open Shareable View</button>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+}
+
+
 function copyShareUrl() {
   var url = getShareUrl();
   if (!url) return;
