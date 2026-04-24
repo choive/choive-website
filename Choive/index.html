@@ -1632,14 +1632,14 @@ footer {
         <div class="stage-row" id="stageA">
           <div class="stage-icon" id="stageA-icon">○</div>
           <div class="stage-text">
-            <div class="stage-label">Collecting market evidence</div>
-            <div class="stage-support">Reviewing search presence, business signals, and visible sources.</div>
+            <div class="stage-label">Collecting market signals</div>
+            <div class="stage-support">Evaluating citation authority, and visible sources.</div>
           </div>
         </div>
         <div class="stage-row" id="stageB">
           <div class="stage-icon" id="stageB-icon">○</div>
           <div class="stage-text">
-            <div class="stage-label">Scoring decision strength</div>
+            <div class="stage-label">Scoring selection position</div>
             <div class="stage-support">Measuring clarity, trust, difference, and ease of selection.</div>
           </div>
         </div>
@@ -1926,7 +1926,7 @@ function pollDiagnostic(jobId) {
 
       if (data.status === 'complete') {
         clearInterval(pollTimer);
-        showResults(data.result);
+        showResults(data.result, jobId);
       } else if (data.status === 'failed') {
         clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
@@ -2017,9 +2017,9 @@ function buildWhnBlock(r, gap) {
       <div class="whn-section">
         <div class="whn-eyebrow">What Happens Next</div>
         <div class="whn-reality">
-          You are already being chosen.<br>
-          But not because your position is secure.<br>
-          You are being chosen because competitors have not closed this gap yet.
+          You are being chosen by habit.<br>
+          Not by structure.<br>
+          That is not a safe position.
         </div>
       </div>
 
@@ -2054,7 +2054,7 @@ function buildWhnBlock(r, gap) {
 
       <div class="whn-section">
         <div class="whn-tension">
-          If this gap remains, you are not competing on quality — you are competing on who is easier to choose.
+          Close this gap before it is exploited.
         </div>
       </div>
 
@@ -2063,67 +2063,193 @@ function buildWhnBlock(r, gap) {
           <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™', '${esc(r.businessUnderstanding || '')}')">
             Request Your CHOIVE Analysis™
           </button>
-          <span class="whn-cta-micro">See exactly what is preventing your business from being chosen.</span>
+          <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
         </div>
       </div>
 
     </div>`;
 }
 
+function buildDisplacementBlock(r) {
+  const d = r.displacement;
+  if (!d || !d.competitorName) return '';
+
+  return `
+    <div class="disp-block">
+      <div class="disp-query">
+        When someone asks: <span>"${esc(d.competitorQuery || '')}"</span>
+      </div>
+      <div class="disp-name">${esc(d.competitorName)}</div>
+      <div class="disp-label">Is being recommended instead</div>
+      <div class="disp-why"><strong>Why:</strong> ${esc(d.competitorWhy || '')}</div>
+    </div>`;
+}
+
+function buildShareBlock(jobId) {
+  if (!jobId) return '';
+  const shareUrl = `${window.location.origin}/result?jobId=${encodeURIComponent(jobId)}`;
+
+  return `
+    <div class="share-block" id="shareBlock">
+      <div class="share-label">Share this result</div>
+      <div class="share-url" id="shareUrl" title="${shareUrl}">${shareUrl}</div>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button class="share-btn" id="shareBtn" onclick="copyShareUrl('${shareUrl}')">
+          Copy Diagnostic Link
+        </button>
+        <button class="share-btn" onclick="window.open('${shareUrl}', '_blank')">
+          Open Shareable View
+        </button>
+      </div>
+    </div>`;
+}
+
+function copyShareUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('shareBtn');
+    if (btn) {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy Link';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(() => {
+    // fallback for older browsers
+    const el = document.getElementById('shareUrl');
+    if (el) {
+      const range = document.createRange();
+      range.selectNode(el);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
+  });
+}
+
 function buildGapBlock(r) {
   const tierMap = {
-    dominant:  100,
-    strong:    85,
-    upper_mid: 70,
-    mid:       55,
-    weak:      35,
-    absent:    10,
-    unknown:   0
+    dominant:  100, strong:    85, upper_mid: 70,
+    mid:       55,  weak:      35, absent:    10, unknown: 0
   };
-  const tier = r.marketPosition?.tier || 'unknown';
+  const tier       = r.marketPosition?.tier || 'unknown';
   const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
   const readability = r.overallScore || 0;
-  const gap = likelihood - readability;
+  const gap        = likelihood - readability;
+
+  // Map labels
+  const likeLabel = likelihood >= 80 ? 'HIGH' : likelihood >= 60 ? 'MID' : 'LOW';
+  const likeClass = likelihood >= 80 ? 'high' : likelihood >= 60 ? 'mid' : 'low';
+
+  const readLabel = readability >= 70 ? 'HIGH' : readability >= 40 ? 'MID' : 'LOW';
+  const readClass = readability >= 70 ? 'high' : readability >= 40 ? 'mid' : 'low';
+
+  const gapLabel = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
+  const gapClass = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
 
   const copy = gap >= 30
-    ? '<strong>Critical exposure.</strong> A well-optimised competitor could close this gap.'
+    ? 'A better-structured competitor would be selected instead of you.'
     : gap >= 15
-    ? '<strong>Meaningful gap.</strong> Closing this would convert recognition into consistent selection.'
+    ? 'You are being considered. You are not being chosen.'
     : gap >= 1
-    ? '<strong>Small gap.</strong> Targeted improvements would lock in the position.'
-    : '<strong>Aligned.</strong> Maintain and extend the position.';
+    ? 'The gap is small. Close it before it widens.'
+    : 'Position is structurally aligned.';
 
   return `
     <div class="gap-block">
       <div class="gap-rows">
         <div class="gap-row">
-          <div class="gap-row-header">
-            <div class="gap-row-label">AI Recommendation Likelihood</div>
-            <div class="gap-row-value">${likelihood} / 100</div>
-          </div>
-          <div class="gap-bar-track">
-            <div class="gap-bar-fill-likelihood" id="gapLikelihoodBar" data-pct="${likelihood}"></div>
-          </div>
+          <div class="gap-row-label">Recommendation Strength</div>
+          <div class="gap-row-value ${likeClass}">${likeLabel}</div>
         </div>
         <div class="gap-row">
-          <div class="gap-row-header">
-            <div class="gap-row-label">AI Readability Score</div>
-            <div class="gap-row-value">${readability} / 100</div>
-          </div>
-          <div class="gap-bar-track">
-            <div class="gap-bar-fill-readability" id="gapReadabilityBar" data-pct="${readability}"></div>
-          </div>
+          <div class="gap-row-label">AI Readability</div>
+          <div class="gap-row-value ${readClass}">${readLabel}</div>
         </div>
-      </div>
-      <div class="gap-delta-row">
-        <div class="gap-delta-label">Infrastructure Gap</div>
-        <div class="gap-delta-num">${gap > 0 ? '+' : ''}${gap} pts</div>
+        <div class="gap-row">
+          <div class="gap-row-label">Structural Gap</div>
+          <div class="gap-row-value ${gapClass}">${gapLabel}</div>
+        </div>
       </div>
       <div class="gap-copy">${copy}</div>
     </div>`;
 }
 
-function showResults(r) {
+function buildWhnBlock(r, gap) {
+  let riskHtml = '';
+  if (gap >= 30) {
+    riskHtml = `
+      <strong>This is a critical structural gap.</strong>
+      <p>A competitor with stronger AI-readability could overtake you — even if they are objectively worse.</p>
+      <p>This shift happens silently. By the time it is visible, it is already lost.</p>`;
+  } else if (gap >= 15) {
+    riskHtml = `
+      <strong>This gap is actively costing you decisions.</strong>
+      <p>You are being considered — but not consistently selected.</p>
+      <p>Closing this gap moves you from option to default.</p>`;
+  } else if (gap >= 1) {
+    riskHtml = `
+      <strong>You are close to dominance.</strong>
+      <p>Small structural improvements will lock your position.</p>`;
+  } else {
+    riskHtml = `
+      <strong>Your position is aligned.</strong>
+      <p>Maintain and extend structured signals to protect it.</p>`;
+  }
+
+  return `
+    <div class="whn-block">
+      <div class="whn-section">
+        <div class="whn-eyebrow">What Happens Next</div>
+        <div class="whn-reality">
+          You are being chosen by habit.<br>
+          Not by structure.<br>
+          That is not a safe position.
+        </div>
+      </div>
+      <div class="whn-section">
+        <div class="whn-risk">${riskHtml}</div>
+      </div>
+      <div class="whn-section">
+        <div class="whn-explain">
+          CHOIVE identifies exactly where your business is being considered — but not chosen.
+          Then restructures how you are understood, trusted, and selected across AI systems and decision environments.
+        </div>
+      </div>
+      <div class="whn-section">
+        <div class="whn-bullets">
+          <div class="whn-bullet-tier">CHOIVE Analysis™</div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Full breakdown of your selection gaps</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Exact positioning shifts required</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Structured action plan for implementation</div>
+          </div>
+        </div>
+      </div>
+      <div class="whn-section">
+        <div class="whn-tension">
+          Close this gap before it is exploited.
+        </div>
+      </div>
+      <div class="whn-section">
+        <div class="whn-cta">
+          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis\u2122')">
+            Request Your CHOIVE Analysis\u2122
+          </button>
+          <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function showResults(r, jobId) {
   document.getElementById('dS').classList.remove('active');
   const zone = document.getElementById('dR');
   zone.style.display = 'block';
@@ -2135,27 +2261,36 @@ function showResults(r) {
     ease:       { n:'04', name:'Ease' }
   };
 
+  const tierMap = {dominant:100,strong:85,upper_mid:70,mid:55,weak:35,absent:10,unknown:0};
+  const tier = r.marketPosition?.tier || 'unknown';
+  const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
+  const gap = likelihood - (r.overallScore || 0);
+
   zone.innerHTML = `
+    <div class="rnd-top">
+      <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
+    </div>
     <div class="verdict-banner">
       <div class="verdict-top">
         <div>
-          <div class="verdict-biz">${esc(bizData.name.toUpperCase())} · ${esc(bizData.category)} · ${esc(bizData.city)}</div>
-          <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Critical recommendation weakness' : r.verdictLevel === 'weak' ? 'Weak recommendation authority' : 'Established recommendation presence'}</div>
+          <div class="verdict-biz">${esc(bizData.name.toUpperCase())} \u00b7 ${esc(bizData.category)} \u00b7 ${esc(bizData.city)}</div>
+          <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Not being chosen' : r.verdictLevel === 'weak' ? 'Being overlooked' : 'Being chosen'}</div>
           <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
         </div>
         <div class="verdict-score-block">
           <span class="verdict-score-num" id="scoreNum">0</span>
           <div class="verdict-score-denom">/ 100</div>
-          <div class="verdict-scale">0–30 Critical · 31–55 Weak<br>56–75 Present · 76–100 Dominant</div>
-          ${buildScoreLabels(r)}
+          <div class="verdict-scale">0\u201330 Critical \u00b7 31\u201355 Weak<br>56\u201375 Present \u00b7 76\u2013100 Dominant</div>
         </div>
       </div>
       <div class="verdict-summary">${esc(r.summaryParagraph)}</div>
     </div>
     <div class="score-bar-track"><div class="score-bar-fill" id="scoreBar"></div></div>
+    ${buildDisplacementBlock(r)}
+    <div class="section-label">Decision Gap</div>
     ${buildGapBlock(r)}
-    ${buildWhnBlock(r, (function(){ const tm = {dominant:100,strong:85,upper_mid:70,mid:55,weak:35,absent:10,unknown:0}; const tier = r.marketPosition?.tier||'unknown'; return (tm[tier]!==undefined?tm[tier]:0) - (r.overallScore||0); })())}
-    <div class="section-label">AI platform coverage</div>
+    ${buildWhnBlock(r, gap)}
+    <div class="section-label">Platform Selection</div>
     <div class="platform-row">
       ${Object.entries(r.platformCoverage).map(([key, val]) => `
         <div class="platform-cell">
@@ -2164,12 +2299,12 @@ function showResults(r) {
           <div class="platform-detail">${esc(val.detail)}</div>
         </div>`).join('')}
     </div>
-    <div class="section-label">What we observed</div>
+    <div class="section-label">Evidence</div>
     <div class="evidence-block">
-      <div class="evidence-header">Diagnostic evidence · CHOIVE· Engine</div>
+      <div class="evidence-header">Diagnostic evidence \u00b7 CHOIVE\u00b7 Engine</div>
       <div class="evidence-body">${esc(r.evidenceNarrative)}</div>
     </div>
-    <div class="section-label">Score breakdown</div>
+    <div class="section-label">Selection Signals</div>
     <div class="pillars-grid">
       ${Object.entries(r.pillars).map(([key, val]) => `
         <div class="pillar-card">
@@ -2180,7 +2315,7 @@ function showResults(r) {
           <div class="pillar-finding">${esc(val.finding)}</div>
         </div>`).join('')}
     </div>
-    <div class="section-label">Priority actions</div>
+    <div class="section-label">Structural Actions</div>
     <div class="actions-block">
       ${r.actions.map(a => `
         <div class="action-row">
@@ -2193,26 +2328,22 @@ function showResults(r) {
     </div>
     <div class="cta-block">
       <div class="cta-eyebrow">Next step</div>
-      <div class="cta-sub-note">Most businesses stop here. The ones that continue become the one AI recommends.</div>
-      <div class="cta-headline">Now decide what happens next.</div>
-      <div class="cta-body">This diagnostic shows where AI is failing to choose you. CHOIVE Analysis™ turns that into a precise strategic blueprint. CHOIVE System™ installs the full structure, positioning, and recommendation signals for you.</div>
+      <div class="cta-sub-note">Most businesses do not act on this.</div>
+      <div class="cta-headline">The gap is visible. The decision is yours.</div>
+      <div class="cta-body">CHOIVE Analysis\u2122 identifies every structural gap in your selection position. CHOIVE System\u2122 closes them.</div>
       <div class="cta-buttons">
-        <button class="cta-primary" onclick="openForm('CHOIVE Analysis·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Continue CHOIVE· Index →</button>
-        <button class="cta-secondary" onclick="openForm('CHOIVE System·', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Install CHOIVE· System →</button>
+        <button class="cta-primary" onclick="openForm('CHOIVE Analysis\u00b7', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Continue CHOIVE\u00b7 Index \u2192</button>
+        <button class="cta-secondary" onclick="openForm('CHOIVE System\u00b7', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Install CHOIVE\u00b7 System \u2192</button>
       </div>
+    </div>
+    <div class="rnd-bottom">
+      <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
+      <div class="rnd-micro">Analyze another business or scenario.</div>
     </div>`;
 
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
     document.getElementById('scoreBar').style.width = r.overallScore + '%';
-    const glb = document.getElementById('gapLikelihoodBar');
-    const grb = document.getElementById('gapReadabilityBar');
-    if (glb) glb.style.width = glb.dataset.pct + '%';
-    if (grb) grb.style.width = grb.dataset.pct + '%';
-    const lb = document.getElementById('likelihoodBar');
-    const rb = document.getElementById('readabilityBar');
-    if (lb) lb.style.width = lb.dataset.pct + '%';
-    if (rb) rb.style.width = rb.dataset.pct + '%';
   }, 100);
   setTimeout(() => {
     document.querySelectorAll('.pillar-bar-fill').forEach(el => {
@@ -2222,7 +2353,6 @@ function showResults(r) {
   zone.scrollIntoView({ behavior: 'smooth' });
 }
 
-// ── UTILITIES ─────────────────────────────────────────────────────────────────
 function esc(s) {
   if (!s) return '';
   return String(s)
@@ -2252,10 +2382,10 @@ function showError(msg) {
       <div class="error-title">DIAGNOSTIC INTERRUPTED</div>
       <div class="error-body">${esc(msg)}</div>
       <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="cta-primary" onclick="resetDiagnostic()">Try again →</button>
+        <button class="cta-primary" onclick="resetDiagnostic()">Try again \u2192</button>
         <a href="mailto:hello&#64;choive.com?subject=CHOIVE Diagnostic Support" class="cta-secondary">Contact support</a>
       </div>
-      <div style="margin-top:18px;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--tm);">The CHOIVE· engine could not complete this run. Your inputs were not lost.</div>
+      <div style="margin-top:18px;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--tm);">The CHOIVE\u00b7 engine could not complete this run. Your inputs were not lost.</div>
     </div>`;
 }
 
@@ -2280,8 +2410,7 @@ function openForm(service, businessName = '', category = '', city = '') {
   if ((category || city) && !noteField.value) {
     let noteText = '';
     if (category) noteText += `Category: ${category}`;
-    if (category && city) noteText += `
-`;
+    if (category && city) noteText += `\n`;
     if (city) noteText += `Location: ${city}`;
     noteField.value = noteText;
   }
@@ -2312,7 +2441,7 @@ async function submitCHOIVEForm(event) {
       body: JSON.stringify({ name, business, email, website, note, service })
     });
     errorBox.style.color = '#4A9965';
-    errorBox.textContent = 'Your CHOIVE· Blueprint is being prepared.';
+    errorBox.textContent = 'Your CHOIVE\u00b7 Blueprint is being prepared.';
     setTimeout(() => { closeForm(); errorBox.textContent = ''; }, 1500);
   } catch (err) {
     errorBox.textContent = 'Something went wrong. Try again.';
@@ -2324,6 +2453,96 @@ document.addEventListener('keydown', e => {
     runDiagnostic();
   }
 });
+
+// ── SHAREABLE RESULT ROUTE ────────────────────────────────────────────────────
+(function initResultRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const jobId  = params.get('jobId');
+  if (!jobId) return; // normal homepage — do nothing
+
+  // Hide main page, show result zone only
+  const sections = ['dI','dS'];
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Hide all page sections except diagnostic area
+  document.querySelectorAll('.hero, .ga-strip, .marquee-wrap, .shift-section, .body-lt, .diag-section nav').forEach(el => {
+    el.style.display = 'none';
+  });
+
+  // Scroll to diagnostic section
+  const diagSection = document.getElementById('diagnostic');
+  if (diagSection) {
+    diagSection.style.paddingTop = '80px';
+    diagSection.scrollIntoView({ behavior: 'instant' });
+  }
+
+  // Show loading state in result zone
+  const zone = document.getElementById('dR');
+  if (!zone) return;
+  zone.style.display = 'block';
+  zone.innerHTML = `
+    <div class="scan-frame" style="text-align:center;padding:48px;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
+        <div class="spin"></div>
+        <div class="scan-ttl">Loading diagnostic result</div>
+      </div>
+      <div style="font-size:12px;color:var(--tm);">Retrieving your CHOIVE· Index</div>
+    </div>`;
+
+  // Fetch result
+  fetchSharedResult(jobId);
+})();
+
+async function fetchSharedResult(jobId) {
+  const zone = document.getElementById('dR');
+  try {
+    const res  = await fetch(`/.netlify/functions/get-result?jobId=${encodeURIComponent(jobId)}`);
+    const data = await res.json();
+
+    if (data.status === 'complete' && data.result) {
+      // Restore bizData from stored input
+      bizData = {
+        name:     data.input?.name     || '',
+        category: data.input?.category || '',
+        city:     data.input?.city     || '',
+        website:  data.input?.website  || ''
+      };
+      showResults(data.result, jobId);
+    } else if (data.status && data.status !== 'complete') {
+      zone.innerHTML = `
+        <div class="scan-frame" style="text-align:center;padding:48px;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
+            <div class="spin"></div>
+            <div class="scan-ttl">Diagnostic still processing</div>
+          </div>
+          <div style="font-size:12px;color:var(--tm);margin-bottom:24px;">Status: ${esc(data.status)}</div>
+          <button class="cta-secondary" onclick="fetchSharedResult('${esc(jobId)}')">Check again</button>
+        </div>`;
+    } else {
+      zone.innerHTML = `
+        <div class="error-frame">
+          <div class="error-title">Result Not Found</div>
+          <div class="error-body">This diagnostic result could not be retrieved. It may have expired or the link is incorrect.</div>
+          <div style="margin-top:22px;">
+            <a href="/" class="cta-primary">Run a new diagnostic</a>
+          </div>
+        </div>`;
+    }
+  } catch (err) {
+    if (zone) zone.innerHTML = `
+      <div class="error-frame">
+        <div class="error-title">Could Not Load Result</div>
+        <div class="error-body">Connection error. Please try again.</div>
+        <div style="margin-top:22px;display:flex;gap:12px;">
+          <button class="cta-primary" onclick="fetchSharedResult('${esc(jobId)}')">Try again</button>
+          <a href="/" class="cta-secondary">New diagnostic</a>
+        </div>
+      </div>`;
+  }
+}
 </script>
 </body>
 </html>
