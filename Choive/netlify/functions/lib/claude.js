@@ -5,7 +5,7 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS = 55000;
-const MAX_TOKENS = 2500;
+const MAX_TOKENS = 3000;
 
 async function scoreWithClaude(evidence) {
   const prompt = buildPrompt(evidence);
@@ -116,6 +116,30 @@ If global/platform: weight citation breadth and schema completeness.
 CHOIVE PRINCIPLE:
 Businesses are not chosen because they are the best.
 They are chosen because they create the least doubt.
+
+TWO SEPARATE DIMENSIONS — score both independently:
+
+1. RECOMMENDATION LIKELIHOOD
+   Will AI actually recommend this business when asked?
+   A globally dominant brand (Starbucks, Nike, Apple) WILL be recommended
+   regardless of schema gaps. Market position reflects real-world selection.
+   Set marketPosition.tier = "dominant" or "strong" for established brands
+   with clear market presence, broad recognition, and search dominance.
+
+2. AI READABILITY SCORE (the pillars)
+   How well-optimised is this business for AI selection?
+   Schema, llms.txt, structured data, citations — these can be weak
+   even for dominant brands. Score these strictly based on evidence.
+   A dominant brand can score 50/100 on readability — that is correct.
+   The gap between recommendation likelihood and readability score
+   IS the CHOIVE opportunity.
+
+Platform coverage must reflect ACTUAL recommendation likelihood:
+- A globally known brand with search position 1 → chatgpt/perplexity = "present"
+- Do not mark dominant brands as "NOT FOUND" on AI platforms
+- "absent" means AI genuinely does not know this business exists
+- "weak" means AI knows it but rarely surfaces it
+- "present" means AI actively recommends it
 SCORING — four pillars, each 0–25:
 CLARITY (0–25)
 What is actually being scored: how precisely and consistently this business is defined across every surface AI reads.
@@ -152,12 +176,17 @@ Return one short signature line: 3–6 words, final, decision-state based.
 Decision state — must be one of:
 not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, chosen_by_default
 summaryParagraph — exactly 3 sentences:
-- Sentence 1 must start: "This business is not the obvious choice because..."
-- Sentence 2 states the reason simply
-- Sentence 3 states the consequence
+- If marketPosition.tier is dominant or strong, Sentence 1 must start: "This business is currently chosen because..."
+- If marketPosition.tier is upper_mid, mid, weak, or absent, Sentence 1 must start: "This business is not the obvious choice because..."
+- Sentence 2 states the strongest selection driver or weakness simply
+- Sentence 3 states the main CHOIVE opportunity
 Each pillar finding — one short sentence, 3–6 words, no commas, no explanation, must feel final.
 Each action body — maximum 15 words. Be specific and direct.
 evidenceNarrative — maximum 2 sentences. State what was found and what was missing.
+verdictLevel must be only one of:
+absent, weak, present
+Do not use dominant, strong, upper_mid, mid, or weak as verdictLevel.
+Those tiers are only for marketPosition.tier.
 Return ONLY raw JSON.
 Do NOT include markdown.
 Do NOT include backticks.
