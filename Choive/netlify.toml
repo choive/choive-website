@@ -1,6 +1,13 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
 [functions]
-directory = "netlify/functions"
-timeout = 26
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [functions."run-diagnostic-background"]
-timeout = 900
+  timeout = 900
