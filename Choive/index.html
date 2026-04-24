@@ -407,6 +407,16 @@ nav {
 }
 .verdict-score-denom { font-size:12px; font-weight:500; color:var(--tm); }
 .verdict-scale { font-size:9px; font-weight:500; letter-spacing:0.06em; color:var(--tm); margin-top:8px; line-height:1.7; }
+.score-labels { margin-top:14px; display:flex; flex-direction:column; gap:6px; }
+.score-label-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.score-label-key { font-size:9px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--tm); white-space:nowrap; }
+.score-label-val { font-size:9px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
+.score-label-val.high { color:#4ade80; }
+.score-label-val.mid { color:var(--amber); }
+.score-label-val.low { color:var(--red); }
+.score-label-val.critical { color:var(--red); }
+.score-label-val.moderate { color:var(--amber); }
+.score-label-val.low-gap { color:#4ade80; }
 .verdict-summary {
   font-size:15px; font-weight:400; line-height:1.8;
   color:var(--tb); border-top:1px solid var(--rule-d); padding-top:18px;
@@ -1929,6 +1939,108 @@ function pollDiagnostic(jobId) {
 }
 
 // ── RESULTS ───────────────────────────────────────────────────────────────────
+// ── SCORE LABELS ─────────────────────────────────────────────────────────────
+function buildScoreLabels(r) {
+  const tier = r.marketPosition?.tier || 'unknown';
+  const score = r.overallScore || 0;
+
+  // Recommendation strength from market tier
+  const strengthMap = {
+    dominant:  { label: 'HIGH',   cls: 'high' },
+    strong:    { label: 'HIGH',   cls: 'high' },
+    upper_mid: { label: 'MID',    cls: 'mid' },
+    mid:       { label: 'MID',    cls: 'mid' },
+    weak:      { label: 'LOW',    cls: 'low' },
+    absent:    { label: 'LOW',    cls: 'low' },
+    unknown:   { label: 'LOW',    cls: 'low' },
+  };
+
+  // AI readability from overallScore
+  const readabilityLabel = score >= 70 ? 'HIGH'
+    : score >= 45 ? 'MID'
+    : 'LOW';
+  const readabilityCls = score >= 70 ? 'high'
+    : score >= 45 ? 'mid'
+    : 'low';
+
+  const strength = strengthMap[tier] || { label: 'LOW', cls: 'low' };
+
+  // Gap assessment
+  const tierScores = { dominant:100, strong:80, upper_mid:60, mid:45, weak:25, absent:5, unknown:30 };
+  const likelihoodScore = tierScores[tier] || 30;
+  const gap = Math.max(0, likelihoodScore - score);
+  const gapLabel = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MODERATE' : gap > 0 ? 'SMALL' : 'NONE';
+  const gapCls   = gap >= 30 ? 'critical' : gap >= 15 ? 'moderate' : gap > 0 ? 'low-gap' : 'low-gap';
+
+  return `<div class="score-labels">
+    <div class="score-label-row">
+      <div class="score-label-key">Recommendation</div>
+      <div class="score-label-val ${strength.cls}">${strength.label}</div>
+    </div>
+    <div class="score-label-row">
+      <div class="score-label-key">AI Readability</div>
+      <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
+    </div>
+    <div class="score-label-row">
+      <div class="score-label-key">Gap</div>
+      <div class="score-label-val ${gapCls}">${gapLabel}</div>
+    </div>
+  </div>`;
+}
+
+function buildGapBlock(r) {
+  const tierMap = {
+    dominant:  100,
+    strong:    85,
+    upper_mid: 70,
+    mid:       55,
+    weak:      35,
+    absent:    10,
+    unknown:   0
+  };
+  const tier = r.marketPosition?.tier || 'unknown';
+  const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
+  const readability = r.overallScore || 0;
+  const gap = likelihood - readability;
+
+  const copy = gap >= 30
+    ? '<strong>Critical exposure.</strong> A well-optimised competitor could close this gap.'
+    : gap >= 15
+    ? '<strong>Meaningful gap.</strong> Closing this would convert recognition into consistent selection.'
+    : gap >= 1
+    ? '<strong>Small gap.</strong> Targeted improvements would lock in the position.'
+    : '<strong>Aligned.</strong> Maintain and extend the position.';
+
+  return `
+    <div class="gap-block">
+      <div class="gap-rows">
+        <div class="gap-row">
+          <div class="gap-row-header">
+            <div class="gap-row-label">AI Recommendation Likelihood</div>
+            <div class="gap-row-value">${likelihood} / 100</div>
+          </div>
+          <div class="gap-bar-track">
+            <div class="gap-bar-fill-likelihood" id="gapLikelihoodBar" data-pct="${likelihood}"></div>
+          </div>
+        </div>
+        <div class="gap-row">
+          <div class="gap-row-header">
+            <div class="gap-row-label">AI Readability Score</div>
+            <div class="gap-row-value">${readability} / 100</div>
+          </div>
+          <div class="gap-bar-track">
+            <div class="gap-bar-fill-readability" id="gapReadabilityBar" data-pct="${readability}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="gap-delta-row">
+        <div class="gap-delta-label">Infrastructure Gap</div>
+        <div class="gap-delta-num">${gap > 0 ? '+' : ''}${gap} pts</div>
+      </div>
+      <div class="gap-copy">${copy}</div>
+    </div>`;
+}
+
 function showResults(r) {
   document.getElementById('dS').classList.remove('active');
   const zone = document.getElementById('dR');
@@ -1953,11 +2065,13 @@ function showResults(r) {
           <span class="verdict-score-num" id="scoreNum">0</span>
           <div class="verdict-score-denom">/ 100</div>
           <div class="verdict-scale">0–30 Critical · 31–55 Weak<br>56–75 Present · 76–100 Dominant</div>
+          ${buildScoreLabels(r)}
         </div>
       </div>
       <div class="verdict-summary">${esc(r.summaryParagraph)}</div>
     </div>
     <div class="score-bar-track"><div class="score-bar-fill" id="scoreBar"></div></div>
+    ${buildGapBlock(r)}
     <div class="section-label">AI platform coverage</div>
     <div class="platform-row">
       ${Object.entries(r.platformCoverage).map(([key, val]) => `
@@ -2008,6 +2122,14 @@ function showResults(r) {
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
     document.getElementById('scoreBar').style.width = r.overallScore + '%';
+    const glb = document.getElementById('gapLikelihoodBar');
+    const grb = document.getElementById('gapReadabilityBar');
+    if (glb) glb.style.width = glb.dataset.pct + '%';
+    if (grb) grb.style.width = grb.dataset.pct + '%';
+    const lb = document.getElementById('likelihoodBar');
+    const rb = document.getElementById('readabilityBar');
+    if (lb) lb.style.width = lb.dataset.pct + '%';
+    if (rb) rb.style.width = rb.dataset.pct + '%';
   }, 100);
   setTimeout(() => {
     document.querySelectorAll('.pillar-bar-fill').forEach(el => {
