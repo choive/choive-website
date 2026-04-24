@@ -2366,7 +2366,7 @@ function buildShareBlock(jobId) {
   return [
     '<div class="share-block" id="shareBlock">',
     '  <div class="share-label">Share this result</div>',
-    '  <div class="share-url" id="shareUrl"></div>',
+    '  <div class="share-url" id="shareUrl">' + esc(getShareUrl()) + '</div>',
     '  <div style="display:flex;gap:8px;flex-shrink:0;">',
     '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy Diagnostic Link</button>',
     '    <button class="share-btn" onclick="openShareUrl()">Open Shareable View</button>',
@@ -2541,6 +2541,7 @@ function showResults(r, jobId) {
     ease:       { n:'04', name:'Ease' }
   };
 
+  window.__choiveShareJobId = jobId || '';
   const tierMap = {dominant:100,strong:85,upper_mid:70,mid:55,weak:35,absent:10,unknown:0};
   const tier = r.marketPosition?.tier || 'unknown';
   const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
@@ -2567,6 +2568,7 @@ function showResults(r, jobId) {
       <div class="verdict-summary">${esc(r.summaryParagraph)}</div>
     </div>
     <div class="score-bar-track"><div class="score-bar-fill" id="scoreBar"></div></div>
+    ${buildShareBlock(jobId)}
     ${buildDisplacementBlock(r)}
     <div class="section-label">Decision Gap</div>
     ${buildGapBlock(r)}
@@ -2620,7 +2622,8 @@ function showResults(r, jobId) {
     <div class="rnd-bottom">
       <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
       <div class="rnd-micro">Analyze another business or scenario.</div>
-    </div>`;
+    </div>
+    ${buildShareBlock(jobId || '')}`;
 
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
