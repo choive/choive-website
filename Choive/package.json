@@ -1,7 +1,16 @@
-[functions]
-  directory = "netlify/functions"
-  timeout = 26
-
-# run-diagnostic runs as a background function — no user-facing timeout
-[functions."run-diagnostic"]
-  timeout = 900
+{
+  "name": "choive-diagnostic-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CHOIVE diagnostic engine deployed on Netlify Functions.",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo \"No build step required\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
