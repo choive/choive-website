@@ -8,9 +8,16 @@ const MAX_TEXT_LENGTH = 2000;
 
 function ensureProtocol(url) {
   if (!url) return '';
-  const value = String(url).trim();
+  let value = String(url).trim();
   if (!value) return '';
-  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  // Strip malformed double-protocol prefixes: https://http//, http//, https//
+  value = value.replace(/^(https?:\/\/)+https?\/\//i, '');
+  value = value.replace(/^https?\/\//i, '');
+  // Now add https:// if no valid protocol exists
+  if (!/^https?:\/\//i.test(value)) {
+    value = 'https://' + value;
+  }
+  return value;
 }
 
 function decodeEntities(text) {
@@ -25,7 +32,6 @@ function decodeEntities(text) {
 
 function extractText(html) {
   if (!html || typeof html !== 'string') return '';
-
   return decodeEntities(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -45,7 +51,6 @@ function extractText(html) {
 
 async function fetchWebsiteText(url) {
   if (!url) return '';
-
   const safeUrl = ensureProtocol(url);
   if (!safeUrl) return '';
 
@@ -55,13 +60,10 @@ async function fetchWebsiteText(url) {
   try {
     const response = await fetch(safeUrl, {
       method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; CHOIVEBot/1.0)'
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVEBot/1.0)' },
       redirect: 'follow',
       signal: controller.signal
     });
-
     clearTimeout(timeout);
 
     if (!response.ok) {
@@ -77,21 +79,16 @@ async function fetchWebsiteText(url) {
 
     const html = await response.text();
     return extractText(html);
+
   } catch (error) {
     clearTimeout(timeout);
-
     if (error.name === 'AbortError') {
       console.log(`CHOIVE fetchWebsite: timed out for ${safeUrl}`);
     } else {
       console.log(`CHOIVE fetchWebsite: error for ${safeUrl}: ${error.message}`);
     }
-
     return '';
   }
 }
 
-module.exports = {
-  fetchWebsiteText,
-  ensureProtocol,
-  extractText
-};
+module.exports = { fetchWebsiteText, ensureProtocol, extractText };
