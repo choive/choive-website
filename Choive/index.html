@@ -1988,6 +1988,88 @@ function buildScoreLabels(r) {
   </div>`;
 }
 
+function buildWhnBlock(r, gap) {
+  // Dynamic risk block
+  let riskHtml = '';
+  if (gap >= 30) {
+    riskHtml = `
+      <strong>This is a critical structural gap.</strong>
+      <p>A competitor with stronger AI-readability could overtake you — even if they are objectively worse.</p>
+      <p>This shift happens silently. By the time it is visible, it is already lost.</p>`;
+  } else if (gap >= 15) {
+    riskHtml = `
+      <strong>This gap is actively costing you decisions.</strong>
+      <p>You are being considered — but not consistently selected.</p>
+      <p>Closing this gap moves you from option to default.</p>`;
+  } else if (gap >= 1) {
+    riskHtml = `
+      <strong>You are close to dominance.</strong>
+      <p>Small structural improvements will lock your position.</p>`;
+  } else {
+    riskHtml = `
+      <strong>Your position is aligned.</strong>
+      <p>Maintain and extend structured signals to protect it.</p>`;
+  }
+
+  return `
+    <div class="whn-block">
+
+      <div class="whn-section">
+        <div class="whn-eyebrow">What Happens Next</div>
+        <div class="whn-reality">
+          You are already being chosen.<br>
+          But not because your position is secure.<br>
+          You are being chosen because competitors have not closed this gap yet.
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-risk">${riskHtml}</div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-explain">
+          CHOIVE identifies exactly where your business is being considered — but not chosen.
+          Then restructures how you are understood, trusted, and selected across AI systems and decision environments.
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-bullets">
+          <div class="whn-bullet-tier">CHOIVE Analysis™</div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Full breakdown of your selection gaps</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Exact positioning shifts required</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Structured action plan for implementation</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-tension">
+          If this gap remains, you are not competing on quality — you are competing on who is easier to choose.
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-cta">
+          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™', '${esc(r.businessUnderstanding || '')}')">
+            Request Your CHOIVE Analysis™
+          </button>
+          <span class="whn-cta-micro">See exactly what is preventing your business from being chosen.</span>
+        </div>
+      </div>
+
+    </div>`;
+}
+
 function buildGapBlock(r) {
   const tierMap = {
     dominant:  100,
@@ -2072,6 +2154,7 @@ function showResults(r) {
     </div>
     <div class="score-bar-track"><div class="score-bar-fill" id="scoreBar"></div></div>
     ${buildGapBlock(r)}
+    ${buildWhnBlock(r, (function(){ const tm = {dominant:100,strong:85,upper_mid:70,mid:55,weak:35,absent:10,unknown:0}; const tier = r.marketPosition?.tier||'unknown'; return (tm[tier]!==undefined?tm[tier]:0) - (r.overallScore||0); })())}
     <div class="section-label">AI platform coverage</div>
     <div class="platform-row">
       ${Object.entries(r.platformCoverage).map(([key, val]) => `
