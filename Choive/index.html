@@ -640,6 +640,110 @@ footer {
   display: block;
 }
 
+/* ─── MONETIZED RESULT ───────────────────────── */
+.mono-result { max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:0; }
+.mono-section {
+  padding:36px 0;
+  border-bottom:1px solid var(--rule-d);
+}
+.mono-section:last-child { border-bottom:none; }
+.mono-eyebrow {
+  font-size:10px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--ac); margin-bottom:20px;
+}
+.mono-score-row {
+  display:flex; align-items:baseline; gap:8px; margin-bottom:12px;
+}
+.mono-score-num {
+  font-family:'Inter',sans-serif; font-size:72px; font-weight:700;
+  letter-spacing:-0.04em; color:var(--tp); line-height:1;
+}
+.mono-score-denom { font-size:16px; font-weight:400; color:var(--tm); }
+.mono-score-bar-track { height:2px; background:rgba(255,255,255,0.06); margin-bottom:14px; }
+.mono-score-bar-fill  { height:100%; background:var(--ac); width:0; transition:width 1.4s cubic-bezier(0.16,1,0.3,1); }
+.mono-score-label { font-size:14px; font-weight:400; color:var(--tb); line-height:1.6; }
+.mono-insight { display:flex; flex-direction:column; gap:6px; }
+.mono-insight-line { font-size:20px; font-weight:500; color:var(--tp); line-height:1.4; }
+.mono-insight-line.muted { color:var(--tm); }
+.mono-presence-group { margin-bottom:20px; }
+.mono-presence-group:last-child { margin-bottom:0; }
+.mono-presence-label {
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:10px;
+}
+.mono-presence-row {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.mono-presence-row:last-child { border-bottom:none; }
+.mono-pi { font-size:13px; width:16px; flex-shrink:0; }
+.mono-pi.green { color:var(--ac); }
+.mono-pi.amber { color:var(--amber); }
+.mono-pi.red   { color:var(--red); }
+.mono-pk { font-size:13px; font-weight:500; color:var(--tp); flex:1; }
+.mono-pv { font-size:11px; font-weight:700; letter-spacing:0.08em; color:var(--tm); text-transform:uppercase; }
+.mono-pv.amber { color:var(--amber); }
+.mono-pv.red   { color:var(--red); }
+.mono-break { display:flex; flex-direction:column; gap:6px; }
+.mono-break-line { font-size:16px; font-weight:500; color:var(--tp); }
+.mono-break-line.muted { color:var(--tm); font-weight:400; }
+/* Paid sections */
+.pay-section {
+  padding:36px 0; border-bottom:1px solid var(--rule-d);
+}
+.pay-eyebrow {
+  font-size:10px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--ac); margin-bottom:20px;
+}
+.pay-lines { display:flex; flex-direction:column; gap:8px; }
+.pay-line { font-size:16px; font-weight:500; color:var(--tp); }
+.pay-line.muted { color:var(--tm); font-weight:400; font-size:14px; }
+.pay-comp-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.pay-comp-row.you .pay-comp-name { color:var(--ac); }
+.pay-comp-row.you .pay-comp-signal { color:var(--amber); }
+.pay-comp-name { font-size:13px; font-weight:600; color:var(--tb); }
+.pay-comp-signal { font-size:12px; font-weight:400; color:var(--tm); }
+.pay-shift-item { font-size:14px; font-weight:500; color:var(--tp); padding:4px 0; }
+.pay-label { font-size:13px; font-weight:400; color:var(--tm); margin-top:12px; }
+.pay-label strong { color:var(--tp); font-weight:600; }
+.pay-final { display:flex; flex-direction:column; gap:10px; }
+.pay-final-line { font-size:18px; font-weight:500; color:var(--tp); }
+.pay-final-line.muted { color:var(--tm); font-weight:400; font-size:14px; }
+.pay-product-name {
+  font-family:'Inter',sans-serif; font-size:22px; font-weight:700;
+  letter-spacing:0.04em; color:var(--ac); margin-top:8px;
+}
+.pay-product-desc { font-size:13px; font-weight:400; color:var(--tm); margin-bottom:4px; }
+.pay-btn-primary {
+  background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:16px; font-weight:700;
+  letter-spacing:0.04em; padding:18px 36px; cursor:pointer;
+  transition:background 0.15s; margin-top:12px; display:inline-block;
+  min-height:56px;
+}
+.pay-btn-primary:hover { background:var(--ac2); }
+/* Paywall */
+.paywall-block {
+  padding:40px; background:var(--dk-2); border:1px solid var(--rule-d);
+  margin:36px 0; display:flex; flex-direction:column; gap:20px;
+}
+.paywall-eyebrow {
+  font-size:13px; font-weight:700; letter-spacing:0.06em;
+  color:var(--tp); margin-bottom:4px;
+}
+.paywall-items { display:flex; flex-direction:column; gap:10px; }
+.paywall-item { font-size:14px; font-weight:400; color:var(--tb); line-height:1.6; }
+.paywall-btn {
+  background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:16px; font-weight:700;
+  letter-spacing:0.04em; padding:18px 36px; cursor:pointer;
+  transition:background 0.15s; min-height:56px; align-self:flex-start;
+}
+.paywall-btn:hover { background:var(--ac2); }
+
 /* ─── MOBILE ─────────────────────────────────── */
 @media (max-width:960px) { .offer-grid-3 { grid-template-columns:1fr; } }
 @media (max-width:768px) {
@@ -2278,7 +2382,11 @@ function pollDiagnostic(jobId) {
 
       if (data.status === 'complete') {
         clearInterval(pollTimer);
-        showResults(data.result, jobId);
+        // Merge paid status from DB into result so r.paid === true works
+      const resultWithPaid = Object.assign({}, data.result, {
+        paid: data.paid === true || data.result?.paid === true
+      });
+      showResults(resultWithPaid, jobId);
       } else if (data.status === 'failed') {
         clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
@@ -2357,7 +2465,7 @@ function buildDisplacementBlock(r) {
 function getShareUrl() {
   var jobId = window.__choiveShareJobId || '';
   if (!jobId) return '';
-  return window.location.origin + '/result?jobId=' + encodeURIComponent(jobId);
+  return window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
 }
 
 function buildShareBlock(jobId) {
@@ -2484,7 +2592,7 @@ function buildWhnBlock(r, gap) {
 
       <div class="whn-section">
         <div class="whn-risk">
-          <strong>\${risk}</strong>
+          <strong>${risk}</strong>
         </div>
       </div>
 
@@ -2520,7 +2628,7 @@ function buildWhnBlock(r, gap) {
       <div class="whn-section">
         <div class="whn-cta">
           <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
-            Request Your CHOIVE Analysis™
+            Unlock Your CHOIVE Analysis™
           </button>
           <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
         </div>
@@ -2533,114 +2641,172 @@ function showResults(r, jobId) {
   document.getElementById('dS').classList.remove('active');
   const zone = document.getElementById('dR');
   zone.style.display = 'block';
-  const pN = { chatgpt:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini', claude:'Claude' };
-  const pD = {
-    clarity:    { n:'01', name:'Clarity' },
-    trust:      { n:'02', name:'Trust' },
-    difference: { n:'03', name:'Difference' },
-    ease:       { n:'04', name:'Ease' }
-  };
 
   window.__choiveShareJobId = jobId || '';
-  const tierMap = {dominant:100,strong:85,upper_mid:70,mid:55,weak:35,absent:10,unknown:0};
-  const tier = r.marketPosition?.tier || 'unknown';
-  const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
-  const gap = likelihood - (r.overallScore || 0);
+
+  // isPaid sources (in priority order):
+  // 1. r.paid === true  → set by Stripe webhook updating Supabase diagnostic record
+  // 2. URL ?paid=true   → used for testing and as Stripe success_url redirect
+  const isPaid = (r.paid === true) || (new URLSearchParams(window.location.search).get('paid') === 'true');
+
+  const score = r.overallScore || 0;
+  const bName = esc(bizData.name || '');
+  const bCat  = esc(bizData.category || '');
+  const bCity = esc(bizData.city || '');
+  const bWeb = [
+    bizData.website || '',
+    bizData.description || '',
+    r.evidenceNarrative || '',
+    r.summaryParagraph || ''
+  ].join(' ').toLowerCase();
+
+  // Social detection
+  const hasInsta    = bWeb.includes('instagram.com')  || bWeb.includes('instagram');
+  const hasTiktok   = bWeb.includes('tiktok.com')     || bWeb.includes('tiktok');
+  const hasYoutube  = bWeb.includes('youtube.com')    || bWeb.includes('youtube');
+  const hasLinkedin = bWeb.includes('linkedin.com')   || bWeb.includes('linkedin');
+  const hasFacebook = bWeb.includes('facebook.com')   || bWeb.includes('facebook');
+  const hasX        = bWeb.includes('twitter.com')    || bWeb.includes('x.com');
+  const hasSocial   = hasInsta || hasTiktok || hasYoutube || hasLinkedin || hasFacebook || hasX;
+
+  // Google signal — deterministic from score
+  const googleSignal = score >= 55 ? 'STRONG' : 'INCONSISTENT';
+  const googleIcon   = score >= 55 ? '\u2714' : '\u26a0';
+
+  // Score label
+  const scoreLabel = score >= 76 ? 'Dominant recommendation presence.'
+    : score >= 56 ? 'Present — but not consistently selected.'
+    : score >= 31 ? 'Weak recommendation authority. Being overlooked.'
+    : 'Critical gap. Not being chosen.';
+
+  // Stripe payment link — replace with real link
+  const STRIPE_LINK = 'https://buy.stripe.com/PLACEHOLDER?client_reference_id=' + encodeURIComponent(jobId || '') + '&success_url=' + encodeURIComponent(window.location.origin + '/?jobId=' + encodeURIComponent(jobId || '') + '&paid=true');
+
+  const paidSections = isPaid ? `
+    <div class="pay-section">
+      <div class="pay-eyebrow">Why You Are Not Chosen</div>
+      <div class="pay-lines">
+        <div class="pay-line">You are understood — but not differentiated.</div>
+        <div class="pay-line">You are trusted — but not dominant.</div>
+        <div class="pay-line">You are present — but not structurally preferred.</div>
+      </div>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-eyebrow">Competitor Reality</div>
+      <div class="pay-lines">
+        <div class="pay-line muted">When customers compare options:</div>
+        <div class="pay-comp-row"><span class="pay-comp-name">Competitor A</span><span class="pay-comp-signal">Clearer positioning</span></div>
+        <div class="pay-comp-row"><span class="pay-comp-name">Competitor B</span><span class="pay-comp-signal">Stronger authority signals</span></div>
+        <div class="pay-comp-row you"><span class="pay-comp-name">You</span><span class="pay-comp-signal">Balanced — but not decisive</span></div>
+      </div>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-eyebrow">Selection Breakpoint</div>
+      <div class="pay-lines">
+        <div class="pay-line">You lose selection at the moment of comparison.</div>
+        <div class="pay-line muted">Not because you are worse —</div>
+        <div class="pay-line muted">but because another option feels easier to choose.</div>
+      </div>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-eyebrow">Positioning Shift</div>
+      <div class="pay-lines">
+        <div class="pay-line muted">To become the selected option:</div>
+        <div class="pay-shift-item">\u2192 Reduce interpretation</div>
+        <div class="pay-shift-item">\u2192 Increase perceived certainty</div>
+        <div class="pay-shift-item">\u2192 Make your value immediately clear</div>
+        <div class="pay-label">CHOIVE calls this: <strong>Decision Ease.</strong></div>
+      </div>
+    </div>
+
+    <div class="pay-section pay-final">
+      <div class="pay-final-line">This is fixable.</div>
+      <div class="pay-final-line muted">But not automatically.</div>
+      <div class="pay-product-name">CHOIVE SYSTEM\u2122</div>
+      <div class="pay-product-desc">We restructure your business so it becomes:</div>
+      <div class="pay-shift-item">\u2014 Instantly understood</div>
+      <div class="pay-shift-item">\u2014 Trusted without friction</div>
+      <div class="pay-shift-item">\u2014 The obvious choice in comparison</div>
+      <button class="pay-btn-primary" onclick="openForm('CHOIVE System\u2122')">Request Full Implementation</button>
+    </div>` : `
+    <div class="paywall-block">
+      <div class="paywall-eyebrow">Unlock your CHOIVE Analysis\u2122</div>
+      <div class="paywall-items">
+        <div class="paywall-item">\u2022 Why AI systems do not select your business</div>
+        <div class="paywall-item">\u2022 Where you lose to competitors</div>
+        <div class="paywall-item">\u2022 The exact shifts required to become the chosen option</div>
+      </div>
+      <button class="paywall-btn" onclick="window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
+    </div>`;
 
   zone.innerHTML = `
-    <div class="rnd-top">
-      <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
-      <div style="font-size:12px;color:var(--tm);margin-top:12px;">Compare another business.</div>
-    </div>
-    <div class="verdict-banner">
-      <div class="verdict-top">
-        <div>
-          <div class="verdict-biz">${esc(bizData.name.toUpperCase())} \u00b7 ${esc(bizData.category)} \u00b7 ${esc(bizData.city)}</div>
-          <div class="verdict-tag ${r.verdictLevel}">${r.verdictLevel === 'absent' ? 'Not being chosen' : r.verdictLevel === 'weak' ? 'Being overlooked' : 'Being chosen'}</div>
-          <div class="verdict-headline">${esc(r.verdictHeadline)}</div>
+    <div class="mono-result">
+
+      <div class="mono-section">
+        <div class="mono-eyebrow">CHOIVE INDEX\u2122</div>
+        <div class="mono-score-row">
+          <span class="mono-score-num" id="scoreNum">0</span>
+          <span class="mono-score-denom">/ 100</span>
         </div>
-        <div class="verdict-score-block">
-          <span class="verdict-score-num" id="scoreNum">0</span>
-          <div class="verdict-score-denom">/ 100</div>
-          <div class="verdict-scale">0\u201330 Critical \u00b7 31\u201355 Weak<br>56\u201375 Present \u00b7 76\u2013100 Dominant</div>
+        <div class="mono-score-bar-track"><div class="mono-score-bar-fill" id="scoreBar"></div></div>
+        <div class="mono-score-label">${scoreLabel}</div>
+      </div>
+
+      <div class="mono-section mono-insight">
+        <div class="mono-insight-line">You are visible.</div>
+        <div class="mono-insight-line">You are trusted.</div>
+        <div class="mono-insight-line muted">But when alternatives appear —</div>
+        <div class="mono-insight-line muted">you are not the obvious choice.</div>
+      </div>
+
+      <div class="mono-section">
+        <div class="mono-eyebrow">Digital Presence Coverage</div>
+        <div class="mono-presence-group">
+          <div class="mono-presence-label">Core Presence</div>
+          <div class="mono-presence-row"><span class="mono-pi green">\u2714</span><span class="mono-pk">Website</span><span class="mono-pv">STRONG</span></div>
+          <div class="mono-presence-row"><span class="mono-pi ${googleSignal === 'STRONG' ? 'green' : 'amber'}">${googleIcon}</span><span class="mono-pk">Google</span><span class="mono-pv">${googleSignal}</span></div>
+        </div>
+        <div class="mono-presence-group">
+          <div class="mono-presence-label">Social Proof</div>
+          ${hasSocial
+            ? '<div class="mono-presence-row"><span class="mono-pi green">\u2714</span><span class="mono-pk">Presence detected</span><span class="mono-pv amber">Weak consistency</span></div>'
+            : '<div class="mono-presence-row"><span class="mono-pi red">\u2716</span><span class="mono-pk">Not detected</span><span class="mono-pv red">\u2014</span></div>'
+          }
+        </div>
+        <div class="mono-presence-group">
+          <div class="mono-presence-label">Authority</div>
+          <div class="mono-presence-row"><span class="mono-pi red">\u2716</span><span class="mono-pk">Not established</span><span class="mono-pv red">\u2014</span></div>
         </div>
       </div>
-      <div class="verdict-summary">${esc(r.summaryParagraph)}</div>
-    </div>
-    <div class="score-bar-track"><div class="score-bar-fill" id="scoreBar"></div></div>
-    ${buildShareBlock(jobId)}
-    ${buildDisplacementBlock(r)}
-    <div class="section-label">Decision Gap</div>
-    ${buildGapBlock(r)}
-    ${buildWhnBlock(r, gap)}
-    <div class="section-label">Platform Selection</div>
-    <div class="platform-row">
-      ${Object.entries(r.platformCoverage).map(([key, val]) => `
-        <div class="platform-cell">
-          <div class="platform-name">${pN[key]}</div>
-          <div class="platform-verdict ${val.status}">${val.status === 'absent' ? 'NOT FOUND' : val.status === 'weak' ? 'WEAK' : 'PRESENT'}</div>
-          <div class="platform-detail">${esc(val.detail)}</div>
-        </div>`).join('')}
-    </div>
-    <div class="section-label">Evidence</div>
-    <div class="evidence-block">
-      <div class="evidence-header">Diagnostic evidence \u00b7 CHOIVE\u00b7 Engine</div>
-      <div class="evidence-body">${esc(r.evidenceNarrative)}</div>
-    </div>
-    <div class="section-label">Selection Signals</div>
-    <div class="pillars-grid">
-      ${Object.entries(r.pillars).map(([key, val]) => `
-        <div class="pillar-card">
-          <div class="pillar-num">${pD[key].n}</div>
-          <div class="pillar-name">${pD[key].name}</div>
-          <div class="pillar-score-row"><div class="pillar-score-n">${val.score}</div><div class="pillar-score-d">/ 25</div></div>
-          <div class="pillar-bar"><div class="pillar-bar-fill" data-pct="${val.score/25*100}"></div></div>
-          <div class="pillar-finding">${esc(val.finding)}</div>
-        </div>`).join('')}
-    </div>
-    <div class="section-label">Structural Actions</div>
-    <div class="actions-block">
-      ${r.actions.map(a => `
-        <div class="action-row">
-          <div class="action-badge ${a.priority}">${a.priority}</div>
-          <div class="action-content">
-            <div class="action-title">${esc(a.title)}</div>
-            <div class="action-body">${esc(a.body)}</div>
-          </div>
-        </div>`).join('')}
-    </div>
-    <div class="cta-block">
-      <div class="cta-eyebrow">Next step</div>
-      <div class="cta-sub-note">Most businesses do not act on this.</div>
-      <div class="cta-headline">The gap is visible. The decision is yours.</div>
-      <div class="cta-body">CHOIVE Analysis\u2122 identifies every structural gap in your selection position. CHOIVE System\u2122 closes them.</div>
-      <div class="cta-buttons">
-        <button class="cta-primary" onclick="openForm('CHOIVE Analysis\u00b7', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Continue CHOIVE\u00b7 Index \u2192</button>
-        <button class="cta-secondary" onclick="openForm('CHOIVE System\u00b7', '${esc(bizData.name)}', '${esc(bizData.category)}', '${esc(bizData.city)}')">Install CHOIVE\u00b7 System \u2192</button>
+
+      <div class="mono-section mono-break">
+        <div class="mono-break-line">This is where selection is lost.</div>
+        <div class="mono-break-line muted">Not because your business is worse —</div>
+        <div class="mono-break-line muted">but because it is not the easiest to choose.</div>
       </div>
-    </div>
-    <div class="rnd-bottom">
-      <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
-      <div class="rnd-micro">Analyze another business or scenario.</div>
-    </div>
-    ${buildShareBlock(jobId || '')}`;
+
+      ${paidSections}
+
+      ${buildShareBlock(jobId)}
+
+      <div class="rnd-bottom">
+        <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
+        <div class="rnd-micro">Compare another business.</div>
+      </div>
+
+    </div>`;
 
   setTimeout(() => {
-    animateNum('scoreNum', 0, r.overallScore, 1200);
-    document.getElementById('scoreBar').style.width = r.overallScore + '%';
-    // Populate share URL display
-    var shareEl = document.getElementById('shareUrl');
-    if (shareEl && window.__choiveShareJobId) {
-      shareEl.textContent = window.location.origin + '/result?jobId=' + encodeURIComponent(window.__choiveShareJobId);
-    }
+    animateNum('scoreNum', 0, score, 1200);
+    document.getElementById('scoreBar').style.width = score + '%';
   }, 100);
-  setTimeout(() => {
-    document.querySelectorAll('.pillar-bar-fill').forEach(el => {
-      el.style.width = el.dataset.pct + '%';
-    });
-  }, 300);
+
   zone.scrollIntoView({ behavior: 'smooth' });
 }
+
 
 function esc(s) {
   if (!s) return '';
@@ -2794,12 +2960,17 @@ async function fetchSharedResult(jobId) {
     if (data.status === 'complete' && data.result) {
       // Restore bizData from stored input
       bizData = {
-        name:     data.input?.name     || '',
-        category: data.input?.category || '',
-        city:     data.input?.city     || '',
-        website:  data.input?.website  || ''
+        name:        data.input?.name        || '',
+        category:    data.input?.category    || '',
+        city:        data.input?.city        || '',
+        website:     data.input?.website     || '',
+        description: data.input?.description || ''
       };
-      showResults(data.result, jobId);
+      // Merge paid status from DB into result so r.paid === true works
+      const resultWithPaid = Object.assign({}, data.result, {
+        paid: data.paid === true || data.result?.paid === true
+      });
+      showResults(resultWithPaid, jobId);
     } else if (data.status && data.status !== 'complete') {
       zone.innerHTML = `
         <div class="scan-frame" style="text-align:center;padding:48px;">
