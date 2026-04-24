@@ -605,6 +605,41 @@ footer {
 .form-note { margin-top:14px; font-size:11px; font-weight:400; letter-spacing:0.06em; color:var(--tdm); }
 .form-error { margin-top:10px; font-size:13px; font-weight:500; }
 
+/* ─── RUN NEW DIAGNOSTIC ────────────────────────────────────────────────── */
+.rnd-top {
+  text-align: center;
+  padding: 0 0 32px;
+}
+.rnd-bottom {
+  text-align: center;
+  padding: 40px 0 24px;
+  border-top: 1px solid var(--rule-d);
+  margin-top: 48px;
+}
+.rnd-btn {
+  background: transparent;
+  border: 1px solid var(--rule-d);
+  color: var(--tm);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: color 0.15s, border-color 0.15s;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.rnd-btn:hover { color: var(--tp); border-color: rgba(255,255,255,0.22); }
+.rnd-micro {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--tm);
+  display: block;
+}
+
 /* ─── MOBILE ─────────────────────────────────── */
 @media (max-width:960px) { .offer-grid-3 { grid-template-columns:1fr; } }
 @media (max-width:768px) {
@@ -957,6 +992,41 @@ footer {
 .error-body { font-size:15px; font-weight:400; color:var(--tb); line-height:1.7; margin-bottom:28px; }
 .error-hint { font-size:11px; color:var(--tm); margin-top:16px; }
 
+/* ─── RUN NEW DIAGNOSTIC ────────────────────────────────────────────────── */
+.rnd-top {
+  text-align: center;
+  padding: 0 0 32px;
+}
+.rnd-bottom {
+  text-align: center;
+  padding: 40px 0 24px;
+  border-top: 1px solid var(--rule-d);
+  margin-top: 48px;
+}
+.rnd-btn {
+  background: transparent;
+  border: 1px solid var(--rule-d);
+  color: var(--tm);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: color 0.15s, border-color 0.15s;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.rnd-btn:hover { color: var(--tp); border-color: rgba(255,255,255,0.22); }
+.rnd-micro {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--tm);
+  display: block;
+}
+
 /* ─── MOBILE ──────────────────────────────────────────────────────────────── */
 @media (max-width:768px) {
   .verdict-hero { padding:36px 24px; }
@@ -968,6 +1038,288 @@ footer {
   .engine-loading { padding:64px 24px; }
   .verdict-score-row { gap:16px; }
 }
+
+
+/* ─── RESULT ZONE BASE ───────────────────────────────────────────────────── */
+.res-zone { display:none; max-width:760px; margin:0 auto; }
+
+/* ─── VERDICT BANNER ─────────────────────────────────────────────────────── */
+.verdict-banner {
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:40px; margin-bottom:2px;
+  position:relative; overflow:hidden;
+}
+.verdict-banner::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--ac), transparent); opacity:0.4;
+}
+.verdict-top {
+  display:grid; grid-template-columns:1fr 140px;
+  gap:20px; align-items:start; margin-bottom:24px;
+}
+.verdict-biz {
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:12px;
+}
+.verdict-tag {
+  display:inline-block; font-size:10px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:5px 12px; border:1px solid; margin-bottom:14px;
+}
+.verdict-tag.absent { color:#f87171; border-color:rgba(248,113,113,0.35); background:rgba(248,113,113,0.06); }
+.verdict-tag.weak   { color:#fbbf24; border-color:rgba(251,191,36,0.35);  background:rgba(251,191,36,0.06); }
+.verdict-tag.present{ color:var(--ac); border-color:rgba(194,240,212,0.35); background:rgba(194,240,212,0.06); }
+.verdict-headline {
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:clamp(24px,3.5vw,36px);
+  letter-spacing:-0.02em; color:var(--tp); line-height:1.1;
+  overflow-wrap:break-word;
+}
+.verdict-score-block { text-align:right; }
+.verdict-score-num {
+  font-family:'Inter',sans-serif; font-weight:700;
+  font-size:64px; line-height:1; color:var(--tp); letter-spacing:-0.03em;
+  display:block;
+}
+.verdict-score-denom { font-size:12px; font-weight:500; color:var(--tm); }
+.verdict-scale { font-size:9px; font-weight:500; letter-spacing:0.06em; color:var(--tm); margin-top:8px; line-height:1.7; }
+.verdict-summary {
+  font-size:15px; font-weight:400; line-height:1.85;
+  color:var(--tb); border-top:1px solid var(--rule-d); padding-top:20px;
+  max-width:640px;
+}
+
+/* ─── SCORE BAR ──────────────────────────────────────────────────────────── */
+.score-bar-track { height:1px; background:rgba(255,255,255,0.06); margin-bottom:48px; }
+.score-bar-fill  { height:100%; background:var(--ac); width:0; transition:width 1.4s cubic-bezier(0.16,1,0.3,1); }
+
+/* ─── SECTION LABELS ─────────────────────────────────────────────────────── */
+.section-label {
+  font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--tm); margin-bottom:16px; margin-top:48px;
+  display:flex; align-items:center; gap:16px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--rule-d); }
+
+/* ─── DISPLACEMENT BLOCK ─────────────────────────────────────────────────── */
+.disp-block {
+  background:var(--dk-3); border:1px solid rgba(248,113,113,0.15);
+  padding:40px; margin-bottom:48px;
+}
+.disp-query {
+  font-size:10px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:20px;
+}
+.disp-query span {
+  color:var(--tp); font-style:italic; text-transform:none; letter-spacing:0.02em;
+}
+.disp-name {
+  font-size:28px; font-weight:700; color:#f87171;
+  letter-spacing:-0.02em; margin-bottom:6px; line-height:1.1;
+}
+.disp-label {
+  font-size:10px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:rgba(248,113,113,0.5); margin-bottom:20px;
+}
+.disp-why {
+  font-size:14px; font-weight:400; line-height:1.75; color:var(--tb);
+  padding-top:20px; border-top:1px solid rgba(248,113,113,0.1);
+}
+.disp-why strong { color:var(--tp); font-weight:600; }
+
+/* ─── GAP BLOCK ──────────────────────────────────────────────────────────── */
+.gap-block {
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:40px 40px 32px; margin-bottom:48px;
+}
+.gap-rows { display:flex; flex-direction:column; gap:0; }
+.gap-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:20px 0; border-bottom:1px solid var(--rule-d);
+}
+.gap-row:last-child { border-bottom:none; }
+.gap-row-label {
+  font-size:11px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm);
+}
+.gap-row-value {
+  font-size:11px; font-weight:800; letter-spacing:0.12em;
+  text-transform:uppercase; text-align:right;
+}
+.gap-row-value.high      { color:var(--ac); }
+.gap-row-value.mid       { color:var(--tb); }
+.gap-row-value.low       { color:rgba(194,240,212,0.35); }
+.gap-row-value.critical  { color:#f87171; }
+.gap-row-value.meaningful{ color:#fbbf24; }
+.gap-row-value.minor     { color:var(--tb); }
+.gap-row-value.aligned   { color:var(--ac); }
+.gap-delta {
+  padding-top:24px; margin-top:8px;
+}
+.gap-delta-pts {
+  font-size:13px; font-weight:800; letter-spacing:-0.01em; color:var(--tp); margin-bottom:10px;
+}
+.gap-copy {
+  font-size:14px; font-weight:400; line-height:1.7; color:var(--tb); margin-bottom:10px;
+}
+.gap-copy-sub {
+  font-size:12px; font-weight:400; line-height:1.65; color:var(--tm);
+  padding-top:12px; border-top:1px solid var(--rule-d);
+}
+
+/* ─── WHAT HAPPENS NEXT ──────────────────────────────────────────────────── */
+.whn-block {
+  background:var(--dk-3); border:1px solid var(--rule-d);
+  padding:48px; margin-bottom:48px;
+}
+.whn-eyebrow {
+  font-size:10px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--ac); margin-bottom:32px;
+}
+.whn-section { margin-bottom:32px; }
+.whn-section:last-child { margin-bottom:0; }
+.whn-reality {
+  font-size:20px; font-weight:500; line-height:1.6; color:var(--tp);
+  max-width:540px;
+}
+.whn-risk {
+  font-size:15px; font-weight:400; line-height:1.8; color:var(--tb); max-width:580px;
+}
+.whn-risk strong { color:var(--tp); font-weight:600; display:block; margin-bottom:8px; font-size:16px; }
+.whn-explain {
+  font-size:15px; font-weight:400; line-height:1.85; color:var(--tb); max-width:580px;
+}
+.whn-bullets { display:flex; flex-direction:column; gap:0; }
+.whn-bullet-tier {
+  font-size:12px; font-weight:700; letter-spacing:0.06em;
+  color:var(--tp); padding-bottom:16px; border-bottom:1px solid var(--rule-d);
+  margin-bottom:4px;
+}
+.whn-bullet-item { display:flex; gap:14px; align-items:flex-start; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.whn-bullet-item:last-child { border-bottom:none; }
+.whn-bullet-arrow { font-size:11px; font-weight:700; color:var(--ac); flex-shrink:0; margin-top:2px; }
+.whn-bullet-text { font-size:14px; font-weight:400; color:var(--tb); line-height:1.6; }
+.whn-tension {
+  font-size:15px; font-weight:500; line-height:1.7; color:var(--tp);
+  font-style:italic; padding:20px 24px;
+  border-left:2px solid rgba(194,240,212,0.4);
+  background:rgba(194,240,212,0.03);
+}
+.whn-cta { text-align:center; padding-top:8px; }
+.whn-cta-btn {
+  display:inline-block;
+  background:var(--ac); color:var(--dk);
+  font-family:'Inter',sans-serif; font-size:17px; font-weight:700;
+  letter-spacing:0.04em; padding:20px 40px;
+  border:none; cursor:pointer; text-decoration:none;
+  transition:background 0.15s; margin-bottom:20px;
+  min-height:56px; white-space:nowrap;
+}
+.whn-cta-btn:hover { background:var(--ac2); }
+.whn-cta-micro {
+  font-size:13px; font-weight:400; letter-spacing:0.02em;
+  color:var(--tm); display:block;
+}
+
+/* ─── PLATFORM COVERAGE ──────────────────────────────────────────────────── */
+.platform-row { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-bottom:2px; }
+.platform-cell { background:var(--dk-2); border:1px solid var(--rule-d); padding:24px 20px; text-align:center; }
+.platform-name { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--tm); margin-bottom:12px; }
+.platform-verdict { font-family:'Inter',sans-serif; font-weight:800; font-size:13px; letter-spacing:0.06em; margin-bottom:8px; }
+.platform-verdict.absent  { color:#f87171; }
+.platform-verdict.weak    { color:#fbbf24; }
+.platform-verdict.present { color:var(--ac); }
+.platform-detail { font-size:12px; font-weight:400; color:var(--tm); line-height:1.55; }
+
+/* ─── PILLARS ────────────────────────────────────────────────────────────── */
+.pillars-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:2px; }
+.pillar-card { background:var(--dk-2); border:1px solid var(--rule-d); padding:32px 28px; }
+.pillar-num { font-size:10px; font-weight:700; letter-spacing:0.1em; color:var(--acd); margin-bottom:10px; }
+.pillar-name { font-family:'Inter',sans-serif; font-weight:600; font-size:20px; letter-spacing:-0.01em; color:var(--tp); margin-bottom:16px; }
+.pillar-score-row { display:flex; align-items:baseline; gap:4px; margin-bottom:12px; }
+.pillar-score-n { font-family:'Inter',sans-serif; font-weight:700; font-size:40px; color:var(--tp); letter-spacing:-0.02em; line-height:1; }
+.pillar-score-d { font-size:12px; font-weight:500; color:var(--tm); }
+.pillar-bar { height:1px; background:rgba(255,255,255,0.08); margin-bottom:18px; }
+.pillar-bar-fill { height:100%; background:var(--ac); width:0; transition:width 1.6s cubic-bezier(0.16,1,0.3,1); }
+.pillar-finding { font-size:13px; font-weight:400; line-height:1.75; color:var(--tb); }
+.pillar-finding strong { color:var(--tp); font-weight:600; }
+
+/* ─── EVIDENCE ───────────────────────────────────────────────────────────── */
+.evidence-block { background:var(--dk-2); border:1px solid var(--rule-d); margin-bottom:2px; }
+.evidence-header { padding:16px 28px; border-bottom:1px solid var(--rule-d); font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--tm); }
+.evidence-body { padding:28px; font-size:14px; font-weight:400; line-height:1.85; color:var(--tb); max-width:640px; }
+
+/* ─── ACTIONS ────────────────────────────────────────────────────────────── */
+.actions-block { margin-bottom:2px; }
+.action-row { background:var(--dk-2); border:1px solid var(--rule-d); padding:24px 28px; display:flex; gap:20px; align-items:flex-start; margin-bottom:2px; }
+.action-badge { font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 10px; border:1px solid; white-space:nowrap; flex-shrink:0; margin-top:3px; }
+.action-badge.critical { color:#f87171; border-color:rgba(248,113,113,0.3); }
+.action-badge.high     { color:#fbbf24; border-color:rgba(251,191,36,0.3); }
+.action-badge.medium   { color:var(--tm); border-color:var(--rule-d); }
+.action-title { font-size:14px; font-weight:600; color:var(--tp); margin-bottom:8px; }
+.action-body  { font-size:13px; font-weight:400; line-height:1.75; color:var(--tb); }
+
+/* ─── CTA BLOCK ──────────────────────────────────────────────────────────── */
+.cta-block {
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:52px 48px; margin-top:48px;
+}
+.cta-eyebrow { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--ac); margin-bottom:14px; }
+.cta-sub-note { font-size:13px; font-weight:400; color:var(--tm); margin-bottom:8px; }
+.cta-headline {
+  font-family:'Inter',sans-serif; font-weight:600;
+  font-size:32px; letter-spacing:-0.02em; color:var(--tp); margin-bottom:16px; line-height:1.05;
+}
+.cta-body { font-size:15px; font-weight:400; line-height:1.8; color:var(--tb); margin-bottom:40px; max-width:520px; }
+.cta-buttons { display:flex; gap:14px; flex-wrap:wrap; }
+.cta-primary {
+  background:var(--ac); color:var(--dk); border:none;
+  font-family:'Inter',sans-serif; font-size:16px; font-weight:700;
+  letter-spacing:0.04em; padding:18px 32px; cursor:pointer;
+  text-decoration:none; display:inline-block; transition:background 0.15s;
+  min-height:56px; white-space:nowrap;
+}
+.cta-primary:hover { background:var(--ac2); }
+.cta-secondary {
+  background:transparent; color:var(--tm); border:1px solid var(--rule-d);
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+  letter-spacing:0.04em; text-transform:uppercase; padding:18px 24px; cursor:pointer;
+  text-decoration:none; display:inline-block;
+  transition:color 0.15s, border-color 0.15s;
+  min-height:56px; white-space:nowrap;
+}
+.cta-secondary:hover { color:var(--tp); border-color:rgba(255,255,255,0.22); }
+
+/* ─── SHARE BLOCK ────────────────────────────────────────────────────────── */
+.share-block {
+  background:var(--dk-2); border:1px solid var(--rule-d);
+  padding:20px 32px; margin-top:48px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; flex-wrap:wrap;
+}
+.share-label {
+  font-size:10px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm);
+}
+.share-url {
+  font-size:11px; font-weight:400; color:var(--tb);
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.share-btn {
+  background:transparent; border:1px solid var(--rule-d);
+  color:var(--tm); font-family:'Inter',sans-serif;
+  font-size:11px; font-weight:600; letter-spacing:0.06em;
+  text-transform:uppercase; padding:10px 18px; cursor:pointer;
+  min-height:40px;
+  transition:color 0.15s, border-color 0.15s; white-space:nowrap; flex-shrink:0;
+}
+.share-btn:hover { color:var(--tp); border-color:rgba(255,255,255,0.22); }
+.share-btn.copied { color:var(--ac); border-color:rgba(194,240,212,0.3); }
+
+/* ─── ERROR ──────────────────────────────────────────────────────────────── */
+.error-frame { background:rgba(248,113,113,0.04); border:1px solid rgba(248,113,113,0.15); padding:40px; }
+.error-title { font-size:12px; font-weight:700; color:#f87171; letter-spacing:0.08em; margin-bottom:12px; }
+.error-body  { font-size:15px; font-weight:400; color:var(--tb); line-height:1.65; margin-bottom:24px; }
 
 </style>
 <meta property="og:type" content="website">
@@ -1542,7 +1894,7 @@ footer {
     <h2 class="diag-h2">See where<br>you stand.</h2>
     <div class="diag-pre-lead">Most businesses have no idea what AI says about them when no one is watching.</div>
     <p class="diag-lead">
-      Real diagnostic. Enter your business and see how AI currently positions you across ChatGPT, Perplexity, Gemini, and Claude.
+      Real diagnostic. Enter your business and see how AI positions you across ChatGPT, Perplexity, Gemini, and Claude.
       <strong>Any business. Any category. Anywhere in the world.</strong>
     </p>
 
@@ -1664,7 +2016,7 @@ footer {
   <div class="eyebrow">Where to begin</div>
   <h2 class="section-h2">See the gap.<br><em>Close it.</em></h2>
   <p class="section-lead">Start with the diagnostic to understand exactly where you stand. Or move directly to the system that changes it.</p>
-  <div class="offer-currently">5 new clients per month — currently open</div>
+  <div class="offer-currently">5 new clients per month — open</div>
   <div class="offer-grid-3">
     <div class="offer-card">
       <div class="offer-tier">CHOIVE Diagnostic™</div>
@@ -1988,138 +2340,38 @@ function buildScoreLabels(r) {
   </div>`;
 }
 
-function buildWhnBlock(r, gap) {
-  // Dynamic risk block
-  let riskHtml = '';
-  if (gap >= 30) {
-    riskHtml = `
-      <strong>This is a critical structural gap.</strong>
-      <p>A competitor with stronger AI-readability could overtake you — even if they are objectively worse.</p>
-      <p>This shift happens silently. By the time it is visible, it is already lost.</p>`;
-  } else if (gap >= 15) {
-    riskHtml = `
-      <strong>This gap is actively costing you decisions.</strong>
-      <p>You are being considered — but not consistently selected.</p>
-      <p>Closing this gap moves you from option to default.</p>`;
-  } else if (gap >= 1) {
-    riskHtml = `
-      <strong>You are close to dominance.</strong>
-      <p>Small structural improvements will lock your position.</p>`;
-  } else {
-    riskHtml = `
-      <strong>Your position is aligned.</strong>
-      <p>Maintain and extend structured signals to protect it.</p>`;
-  }
-
-  return `
-    <div class="whn-block">
-
-      <div class="whn-section">
-        <div class="whn-eyebrow">What Happens Next</div>
-        <div class="whn-reality">
-          You are being chosen by habit.<br>
-          Not by structure.<br>
-          That is not a safe position.
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-risk">${riskHtml}</div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-explain">
-          CHOIVE identifies exactly where your business is being considered — but not chosen.
-          Then restructures how you are understood, trusted, and selected across AI systems and decision environments.
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-bullets">
-          <div class="whn-bullet-tier">CHOIVE Analysis™</div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Full breakdown of your selection gaps</div>
-          </div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Exact positioning shifts required</div>
-          </div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Structured action plan for implementation</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-tension">
-          Close this gap before it is exploited.
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-cta">
-          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™', '${esc(r.businessUnderstanding || '')}')">
-            Request Your CHOIVE Analysis™
-          </button>
-          <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
-        </div>
-      </div>
-
-    </div>`;
-}
-
 function buildDisplacementBlock(r) {
   const d = r.displacement;
   if (!d || !d.competitorName) return '';
-
-  return `
-    <div class="disp-block">
-      <div class="disp-query">
-        When someone asks: <span>"${esc(d.competitorQuery || '')}"</span>
-      </div>
-      <div class="disp-name">${esc(d.competitorName)}</div>
-      <div class="disp-label">Is being recommended instead</div>
-      <div class="disp-why"><strong>Why:</strong> ${esc(d.competitorWhy || '')}</div>
-    </div>`;
+  return [
+    '<div class="disp-block">',
+    '  <div class="disp-query">When someone asks: <span>"' + (d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-name">' + (d.competitorName || '') + '</div>',
+    '  <div class="disp-label">Is being recommended instead</div>',
+    '  <div class="disp-why"><strong>Why:</strong> ' + (d.competitorWhy || '') + '</div>',
+    '</div>'
+  ].join('\n');
 }
 
-function buildShareBlock(jobId) {
-  if (!jobId) return '';
-  const shareUrl = `${window.location.origin}/result?jobId=${encodeURIComponent(jobId)}`;
 
-  return `
-    <div class="share-block" id="shareBlock">
-      <div class="share-label">Share this result</div>
-      <div class="share-url" id="shareUrl" title="${shareUrl}">${shareUrl}</div>
-      <div style="display:flex;gap:8px;flex-shrink:0;">
-        <button class="share-btn" id="shareBtn" onclick="copyShareUrl('${shareUrl}')">
-          Copy Diagnostic Link
-        </button>
-        <button class="share-btn" onclick="window.open('${shareUrl}', '_blank')">
-          Open Shareable View
-        </button>
-      </div>
-    </div>`;
-}
-
-function copyShareUrl(url) {
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('shareBtn');
+function copyShareUrl() {
+  var url = getShareUrl();
+  if (!url) return;
+  var el = document.getElementById('shareUrl');
+  if (el) el.textContent = url;
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = document.getElementById('shareBtn');
     if (btn) {
       btn.textContent = 'Copied';
       btn.classList.add('copied');
-      setTimeout(() => {
-        btn.textContent = 'Copy Link';
+      setTimeout(function() {
+        btn.textContent = 'Copy Diagnostic Link';
         btn.classList.remove('copied');
       }, 2000);
     }
-  }).catch(() => {
-    // fallback for older browsers
-    const el = document.getElementById('shareUrl');
+  }).catch(function() {
     if (el) {
-      const range = document.createRange();
+      var range = document.createRange();
       range.selectNode(el);
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(range);
@@ -2127,127 +2379,133 @@ function copyShareUrl(url) {
   });
 }
 
+function openShareUrl() {
+  var url = getShareUrl();
+  if (url) window.open(url, '_blank');
+}
+
+
 function buildGapBlock(r) {
   const tierMap = {
-    dominant:  100, strong:    85, upper_mid: 70,
-    mid:       55,  weak:      35, absent:    10, unknown: 0
+    dominant:100, strong:85, upper_mid:70,
+    mid:55, weak:35, absent:10, unknown:0
   };
-  const tier       = r.marketPosition?.tier || 'unknown';
-  const likelihood = tierMap[tier] !== undefined ? tierMap[tier] : 0;
+  const tier        = r.marketPosition?.tier || 'unknown';
+  const likelihood  = tierMap[tier] !== undefined ? tierMap[tier] : 0;
   const readability = r.overallScore || 0;
-  const gap        = likelihood - readability;
+  const gap         = likelihood - readability;
 
-  // Map labels
-  const likeLabel = likelihood >= 80 ? 'HIGH' : likelihood >= 60 ? 'MID' : 'LOW';
-  const likeClass = likelihood >= 80 ? 'high' : likelihood >= 60 ? 'mid' : 'low';
-
+  const likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 60 ? 'MID'  : 'LOW';
+  const likeClass = likelihood >= 80 ? 'high'  : likelihood >= 60 ? 'mid'  : 'low';
   const readLabel = readability >= 70 ? 'HIGH' : readability >= 40 ? 'MID' : 'LOW';
   const readClass = readability >= 70 ? 'high' : readability >= 40 ? 'mid' : 'low';
+  const gapLabel  = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
+  const gapClass  = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
 
-  const gapLabel = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
-  const gapClass = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
-
-  const copy = gap >= 30
-    ? 'A better-structured competitor would be selected instead of you.'
+  const mainCopy = gap >= 30
+    ? 'A better-structured competitor will be selected instead of you.'
     : gap >= 15
-    ? 'You are being considered. You are not being chosen.'
+    ? 'You are being evaluated. You are not being selected.'
     : gap >= 1
     ? 'The gap is small. Close it before it widens.'
     : 'Position is structurally aligned.';
 
-  return `
-    <div class="gap-block">
-      <div class="gap-rows">
-        <div class="gap-row">
-          <div class="gap-row-label">Recommendation Strength</div>
-          <div class="gap-row-value ${likeClass}">${likeLabel}</div>
-        </div>
-        <div class="gap-row">
-          <div class="gap-row-label">AI Readability</div>
-          <div class="gap-row-value ${readClass}">${readLabel}</div>
-        </div>
-        <div class="gap-row">
-          <div class="gap-row-label">Structural Gap</div>
-          <div class="gap-row-value ${gapClass}">${gapLabel}</div>
-        </div>
-      </div>
-      <div class="gap-copy">${copy}</div>
-    </div>`;
+  const pts = Math.abs(gap);
+  const ptLabel = gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
+
+  return [
+    '<div class="gap-block">',
+    '  <div class="gap-rows">',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">Recommendation Strength</div>',
+    '      <div class="gap-row-value ' + likeClass + '">' + likeLabel + '</div>',
+    '    </div>',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">AI Readability Strength</div>',
+    '      <div class="gap-row-value ' + readClass + '">' + readLabel + '</div>',
+    '    </div>',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">Structural Gap</div>',
+    '      <div class="gap-row-value ' + gapClass + '">' + gapLabel + '</div>',
+    '    </div>',
+    '  </div>',
+    '  <div class="gap-delta">',
+    '    <div class="gap-delta-pts">' + pts + '-POINT ' + ptLabel + '</div>',
+    '    <div class="gap-copy">' + mainCopy + '</div>',
+    '    <div class="gap-copy-sub">This gap determines whether you are selected — or replaced.</div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
 }
 
-function buildWhnBlock(r, gap) {
-  let riskHtml = '';
-  if (gap >= 30) {
-    riskHtml = `
-      <strong>This is a critical structural gap.</strong>
-      <p>A competitor with stronger AI-readability could overtake you — even if they are objectively worse.</p>
-      <p>This shift happens silently. By the time it is visible, it is already lost.</p>`;
-  } else if (gap >= 15) {
-    riskHtml = `
-      <strong>This gap is actively costing you decisions.</strong>
-      <p>You are being considered — but not consistently selected.</p>
-      <p>Closing this gap moves you from option to default.</p>`;
-  } else if (gap >= 1) {
-    riskHtml = `
-      <strong>You are close to dominance.</strong>
-      <p>Small structural improvements will lock your position.</p>`;
-  } else {
-    riskHtml = `
-      <strong>Your position is aligned.</strong>
-      <p>Maintain and extend structured signals to protect it.</p>`;
-  }
 
-  return `
+function buildWhnBlock(r, gap) {
+  const risk = gap >= 30
+    ? 'A better-structured competitor is positioned to take this.'
+    : gap >= 15
+    ? 'You are being evaluated. You are not being selected.'
+    : gap >= 1
+    ? 'The position is close. Structural precision will lock it.'
+    : 'The position is structurally sound.';
+
+  return \`
     <div class="whn-block">
+      <div class="whn-eyebrow">What Happens Next</div>
+
       <div class="whn-section">
-        <div class="whn-eyebrow">What Happens Next</div>
         <div class="whn-reality">
           You are being chosen by habit.<br>
           Not by structure.<br>
-          That is not a safe position.
+          That is not a secure position.
         </div>
       </div>
+
       <div class="whn-section">
-        <div class="whn-risk">${riskHtml}</div>
+        <div class="whn-risk">
+          <strong>\${risk}</strong>
+        </div>
       </div>
+
       <div class="whn-section">
         <div class="whn-explain">
-          CHOIVE identifies exactly where your business is being considered — but not chosen.
-          Then restructures how you are understood, trusted, and selected across AI systems and decision environments.
+          CHOIVE determines exactly where selection breaks down.<br>
+          Then restructures how this business is understood, trusted, and chosen.
         </div>
       </div>
+
       <div class="whn-section">
         <div class="whn-bullets">
           <div class="whn-bullet-tier">CHOIVE Analysis™</div>
           <div class="whn-bullet-item">
             <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Full breakdown of your selection gaps</div>
+            <div class="whn-bullet-text">Where selection is being lost</div>
           </div>
           <div class="whn-bullet-item">
             <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Exact positioning shifts required</div>
+            <div class="whn-bullet-text">Exact structural shifts required</div>
           </div>
           <div class="whn-bullet-item">
             <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Structured action plan for implementation</div>
+            <div class="whn-bullet-text">Sequenced implementation plan</div>
           </div>
         </div>
       </div>
+
       <div class="whn-section">
-        <div class="whn-tension">
-          Close this gap before it is exploited.
-        </div>
+        <div class="whn-tension">Close this gap before it is exploited.</div>
       </div>
+
       <div class="whn-section">
         <div class="whn-cta">
-          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis\u2122')">
-            Request Your CHOIVE Analysis\u2122
+          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
+            Request Your CHOIVE Analysis™
           </button>
           <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
         </div>
       </div>
-    </div>`;
+    </div>\`;
 }
+
 
 function showResults(r, jobId) {
   document.getElementById('dS').classList.remove('active');
@@ -2269,6 +2527,7 @@ function showResults(r, jobId) {
   zone.innerHTML = `
     <div class="rnd-top">
       <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
+      <div style="font-size:12px;color:var(--tm);margin-top:12px;">Compare another business.</div>
     </div>
     <div class="verdict-banner">
       <div class="verdict-top">
@@ -2344,6 +2603,11 @@ function showResults(r, jobId) {
   setTimeout(() => {
     animateNum('scoreNum', 0, r.overallScore, 1200);
     document.getElementById('scoreBar').style.width = r.overallScore + '%';
+    // Populate share URL display
+    var shareEl = document.getElementById('shareUrl');
+    if (shareEl && window.__choiveShareJobId) {
+      shareEl.textContent = window.location.origin + '/result?jobId=' + encodeURIComponent(window.__choiveShareJobId);
+    }
   }, 100);
   setTimeout(() => {
     document.querySelectorAll('.pillar-bar-fill').forEach(el => {
@@ -2525,7 +2789,7 @@ async function fetchSharedResult(jobId) {
       zone.innerHTML = `
         <div class="error-frame">
           <div class="error-title">Result Not Found</div>
-          <div class="error-body">This diagnostic result could not be retrieved. It may have expired or the link is incorrect.</div>
+          <div class="error-body">This diagnostic result could not be retrieved. It will have expired or the link is incorrect.</div>
           <div style="margin-top:22px;">
             <a href="/" class="cta-primary">Run a new diagnostic</a>
           </div>
