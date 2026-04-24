@@ -1,7 +1,6 @@
 // start-diagnostic.js
 // CHOIVE™ Stage 1 — Entry point
-// Validates input, creates job, triggers background process, returns immediately
-
+// Validates input, creates job, triggers background process, awaits trigger confirmation
 // ENV:
 // SUPABASE_URL
 // SUPABASE_SERVICE_ROLE_KEY
@@ -90,11 +89,9 @@ exports.handler = async function (event) {
 
   if (!host) {
     console.error('CHOIVE start-diagnostic: Missing host header');
-
     await markDiagnosticFailed(jobId, {
       message: 'Missing host header for background trigger'
     }).catch(() => {});
-
     return {
       statusCode: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -104,34 +101,46 @@ exports.handler = async function (event) {
 
   const backgroundUrl = `${proto}://${host}/.netlify/functions/run-diagnostic-background`;
 
-  // Fire-and-forget background execution
-  fetch(backgroundUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      jobId,
-      input
-    })
-  }).catch(async (err) => {
-    console.error('CHOIVE start-diagnostic: Background trigger failed:', err.message);
+  // Await background trigger — do not fire and forget
+  try {
+    const triggerRes = await fetch(backgroundUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId, input })
+    });
 
-    try {
+    if (!triggerRes.ok) {
+      const errText = await triggerRes.text().catch(() => 'no body');
+      console.error(
+        `CHOIVE start-diagnostic: Background trigger returned ${triggerRes.status}: ${errText}`
+      );
       await markDiagnosticFailed(jobId, {
-        message: 'Background trigger failed',
-        detail: err.message
-      });
-    } catch (_) {}
-  });
+        message: `Background trigger failed with status ${triggerRes.status}`,
+        detail: errText
+      }).catch(() => {});
+      return {
+        statusCode: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Diagnostic engine could not be started. Please try again.' })
+      };
+    }
+  } catch (err) {
+    console.error('CHOIVE start-diagnostic: Background trigger threw:', err.message);
+    await markDiagnosticFailed(jobId, {
+      message: 'Background trigger network error',
+      detail: err.message
+    }).catch(() => {});
+    return {
+      statusCode: 502,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Could not start diagnostic. Please try again.' })
+    };
+  }
 
-  // Immediate response (non-blocking)
+  // Background confirmed — return jobId to frontend
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jobId,
-      status: 'queued'
-    })
+    body: JSON.stringify({ jobId, status: 'queued' })
   };
 };
