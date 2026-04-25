@@ -2663,6 +2663,7 @@ function showResults(r, jobId) {
   zone.style.display = 'block';
 
   window.__choiveShareJobId = jobId || '';
+  console.log('[CHOIVE] showResults platformCoverage:', r.platformCoverage ? 'present' : 'MISSING');
 
   // isPaid sources (in priority order):
   // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
@@ -2825,7 +2826,24 @@ function showResults(r, jobId) {
         <div class="mono-eyebrow">Selection Signals</div>
         <div class="pillars-grid">
           ${buildPillarCards(r)}
-              </div>
+        </div>
+      </div>
+
+      <div class="mono-section">
+        <div class="mono-eyebrow">Platform Selection</div>
+        <div class="platform-row">
+          ${(r.platformCoverage ? ['chatgpt','perplexity','gemini','claude'] : []).map(function(key) {
+            var val = (r.platformCoverage || {})[key] || {status:'absent',detail:''};
+            var names = {chatgpt:'ChatGPT',perplexity:'Perplexity',gemini:'Gemini',claude:'Claude'};
+            var label = val.status === 'present' ? 'PRESENT' : val.status === 'weak' ? 'WEAK' : 'NOT FOUND';
+            return '<div class="platform-cell">'
+              + '<div class="platform-name">' + names[key] + '</div>'
+              + '<div class="platform-verdict ' + val.status + '">' + label + '</div>'
+              + '<div class="platform-detail">' + esc(val.detail || '') + '</div>'
+              + '</div>';
+          }).join('')}
+        </div>
+      </div>
 
       ${paidSections}
 
