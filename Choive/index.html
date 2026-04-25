@@ -2697,10 +2697,10 @@ function showResults(r, jobId) {
   const googleIcon   = score >= 55 ? '\u2714' : '\u26a0';
 
   // Score label
-  const scoreLabel = score >= 76 ? 'Dominant recommendation presence.'
-    : score >= 56 ? 'Present — but not consistently selected.'
-    : score >= 31 ? 'Weak recommendation authority. Being overlooked.'
-    : 'Critical gap. Not being chosen.';
+  const scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
+    : score >= 56 ? 'Considered. Not consistently chosen.'
+    : score >= 31 ? 'Seen. Not selected.'
+    : 'Not seen. Not chosen.';
 
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
@@ -2718,9 +2718,9 @@ function showResults(r, jobId) {
     <div class="pay-section">
       <div class="pay-eyebrow">Why You Are Not Chosen</div>
       <div class="pay-lines">
-        <div class="pay-line">You are understood — but not differentiated.</div>
-        <div class="pay-line">You are trusted — but not dominant.</div>
-        <div class="pay-line">You are present — but not structurally preferred.</div>
+        <div class="pay-line">You are trusted. You are replaceable.</div>
+        <div class="pay-line">You are seen. You are not chosen.</div>
+        <div class="pay-line">You are present. Another option is preferred.</div>
       </div>
     </div>
 
@@ -2737,32 +2737,33 @@ function showResults(r, jobId) {
     <div class="pay-section">
       <div class="pay-eyebrow">Selection Breakpoint</div>
       <div class="pay-lines">
-        <div class="pay-line">You lose selection at the moment of comparison.</div>
-        <div class="pay-line muted">Not because you are worse —</div>
-        <div class="pay-line muted">but because another option feels easier to choose.</div>
+        <div class="pay-line">You lose at comparison — not discovery.</div>
+        <div class="pay-line muted">The decision is made before they reach you.</div>
+        <div class="pay-line muted">Another option removed the doubt first.</div>
       </div>
     </div>
 
     <div class="pay-section">
       <div class="pay-eyebrow">Positioning Shift</div>
       <div class="pay-lines">
-        <div class="pay-line muted">To become the selected option:</div>
-        <div class="pay-shift-item">\u2192 Reduce interpretation</div>
-        <div class="pay-shift-item">\u2192 Increase perceived certainty</div>
-        <div class="pay-shift-item">\u2192 Make your value immediately clear</div>
+        <div class="pay-line muted">To become the chosen option:</div>
+        <div class="pay-shift-item">\u2192 Remove doubt before comparison begins</div>
+        <div class="pay-shift-item">\u2192 Make your position immediately clear</div>
+        <div class="pay-shift-item">\u2192 Become the path of least resistance</div>
         <div class="pay-label">CHOIVE calls this: <strong>Decision Ease.</strong></div>
       </div>
     </div>
 
     <div class="pay-section pay-final">
-      <div class="pay-final-line">This is fixable.</div>
-      <div class="pay-final-line muted">But not automatically.</div>
+      <div class="pay-final-line">This is where CHOIVE changes the outcome.</div>
+      <div class="pay-final-line muted">Not by making you louder.</div>
+      <div class="pay-final-line muted">By making you easier to choose.</div>
       <div class="pay-product-name">CHOIVE SYSTEM\u2122</div>
-      <div class="pay-product-desc">We restructure your business so it becomes:</div>
-      <div class="pay-shift-item">\u2014 Instantly understood</div>
-      <div class="pay-shift-item">\u2014 Trusted without friction</div>
-      <div class="pay-shift-item">\u2014 The obvious choice in comparison</div>
-      <button class="pay-btn-primary" onclick="openForm('CHOIVE System\u2122')">Request Full Implementation</button>
+      <div class="pay-product-desc">We restructure your selection position so you become:</div>
+      <div class="pay-shift-item">\u2014 The first option that removes doubt</div>
+      <div class="pay-shift-item">\u2014 The one that feels inevitable</div>
+      <div class="pay-shift-item">\u2014 The obvious choice</div>
+      <button class="pay-btn-primary" onclick="openForm('CHOIVE System\u2122')">Begin CHOIVE System\u2122</button>
     </div>` : `
     <div class="paywall-block">
       <div class="paywall-eyebrow">Unlock your CHOIVE Analysis\u2122</div>
@@ -2788,10 +2789,10 @@ function showResults(r, jobId) {
       </div>
 
       <div class="mono-section mono-insight">
-        <div class="mono-insight-line">You are visible.</div>
-        <div class="mono-insight-line">You are trusted.</div>
-        <div class="mono-insight-line muted">But when alternatives appear —</div>
-        <div class="mono-insight-line muted">you are not the obvious choice.</div>
+        <div class="mono-insight-line">You are considered.</div>
+        <div class="mono-insight-line">You are not chosen.</div>
+        <div class="mono-insight-line muted">When alternatives appear —</div>
+        <div class="mono-insight-line muted">another option feels easier.</div>
       </div>
 
       <div class="mono-section">
@@ -2815,9 +2816,9 @@ function showResults(r, jobId) {
       </div>
 
       <div class="mono-section mono-break">
-        <div class="mono-break-line">This is where selection is lost.</div>
-        <div class="mono-break-line muted">Not because your business is worse —</div>
-        <div class="mono-break-line muted">but because it is not the easiest to choose.</div>
+        <div class="mono-break-line">You lose at comparison — not discovery.</div>
+        <div class="mono-break-line muted">Not because you are worse.</div>
+        <div class="mono-break-line muted">Because another option feels easier to choose.</div>
       </div>
 
       <div class="mono-section">
