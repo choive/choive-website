@@ -2745,7 +2745,7 @@ function showResults(r, jobId) {
         <div class="paywall-item">\u2022 Where you lose to competitors</div>
         <div class="paywall-item">\u2022 The exact shifts required to become the chosen option</div>
       </div>
-      <button class="paywall-btn" onclick="window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
+      <button class="paywall-btn" onclick="localStorage.setItem('choive_pending_jobId', window.__choiveShareJobId || ''); window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
     </div>`;
 
   zone.innerHTML = `
@@ -2918,7 +2918,20 @@ document.addEventListener('keydown', e => {
 // ── SHAREABLE RESULT ROUTE ────────────────────────────────────────────────────
 (function initResultRoute() {
   const params = new URLSearchParams(window.location.search);
-  const jobId  = params.get('jobId');
+  let jobId  = params.get('jobId');
+  const paid = params.get('paid') === 'true';
+
+  // If returning from Stripe with paid=true but no jobId in URL,
+  // recover jobId from localStorage (Payment Links can't inject dynamic params)
+  if (!jobId && paid) {
+    jobId = localStorage.getItem('choive_pending_jobId') || '';
+  }
+
+  // Clean up localStorage once we have the jobId
+  if (jobId && paid) {
+    localStorage.removeItem('choive_pending_jobId');
+  }
+
   if (!jobId) return; // normal homepage — do nothing
 
   // Hide main page, show result zone only
