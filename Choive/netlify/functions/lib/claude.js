@@ -163,18 +163,6 @@ STRICT RULES:
 - If website content is strong but citations are absent, trust must be low regardless of clarity.
 - If schema is missing entirely, ease cannot exceed 8.
 - Be strict. A score of 20+ on any pillar requires clear evidence.
-
-COMPETITOR DISPLACEMENT — REQUIRED:
-From the search results, identify the single most likely competitor being recommended instead of this business.
-Rules:
-- Must be a real business name visible in search evidence or logically dominant in this category and location
-- If search evidence shows named competitors, use the strongest one
-- If no competitor is named in evidence, identify the most likely category leader by name — do not use null
-- Only use null if this is a completely unique category with no identifiable competitors
-Provide:
-- competitorName: exact business name (never "Category leader" — use a real name)
-- competitorWhy: one sentence — the specific structural reason AI selects them over this business
-- competitorQuery: the exact query where this displacement occurs (e.g. "best OTT platform provider Germany")
 Competitive positioning tier — must be one of:
 dominant, strong, upper_mid, mid, weak, absent
 Tier label mapping:
@@ -188,12 +176,17 @@ Return one short signature line: 3–6 words, final, decision-state based.
 Decision state — must be one of:
 not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, chosen_by_default
 summaryParagraph — exactly 3 sentences:
-- Sentence 1 must start: "This business is not the obvious choice because..."
-- Sentence 2 states the reason simply
-- Sentence 3 states the consequence
+- If marketPosition.tier is dominant or strong, Sentence 1 must start: "This business is currently chosen because..."
+- If marketPosition.tier is upper_mid, mid, weak, or absent, Sentence 1 must start: "This business is not the obvious choice because..."
+- Sentence 2 states the strongest selection driver or weakness simply
+- Sentence 3 states the main CHOIVE opportunity
 Each pillar finding — one short sentence, 3–6 words, no commas, no explanation, must feel final.
 Each action body — maximum 15 words. Be specific and direct.
 evidenceNarrative — maximum 2 sentences. State what was found and what was missing.
+verdictLevel must be only one of:
+absent, weak, present
+Do not use dominant, strong, upper_mid, mid, or weak as verdictLevel.
+Those tiers are only for marketPosition.tier.
 Return ONLY raw JSON.
 Do NOT include markdown.
 Do NOT include backticks.
@@ -230,12 +223,7 @@ Start directly with { and end with }.
     { "priority": "critical", "title": "", "body": "" },
     { "priority": "high", "title": "", "body": "" },
     { "priority": "medium", "title": "", "body": "" }
-  ],
-  "displacement": {
-    "competitorName": "",
-    "competitorWhy": "",
-    "competitorQuery": ""
-  }
+  ]
 }`;
 }
 
