@@ -72,9 +72,9 @@ async function getDiagnostic(jobId) {
     .from('diagnostics')
     .select('job_id, status, stage, input, result, error, created_at, updated_at')
     .eq('job_id', jobId)
-    .single();
+    .maybeSingle();
   if (error) throw new Error(`Supabase fetch failed: ${error.message}`);
-  return data;
+  return data; // null if not found — handled in get-result.js as 404
 }
 
 module.exports = {
