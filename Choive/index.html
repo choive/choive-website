@@ -2708,8 +2708,8 @@ function showResults(r, jobId) {
       <div class="pay-eyebrow">Competitor Reality</div>
       <div class="pay-lines">
         <div class="pay-line muted">When customers compare options:</div>
-        <div class="pay-comp-row"><span class="pay-comp-name">Competitor A</span><span class="pay-comp-signal">Clearer positioning</span></div>
-        <div class="pay-comp-row"><span class="pay-comp-name">Competitor B</span><span class="pay-comp-signal">Stronger authority signals</span></div>
+        ${r.displacement?.competitorName ? '<div class="pay-comp-row"><span class="pay-comp-name">' + esc(r.displacement.competitorName) + '</span><span class="pay-comp-signal">' + esc(r.displacement.competitorWhy || "Stronger AI readability signals") + '</span></div>' : '<div class="pay-comp-row"><span class="pay-comp-name">Category leader</span><span class="pay-comp-signal">Stronger AI readability signals</span></div>'}
+        <div class="pay-comp-row"><span class="pay-comp-name">Other competitors</span><span class="pay-comp-signal">More structured digital presence</span></div>
         <div class="pay-comp-row you"><span class="pay-comp-name">You</span><span class="pay-comp-signal">Balanced — but not decisive</span></div>
       </div>
     </div>
@@ -2800,6 +2800,22 @@ function showResults(r, jobId) {
         <div class="mono-break-line muted">but because it is not the easiest to choose.</div>
       </div>
 
+      <div class="mono-section">
+        <div class="mono-eyebrow">Selection Signals</div>
+        <div class="pillars-grid">
+          ${Object.entries(r.pillars).map(([key, val]) => {
+            const pD = { clarity:{n:'01',name:'Clarity'}, trust:{n:'02',name:'Trust'}, difference:{n:'03',name:'Difference'}, ease:{n:'04',name:'Ease'} };
+            return `<div class="pillar-card">
+              <div class="pillar-num">\${pD[key].n}</div>
+              <div class="pillar-name">\${pD[key].name}</div>
+              <div class="pillar-score-row"><div class="pillar-score-n">\${val.score}</div><div class="pillar-score-d">/ 25</div></div>
+              <div class="pillar-bar"><div class="pillar-bar-fill" data-pct="\${val.score/25*100}"></div></div>
+              <div class="pillar-finding">\${esc(val.finding)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
       ${paidSections}
 
       ${buildShareBlock(jobId)}
@@ -2815,6 +2831,11 @@ function showResults(r, jobId) {
     animateNum('scoreNum', 0, score, 1200);
     document.getElementById('scoreBar').style.width = score + '%';
   }, 100);
+  setTimeout(() => {
+    document.querySelectorAll('.pillar-bar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 300);
 
   zone.scrollIntoView({ behavior: 'smooth' });
 }
