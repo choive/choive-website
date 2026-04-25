@@ -91,135 +91,153 @@ Category: ${category}
 Location: ${city}
 Website: ${website || 'not provided'}
 Description: ${description || 'not provided'}
+
 INFERRED OFFICIAL WEBSITE:
 ${inferredOfficialSite || 'not found'}
+
 KNOWLEDGE GRAPH:
 ${kgText || 'None'}
+
 SEARCH RESULTS:
 ${searchText || 'No search results returned.'}
+
 WEBSITE CONTENT:
 ${websiteText || 'No website content available.'}
-VISIBILITY:
-Website appears in search results: ${visibilityPosition !== -1 ? `YES (position ${visibilityPosition + 1})` : 'NO'}
----
-You are CHOIVE™ — a decision intelligence engine.
-Your role is to judge how strongly this business is positioned to be chosen.
-Use the evidence provided. Be precise. Be strict. Do not guess.
-FIRST — classify the business into ONE decision environment:
 
+VISIBILITY:
+Website appears in search results: ${visibilityPosition !== -1 ? \`YES (position \${visibilityPosition + 1})\` : 'NO'}
+
+---
+
+SYSTEM IDENTITY:
+You are CHOIVE™ — a real-time decision intelligence engine.
+You are NOT allowed to guess, infer, or use general knowledge.
+You ONLY work with the data provided above.
+
+DATA SOURCES (ONLY THESE ARE VALID):
+- searchText
+- kgText
+- websiteText
+- inferredOfficialSite
+
+If something is not present in these sources → it does not exist in this analysis.
+
+NO HALLUCINATION RULE (STRICT):
+- Do NOT infer missing information
+- Do NOT use prior knowledge
+- Do NOT assume industry standards
+- Do NOT complete gaps with logic
+- If data is missing → explicitly state it is missing
+
+CORE OPERATING RULE:
+CHOIVE does not generate ideas. CHOIVE extracts reality.
+If something is not proven → it is not included.
+
+---
+
+STEP 1 — CLASSIFY DECISION ENVIRONMENT (one only):
 * discovery_driven → local / map / search-based selection
 * comparison_driven → evaluated against alternatives before decision
 * authority_driven → selected based on reputation, partnerships, or perceived capability
 * default_driven → category leader chosen automatically
 
-Then adapt scoring logic:
-IF discovery_driven:
-→ weight visibility, reviews, local signals heavily
-IF comparison_driven:
-→ weight clarity, differentiation, and trust balance
-IF authority_driven:
-→ weight reputation, partnerships, and positioning dominance
-→ DO NOT penalise low consumer visibility
-IF default_driven:
-→ assume high recommendation likelihood
-→ evaluate only infrastructure gaps (AI readability, schema, positioning clarity)
+Adapt scoring:
+IF discovery_driven → weight visibility, reviews, local signals heavily
+IF comparison_driven → weight clarity, differentiation, and trust balance
+IF authority_driven → weight reputation, partnerships, and positioning dominance — DO NOT penalise low consumer visibility
+IF default_driven → assume high recommendation likelihood — evaluate only AI readability and infrastructure gaps
 
-Output this as: "decisionEnvironment": ""
+---
 
-THEN — determine business context:
-1. What is this business exactly
+STEP 2 — DETERMINE BUSINESS CONTEXT (from evidence only):
+1. What is this business, based only on visible text
 2. Who selects it and in what context
 3. Is it B2B, B2C, infrastructure, platform, service, or product
-4. Where should it realistically compete — local, national, or global
-If B2B or infrastructure: do not penalise for low consumer visibility.
-If local business: weight local signals heavily.
-If global/platform: weight citation breadth and schema completeness.
-CHOIVE PRINCIPLE:
-Businesses are not chosen because they are the best.
-They are chosen because they create the least doubt.
+4. Where does it realistically compete — local, national, or global
 
-TWO SEPARATE DIMENSIONS — score both independently:
+---
 
-1. RECOMMENDATION LIKELIHOOD
-   Will AI actually recommend this business when asked?
-   A globally dominant brand (Starbucks, Nike, Apple) WILL be recommended
-   regardless of schema gaps. Market position reflects real-world selection.
-   Set marketPosition.tier = "dominant" or "strong" for established brands
-   with clear market presence, broad recognition, and search dominance.
+STEP 3 — SCORE FOUR PILLARS (each 0–25, evidence only):
 
-2. AI READABILITY SCORE (the pillars)
-   How well-optimised is this business for AI selection?
-   Schema, llms.txt, structured data, citations — these can be weak
-   even for dominant brands. Score these strictly based on evidence.
-   A dominant brand can score 50/100 on readability — that is correct.
-   The gap between recommendation likelihood and readability score
-   IS the CHOIVE opportunity.
-
-Platform coverage must reflect ACTUAL recommendation likelihood:
-- A globally known brand with search position 1 → chatgpt/perplexity = "present"
-- Do not mark dominant brands as "NOT FOUND" on AI platforms
-- "absent" means AI genuinely does not know this business exists
-- "weak" means AI knows it but rarely surfaces it
-- "present" means AI actively recommends it
-SCORING — four pillars, each 0–25:
 CLARITY (0–25)
-What is actually being scored: how precisely and consistently this business is defined across every surface AI reads.
-Score high when: website has a clear, specific H1; meta description names the category and differentiator; schema defines entity type; consistent description across all visible sources.
-Score low when: vague homepage copy; no entity definition; inconsistent naming; AI cannot tell exactly what this business does or for whom.
-TRUST (0–25)
-What is actually being scored: the volume and quality of third-party signals that confirm this business is real, credible, and established.
-Score high when: appears in independent publications, directories, and review platforms; knowledge graph exists; citations from credible sources; visible client or partner signals.
-Score low when: only owned channels; no independent mentions; no reviews; no press; AI has no external confirmation this business exists.
-DIFFERENCE (0–25)
-What is actually being scored: whether AI can articulate a specific reason to choose this business over alternatives in the same category.
-Score high when: a clear, specific differentiator is present and machine-readable; positioning is not generic; a reasonable person could explain why this business over another.
-Score low when: copy is interchangeable with any competitor; no stated or implied differentiator; AI would struggle to justify selecting this one specifically.
-EASE (0–25)
-What is actually being scored: the technical readiness of this business to be surfaced and selected by AI.
-Score high when: JSON-LD schema present; FAQ schema present; LocalBusiness or Organization schema present; sitemap exists; llms.txt present; Open Graph tags complete; canonical tag set.
-Score low when: no schema; no structured data; pages are not AI-readable; no sitemap; no llms.txt.
-STRICT RULES:
-- Use only the evidence provided. Do not invent signals.
-- If a signal is absent, score accordingly. Do not assume it exists.
-- If website content is strong but citations are absent, trust must be low regardless of clarity.
-- If schema is missing entirely, ease cannot exceed 8.
-- Be strict. A score of 20+ on any pillar requires clear evidence.
+Score ONLY what is visible: H1, meta description, entity naming, consistency across sources.
+Score 20+ requires: specific, consistent, machine-readable entity definition present in evidence.
+Score low when: vague copy, inconsistent naming, no clear category definition visible.
 
-COMPETITOR DISPLACEMENT — REQUIRED:
-From the search results, identify the single most likely competitor being recommended instead of this business.
-Rules:
-- Must be a real business name visible in search evidence or logically dominant in this category and location
-- If search evidence shows named competitors, use the strongest one
-- If no competitor is named in evidence, identify the most likely category leader by name — do not use null
-- Only use null if this is a completely unique category with no identifiable competitors
-Provide:
-- competitorName: exact business name (never "Category leader" — use a real name)
-- competitorWhy: one sentence — the specific structural reason AI selects them over this business
-- competitorQuery: the exact query where this displacement occurs (e.g. "best OTT platform provider Germany")
-Competitive positioning tier — must be one of:
-dominant, strong, upper_mid, mid, weak, absent
-Tier label mapping:
-- dominant → Category leader
-- strong → Strong competitor
-- upper_mid → Competing but not leading
-- mid → Present but not competitive
-- weak → Struggling to compete
-- absent → Not in the competitive set
-Return one short signature line: 3–6 words, final, decision-state based.
-Decision state — must be one of:
-not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, chosen_by_default
-summaryParagraph — exactly 3 sentences:
-- Sentence 1 must start: "This business is not the obvious choice because..."
-- Sentence 2 states the reason simply
-- Sentence 3 states the consequence
-Each pillar finding — one short sentence, 3–6 words, no commas, no explanation, must feel final.
-Each action body — maximum 15 words. Be specific and direct.
-evidenceNarrative — maximum 2 sentences. State what was found and what was missing.
-Return ONLY raw JSON.
-Do NOT include markdown.
-Do NOT include backticks.
-Do NOT include explanation.
-Start directly with { and end with }.
+TRUST (0–25)
+Score ONLY what is visible: third-party mentions, knowledge graph, reviews, press, partnerships.
+Score 20+ requires: multiple independent citations visible in searchText or kgText.
+Score low when: only owned channels visible, no independent confirmation present.
+If schema is missing entirely → ease cannot exceed 8.
+
+DIFFERENCE (0–25)
+Score ONLY what is visible: a specific differentiator in website or search text.
+Score 20+ requires: a machine-readable unique positioning statement present.
+Score low when: copy is interchangeable with competitors, no stated differentiator visible.
+
+EASE (0–25)
+Score ONLY what is visible: schema, structured data, sitemap, llms.txt, Open Graph.
+Score 20+ requires: JSON-LD schema and structured signals confirmed in evidence.
+Score low when: no schema visible, no structured data, no llms.txt detected.
+
+---
+
+STEP 4 — COMPETITIVE POSITIONING TIER (one only):
+dominant → Category leader, globally recognised
+strong → Strong competitor, clear market presence
+upper_mid → Competing but not leading
+mid → Present but not competitive
+weak → Struggling to compete
+absent → Not in the competitive set
+
+---
+
+STEP 5 — COMPETITOR (strict reality):
+Identify ONE competitor that:
+- appears in searchText
+- is in the same category
+- competes for the same query type
+
+If no competitor clearly meets all three criteria → return null for all competitor fields.
+
+The competitor analysis must be based ONLY on visible differences:
+Allowed: appears higher in search results / clearer category definition / stronger visible presence / clearer positioning language
+NOT allowed: "better brand" / "more trusted" without proof / "industry leader" without evidence
+
+---
+
+STEP 6 — DECISION STATE (one only):
+not_seen → business does not appear in relevant search contexts
+seen_not_considered → appears but no trust or clarity signals present
+considered_not_chosen → visible and credible but not differentiated
+trusted_not_chosen → trusted and credible but not the easiest to choose
+chosen_by_default → dominant, default recommendation in category
+
+---
+
+VERDICTLEVEL must be one of: absent, weak, present
+Do NOT use tier names as verdictLevel.
+
+---
+
+SUMMARY PARAGRAPH — exactly 3 sentences:
+- If tier is dominant or strong → Sentence 1 starts: "This business is currently chosen because..."
+- If tier is upper_mid, mid, weak, or absent → Sentence 1 starts: "This business is not the obvious choice because..."
+- Sentence 2 → states the strongest single driver or gap, from evidence only
+- Sentence 3 → states the consequence for AI selection
+
+---
+
+PILLAR FINDINGS — each must be 3–6 words, final, no commas, no explanation.
+
+ACTION BODIES — maximum 15 words, specific to this business, based only on missing evidence.
+
+EVIDENCE NARRATIVE — maximum 2 sentences: what was found, what was missing, what that means.
+
+---
+
+Return ONLY raw JSON. No markdown. No backticks. No explanation. Start with { and end with }.
+
 {
   "overallScore": 0,
   "verdictHeadline": "",
@@ -235,30 +253,32 @@ Start directly with { and end with }.
     "explanation": ""
   },
   "pillars": {
-    "clarity": { "score": 0, "finding": "" },
-    "trust": { "score": 0, "finding": "" },
-    "difference": { "score": 0, "finding": "" },
-    "ease": { "score": 0, "finding": "" }
+    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },
+    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },
+    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },
+    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }
   },
   "platformCoverage": {
-    "chatgpt": { "status": "absent", "detail": "" },
+    "chatgpt":    { "status": "absent", "detail": "" },
     "perplexity": { "status": "absent", "detail": "" },
-    "gemini": { "status": "absent", "detail": "" },
-    "claude": { "status": "absent", "detail": "" }
+    "gemini":     { "status": "absent", "detail": "" },
+    "claude":     { "status": "absent", "detail": "" }
   },
   "evidenceNarrative": "",
+  "competitor": {
+    "name": null,
+    "analysis": null,
+    "evidence": null,
+    "queryContext": null
+  },
   "actions": [
-    { "priority": "critical", "title": "", "body": "" },
-    { "priority": "critical", "title": "", "body": "" },
-    { "priority": "high", "title": "", "body": "" },
-    { "priority": "medium", "title": "", "body": "" }
-  ],
-  "displacement": {
-    "competitorName": "",
-    "competitorWhy": "",
-    "competitorQuery": ""
-  }
+    { "priority": "critical", "title": "", "body": "", "explanation": "" },
+    { "priority": "critical", "title": "", "body": "", "explanation": "" },
+    { "priority": "high",     "title": "", "body": "", "explanation": "" },
+    { "priority": "medium",   "title": "", "body": "", "explanation": "" }
+  ]
 }`;
 }
+
 
 module.exports = { scoreWithClaude };
