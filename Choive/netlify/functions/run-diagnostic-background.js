@@ -3,7 +3,7 @@
 // Runs async — no user-facing timeout pressure
 // Stores result in Netlify Blobs when complete
 
-const { getStore } = require('@netlify/blobs');
+const { updateStatus, saveResult, saveError } = require('./lib/supabase');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
@@ -361,50 +361,51 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
 
+  let jobId;
   try {
-    const { jobId, name, category, city, website, description } = JSON.parse(event.body || '{}');
-    const store = getStore('choive-diagnostics');
+    const body = JSON.parse(event.body || '{}');
+    jobId = body.jobId;
+    const { name, category, city, website, description } = body;
 
-    let rawOutput;
+    if (!jobId) throw new Error('Missing jobId');
+
+    // Stage 1: Gather evidence
+    await updateStatus(jobId, 'collecting_evidence', 'gathering');
     let evidence;
-
     try {
-      // Stage 1: Gather
       evidence = await gatherEvidence(name, category, city, website);
+    } catch (err) {
+      await saveError(jobId, 'Evidence gathering failed: ' + err.message);
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false }) };
+    }
 
-      // Stage 2: Judge
+    // Stage 2: Score with Claude
+    await updateStatus(jobId, 'scoring', 'scoring');
+    let rawOutput;
+    try {
       rawOutput = await scoreWithClaude(
         { name, category, city, website, description },
         evidence
       );
     } catch (err) {
-      // Store failure state
-      await store.setJSON(jobId, {
-        jobId,
-        status: 'error',
-        error: err?.message || 'Diagnostic failed',
-        result: null,
-        completedAt: Date.now()
-      });
+      await saveError(jobId, 'Scoring failed: ' + err.message);
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false }) };
     }
 
     console.log('[CHOIVE] displacement from Claude:', JSON.stringify(rawOutput?.displacement));
-  const safeResult = buildSafeOutput(rawOutput);
-  console.log('[CHOIVE] displacement in safeResult:', JSON.stringify(safeResult?.displacement));
+    const safeResult = buildSafeOutput(rawOutput);
+    console.log('[CHOIVE] displacement in safeResult:', JSON.stringify(safeResult?.displacement));
 
-    // Store completed result
-    await store.setJSON(jobId, {
-      jobId,
-      status: 'complete',
-      result: safeResult,
-      completedAt: Date.now()
-    });
+    // Stage 3: Save to Supabase
+    await saveResult(jobId, safeResult);
 
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true }) };
 
   } catch (error) {
     console.error('run-diagnostic-background error:', error?.message);
+    if (jobId) {
+      try { await saveError(jobId, error.message); } catch (_) {}
+    }
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: error?.message }) };
   }
 };
