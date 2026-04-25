@@ -2637,6 +2637,26 @@ function buildWhnBlock(r, gap) {
 }
 
 
+function buildPillarCards(r) {
+  const pD = {
+    clarity:    { n:'01', name:'Clarity' },
+    trust:      { n:'02', name:'Trust' },
+    difference: { n:'03', name:'Difference' },
+    ease:       { n:'04', name:'Ease' }
+  };
+  return Object.entries(r.pillars).map(function(entry) {
+    var key = entry[0];
+    var val = entry[1];
+    return '<div class="pillar-card">'
+      + '<div class="pillar-num">' + pD[key].n + '</div>'
+      + '<div class="pillar-name">' + pD[key].name + '</div>'
+      + '<div class="pillar-score-row"><div class="pillar-score-n">' + val.score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + (val.score/25*100) + '"></div></div>'
+      + '<div class="pillar-finding">' + esc(val.finding || '') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
 function showResults(r, jobId) {
   document.getElementById('dS').classList.remove('active');
   const zone = document.getElementById('dR');
@@ -2803,18 +2823,8 @@ function showResults(r, jobId) {
       <div class="mono-section">
         <div class="mono-eyebrow">Selection Signals</div>
         <div class="pillars-grid">
-          ${Object.entries(r.pillars).map(([key, val]) => {
-            const pD = { clarity:{n:'01',name:'Clarity'}, trust:{n:'02',name:'Trust'}, difference:{n:'03',name:'Difference'}, ease:{n:'04',name:'Ease'} };
-            return `<div class="pillar-card">
-              <div class="pillar-num">\${pD[key].n}</div>
-              <div class="pillar-name">\${pD[key].name}</div>
-              <div class="pillar-score-row"><div class="pillar-score-n">\${val.score}</div><div class="pillar-score-d">/ 25</div></div>
-              <div class="pillar-bar"><div class="pillar-bar-fill" data-pct="\${val.score/25*100}"></div></div>
-              <div class="pillar-finding">\${esc(val.finding)}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
+          ${buildPillarCards(r)}
+              </div>
 
       ${paidSections}
 
