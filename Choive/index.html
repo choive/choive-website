@@ -2680,7 +2680,13 @@ function showResults(r, jobId) {
     : 'Critical gap. Not being chosen.';
 
   // Stripe payment link — replace with real link
-  const STRIPE_LINK = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00?client_reference_id=' + encodeURIComponent(jobId || '') + '&success_url=' + encodeURIComponent(window.location.origin + '/?jobId=' + encodeURIComponent(jobId || '') + '&paid=true');
+  // STRIPE SETUP: In your Stripe Payment Link dashboard, set success URL to:
+  // https://choive.com/?jobId={client_reference_id}&paid=true
+  // Stripe replaces {client_reference_id} with the value passed below.
+  // Stripe Payment Link: https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00
+  const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
+  const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
+  const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
   const paidSections = isPaid ? `
     <div class="pay-section">
