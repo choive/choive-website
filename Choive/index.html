@@ -2786,14 +2786,13 @@ function showResults(r, jobId) {
           <span class="mono-score-denom">/ 100</span>
         </div>
         <div class="mono-score-bar-track"><div class="mono-score-bar-fill" id="scoreBar"></div></div>
-        <div class="mono-score-label">${scoreLabel}</div>
+        <div class="verdict-tag ${r.verdictLevel}" style="margin-top:14px;display:inline-block;">${r.verdictLevel === 'absent' ? 'Not being chosen' : r.verdictLevel === 'weak' ? 'Being overlooked' : 'Being chosen'}</div>
+        <div class="mono-score-label" style="margin-top:10px;">${esc(r.verdictHeadline || scoreLabel)}</div>
+        ${r.signatureLine ? '<div style="font-size:13px;font-weight:500;color:var(--tm);margin-top:6px;letter-spacing:0.04em;">' + esc(r.signatureLine) + '</div>' : ''}
       </div>
 
-      <div class="mono-section mono-insight">
-        <div class="mono-insight-line">You are considered.</div>
-        <div class="mono-insight-line">You are not chosen.</div>
-        <div class="mono-insight-line muted">When alternatives appear —</div>
-        <div class="mono-insight-line muted">another option feels easier.</div>
+      <div class="mono-section">
+        <div class="mono-score-label" style="font-size:15px;font-weight:400;line-height:1.8;color:var(--tb);">${esc(r.summaryParagraph || '')}</div>
       </div>
 
       <div class="mono-section">
