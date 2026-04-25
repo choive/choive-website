@@ -2645,9 +2645,12 @@ function showResults(r, jobId) {
   window.__choiveShareJobId = jobId || '';
 
   // isPaid sources (in priority order):
-  // 1. r.paid === true  → set by Stripe webhook updating Supabase diagnostic record
-  // 2. URL ?paid=true   → used for testing and as Stripe success_url redirect
-  const isPaid = (r.paid === true) || (new URLSearchParams(window.location.search).get('paid') === 'true');
+  // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
+  // 2. r.paid === true             → set by Stripe webhook updating Supabase record
+  // 3. URL ?paid=true              → fallback for testing only
+  const isPaid = (window.__choivePaidVerified === true) ||
+                 (r.paid === true) ||
+                 (new URLSearchParams(window.location.search).get('paid') === 'true');
 
   const score = r.overallScore || 0;
   const bName = esc(bizData.name || '');
@@ -2680,10 +2683,13 @@ function showResults(r, jobId) {
     : 'Critical gap. Not being chosen.';
 
   // Stripe payment link — replace with real link
-  // STRIPE SETUP: In your Stripe Payment Link dashboard, set success URL to:
-  // https://choive.com/?jobId={client_reference_id}&paid=true
-  // Stripe replaces {client_reference_id} with the value passed below.
-  // Stripe Payment Link: https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00
+  // STRIPE SETUP:
+  // 1. In your Stripe Payment Link settings, set the success URL to:
+  //    https://choive.com/?session_id={CHECKOUT_SESSION_ID}&paid=true
+  // 2. The jobId is passed as client_reference_id when user clicks unlock.
+  // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
+  //    which retrieves the Stripe session and reads client_reference_id as jobId.
+  // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
   const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
@@ -2745,7 +2751,7 @@ function showResults(r, jobId) {
         <div class="paywall-item">\u2022 Where you lose to competitors</div>
         <div class="paywall-item">\u2022 The exact shifts required to become the chosen option</div>
       </div>
-      <button class="paywall-btn" onclick="localStorage.setItem('choive_pending_jobId', window.__choiveShareJobId || ''); window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
+      <button class="paywall-btn" onclick="const _jid = window.__choiveShareJobId || ''; localStorage.setItem('choive_pending_jobId', _jid); sessionStorage.setItem('choive_pending_jobId', _jid); window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
     </div>`;
 
   zone.innerHTML = `
@@ -2917,43 +2923,28 @@ document.addEventListener('keydown', e => {
 
 // ── SHAREABLE RESULT ROUTE ────────────────────────────────────────────────────
 (function initResultRoute() {
-  const params = new URLSearchParams(window.location.search);
-  let jobId  = params.get('jobId');
-  const paid = params.get('paid') === 'true';
+  const params    = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  let   jobId     = params.get('jobId');
+  const paid      = params.get('paid') === 'true';
 
-  // If returning from Stripe with paid=true but no jobId in URL,
-  // recover jobId from localStorage (Payment Links can't inject dynamic params)
-  if (!jobId && paid) {
-    jobId = localStorage.getItem('choive_pending_jobId') || '';
-  }
+  // Nothing to do on normal homepage
+  if (!sessionId && !jobId) return;
 
-  // Clean up localStorage once we have the jobId
-  if (jobId && paid) {
-    localStorage.removeItem('choive_pending_jobId');
-  }
-
-  if (!jobId) return; // normal homepage — do nothing
-
-  // Hide main page, show result zone only
-  const sections = ['dI','dS'];
-  sections.forEach(id => {
+  // Hide homepage sections
+  ['dI','dS'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-
-  // Hide all page sections except diagnostic area
   document.querySelectorAll('.hero, .ga-strip, .marquee-wrap, .shift-section, .body-lt, .diag-section nav').forEach(el => {
     el.style.display = 'none';
   });
-
-  // Scroll to diagnostic section
   const diagSection = document.getElementById('diagnostic');
   if (diagSection) {
     diagSection.style.paddingTop = '80px';
     diagSection.scrollIntoView({ behavior: 'instant' });
   }
 
-  // Show loading state in result zone
   const zone = document.getElementById('dR');
   if (!zone) return;
   zone.style.display = 'block';
@@ -2966,15 +2957,82 @@ document.addEventListener('keydown', e => {
       <div style="font-size:12px;color:var(--tm);">Retrieving your CHOIVE· Index</div>
     </div>`;
 
-  // Fetch result
-  fetchSharedResult(jobId);
+  if (sessionId && paid) {
+    // Stripe payment return — verify session and get jobId from backend
+    verifyAndLoad(sessionId);
+  } else if (jobId) {
+    // Direct share link — load result normally
+    // localStorage/sessionStorage as fallback only
+    fetchSharedResult(jobId);
+  }
 })();
+
+async function verifyAndLoad(sessionId) {
+  const zone = document.getElementById('dR');
+  try {
+    const res  = await fetch(`/.netlify/functions/verify-payment?session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json();
+
+    if (!data.paid) {
+      zone.innerHTML = `
+        <div class="error-frame">
+          <div class="error-title">Payment Not Verified</div>
+          <div class="error-body">${esc(data.error || 'Payment could not be confirmed.')}</div>
+          <div style="margin-top:22px;"><a href="/" class="cta-primary">Return to CHOIVE·</a></div>
+        </div>`;
+      return;
+    }
+
+    let jobId = data.jobId;
+
+    // Fallback: try storage if backend couldn't return jobId
+    if (!jobId) {
+      jobId = sessionStorage.getItem('choive_pending_jobId') || localStorage.getItem('choive_pending_jobId') || '';
+    }
+
+    if (!jobId) {
+      zone.innerHTML = `
+        <div class="error-frame">
+          <div class="error-title">Result Not Found</div>
+          <div class="error-body">Payment confirmed but diagnostic could not be identified. Please contact hello@choive.com with your payment reference.</div>
+          <div style="margin-top:22px;"><a href="/" class="cta-primary">Return to CHOIVE·</a></div>
+        </div>`;
+      return;
+    }
+
+    // Clean up storage
+    sessionStorage.removeItem('choive_pending_jobId');
+    localStorage.removeItem('choive_pending_jobId');
+
+    // Force paid = true since payment is verified
+    window.__choivePaidVerified = true;
+
+    fetchSharedResult(jobId);
+
+  } catch (err) {
+    zone.innerHTML = `
+      <div class="error-frame">
+        <div class="error-title">Verification Failed</div>
+        <div class="error-body">Could not verify your payment. Please try again or contact hello@choive.com.</div>
+        <div style="margin-top:22px;display:flex;gap:12px;">
+          <button class="cta-primary" onclick="verifyAndLoad('${esc(sessionId)}')">Try again</button>
+          <a href="/" class="cta-secondary">Return to CHOIVE·</a>
+        </div>
+      </div>`;
+  }
+}
 
 async function fetchSharedResult(jobId) {
   const zone = document.getElementById('dR');
+  console.log('[CHOIVE] fetchSharedResult called with jobId:', jobId);
+  console.log('[CHOIVE] localStorage pending jobId:', localStorage.getItem('choive_pending_jobId'));
   try {
-    const res  = await fetch(`/.netlify/functions/get-result?jobId=${encodeURIComponent(jobId)}`);
+    const url = `/.netlify/functions/get-result?jobId=${encodeURIComponent(jobId)}`;
+    console.log('[CHOIVE] fetching:', url);
+    const res  = await fetch(url);
+    console.log('[CHOIVE] response status:', res.status);
     const data = await res.json();
+    console.log('[CHOIVE] response data:', JSON.stringify(data).slice(0, 200));
 
     if (data.status === 'complete' && data.result) {
       // Restore bizData from stored input
