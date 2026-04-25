@@ -105,8 +105,7 @@ WEBSITE CONTENT:
 ${websiteText || 'No website content available.'}
 
 VISIBILITY:
-Website appears in search results: ${visibilityPosition !== -1 ? \`YES (position \${visibilityPosition + 1})\` : 'NO'}
-
+Website appears in search results: ${visibilityPosition !== -1 ? 'YES (position ' + (visibilityPosition + 1) + ')' : 'NO'}
 ---
 
 SYSTEM IDENTITY:
@@ -168,7 +167,6 @@ TRUST (0–25)
 Score ONLY what is visible: third-party mentions, knowledge graph, reviews, press, partnerships.
 Score 20+ requires: multiple independent citations visible in searchText or kgText.
 Score low when: only owned channels visible, no independent confirmation present.
-If schema is missing entirely → ease cannot exceed 8.
 
 DIFFERENCE (0–25)
 Score ONLY what is visible: a specific differentiator in website or search text.
@@ -179,6 +177,7 @@ EASE (0–25)
 Score ONLY what is visible: schema, structured data, sitemap, llms.txt, Open Graph.
 Score 20+ requires: JSON-LD schema and structured signals confirmed in evidence.
 Score low when: no schema visible, no structured data, no llms.txt detected.
+If schema is missing entirely → ease cannot exceed 8.
 
 ---
 
