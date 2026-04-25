@@ -258,7 +258,7 @@ Return ONLY valid JSON:
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 1200,
+        max_tokens: 3000,
         temperature: 0.2,
         messages: [{ role: 'user', content: prompt }]
       }),
@@ -370,7 +370,7 @@ exports.handler = async function (event) {
     if (!jobId) throw new Error('Missing jobId');
 
     // Stage 1: Gather evidence
-    await updateStatus(jobId, 'collecting_evidence', 'gathering');
+    await updateStatus(jobId, 'queued');
     let evidence;
     try {
       evidence = await gatherEvidence(name, category, city, website);
@@ -380,7 +380,7 @@ exports.handler = async function (event) {
     }
 
     // Stage 2: Score with Claude
-    await updateStatus(jobId, 'scoring', 'scoring');
+    await updateStatus(jobId, 'scoring');
     let rawOutput;
     try {
       rawOutput = await scoreWithClaude(
@@ -393,8 +393,12 @@ exports.handler = async function (event) {
     }
 
     console.log('[CHOIVE] displacement from Claude:', JSON.stringify(rawOutput?.displacement));
+    console.log('[CHOIVE] overallScore from Claude:', rawOutput?.overallScore);
+    console.log('[CHOIVE] pillars from Claude:', JSON.stringify(rawOutput?.pillars));
+    console.log('[CHOIVE] rawOutput keys:', rawOutput ? Object.keys(rawOutput).join(',') : 'NULL');
     const safeResult = buildSafeOutput(rawOutput);
     console.log('[CHOIVE] displacement in safeResult:', JSON.stringify(safeResult?.displacement));
+    console.log('[CHOIVE] overallScore in safeResult:', safeResult?.overallScore);
 
     // Stage 3: Save to Supabase
     await saveResult(jobId, safeResult);
