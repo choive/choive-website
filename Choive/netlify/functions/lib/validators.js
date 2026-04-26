@@ -47,11 +47,16 @@ function normalizePillar(raw) {
   if (!raw || typeof raw !== 'object') {
     return { score: 0, finding: 'Insufficient data.', analysis: '', evidence: '' };
   }
+  function normalizePillar(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { score: 0, finding: 'Insufficient data.', analysis: '', evidence: '' };
+  }
+
   return {
-  !isNaN(Number(p.clarity.score)) &&
-  !isNaN(Number(p.trust.score)) &&
-  !isNaN(Number(p.difference.score)) &&
-  !isNaN(Number(p.ease.score))
+    score: !isNaN(Number(raw.score)) ? Number(raw.score) : 0,
+    finding: raw.finding || 'Insufficient data.',
+    analysis: raw.analysis || '',
+    evidence: raw.evidence || ''
   };
 }
 
