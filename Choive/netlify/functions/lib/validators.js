@@ -21,7 +21,7 @@ function clampScore(n) {
 const VALID_VERDICT_LEVELS   = ['absent', 'weak', 'present'];
 const VALID_DECISION_STATES  = ['not_seen', 'seen_not_considered', 'considered_not_chosen', 'trusted_not_chosen', 'chosen_by_default'];
 const VALID_PLATFORM_STATUSES = ['absent', 'weak', 'present'];
-const VALID_TIERS            = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent'];
+const VALID_TIERS            = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent', 'unknown'];
 const DOMINANT_TIERS         = ['dominant', 'strong'];
 
 const VALID_DECISION_ENVS = ['discovery_driven', 'comparison_driven', 'authority_driven', 'default_driven'];
@@ -34,10 +34,10 @@ function hasValidShape(output) {
     p && pc &&
     p.clarity && p.trust && p.difference && p.ease &&
     pc.chatgpt && pc.perplexity && pc.gemini && pc.claude &&
-    typeof p.clarity.score    === 'number' &&
-    typeof p.trust.score      === 'number' &&
-    typeof p.difference.score === 'number' &&
-    typeof p.ease.score       === 'number'
+    !isNaN(Number(p.clarity.score)) &&
+    !isNaN(Number(p.trust.score)) &&
+    !isNaN(Number(p.difference.score)) &&
+    !isNaN(Number(p.ease.score))
   );
 }
 
@@ -48,10 +48,10 @@ function normalizePillar(raw) {
     return { score: 0, finding: 'Insufficient data.', analysis: '', evidence: '' };
   }
   return {
-    score:    typeof raw.score === 'number' ? raw.score : 0,
-    finding:  raw.finding  || 'Insufficient data.',
-    analysis: raw.analysis || '',
-    evidence: raw.evidence || ''
+  !isNaN(Number(p.clarity.score)) &&
+  !isNaN(Number(p.trust.score)) &&
+  !isNaN(Number(p.difference.score)) &&
+  !isNaN(Number(p.ease.score))
   };
 }
 
