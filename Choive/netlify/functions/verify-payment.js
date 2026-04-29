@@ -2,6 +2,8 @@
 // Verifies a Stripe Checkout Session and returns the original CHOIVE jobId
 // ENV: STRIPE_SECRET_KEY
 
+const { markDiagnosticPaid } = require('./lib/supabase');
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -65,13 +67,36 @@ exports.handler = async function (event) {
     }
 
     // client_reference_id = the CHOIVE jobId passed when user clicked unlock
-    const jobId = session.client_reference_id;
+    // Prefer client_reference_id; optionally fall back to session.metadata.jobId
+    const jobId = session.client_reference_id || session.metadata?.jobId || null;
 
-    if (!jobId) {
+    // Validate jobId exists and is a non-empty string
+    if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
+      console.error('verify-payment: jobId missing or malformed in session', session.id);
       return {
         statusCode: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paid: true, error: 'No jobId in session' })
+        body: JSON.stringify({
+          paid:  true,
+          error: 'Payment confirmed but diagnostic ID is missing. Contact hello@choive.com with your payment reference.'
+        })
+      };
+    }
+
+    // Mark diagnostic as paid in Supabase
+    // If the diagnostic row does not exist, this will throw and return a 400
+    try {
+      await markDiagnosticPaid(jobId);
+      console.log('verify-payment: marked paid for jobId', jobId);
+    } catch (err) {
+      console.error('verify-payment: markDiagnosticPaid failed:', err.message);
+      return {
+        statusCode: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paid:  false,
+          error: err.message
+        })
       };
     }
 
