@@ -48,7 +48,21 @@ function extractText(html) {
       .trim()
   ).slice(0, MAX_TEXT_LENGTH);
 }
+function extractSignals(html) {
+  if (!html || typeof html !== 'string') return '';
 
+  const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+  const metaMatch = html.match(/<meta name="description" content="(.*?)"/i);
+  const h1Match = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+  const schemaMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i);
+
+  return [
+    titleMatch ? `TITLE: ${decodeEntities(titleMatch[1])}` : '',
+    metaMatch ? `META: ${decodeEntities(metaMatch[1])}` : '',
+    h1Match ? `H1: ${decodeEntities(h1Match[1])}` : '',
+    schemaMatch ? `SCHEMA DETECTED` : 'NO SCHEMA DETECTED'
+  ].filter(Boolean).join('\n');
+}
 async function fetchWebsiteText(url) {
   if (!url) return '';
   const safeUrl = ensureProtocol(url);
@@ -77,8 +91,11 @@ async function fetchWebsiteText(url) {
       return '';
     }
 
-    const html = await response.text();
-    return extractText(html);
+const html = await response.text();
+const text = extractText(html);
+const signals = extractSignals(html);
+
+return `${signals}\n\nCONTENT:\n${text}`;
 
   } catch (error) {
     clearTimeout(timeout);
