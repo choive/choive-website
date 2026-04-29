@@ -4,8 +4,8 @@
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const TIMEOUT_MS = 55000;
-const MAX_TOKENS = 3000;
+const TIMEOUT_MS = 65000;
+const MAX_TOKENS = 1600;
 
 async function scoreWithClaude(evidence) {
   const prompt = buildPrompt(evidence);
@@ -78,6 +78,11 @@ function parseClaudeResponse(data) {
   throw new Error('Could not parse Claude response as JSON');
 }
 
+function truncate(text, max = 4000) {
+  const value = String(text || '');
+  return value.length > max ? value.slice(0, max) : value;
+}
+
 function buildPrompt(evidence) {
   const {
     name, category, city, website, description,
@@ -96,13 +101,13 @@ INFERRED OFFICIAL WEBSITE:
 ${inferredOfficialSite || 'not found'}
 
 KNOWLEDGE GRAPH:
-${kgText || 'None'}
+${truncate(kgText, 1200) || 'None'}
 
 SEARCH RESULTS:
-${searchText || 'No search results returned.'}
+${truncate(searchText, 5000) || 'No search results returned.'}
 
 WEBSITE CONTENT:
-${websiteText || 'No website content available.'}
+${truncate(websiteText, 3000) || 'No website content available.'}
 
 VISIBILITY:
 Website appears in search results: ${visibilityPosition !== -1 ? 'YES (position ' + (visibilityPosition + 1) + ')' : 'NO'}
