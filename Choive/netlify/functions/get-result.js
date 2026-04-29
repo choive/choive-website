@@ -29,14 +29,26 @@ exports.handler = async function (event) {
 
   try {
     const diagnostic = await getDiagnostic(jobId);
+if (!diagnostic) {
+  return {
+    statusCode: 404,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ error: 'Diagnostic not found' })
+  };
+}
 
-    if (!diagnostic) {
-      return {
-        statusCode: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Diagnostic not found' })
-      };
-    }
+if (diagnostic.status === 'complete' && diagnostic.paid !== true) {
+  return {
+    statusCode: 403,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      error: 'Payment required to access full result',
+      status: 'locked'
+    })
+  };
+}
+
+if (diagnostic.status !== 'complete') {
 
     if (diagnostic.status !== 'complete') {
       return {
