@@ -103,27 +103,13 @@ exports.handler = async function (event) {
 
   // Await background trigger — do not fire and forget
   try {
-    const triggerRes = await fetch(backgroundUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobId, input })
-    });
-
-    if (!triggerRes.ok) {
-      const errText = await triggerRes.text().catch(() => 'no body');
-      console.error(
-        `CHOIVE start-diagnostic: Background trigger returned ${triggerRes.status}: ${errText}`
-      );
-      await markDiagnosticFailed(jobId, {
-        message: `Background trigger failed with status ${triggerRes.status}`,
-        detail: errText
-      }).catch(() => {});
-      return {
-        statusCode: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Diagnostic engine could not be started. Please try again.' })
-      };
-    }
+fetch(backgroundUrl, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ jobId, input })
+}).catch(err => {
+  console.error('CHOIVE background trigger failed:', err.message);
+});
   } catch (err) {
     console.error('CHOIVE start-diagnostic: Background trigger threw:', err.message);
     await markDiagnosticFailed(jobId, {
