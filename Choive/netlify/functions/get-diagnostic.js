@@ -90,19 +90,20 @@ exports.handler = async function (event) {
   }
 
   if (job.status === 'complete') {
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jobId: job.job_id,
-        status: 'complete',
-        stage: null,
-        createdAt: job.created_at,
-        updatedAt: job.updated_at,
-        result: job.result
-      })
-    };
-  }
+  return {
+    statusCode: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jobId: job.job_id,
+      status: 'complete',
+      stage: null,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      paid: job.paid === true,
+      result: job.result
+    })
+  };
+}
 
   if (job.status === 'failed') {
     return {
