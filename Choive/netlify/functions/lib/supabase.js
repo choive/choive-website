@@ -70,11 +70,37 @@ async function getDiagnostic(jobId) {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('diagnostics')
-    .select('job_id, status, stage, input, result, error, created_at, updated_at')
+    .select('job_id, status, stage, input, result, error, paid, paid_at, created_at, updated_at')
     .eq('job_id', jobId)
     .maybeSingle();
   if (error) throw new Error(`Supabase fetch failed: ${error.message}`);
   return data; // null if not found — handled in get-result.js as 404
+}
+
+async function markDiagnosticPaid(jobId) {
+  if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
+    throw new Error('markDiagnosticPaid: jobId is missing or malformed');
+  }
+
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .update({
+      paid:    true,
+      paid_at: new Date().toISOString()
+    })
+    .eq('job_id', jobId)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`markDiagnosticPaid: no diagnostic found for jobId ${jobId}`);
+    }
+    throw new Error(`Supabase markDiagnosticPaid failed: ${error.message}`);
+  }
+
+  return data;
 }
 
 module.exports = {
@@ -82,6 +108,7 @@ module.exports = {
   updateStatus,
   saveEvidence,
   saveResult,
-  saveError,
-  getDiagnostic
+  saveError,;
+  getDiagnostic,
+  markDiagnosticPaid
 };
