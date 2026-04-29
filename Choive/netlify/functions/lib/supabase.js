@@ -108,7 +108,7 @@ module.exports = {
   updateStatus,
   saveEvidence,
   saveResult,
-  saveError,;
+  saveError,
   getDiagnostic,
   markDiagnosticPaid
 };
