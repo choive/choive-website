@@ -6,7 +6,7 @@
 // SUPABASE_SERVICE_ROLE_KEY
 
 const { randomUUID } = require('crypto');
-const { createDiagnostic, markDiagnosticFailed } = require('./lib/supabase');
+const { createDiagnostic, saveError } = require('./lib/supabase');
 const { validateInput } = require('./lib/validators');
 
 const corsHeaders = {
@@ -89,9 +89,7 @@ exports.handler = async function (event) {
 
   if (!host) {
     console.error('CHOIVE start-diagnostic: Missing host header');
-    await markDiagnosticFailed(jobId, {
-      message: 'Missing host header for background trigger'
-    }).catch(() => {});
+    await saveError(jobId, 'Background trigger network error: ' + err.message).catch(() => {});
     return {
       statusCode: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
