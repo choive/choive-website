@@ -77,8 +77,8 @@ exports.handler = async function (event) {
         statusCode: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paid:  true,
-          error: 'Payment confirmed but diagnostic ID is missing. Contact hello@choive.com with your payment reference.'
+          paid: false,
+          error: 'Payment received but could not link to your diagnostic. Contact hello@choive.com with your payment reference.'
         })
       };
     }
