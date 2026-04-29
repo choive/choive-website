@@ -281,7 +281,8 @@ Return ONLY raw JSON. No markdown. No backticks. No explanation. Start with { an
     { "priority": "high",     "title": "", "body": "", "explanation": "" },
     { "priority": "medium",   "title": "", "body": "", "explanation": "" }
   ]
-}`;
+}
+`;
 }
 
 
