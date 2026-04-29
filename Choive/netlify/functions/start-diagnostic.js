@@ -101,7 +101,7 @@ exports.handler = async function (event) {
 
   const backgroundUrl = `${proto}://${host}/.netlify/functions/run-diagnostic-background`;
 
-  // Await background trigger — do not fire and forget
+  // Trigger background process asynchronously
   try {
 fetch(backgroundUrl, {
   method: 'POST',
@@ -123,7 +123,7 @@ fetch(backgroundUrl, {
     };
   }
 
-  // Background confirmed — return jobId to frontend
+  // Return jobId immediately while background process continues  
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
