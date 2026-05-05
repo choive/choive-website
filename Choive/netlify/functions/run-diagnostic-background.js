@@ -30,6 +30,7 @@ exports.handler = async function (event) {
     if (!jobId)                   throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
+    console.log('STEP 1 STARTED', { jobId, name, category, city });
     let serperPayload = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
     let websiteText   = '';
     let inferredSite  = '';
@@ -38,6 +39,10 @@ exports.handler = async function (event) {
       searchSerper(name, category, city),
       website ? fetchWebsiteText(website) : Promise.resolve('')
     ]);
+    console.log('STEP 1 FETCH DONE', {
+  serper: serperSettled.status,
+  website: webSettled.status
+});
     if (serperSettled.status === 'fulfilled') {
       serperPayload = serperSettled.value;
     } else {
@@ -49,6 +54,7 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
     }
     inferredSite = await inferOfficialSite(name, website);
+    console.log('INFERRED SITE:', inferredSite);
     if (!websiteText && inferredSite && inferredSite !== website) {
       websiteText = await fetchWebsiteText(inferredSite).catch(() => '');
     }
