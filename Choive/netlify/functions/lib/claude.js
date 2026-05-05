@@ -5,7 +5,7 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS = 65000;
-const MAX_TOKENS = 1600;
+const MAX_TOKENS = 2500;
 
 async function scoreWithClaude(evidence) {
   const prompt = buildPrompt(evidence);
@@ -50,31 +50,23 @@ function parseClaudeResponse(data) {
     .map(b => b.text || '')
     .join('')
     .trim();
-
   if (!text) throw new Error('Claude returned empty response');
-
-  // Strip markdown fences if present
-  const clean = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
+  let clean = text
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
     .trim();
-
-  // Attempt 1: direct parse
   try {
     return JSON.parse(clean);
   } catch (_) {}
-
-  // Attempt 2: extract first {...} block
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (match) {
+  const first = clean.indexOf('{');
+  const last = clean.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    const jsonBlock = clean.slice(first, last + 1);
     try {
-      return JSON.parse(match[0]);
+      return JSON.parse(jsonBlock);
     } catch (_) {}
   }
-
-  // Log and throw
-  console.error('Claude raw response (parse failed):', text.slice(0, 500));
+  console.error('Claude raw response (parse failed):', text.slice(0, 1000));
   throw new Error('Could not parse Claude response as JSON');
 }
 
