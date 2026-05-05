@@ -168,32 +168,24 @@ async function searchSerper(name, category, city) {
 
 // ── inferOfficialSite ─────────────────────────────────────────────────────────
 // Returns the most likely official domain for the business
-function inferOfficialSite(website, serperPayload, name) {
+async function inferOfficialSite(name, website) {
+  // If user provided a website, normalize and return it
   if (website && website.trim()) {
-    return website.trim();
+    return normalizeUrl(website.trim());
   }
 
-  const knowledgeGraph = serperPayload?.knowledgeGraph || null;
-  const results = serperPayload?.results || [];
+  // Otherwise query Serper for the official site
+  const data = await fetchSerper(`${name} official website`);
+  if (!data) return '';
 
-  if (knowledgeGraph?.website) {
-    return knowledgeGraph.website;
+  // Knowledge graph website is highest confidence
+  if (data.knowledgeGraph?.website) {
+    return normalizeUrl(data.knowledgeGraph.website);
   }
 
-  const normalizedName = String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-
-  const matched = results.find(result => {
-    const domain = normalizeUrl(result.link);
-    const flatDomain = domain.replace(/[^a-z0-9]/g, '');
-    return normalizedName && flatDomain.includes(normalizedName);
-  });
-
-  return matched?.link || results[0]?.link || '';
+  // First organic result is second best
+  const first = data.organic?.[0]?.link;
+  return first ? normalizeUrl(first) : '';
 }
-async function searchSerper(name, category, city) {
-  if (!process.env.SERPER_API_KEY) {
-    throw new Error('Missing SERPER_API_KEY');
-  }
+
 module.exports = { searchSerper, inferOfficialSite, normalizeUrl };
