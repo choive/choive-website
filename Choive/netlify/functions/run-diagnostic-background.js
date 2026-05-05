@@ -48,7 +48,7 @@ exports.handler = async function (event) {
     } else {
       console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
     }
-    inferredSite = inferOfficialSite(website, serperPayload, name);
+    inferredSite = await inferOfficialSite(name, website);
     if (!websiteText && inferredSite && inferredSite !== website) {
       websiteText = await fetchWebsiteText(inferredSite).catch(() => '');
     }
