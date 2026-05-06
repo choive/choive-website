@@ -2364,7 +2364,7 @@ async function startDiagnostic(biz) {
 // ── POLL ──────────────────────────────────────────────────────────────────────
 function pollDiagnostic(jobId) {
   let attempts = 0;
-  const maxAttempts = 60; // 60 × 3s = 3 minutes max
+  const maxAttempts = 120; // 120 × 3s = 6 minutes max
 
   pollTimer = setInterval(async () => {
     attempts++;
