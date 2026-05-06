@@ -1,12 +1,13 @@
 {
   "name": "choive-engine",
   "version": "1.0.0",
-  "description": "CHOIVE\u2122 Decision Intelligence Engine",
+  "description": "CHOIVE™ Decision Intelligence Engine",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "@netlify/blobs": "^8.1.0"
+    "@netlify/blobs": "^8.1.0",
+    "ws": "^8.18.0"
   }
 }
