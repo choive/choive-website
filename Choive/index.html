@@ -2366,19 +2366,18 @@ function pollDiagnostic(jobId) {
   let attempts = 0;
   const maxAttempts = 120; // 120 × 3s = 6 minutes max
 
-  pollTimer = setInterval(async () => {
+  async function checkStatus() {
     attempts++;
     if (attempts > maxAttempts) {
       clearInterval(pollTimer);
       showError('Diagnostic timed out. Please try again.');
       return;
     }
-
     try {
       const res  = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
       const data = await res.json();
 
-      console.log('[CHOIVE poll]', data.status, data);
+      console.log('[CHOIVE poll response]', data);
       updateEngineStage(data.status);
 
       if (data.status === 'complete') {
@@ -2386,7 +2385,13 @@ function pollDiagnostic(jobId) {
         const resultWithPaid = Object.assign({}, data.result, {
           paid: data.paid === true || (data.result && data.result.paid === true)
         });
-        showResults(resultWithPaid, jobId);
+        try {
+          console.log('[CHOIVE result data]', resultWithPaid);
+          showResults(resultWithPaid, jobId);
+        } catch (e) {
+          console.error('[CHOIVE showResults error]', e);
+          showError('Result loaded but could not be displayed.');
+        }
       } else if (data.status === 'failed') {
         clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
@@ -2396,7 +2401,10 @@ function pollDiagnostic(jobId) {
       clearInterval(pollTimer);
       showError('Connection error. Please try again.');
     }
-  }, 3000);
+  }
+
+  checkStatus(); // run immediately once
+  pollTimer = setInterval(checkStatus, 3000);
 }
 
 // ── RESULTS ───────────────────────────────────────────────────────────────────
