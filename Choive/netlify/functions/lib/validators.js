@@ -21,7 +21,7 @@ function clampScore(n) {
 const VALID_VERDICT_LEVELS   = ['absent', 'weak', 'present'];
 const VALID_DECISION_STATES  = ['not_seen', 'seen_not_considered', 'considered_not_chosen', 'trusted_not_chosen', 'chosen_by_default'];
 const VALID_PLATFORM_STATUSES = ['absent', 'weak', 'present'];
-const VALID_TIERS = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent', 'unknown'];
+const VALID_TIERS            = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent'];
 const DOMINANT_TIERS         = ['dominant', 'strong'];
 
 const VALID_DECISION_ENVS = ['discovery_driven', 'comparison_driven', 'authority_driven', 'default_driven'];
@@ -117,9 +117,6 @@ function buildSafeOutput(output) {
     actions: Array.isArray(output?.actions) && output.actions.length > 0
       ? output.actions
       : [{ priority: 'critical', title: 'Retry diagnostic', body: 'The engine did not return a complete result. Please try again.' }],
-    
-    competitor: output?.competitor || null,
-    
     displacement: resolveDisplacement(output)
   };
 
