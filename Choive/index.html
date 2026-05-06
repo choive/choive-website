@@ -2375,23 +2375,24 @@ function pollDiagnostic(jobId) {
     }
 
     try {
-      const res  = await fetch(`${GET_API}?jobId=${encodeURIComponent(jobId)}`);
+      const res  = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
       const data = await res.json();
 
+      console.log('[CHOIVE poll]', data.status, data);
       updateEngineStage(data.status);
 
       if (data.status === 'complete') {
         clearInterval(pollTimer);
-        // Merge paid status from DB into result so r.paid === true works
-      const resultWithPaid = Object.assign({}, data.result, {
-        paid: data.paid === true || data.result?.paid === true
-      });
-      showResults(resultWithPaid, jobId);
+        const resultWithPaid = Object.assign({}, data.result, {
+          paid: data.paid === true || (data.result && data.result.paid === true)
+        });
+        showResults(resultWithPaid, jobId);
       } else if (data.status === 'failed') {
         clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
       }
     } catch (err) {
+      console.error('[CHOIVE poll error]', err.message);
       clearInterval(pollTimer);
       showError('Connection error. Please try again.');
     }
