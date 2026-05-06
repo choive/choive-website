@@ -1,11 +1,10 @@
 // start-diagnostic.js
-// CHOIVE™ Stage 1 — Entry point
-// Validates input, creates job, triggers background process
-// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, URL (e.g. https://choive.com)
+// CHOIVE Stage 1 — Entry point
+// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, URL
 
-const { randomUUID } = require('crypto');
-const { createDiagnostic, saveError } = require('./lib/supabase');
-const { validateInput } = require('./lib/validators');
+const crypto   = require('crypto');
+const supabase = require('./lib/supabase');
+const valid    = require('./lib/validators');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,12 +16,11 @@ exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
-
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
 
-  let body;
+  var body;
   try {
     body = JSON.parse(event.body || '{}');
   } catch (_) {
@@ -33,7 +31,7 @@ exports.handler = async function (event) {
     };
   }
 
-  const validation = validateInput(body);
+  var validation = valid.validateInput(body);
   if (!validation.valid) {
     return {
       statusCode: 400,
@@ -42,20 +40,20 @@ exports.handler = async function (event) {
     };
   }
 
-  const input = {
-    name:        String(body.name).trim(),
-    category:    String(body.category).trim(),
-    city:        String(body.city).trim(),
-    website:     String(body.website     || '').trim(),
-    description: String(body.description || '').trim()
+  var input = {
+    name:        String(body['name']        || '').trim(),
+    category:    String(body['category']    || '').trim(),
+    city:        String(body['city']        || '').trim(),
+    website:     String(body['website']     || '').trim(),
+    description: String(body['description'] || '').trim()
   };
 
-  const jobId = randomUUID();
+  var jobId = crypto.randomUUID();
 
   try {
-    await createDiagnostic(jobId, input);
+    await supabase.createDiagnostic(jobId, input);
   } catch (err) {
-    console.error('CHOIVE start-diagnostic: Supabase create failed:', err.message);
+    console.error('start-diagnostic: Supabase create failed:', err.message);
     return {
       statusCode: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -63,22 +61,20 @@ exports.handler = async function (event) {
     };
   }
 
-  // Fixed background URL — uses Netlify URL env var, no header parsing
-  const siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-  const backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
+  var siteUrl       = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
+  var backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
   console.log('CHOIVE background trigger:', backgroundUrl);
 
   try {
-    const triggerRes = await fetch(backgroundUrl, {
+    var triggerRes = await fetch(backgroundUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobId, input })
+      body: JSON.stringify({ jobId: jobId, input: input })
     });
-
     if (!triggerRes.ok) {
-      const errText = await triggerRes.text().catch(() => 'no body');
-      console.error('CHOIVE start-diagnostic: Background trigger returned', triggerRes.status, errText);
-      await saveError(jobId, 'Background trigger failed with status ' + triggerRes.status + ': ' + errText).catch(() => {});
+      var errText = await triggerRes.text().catch(() => 'no body');
+      console.error('start-diagnostic: trigger returned', triggerRes.status, errText);
+      await supabase.saveError(jobId, 'Background trigger failed: ' + triggerRes.status).catch(() => {});
       return {
         statusCode: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -86,8 +82,8 @@ exports.handler = async function (event) {
       };
     }
   } catch (err) {
-    console.error('CHOIVE start-diagnostic: Background trigger threw:', err.message);
-    await saveError(jobId, 'Background trigger network error: ' + err.message).catch(() => {});
+    console.error('start-diagnostic: trigger threw:', err.message);
+    await supabase.saveError(jobId, 'Background trigger error: ' + err.message).catch(() => {});
     return {
       statusCode: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -98,6 +94,6 @@ exports.handler = async function (event) {
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobId, status: 'queued' })
+    body: JSON.stringify({ jobId: jobId, status: 'queued' })
   };
 };
