@@ -744,6 +744,79 @@ footer {
 }
 .paywall-btn:hover { background:var(--ac2); }
 
+/* ─── PAID ANALYSIS SECTIONS ─────────────────── */
+.paid-narrative {
+  font-size:15px; font-weight:400; color:var(--tb); line-height:1.75;
+}
+.paid-pillars { display:flex; flex-direction:column; gap:16px; }
+.paid-pillar {
+  padding:20px; background:var(--dk-3);
+  border:1px solid var(--rule-d); border-radius:2px;
+}
+.paid-pillar-head {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:10px;
+}
+.paid-pillar-name {
+  font-size:11px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--ac);
+}
+.paid-pillar-score {
+  font-size:13px; font-weight:700; color:var(--tp);
+}
+.paid-pillar-analysis {
+  font-size:14px; font-weight:400; color:var(--tb);
+  line-height:1.65; margin-bottom:10px;
+}
+.paid-pillar-evidence {
+  font-size:13px; font-weight:400; color:var(--tm);
+  line-height:1.6; font-style:italic;
+  border-left:2px solid var(--ac); padding-left:12px;
+  margin-top:8px;
+}
+.paid-comp-found {
+  padding:20px; background:var(--dk-3);
+  border:1px solid var(--rule-d);
+}
+.paid-comp-name {
+  font-size:16px; font-weight:700; color:var(--tp);
+  margin-bottom:10px;
+}
+.paid-comp-analysis {
+  font-size:14px; font-weight:400; color:var(--tb);
+  line-height:1.65; margin-bottom:10px;
+}
+.paid-comp-none {
+  font-size:14px; font-weight:400; color:var(--tm);
+  line-height:1.65; font-style:italic;
+}
+.paid-actions { display:flex; flex-direction:column; gap:12px; }
+.paid-action {
+  padding:20px; background:var(--dk-3);
+  border:1px solid var(--rule-d); border-left:3px solid var(--rule-d);
+}
+.paid-action-critical { border-left-color:var(--red); }
+.paid-action-high     { border-left-color:var(--amber); }
+.paid-action-medium   { border-left-color:var(--tm); }
+.paid-action-priority {
+  font-size:9px; font-weight:700; letter-spacing:0.15em;
+  color:var(--tm); margin-bottom:6px;
+}
+.paid-action-critical .paid-action-priority { color:var(--red); }
+.paid-action-high     .paid-action-priority { color:var(--amber); }
+.paid-action-title {
+  font-size:14px; font-weight:600; color:var(--tp);
+  margin-bottom:6px;
+}
+.paid-action-body {
+  font-size:13px; font-weight:400; color:var(--tb);
+  line-height:1.6; margin-bottom:8px;
+}
+.paid-action-explanation {
+  font-size:12px; font-weight:400; color:var(--tm);
+  line-height:1.55; font-style:italic;
+}
+
 /* ─── MOBILE ─────────────────────────────────── */
 @media (max-width:960px) { .offer-grid-3 { grid-template-columns:1fr; } }
 @media (max-width:768px) {
@@ -2747,57 +2820,90 @@ function showResults(r, jobId) {
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
-  const paidSections = isPaid ? `
+  const paidSections = isPaid ? (function() {
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function pillarDetail(key, label) {
+    var p = r.pillars && r.pillars[key];
+    if (!p) return '';
+    return '<div class="paid-pillar">'
+      + '<div class="paid-pillar-head">'
+      + '<span class="paid-pillar-name">' + label + '</span>'
+      + '<span class="paid-pillar-score">' + (p.score || 0) + ' / 25</span>'
+      + '</div>'
+      + (p.analysis ? '<div class="paid-pillar-analysis">' + esc(p.analysis) + '</div>' : '')
+      + (p.evidence ? '<div class="paid-pillar-evidence">“' + esc(p.evidence) + '”</div>' : '')
+      + '</div>';
+  }
+
+  function actionItem(a) {
+    if (!a) return '';
+    return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
+      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + '</div>'
+      + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
+      + '<div class="paid-action-body">' + esc(a.body || '') + '</div>'
+      + (a.explanation ? '<div class="paid-action-explanation">' + esc(a.explanation) + '</div>' : '')
+      + '</div>';
+  }
+
+  // ── competitor block ──────────────────────────────────────────────────────
+  var compName = (r.competitor && r.competitor.name) || (r.displacement && r.displacement.competitorName) || '';
+  var compAnalysis = (r.competitor && r.competitor.analysis) || (r.displacement && r.displacement.competitorWhy) || '';
+  var compEvidence = (r.competitor && r.competitor.evidence) || '';
+  var compBlock = compName
+    ? '<div class="paid-comp-found">'
+      + '<div class="paid-comp-name">' + esc(compName) + '</div>'
+      + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
+      + (compEvidence ? '<div class="paid-pillar-evidence">“' + esc(compEvidence) + '”</div>' : '')
+      + '</div>'
+    : '<div class="paid-comp-none">No direct competitor identified in search evidence. This may mean your category lacks dominant alternatives — or that your presence is too weak to trigger comparison queries.</div>';
+
+  // ── actions ───────────────────────────────────────────────────────────────
+  var actions = Array.isArray(r.actions) ? r.actions : [];
+  var actionsHtml = actions.map(actionItem).join('');
+
+  return `
     <div class="pay-section">
-      <div class="pay-eyebrow">Why You Are Not Chosen</div>
-      <div class="pay-lines">
-        <div class="pay-line">You are trusted. You are replaceable.</div>
-        <div class="pay-line">You are seen. You are not chosen.</div>
-        <div class="pay-line">You are present. Another option is preferred.</div>
+      <div class="pay-eyebrow">Business Intelligence</div>
+      <div class="paid-narrative">${esc(r.businessUnderstanding || r.summaryParagraph || '')}</div>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-eyebrow">Evidence Narrative</div>
+      <div class="paid-narrative">${esc(r.evidenceNarrative || '')}</div>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-eyebrow">Why You Score This Way</div>
+      <div class="paid-pillars">
+        ${pillarDetail('clarity', 'Clarity')}
+        ${pillarDetail('trust', 'Trust')}
+        ${pillarDetail('difference', 'Difference')}
+        ${pillarDetail('ease', 'Ease')}
       </div>
     </div>
 
     <div class="pay-section">
       <div class="pay-eyebrow">Competitor Reality</div>
-      <div class="pay-lines">
-        <div class="pay-line muted">When customers compare options:</div>
-        ${r.displacement?.competitorName ? '<div class="pay-comp-row"><span class="pay-comp-name">' + esc(r.displacement.competitorName) + '</span><span class="pay-comp-signal">' + esc(r.displacement.competitorWhy || "Stronger AI readability signals") + '</span></div>' : '<div class="pay-comp-row"><span class="pay-comp-name">The dominant player in your category</span><span class="pay-comp-signal">Stronger AI readability signals</span></div>'}
-        <div class="pay-comp-row"><span class="pay-comp-name">Other competitors</span><span class="pay-comp-signal">More structured digital presence</span></div>
-        <div class="pay-comp-row you"><span class="pay-comp-name">You</span><span class="pay-comp-signal">Balanced — but not decisive</span></div>
-      </div>
+      ${compBlock}
     </div>
 
     <div class="pay-section">
-      <div class="pay-eyebrow">Selection Breakpoint</div>
-      <div class="pay-lines">
-        <div class="pay-line">You lose at comparison — not discovery.</div>
-        <div class="pay-line muted">The decision is made before they reach you.</div>
-        <div class="pay-line muted">Another option removed the doubt first.</div>
-      </div>
-    </div>
-
-    <div class="pay-section">
-      <div class="pay-eyebrow">Positioning Shift</div>
-      <div class="pay-lines">
-        <div class="pay-line muted">To become the chosen option:</div>
-        <div class="pay-shift-item">\u2192 Remove doubt before comparison begins</div>
-        <div class="pay-shift-item">\u2192 Make your position immediately clear</div>
-        <div class="pay-shift-item">\u2192 Become the path of least resistance</div>
-        <div class="pay-label">CHOIVE calls this: <strong>Decision Ease.</strong></div>
-      </div>
+      <div class="pay-eyebrow">Priority Actions</div>
+      <div class="paid-actions">${actionsHtml}</div>
     </div>
 
     <div class="pay-section pay-final">
       <div class="pay-final-line">This is where CHOIVE changes the outcome.</div>
       <div class="pay-final-line muted">Not by making you louder.</div>
       <div class="pay-final-line muted">By making you easier to choose.</div>
-      <div class="pay-product-name">CHOIVE SYSTEM\u2122</div>
+      <div class="pay-product-name">CHOIVE SYSTEM™</div>
       <div class="pay-product-desc">We restructure your selection position so you become:</div>
-      <div class="pay-shift-item">\u2014 The first option that removes doubt</div>
-      <div class="pay-shift-item">\u2014 The one that feels inevitable</div>
-      <div class="pay-shift-item">\u2014 The obvious choice</div>
-      <button class="pay-btn-primary" onclick="openForm('CHOIVE System\u2122')">Begin CHOIVE System\u2122</button>
-    </div>` : `
+      <div class="pay-shift-item">— The first option that removes doubt</div>
+      <div class="pay-shift-item">— The one that feels inevitable</div>
+      <div class="pay-shift-item">— The obvious choice</div>
+      <button class="pay-btn-primary" onclick="openForm('CHOIVE System™')">Begin CHOIVE System™</button>
+    </div>`;
+})() : `
     <div class="paywall-block">
       <div class="paywall-eyebrow">Unlock your CHOIVE Analysis\u2122</div>
       <div class="paywall-items">
