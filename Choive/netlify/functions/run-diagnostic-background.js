@@ -4,7 +4,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 const { updateStatus, saveEvidence, saveResult, saveError } = require('./lib/supabase');
 const { searchSerper, inferOfficialSite, normalizeUrl } = require('./lib/serper');
-const { fetchWebsiteText } = require('./lib/fetchWebsite');
+const { fetchWebsiteText, fetchCompetitorText } = require('./lib/fetchWebsite');
 const { scoreWithClaude } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const corsHeaders = {
@@ -78,7 +78,7 @@ exports.handler = async function (event) {
     if (serperPayload.competitors && serperPayload.competitors.length > 0) {
       var topComp = serperPayload.competitors[0];
       if (topComp && topComp['domain']) {
-        competitorPageText = await fetcher.fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
+        competitorPageText = await fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
         if (competitorPageText) {
           evidence['competitorPageText'] = competitorPageText;
           evidence['competitorDomain']   = topComp['domain'];
