@@ -146,6 +146,18 @@ function buildPrompt(evidence) {
     '7. DO NOT reward signals that are not present in the evidence.\n' +
     '8. DO NOT penalise signals that are clearly present in the evidence.\n\n' +
 
+    'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n' +
+    'User provided category: "' + category + '" — this may be vague or incorrect.\n' +
+    'Using ONLY the evidence, determine:\n' +
+    '1. What does this business actually sell?\n' +
+    '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n' +
+    '3. What precise industry category would buyers use to find this?\n' +
+    '4. B2B, B2C, or both?\n' +
+    'Return this as inferredCategory. Use it for all scoring and competitor logic.\n' +
+    'Examples:\n' +
+    '- User typed OTT platform, evidence shows white-label middleware for telcos → B2B OTT middleware platform vendor\n' +
+    '- User typed coffee shop, evidence shows wholesale roastery → B2B specialty coffee roaster\n\n' +
+
     'DECISION ENVIRONMENT — classify first:\n' +
     '- discovery_driven: local, map-based, search-based selection\n' +
     '- comparison_driven: evaluated against alternatives before decision\n' +
@@ -243,6 +255,7 @@ function buildPrompt(evidence) {
 
     '{\n' +
     '  "overallScore": 0,\n' +
+    '  "inferredCategory": "",\n' +
     '  "verdictHeadline": "",\n' +
     '  "verdictLevel": "absent",\n' +
     '  "signatureLine": "",\n' +
