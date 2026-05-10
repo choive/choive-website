@@ -318,8 +318,64 @@ async function searchSerper(name, category, city) {
   };
 }
 
+// ── Second-pass competitor search using inferred category ─────────────────────
+async function searchCompetitors(name, inferredCategory, city) {
+  if (!inferredCategory) return { results: [], searchText: '' };
+
+  var queries = [
+    { q: 'best ' + inferredCategory + ' vendors',                     type: 'comparison'  },
+    { q: 'top ' + inferredCategory + ' companies',                    type: 'comparison'  },
+    { q: inferredCategory + ' software comparison',                   type: 'comparison'  },
+    { q: inferredCategory + ' alternatives',                          type: 'competition' },
+    { q: name + ' vs ' + inferredCategory + ' alternatives',          type: 'competition' },
+    { q: inferredCategory + ' market leaders',                        type: 'comparison'  }
+  ];
+
+  var settled = await Promise.allSettled(
+    queries.map(function(item) { return fetchSerper(item.q); })
+  );
+
+  var queryResults = [];
+  var allResults   = [];
+
+  for (var i = 0; i < settled.length; i++) {
+    if (settled[i].status !== 'fulfilled' || !settled[i].value) continue;
+    var data     = settled[i].value;
+    var queryDef = queries[i];
+    var sig      = classifySignal(queryDef.q);
+    var signalType = queryDef.type || sig.type;
+    var priority   = PRIORITY_MAP[signalType] || sig.priority;
+
+    var items = [];
+    var orgs  = data.organic || [];
+    for (var j = 0; j < orgs.length; j++) {
+      var item = {
+        position:    j + 1,
+        title:       orgs[j].title   || '',
+        snippet:     orgs[j].snippet || '',
+        link:        orgs[j].link    || '',
+        sourceQuery: queryDef.q,
+        signalType:  signalType,
+        priority:    priority
+      };
+      items.push(item);
+      allResults.push(item);
+    }
+    queryResults.push({ query: queryDef.q, signalType: signalType, items: items });
+  }
+
+  var results     = deduplicate(allResults).sort(function(a, b) {
+    return b.priority !== a.priority ? b.priority - a.priority : a.position - b.position;
+  });
+  var competitors = extractCompetitors(queryResults, name);
+  var searchText  = buildSearchText(queryResults);
+
+  return { results: results, competitors: competitors, searchText: searchText };
+}
+
 module.exports = {
   searchSerper:      searchSerper,
+  searchCompetitors: searchCompetitors,
   inferOfficialSite: inferOfficialSite,
   normalizeUrl:      normalizeUrl
 };
