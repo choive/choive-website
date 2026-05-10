@@ -2364,24 +2364,21 @@ async function startDiagnostic(biz) {
 // ── POLL ──────────────────────────────────────────────────────────────────────
 function pollDiagnostic(jobId) {
   let attempts = 0;
-  const maxAttempts = 120; // 120 × 3s = 6 minutes max
-
+  const maxAttempts = 120;
   async function checkStatus() {
     attempts++;
     if (attempts > maxAttempts) {
-      clearInterval(pollTimer);
+      if (pollTimer) clearInterval(pollTimer);
       showError('Diagnostic timed out. Please try again.');
       return;
     }
     try {
-      const res  = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
+      const res = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
       const data = await res.json();
-
       console.log('[CHOIVE poll response]', data);
       updateEngineStage(data.status);
-
       if (data.status === 'complete') {
-        clearInterval(pollTimer);
+        if (pollTimer) clearInterval(pollTimer);
         const resultWithPaid = Object.assign({}, data.result, {
           paid: data.paid === true || (data.result && data.result.paid === true)
         });
@@ -2393,17 +2390,16 @@ function pollDiagnostic(jobId) {
           showError('Result loaded but could not be displayed.');
         }
       } else if (data.status === 'failed') {
-        clearInterval(pollTimer);
+        if (pollTimer) clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
       }
     } catch (err) {
-      console.error('[CHOIVE poll error]', err.message);
-      clearInterval(pollTimer);
+      console.error('[CHOIVE poll error]', err);
+      if (pollTimer) clearInterval(pollTimer);
       showError('Connection error. Please try again.');
     }
   }
-
-  checkStatus(); // run immediately once
+  checkStatus();
   pollTimer = setInterval(checkStatus, 3000);
 }
 
@@ -2411,7 +2407,7 @@ function pollDiagnostic(jobId) {
 // ── SCORE LABELS ─────────────────────────────────────────────────────────────
 function buildScoreLabels(r) {
   const tier = r.marketPosition?.tier || 'unknown';
-  const score = r.overallScore || 0;
+  const score = Number(r.overallScore) || 0;
 
   // Recommendation strength from market tier
   const strengthMap = {
@@ -2525,23 +2521,23 @@ function openShareUrl() {
 
 
 function buildGapBlock(r) {
-  const tierMap = {
+  var tierMap = {
     dominant:100, strong:85, upper_mid:70,
     mid:55, weak:35, absent:10, unknown:0
   };
-  const tier        = r.marketPosition?.tier || 'unknown';
-  const likelihood  = tierMap[tier] !== undefined ? tierMap[tier] : 0;
-  const readability = r.overallScore || 0;
-  const gap         = likelihood - readability;
+  var tier       = (r && r.marketPosition && r.marketPosition.tier) ? r.marketPosition.tier : 'unknown';
+  var likelihood = typeof tierMap[tier] === 'number' ? tierMap[tier] : 0;
+  var readability = Number(r && r.overallScore) || 0;
+  var gap = likelihood - readability;
 
-  const likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 60 ? 'MID'  : 'LOW';
-  const likeClass = likelihood >= 80 ? 'high'  : likelihood >= 60 ? 'mid'  : 'low';
-  const readLabel = readability >= 70 ? 'HIGH' : readability >= 40 ? 'MID' : 'LOW';
-  const readClass = readability >= 70 ? 'high' : readability >= 40 ? 'mid' : 'low';
-  const gapLabel  = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
-  const gapClass  = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
+  var likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 55 ? 'MID'  : 'LOW';
+  var likeClass = likelihood >= 80 ? 'high'  : likelihood >= 55 ? 'mid'  : 'low';
+  var readLabel = readability >= 70 ? 'HIGH' : readability >= 40 ? 'MID' : 'LOW';
+  var readClass = readability >= 70 ? 'high' : readability >= 40 ? 'mid' : 'low';
+  var gapLabel  = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
+  var gapClass  = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
 
-  const mainCopy = gap >= 30
+  var mainCopy = gap >= 30
     ? 'A better-structured competitor will be selected instead of you.'
     : gap >= 15
     ? 'You are being evaluated. You are not being selected.'
@@ -2549,8 +2545,8 @@ function buildGapBlock(r) {
     ? 'The gap is small. Close it before it widens.'
     : 'Position is structurally aligned.';
 
-  const pts = Math.abs(gap);
-  const ptLabel = gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
+  var pts = Math.abs(gap);
+  var ptLabel = gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
 
   return [
     '<div class="gap-block">',
@@ -2647,21 +2643,25 @@ function buildWhnBlock(r, gap) {
 
 
 function buildPillarCards(r) {
-  const pD = {
+  var pD = {
     clarity:    { n:'01', name:'Clarity' },
     trust:      { n:'02', name:'Trust' },
     difference: { n:'03', name:'Difference' },
     ease:       { n:'04', name:'Ease' }
   };
-  return Object.entries(r.pillars).map(function(entry) {
-    var key = entry[0];
-    var val = entry[1];
+  var keys = ['clarity','trust','difference','ease'];
+  var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
+  return keys.map(function(key) {
+    var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
+    var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
+    var finding = raw.finding || '';
+    var pct = score / 25 * 100;
     return '<div class="pillar-card">'
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
-      + '<div class="pillar-score-row"><div class="pillar-score-n">' + val.score + '</div><div class="pillar-score-d">/ 25</div></div>'
-      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + (val.score/25*100) + '"></div></div>'
-      + '<div class="pillar-finding">' + esc(val.finding || '') + '</div>'
+      + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
+      + '<div class="pillar-finding">' + esc(finding) + '</div>'
       + '</div>';
   }).join('');
 }
@@ -2672,6 +2672,29 @@ function showResults(r, jobId) {
   zone.style.display = 'block';
 
   window.__choiveShareJobId = jobId || '';
+
+  // ── DEFENSIVE FALLBACKS ───────────────────────────────────────────────────
+  if (!r || typeof r !== 'object') r = {};
+  if (!r.verdictLevel || !['absent','weak','present'].includes(r.verdictLevel)) r.verdictLevel = 'weak';
+  if (!r.pillars || typeof r.pillars !== 'object') r.pillars = { clarity:{score:0,finding:''}, trust:{score:0,finding:''}, difference:{score:0,finding:''}, ease:{score:0,finding:''} };
+  ['clarity','trust','difference','ease'].forEach(function(k) {
+    if (!r.pillars[k] || typeof r.pillars[k] !== 'object') r.pillars[k] = {score:0,finding:''};
+    if (typeof r.pillars[k].score !== 'number') r.pillars[k].score = 0;
+    if (!r.pillars[k].finding) r.pillars[k].finding = '';
+  });
+  if (!r.platformCoverage || typeof r.platformCoverage !== 'object') r.platformCoverage = {};
+  ['chatgpt','perplexity','gemini','claude'].forEach(function(k) {
+    if (!r.platformCoverage[k] || typeof r.platformCoverage[k] !== 'object') r.platformCoverage[k] = {status:'absent',detail:'Not found'};
+  });
+  if (!r.marketPosition || typeof r.marketPosition !== 'object') r.marketPosition = {tier:'unknown',label:'',explanation:''};
+  if (!r.displacement || typeof r.displacement !== 'object') r.displacement = {competitorName:'',competitorWhy:'',competitorQuery:''};
+  if (!Array.isArray(r.actions)) r.actions = [];
+  if (!r.summaryParagraph) r.summaryParagraph = '';
+  if (!r.verdictHeadline) r.verdictHeadline = '';
+  if (!r.signatureLine) r.signatureLine = '';
+  if (!r.evidenceNarrative) r.evidenceNarrative = '';
+  // ── END FALLBACKS ─────────────────────────────────────────────────────────
+
   console.log('[CHOIVE] showResults platformCoverage:', r.platformCoverage ? 'present' : 'MISSING');
 
   // isPaid sources (in priority order):
@@ -2682,7 +2705,7 @@ function showResults(r, jobId) {
                  (r.paid === true) ||
                  (new URLSearchParams(window.location.search).get('paid') === 'true');
 
-  const score = r.overallScore || 0;
+  const score = Number(r.overallScore) || 0;
   const bName = esc(bizData.name || '');
   const bCat  = esc(bizData.category || '');
   const bCity = esc(bizData.city || '');
