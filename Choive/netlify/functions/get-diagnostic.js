@@ -1,11 +1,7 @@
 // get-diagnostic.js
-// CHOIVE™ polling endpoint
-// Returns current diagnostic status and final result when complete
+// Polling endpoint — returns current job status and result when complete
 // Fast read-only — no computation
-//
-// ENV:
-// SUPABASE_URL
-// SUPABASE_SERVICE_ROLE_KEY
+// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 const { getDiagnostic } = require('./lib/supabase');
 
@@ -15,96 +11,64 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS'
 };
 
-function safeString(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
+    return { statusCode: 200, headers: corsHeaders, body: '' };
   }
-
   if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: 'Method Not Allowed'
-    };
+    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
 
-  const jobId = safeString(event.queryStringParameters?.jobId);
+  const jobId = event.queryStringParameters?.jobId;
 
-  if (!jobId) {
+  if (!jobId || !jobId.trim()) {
     return {
       statusCode: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: 'Missing jobId query parameter'
-      })
+      body: JSON.stringify({ error: 'Missing jobId query parameter' })
     };
   }
 
   let job;
   try {
-    job = await getDiagnostic(jobId);
+    job = await getDiagnostic(jobId.trim());
   } catch (err) {
-    console.error('CHOIVE get-diagnostic: fetch failed:', err.message);
-
-    return {
-      statusCode: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: 'Failed to fetch diagnostic',
-        jobId
-      })
-    };
-  }
-
-  if (!job) {
+    console.error('get-diagnostic: fetch failed:', err.message);
     return {
       statusCode: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: 'Diagnostic not found',
-        jobId
-      })
+      body: JSON.stringify({ error: 'Diagnostic not found', jobId })
     };
   }
 
-  if (['queued', 'collecting_evidence', 'scoring'].includes(job.status)) {
+  // Processing — return status and current stage only
+  if (job.status === 'queued' || job.status === 'collecting_evidence' || job.status === 'scoring') {
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jobId: job.job_id,
         status: job.status,
-        stage: job.stage || null,
-        createdAt: job.created_at,
-        updatedAt: job.updated_at
+        stage: job.stage || null
       })
     };
   }
 
+  // Complete — return full result
   if (job.status === 'complete') {
-  return {
-    statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jobId: job.job_id,
-      status: 'complete',
-      stage: null,
-      createdAt: job.created_at,
-      updatedAt: job.updated_at,
-      paid: job.paid === true,
-      result: job.result
-    })
-  };
-}
+    return {
+      statusCode: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId: job.job_id,
+        status: 'complete',
+        stage: 'preparing_result',
+        result: job.result
+      })
+    };
+  }
 
+  // Failed — return error
   if (job.status === 'failed') {
     return {
       statusCode: 200,
@@ -112,23 +76,15 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         jobId: job.job_id,
         status: 'failed',
-        stage: null,
-        createdAt: job.created_at,
-        updatedAt: job.updated_at,
         error: job.error?.message || 'Diagnostic failed. Please try again.'
       })
     };
   }
 
+  // Unknown status fallback
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jobId: job.job_id,
-      status: job.status || 'unknown',
-      stage: job.stage || null,
-      createdAt: job.created_at,
-      updatedAt: job.updated_at
-    })
+    body: JSON.stringify({ jobId: job.job_id, status: job.status })
   };
 };
