@@ -114,6 +114,13 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
     const finalResult = buildSafeOutput(rawOutput);
+    // Merge evidence-level fields not returned by Claude into final result
+    if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
+      finalResult['socialSignals'] = evidence['socialSignals'];
+    }
+    if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
+      finalResult['summaries'] = evidence['summaries'];
+    }
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
     await saveResult(jobId, finalResult);
     console.log('[' + jobId + '] Diagnostic complete.');
