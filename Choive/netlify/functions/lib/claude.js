@@ -89,7 +89,9 @@ function buildPrompt(evidence) {
   var searchText         = truncate(evidence.searchText, 5000)   || 'No search results returned.';
   var kgText             = truncate(evidence.kgText, 1200)       || 'None';
   var visibilityPosition = evidence.visibilityPosition;
-  var competitors        = evidence.competitors   || [];
+  var competitors        = evidence.competitors        || [];
+  var competitorDomain   = evidence.competitorDomain   || '';
+  var competitorPageText = evidence.competitorPageText || '';
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
 
@@ -115,6 +117,7 @@ function buildPrompt(evidence) {
     '\n\nWEBSITE CONTENT:\n' + websiteText +
     '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText +
     '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText +
+    (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '') +
     '\n\nSOCIAL PRESENCE DETECTED:\n' + socialText +
     '\n\nEVIDENCE SUMMARIES:\n' +
     'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n' +
