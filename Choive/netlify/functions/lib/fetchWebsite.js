@@ -241,9 +241,71 @@ async function fetchCompetitorText(domain) {
   return parts.join('\n');
 }
 
+// ── Fetch review platform pages ───────────────────────────────────────────────
+async function fetchReviewPages(serperResults) {
+  if (!serperResults || !Array.isArray(serperResults)) return {};
+
+  var REVIEW_PLATFORMS = {
+    trustpilot: /trustpilot\.com\/review\//i,
+    g2:         /g2\.com\/products\//i,
+    glassdoor:  /glassdoor\.com\/(Overview|Reviews)\//i,
+    capterra:   /capterra\.com\/p\//i,
+    clutch:     /clutch\.co\/profile\//i
+  };
+
+  // Find matching URLs
+  var found = {};
+  for (var i = 0; i < serperResults.length; i++) {
+    var link = serperResults[i].link || '';
+    var keys = Object.keys(REVIEW_PLATFORMS);
+    for (var k = 0; k < keys.length; k++) {
+      if (!found[keys[k]] && REVIEW_PLATFORMS[keys[k]].test(link)) {
+        found[keys[k]] = link;
+      }
+    }
+  }
+
+  if (Object.keys(found).length === 0) return {};
+
+  // Fetch each in parallel
+  var platforms = Object.keys(found);
+  var tasks     = platforms.map(function(p) { return safeFetch(found[p], 2000); });
+  var settled   = await Promise.allSettled(tasks);
+
+  var results = {};
+  for (var s = 0; s < settled.length; s++) {
+    if (settled[s].status === 'fulfilled' && settled[s].value) {
+      results[platforms[s]] = {
+        url:      found[platforms[s]],
+        text:     settled[s].value,
+        platform: platforms[s]
+      };
+    }
+  }
+  return results;
+}
+
+// ── Build review summary text for Claude ──────────────────────────────────────
+function buildReviewText(reviewPages) {
+  if (!reviewPages || Object.keys(reviewPages).length === 0) {
+    return 'No review platform pages found or accessible.';
+  }
+  var lines = [];
+  var keys  = Object.keys(reviewPages);
+  for (var i = 0; i < keys.length; i++) {
+    var p = reviewPages[keys[i]];
+    if (!p || !p.text) continue;
+    lines.push('\n' + keys[i].toUpperCase() + ' (' + p.url + '):');
+    lines.push(p.text.slice(0, 800));
+  }
+  return lines.join('\n') || 'Review pages found but not accessible.';
+}
+
 module.exports = {
   fetchWebsiteText:     fetchWebsiteText,
   fetchCompetitorText:  fetchCompetitorText,
+  fetchReviewPages:     fetchReviewPages,
+  buildReviewText:      buildReviewText,
   extractSchema:        extractSchema,
   extractMeta:          extractMeta
 };
