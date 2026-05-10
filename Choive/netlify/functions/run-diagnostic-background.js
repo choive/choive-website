@@ -3,9 +3,9 @@
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 const { updateStatus, saveEvidence, saveResult, saveError } = require('./lib/supabase');
-const { searchSerper, inferOfficialSite, normalizeUrl } = require('./lib/serper');
+const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude } = require('./lib/claude');
+const { scoreWithClaude, inferCategory } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const corsHeaders = {
@@ -69,7 +69,8 @@ exports.handler = async function (event) {
       competitors:          serperPayload.competitors   || [],
       socialSignals:        serperPayload.socialSignals || {},
       summaries:            serperPayload.summaries     || {},
-      collectedAt:          new Date().toISOString()
+      collectedAt:          new Date().toISOString(),
+      knownCompetitors:     knownCompetitors || ''
     };
     await saveEvidence(jobId, evidence).catch(err =>
       console.warn('[' + jobId + '] saveEvidence failed:', err.message)
@@ -117,6 +118,29 @@ exports.handler = async function (event) {
       }
     }
 
+    // ── STAGE 1b: INFER CATEGORY + SECOND-PASS COMPETITOR SEARCH ─────────
+    var inferredCat = category;
+    try {
+      var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
+      if (catResult && catResult !== category) {
+        inferredCat = catResult;
+        console.log('[' + jobId + '] Inferred category: ' + inferredCat);
+        var compSearch = await searchCompetitors(name, inferredCat, city);
+        if (compSearch.competitors && compSearch.competitors.length > 0) {
+          var existingDomains = (evidence['competitors'] || []).map(function(c) { return c['domain']; });
+          var newComps = compSearch.competitors.filter(function(c) { return existingDomains.indexOf(c['domain']) === -1; });
+          evidence['competitors'] = newComps.concat(evidence['competitors'] || []).slice(0, 5);
+          console.log('[' + jobId + '] Second-pass competitors:', evidence['competitors'].map(function(c) { return c['domain']; }).join(', '));
+        }
+        if (compSearch.searchText) {
+          evidence['searchText'] = evidence['searchText'] + '\n\nSECOND-PASS COMPETITOR SEARCH (inferred category: ' + inferredCat + '):\n' + compSearch.searchText;
+        }
+        evidence['inferredCategory'] = inferredCat;
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Category inference/competitor search failed:', err.message);
+    }
+
     await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
     let rawOutput;
     try {
@@ -139,6 +163,9 @@ exports.handler = async function (event) {
     }
     if (evidence['reviewText']) {
       finalResult['reviewText'] = evidence['reviewText'];
+    }
+    if (evidence['inferredCategory']) {
+      finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
     }
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
     await saveResult(jobId, finalResult);
