@@ -13,6 +13,56 @@ function truncate(text, max) {
   return value.length > max ? value.slice(0, max) : value;
 }
 
+
+// ── Fast category inference — runs before main scoring ───────────────────────
+async function inferCategory(name, category, websiteText, searchText) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
+
+  var prompt = 'Business name: ' + name + '\n'
+    + 'User-provided category: ' + category + '\n'
+    + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 800) + '\n'
+    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 800) + '\n\n'
+    + 'Based only on the evidence above, determine the precise real-world category this business operates in.\n'
+    + 'Return ONLY a JSON object with one field:\n'
+    + '{ "inferredCategory": "precise category name" }\n'
+    + 'Be specific. Examples:\n'
+    + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
+    + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
+    + '- Not "consulting" but "enterprise digital transformation consultancy for financial services"\n'
+    + 'Return only raw JSON. No markdown. No explanation.';
+
+  try {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) return category;
+    var data = await response.json();
+    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; }).join('').trim();
+    var clean = text.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+    return parsed.inferredCategory || category;
+  } catch (err) {
+    clearTimeout(timer);
+    return category; // fallback to user input
+  }
+}
+
 async function scoreWithClaude(evidence) {
   var prompt = buildPrompt(evidence);
   var controller = new AbortController();
@@ -90,6 +140,7 @@ function buildPrompt(evidence) {
   var kgText             = truncate(evidence.kgText, 1200)       || 'None';
   var visibilityPosition = evidence.visibilityPosition;
   var competitors        = evidence.competitors        || [];
+  var knownCompetitors   = evidence.knownCompetitors   || '';
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
   var socialText         = evidence.socialText         || 'No social media pages found.';
@@ -114,6 +165,7 @@ function buildPrompt(evidence) {
     'Location: ' + city + '\n' +
     'Website: ' + website + '\n' +
     'Description: ' + description + '\n' +
+    (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '') +
     '\nINFERRED OFFICIAL SITE: ' + inferredSite +
     '\n\nKNOWLEDGE GRAPH:\n' + kgText +
     '\n\nWEBSITE CONTENT:\n' + websiteText +
@@ -207,6 +259,8 @@ function buildPrompt(evidence) {
     '- Required: state exactly what structured signals were or were not found\n\n' +
 
     'COMPETITOR RULE:\n' +
+    'If the user provided known competitors above, use those as primary competitor candidates.\n' +
+    'Verify they appear in the search evidence OR are in the same category before including.\n' +
     'Only name a competitor if ALL of these are true:\n' +
     '1. The competitor domain appears in the search evidence above\n' +
     '2. It is in the exact same category as this business\n' +
@@ -293,4 +347,4 @@ function buildPrompt(evidence) {
     '}';
 }
 
-module.exports = { scoreWithClaude: scoreWithClaude };
+module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
