@@ -119,7 +119,8 @@ function buildSafeOutput(output) {
       : [{ priority: 'critical', title: 'Retry diagnostic', body: 'The engine did not return a complete result. Please try again.' }],
     displacement:   resolveDisplacement(output),
     competitors:    Array.isArray(output && output.competitors)   ? output.competitors   : [],
-    socialSignals:  (output && output.socialSignals && typeof output.socialSignals === 'object') ? output.socialSignals : {}
+    socialSignals:  (output && output.socialSignals && typeof output.socialSignals === 'object') ? output.socialSignals : {},
+    summaries:      (output && output.summaries && typeof output.summaries === 'object') ? output.summaries : {}
   };
 
   // Validate platform statuses
