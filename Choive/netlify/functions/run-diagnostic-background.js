@@ -7,6 +7,7 @@ const { searchSerper, inferOfficialSite, normalizeUrl } = require('./lib/serper'
 const { fetchWebsiteText, fetchCompetitorText } = require('./lib/fetchWebsite');
 const { scoreWithClaude } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
+const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -73,6 +74,19 @@ exports.handler = async function (event) {
     await saveEvidence(jobId, evidence).catch(err =>
       console.warn('[' + jobId + '] saveEvidence failed:', err.message)
     );
+    // Fetch social media pages detected in search results
+    var socialEvidence = {};
+    var socialText     = 'No social media pages found.';
+    try {
+      socialEvidence = await fetchSocialEvidence(serperPayload.results || [], name);
+      socialText     = buildSocialText(socialEvidence);
+      evidence['socialEvidence'] = socialEvidence;
+      evidence['socialText']     = socialText;
+      console.log('[' + jobId + '] Social platforms fetched:', Object.keys(socialEvidence).join(', ') || 'none');
+    } catch (err) {
+      console.warn('[' + jobId + '] Social fetch failed:', err.message);
+    }
+
     // Fetch competitor homepage if one was identified
     var competitorPageText = '';
     if (serperPayload.competitors && serperPayload.competitors.length > 0) {
