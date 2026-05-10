@@ -135,7 +135,21 @@ function buildSafeOutput(output) {
   const cs = clampScore(safe.pillars.clarity.score);
   const ts = clampScore(safe.pillars.trust.score);
   const ds = clampScore(safe.pillars.difference.score);
-  const es = clampScore(safe.pillars.ease.score);
+  var   es = clampScore(safe.pillars.ease.score);
+
+  // Hard floor: any business with a real website cannot score 0 on ease
+  // 0 = completely inaccessible. A working site with OG tags = minimum 4.
+  // We detect this via websiteText presence in the overall score context.
+  // If overallScore from clarity+trust+difference is already >= 30,
+  // the business clearly has a real presence — ease floor is 4.
+  const presenceScore = cs + ts + ds;
+  if (es === 0 && presenceScore >= 25) {
+    es = 4; // working website exists but no schema
+    if (!safe.pillars.ease.finding || safe.pillars.ease.finding === 'Insufficient data.') {
+      safe.pillars.ease.finding = 'Website present. No schema detected.';
+    }
+  }
+
   safe.pillars.clarity.score    = cs;
   safe.pillars.trust.score      = ts;
   safe.pillars.difference.score = ds;
