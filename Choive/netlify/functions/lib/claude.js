@@ -92,6 +92,7 @@ function buildPrompt(evidence) {
   var competitors        = evidence.competitors        || [];
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
+  var socialText         = evidence.socialText         || 'No social media pages found.';
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
 
@@ -118,7 +119,8 @@ function buildPrompt(evidence) {
     '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText +
     '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText +
     (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '') +
-    '\n\nSOCIAL PRESENCE DETECTED:\n' + socialText +
+    '\n\nSOCIAL PRESENCE DETECTED (from search results):\n' + socialList +
+    '\n\nSOCIAL MEDIA PAGE CONTENT (fetched from detected pages):\n' + socialText +
     '\n\nEVIDENCE SUMMARIES:\n' +
     'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n' +
     'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n' +
