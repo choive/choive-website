@@ -189,8 +189,9 @@ function buildPrompt(evidence) {
     '- Score 5-11: basic web presence only — no schema, no llms.txt, but website exists\n' +
     '- Score 0-4: no detectable web presence or completely inaccessible\n' +
     '- RULE: if schema is missing entirely, ease cannot exceed 8\n' +
-    '- RULE: any business with a working website and OG tags scores minimum 4\n' +
-    '- RULE: any business with a working website scores minimum 3\n' +
+    '- RULE: score 0 only if the website is completely inaccessible or does not exist\n' +
+    '- RULE: a working website with no schema, no llms.txt, no OG tags scores 1-3\n' +
+    '- RULE: a working website with OG tags but no schema scores 3-5\n' +
     '- Required: state exactly what structured signals were or were not found\n\n' +
 
     'COMPETITOR RULE:\n' +
