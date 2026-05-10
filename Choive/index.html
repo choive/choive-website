@@ -2799,8 +2799,10 @@ function showResults(r, jobId) {
   const hasSocial   = hasInsta || hasTiktok || hasYoutube || hasLinkedin || hasFacebook || hasX;
 
   // Google signal — deterministic from score
-  const googleSignal = score >= 55 ? 'STRONG' : 'INCONSISTENT';
-  const googleIcon   = score >= 55 ? '\u2714' : '\u26a0';
+  // Google signal based on real evidence
+  const hasKg        = !!(r.marketPosition && r.marketPosition.tier && ['dominant','strong'].includes(r.marketPosition.tier));
+  const googleSignal = hasKg ? 'STRONG' : (score >= 50 ? 'PARTIAL' : 'WEAK');
+  const googleIcon   = hasKg ? '\u2714' : '\u26a0';
 
   // Score label
   const scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
