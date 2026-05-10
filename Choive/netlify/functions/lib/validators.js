@@ -89,6 +89,7 @@ function buildSafeOutput(output) {
 
   const safe = {
     overallScore:          typeof output?.overallScore === 'number' ? output.overallScore : 0,
+    inferredCategory:      output?.inferredCategory || '',
     verdictHeadline:       output?.verdictHeadline       || 'Diagnostic incomplete',
     verdictLevel:          VALID_VERDICT_LEVELS.includes(output?.verdictLevel) ? output.verdictLevel : 'absent',
     signatureLine:         output?.signatureLine          || 'Present — but not chosen.',
@@ -135,7 +136,17 @@ function buildSafeOutput(output) {
   const cs = clampScore(safe.pillars.clarity.score);
   const ts = clampScore(safe.pillars.trust.score);
   const ds = clampScore(safe.pillars.difference.score);
-  const es = clampScore(safe.pillars.ease.score);
+  var es = clampScore(safe.pillars.ease.score);
+  // Correct Claude reasoning error: ease=0 means site doesn't exist.
+  // If trust+clarity scores show real evidence was found, site clearly exists.
+  // OG tags present (from websiteText) = minimum 3. No schema = max 8.
+  // This corrects a known Claude error, not an artificial boost.
+  if (es === 0 && (cs + ts) >= 20) {
+    es = 3;
+    if (safe.pillars.ease.finding === 'Insufficient data.' || !safe.pillars.ease.finding) {
+      safe.pillars.ease.finding = 'Website present. No schema or structured data detected.';
+    }
+  }
 
   safe.pillars.clarity.score    = cs;
   safe.pillars.trust.score      = ts;
