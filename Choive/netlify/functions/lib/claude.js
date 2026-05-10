@@ -93,6 +93,7 @@ function buildPrompt(evidence) {
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
   var socialText         = evidence.socialText         || 'No social media pages found.';
+  var reviewText         = evidence.reviewText         || 'No review platform pages found.';
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
 
@@ -121,6 +122,7 @@ function buildPrompt(evidence) {
     (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '') +
     '\n\nSOCIAL PRESENCE DETECTED (from search results):\n' + socialList +
     '\n\nSOCIAL MEDIA PAGE CONTENT (fetched from detected pages):\n' + socialText +
+    '\n\nREVIEW PLATFORM CONTENT (fetched pages):\n' + reviewText +
     '\n\nEVIDENCE SUMMARIES:\n' +
     'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n' +
     'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n' +
@@ -159,22 +161,36 @@ function buildPrompt(evidence) {
     '- Required: quote the actual H1 or description found in evidence\n\n' +
 
     'TRUST (0-25): How much independent third-party verification exists?\n' +
-    '- Score 20+: multiple independent citations, reviews, partnerships confirmed\n' +
-    '- Score 10-19: some third-party signals but limited\n' +
-    '- Score 0-9: only owned channels, no independent confirmation\n' +
-    '- Required: name the specific sources found (e.g. Trustpilot, press, directories)\n\n' +
+    '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n' +
+    '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n' +
+    '  OR verified review platform presence with ratings, OR confirmed press coverage\n' +
+    '- Score 8-14: some third-party signals but limited — one or two sources only\n' +
+    '- Score 0-7: only owned channels, no independent confirmation found\n' +
+    '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n' +
+    '  with full name and title count as strong trust signals — score minimum 15\n' +
+    '- Required: name the specific sources found (e.g. Trustpilot, press, client names)\n\n' +
 
     'DIFFERENCE (0-25): Can AI articulate why to choose this over alternatives?\n' +
-    '- Score 20+: specific machine-readable differentiator present\n' +
-    '- Score 10-19: differentiator implied but not clearly stated\n' +
-    '- Score 0-9: generic, interchangeable positioning\n' +
-    '- Required: quote the differentiator if found, or state why none was found\n\n' +
+    'Use these four tiers strictly:\n' +
+    '- Score 20-25: specific machine-readable differentiator clearly stated and unique\n' +
+    '- Score 13-19: real differentiator exists and is visible but not machine-readable or not prominent\n' +
+    '  (example: niche market focus, named specialisation, unique client segment — even if not schema-encoded)\n' +
+    '- Score 7-12: differentiator implied but vague, generic, or interchangeable with competitors\n' +
+    '- Score 0-6: no differentiator found — completely generic positioning\n' +
+    'IMPORTANT: Do not confuse "not machine-readable" with "does not exist".\n' +
+    'If the business has a clear niche (e.g. automotive OTT, B2B telco platform, enterprise-only focus)\n' +
+    'that is visible in the evidence — score it 13-19, not 0-9.\n' +
+    'Only score 0-9 if the positioning is truly interchangeable with any generic competitor.\n' +
+    '- Required: quote the differentiator if found, or state exactly why none was found\n\n' +
 
     'EASE (0-25): How technically ready is this business for AI selection?\n' +
-    '- Score 20+: schema confirmed, llms.txt, structured data, complete OG tags\n' +
-    '- Score 10-19: some structured signals present\n' +
-    '- Score 0-9: no schema, no structured data detected\n' +
+    '- Score 20-25: schema confirmed, llms.txt, structured data, complete OG tags\n' +
+    '- Score 12-19: some structured signals present (OG tags, sitemap, partial schema)\n' +
+    '- Score 5-11: basic web presence only — no schema, no llms.txt, but website exists\n' +
+    '- Score 0-4: no detectable web presence or completely inaccessible\n' +
     '- RULE: if schema is missing entirely, ease cannot exceed 8\n' +
+    '- RULE: any business with a working website and OG tags scores minimum 4\n' +
+    '- RULE: any business with a working website scores minimum 3\n' +
     '- Required: state exactly what structured signals were or were not found\n\n' +
 
     'COMPETITOR RULE:\n' +
@@ -192,10 +208,14 @@ function buildPrompt(evidence) {
     'based only on visible evidence — not assumptions about market position.\n\n' +
 
     'PLATFORM COVERAGE RULE:\n' +
-    'Base coverage only on what the evidence shows:\n' +
+    'Base coverage on evidence AND market position tier:\n' +
     '- present: business is clearly findable and citable on that platform from evidence\n' +
-    '- weak: business appears but with limited or inconsistent signals\n' +
-    '- absent: no evidence of presence on that platform\n\n' +
+    '  OR marketPosition.tier is dominant or strong (well-known businesses are findable)\n' +
+    '- weak: business appears in search results but lacks structured signals\n' +
+    '  OR marketPosition.tier is upper_mid with some web presence\n' +
+    '- absent: genuinely no evidence of presence — only for unknown or very new businesses\n' +
+    'DO NOT mark all platforms absent for a business with 15+ years, named clients,\n' +
+    'and confirmed web presence. Use weak as the floor for established businesses.\n\n' +
 
     'MARKET POSITION TIERS:\n' +
     'dominant, strong, upper_mid, mid, weak, absent\n\n' +
