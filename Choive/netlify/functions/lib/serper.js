@@ -234,20 +234,29 @@ function inferOfficialSite(website, serperPayload, name) {
 // ── Main search function ──────────────────────────────────────────────────────
 async function searchSerper(name, category, city) {
   var queries = [
-    { q: name + ' ' + city,                          type: 'identity'   },
-    { q: name + ' ' + category,                      type: 'identity'   },
-    { q: name + ' official website',                 type: 'identity'   },
-    { q: name + ' reviews',                          type: 'reviews'    },
-    { q: name + ' site:trustpilot.com',              type: 'reviews'    },
-    { q: name + ' customer reviews rating',          type: 'reviews'    },
-    { q: name + ' site:reddit.com',                  type: 'reputation' },
-    { q: name + ' complaints OR problems',           type: 'reputation' },
-    { q: name + ' news OR press',                    type: 'authority'  },
-    { q: name + ' site:linkedin.com',                type: 'authority'  },
-    { q: name + ' site:youtube.com',                 type: 'authority'  },
-    { q: 'best ' + category + ' ' + city,            type: 'comparison' },
-    { q: 'top ' + category + ' ' + city,             type: 'comparison' },
-    { q: category + ' alternatives ' + city,         type: 'comparison' }
+    // Identity
+    { q: name + ' ' + city,                                    type: 'identity'   },
+    { q: name + ' ' + category,                                type: 'identity'   },
+    { q: name + ' official website',                           type: 'identity'   },
+    // Reviews
+    { q: name + ' reviews',                                    type: 'reviews'    },
+    { q: name + ' site:trustpilot.com',                        type: 'reviews'    },
+    { q: name + ' site:g2.com',                                type: 'reviews'    },
+    { q: name + ' site:glassdoor.com',                         type: 'reviews'    },
+    { q: name + ' customer reviews rating',                    type: 'reviews'    },
+    // Reputation
+    { q: name + ' site:reddit.com',                            type: 'reputation' },
+    { q: name + ' complaints OR problems OR issues',           type: 'reputation' },
+    // Authority
+    { q: name + ' news OR press OR announcement',              type: 'authority'  },
+    { q: name + ' site:linkedin.com',                          type: 'authority'  },
+    { q: name + ' site:youtube.com',                           type: 'authority'  },
+    // Comparison
+    { q: 'best ' + category + ' ' + city,                      type: 'comparison' },
+    { q: 'top ' + category + ' ' + city,                       type: 'comparison' },
+    { q: category + ' software comparison ' + city,            type: 'comparison' },
+    { q: name + ' vs OR alternative OR competitor',            type: 'competition'},
+    { q: category + ' alternatives ' + city,                   type: 'comparison' }
   ];
 
   var settled = await Promise.allSettled(
