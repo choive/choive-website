@@ -175,11 +175,16 @@ function buildPrompt(evidence) {
     'COMPETITOR RULE:\n' +
     'Only name a competitor if ALL of these are true:\n' +
     '1. The competitor domain appears in the search evidence above\n' +
-    '2. It is in the same category as this business\n' +
-    '3. It competes for the same buyer type\n' +
-    '4. It is not a directory, review platform, or aggregator\n' +
-    'If no competitor meets all four criteria, return null for all competitor fields.\n' +
-    'The competitor analysis must explain specifically WHY that competitor appears stronger — based only on visible evidence.\n\n' +
+    '2. It is in the exact same category as this business\n' +
+    '3. It competes for the same buyer type at the same deal size\n' +
+    '   (e.g. enterprise vs enterprise, SMB vs SMB — do not mix)\n' +
+    '4. It is not a directory, review platform, aggregator, or listing site\n' +
+    '5. It would realistically appear in the same sales conversation\n' +
+    'Directories like Slashdot, SourceForge, Capterra, G2, Clutch are NOT competitors.\n' +
+    'A smaller player serving a different buyer segment is NOT a competitor.\n' +
+    'If no competitor meets all five criteria, return null for all competitor fields.\n' +
+    'The competitor analysis must explain specifically WHY that competitor appears stronger\n' +
+    'based only on visible evidence — not assumptions about market position.\n\n' +
 
     'PLATFORM COVERAGE RULE:\n' +
     'Base coverage only on what the evidence shows:\n' +
