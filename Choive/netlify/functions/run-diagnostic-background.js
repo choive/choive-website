@@ -48,7 +48,7 @@ exports.handler = async function (event) {
     } else {
       console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
     }
-    inferredSite = await inferOfficialSite(name, website);
+    inferredSite = inferOfficialSite(website, serperPayload, name);
     if (!websiteText && inferredSite && inferredSite !== website) {
       websiteText = await fetchWebsiteText(inferredSite).catch(() => '');
     }
@@ -62,9 +62,12 @@ exports.handler = async function (event) {
       name, category, city, website, description,
       inferredOfficialSite: inferredSite || '',
       websiteText:          websiteText  || '',
-      searchText:           serperPayload.searchText || 'No search results returned.',
-      kgText:               serperPayload.kgText     || 'None',
+      searchText:           serperPayload.searchText   || 'No search results returned.',
+      kgText:               serperPayload.kgText       || 'None',
       visibilityPosition:   visibilityPos,
+      competitors:          serperPayload.competitors   || [],
+      socialSignals:        serperPayload.socialSignals || {},
+      summaries:            serperPayload.summaries     || {},
       collectedAt:          new Date().toISOString()
     };
     await saveEvidence(jobId, evidence).catch(err =>
