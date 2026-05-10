@@ -2796,7 +2796,11 @@ function showResults(r, jobId) {
   const hasLinkedin = bWeb.includes('linkedin.com')   || bWeb.includes('linkedin');
   const hasFacebook = bWeb.includes('facebook.com')   || bWeb.includes('facebook');
   const hasX        = bWeb.includes('twitter.com')    || bWeb.includes('x.com');
-  const hasSocial   = hasInsta || hasTiktok || hasYoutube || hasLinkedin || hasFacebook || hasX;
+  // Also check r.socialSignals from the diagnostic result
+  const rSocial   = r.socialSignals || {};
+  const hasSocial = hasInsta || hasTiktok || hasYoutube || hasLinkedin || hasFacebook || hasX
+    || rSocial.instagram || rSocial.tiktok || rSocial.youtube
+    || rSocial.linkedin  || rSocial.facebook || rSocial.twitter || rSocial.reddit;
 
   // Google signal — deterministic from score
   // Google signal based on real evidence
@@ -2951,7 +2955,19 @@ function showResults(r, jobId) {
         </div>
         <div class="mono-presence-group">
           <div class="mono-presence-label">Authority</div>
-          <div class="mono-presence-row"><span class="mono-pi red">\u2716</span><span class="mono-pk">Not established</span><span class="mono-pv red">\u2014</span></div>
+          ${(function() {
+            var authSummary = r.summaries && r.summaries.authoritySummary && r.summaries.authoritySummary !== 'No authority data.';
+            var rSoc        = r.socialSignals || {};
+            var hasSocAuth  = rSoc.linkedin || rSoc.youtube || rSoc.twitter;
+            var trustScore  = r.pillars && r.pillars.trust ? r.pillars.trust.score : 0;
+            var hasAuth     = authSummary || hasSocAuth || trustScore >= 16;
+            var authLabel   = hasAuth ? 'Signals detected' : 'Not established';
+            var authStrength = trustScore >= 20 ? 'STRONG' : trustScore >= 14 ? 'PARTIAL' : '\u2014';
+            var authIcon    = hasAuth ? '\u2714' : '\u2716';
+            var authColor   = hasAuth ? 'green' : 'red';
+            var authValColor = trustScore >= 20 ? '' : trustScore >= 14 ? 'amber' : 'red';
+            return '<div class="mono-presence-row"><span class="mono-pi ' + authColor + '">' + authIcon + '</span><span class="mono-pk">' + authLabel + '</span><span class="mono-pv ' + authValColor + '">' + authStrength + '</span></div>';
+          })()}
         </div>
       </div>
 
