@@ -79,7 +79,8 @@ function buildPrompt(evidence) {
   const {
     name, category, city, website, description,
     inferredOfficialSite, websiteText,
-    searchText, kgText, visibilityPosition
+    searchText, kgText, visibilityPosition,
+    competitors, socialSignals, summaries
   } = evidence;
 
   return `BUSINESS INPUT:
@@ -103,6 +104,18 @@ ${truncate(websiteText, 3000) || 'No website content available.'}
 
 VISIBILITY:
 Website appears in search results: ${visibilityPosition !== -1 ? 'YES (position ' + (visibilityPosition + 1) + ')' : 'NO'}
+
+COMPETITORS FOUND IN SEARCH:
+${competitors && competitors.length > 0 ? competitors.map(function(c){return '- '+c.domain+': '+(c.snippet||'');}).join('\n') : 'No clear competitors identified.'}
+
+SOCIAL PRESENCE DETECTED:
+${socialSignals ? Object.keys(socialSignals).filter(function(k){return socialSignals[k];}).join(', ') || 'None detected' : 'None detected'}
+
+EVIDENCE SUMMARIES:
+Reviews: ${summaries && summaries.reviewSummary ? summaries.reviewSummary : 'No review data.'}
+Reputation: ${summaries && summaries.reputationSummary ? summaries.reputationSummary : 'No reputation data.'}
+Authority: ${summaries && summaries.authoritySummary ? summaries.authoritySummary : 'No authority data.'}
+Competitors: ${summaries && summaries.competitorSummary ? summaries.competitorSummary : 'No competitor data.'}
 
 ---
 
