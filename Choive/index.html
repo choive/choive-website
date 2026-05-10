@@ -2951,7 +2951,8 @@ function showResults(r, jobId) {
     <div class="mono-result">
 
       <div class="mono-section">
-        <div class="mono-eyebrow">CHOIVE INDEX\u2122</div>
+        <div class="mono-eyebrow">CHOIVE INDEX™</div>
+      ${r.inferredCategory && r.inferredCategory !== bizData.category ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>' : ''}
         <div class="mono-score-row">
           <span class="mono-score-num" id="scoreNum">0</span>
           <span class="mono-score-denom">/ 100</span>
