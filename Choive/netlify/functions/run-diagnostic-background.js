@@ -73,6 +73,20 @@ exports.handler = async function (event) {
     await saveEvidence(jobId, evidence).catch(err =>
       console.warn('[' + jobId + '] saveEvidence failed:', err.message)
     );
+    // Fetch competitor homepage if one was identified
+    var competitorPageText = '';
+    if (serperPayload.competitors && serperPayload.competitors.length > 0) {
+      var topComp = serperPayload.competitors[0];
+      if (topComp && topComp['domain']) {
+        competitorPageText = await fetcher.fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
+        if (competitorPageText) {
+          evidence['competitorPageText'] = competitorPageText;
+          evidence['competitorDomain']   = topComp['domain'];
+          console.log('[' + jobId + '] Fetched competitor: ' + topComp['domain']);
+        }
+      }
+    }
+
     await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
     let rawOutput;
     try {
