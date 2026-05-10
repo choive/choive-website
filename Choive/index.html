@@ -721,10 +721,16 @@ footer {
   background:var(--ac); color:var(--dk); border:none;
   font-family:'Inter',sans-serif; font-size:16px; font-weight:700;
   letter-spacing:0.04em; padding:18px 36px; cursor:pointer;
-  transition:background 0.15s; margin-top:12px; display:inline-block;
-  min-height:56px;
+  transition:background 0.15s; display:inline-block; min-height:56px;
 }
 .pay-btn-primary:hover { background:var(--ac2); }
+.pay-btn-secondary {
+  background:transparent; color:var(--tp); border:1px solid var(--rule-d);
+  font-family:'Inter',sans-serif; font-size:14px; font-weight:600;
+  letter-spacing:0.04em; padding:18px 28px; cursor:pointer;
+  transition:border-color 0.15s; display:inline-block; min-height:56px;
+}
+.pay-btn-secondary:hover { border-color:var(--ac); color:var(--ac); }
 /* Paywall */
 .paywall-block {
   padding:40px; background:var(--dk-2); border:1px solid var(--rule-d);
@@ -746,75 +752,93 @@ footer {
 
 /* ─── PAID ANALYSIS SECTIONS ─────────────────── */
 .paid-narrative {
-  font-size:15px; font-weight:400; color:var(--tb); line-height:1.75;
+  font-size:16px; font-weight:400; color:var(--tb); line-height:1.8;
+  border-left:2px solid var(--ac); padding-left:16px;
 }
-.paid-pillars { display:flex; flex-direction:column; gap:16px; }
+.paid-pillars { display:flex; flex-direction:column; gap:2px; }
 .paid-pillar {
-  padding:20px; background:var(--dk-3);
-  border:1px solid var(--rule-d); border-radius:2px;
+  padding:24px 24px 20px; background:var(--dk-2);
+  border:1px solid var(--rule-d);
+  transition: border-color 0.2s;
 }
+.paid-pillar:hover { border-color: var(--ac); }
 .paid-pillar-head {
   display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:10px;
+  margin-bottom:14px; padding-bottom:12px;
+  border-bottom:1px solid var(--rule-d);
 }
 .paid-pillar-name {
-  font-size:11px; font-weight:700; letter-spacing:0.1em;
+  font-size:10px; font-weight:700; letter-spacing:0.14em;
   text-transform:uppercase; color:var(--ac);
 }
 .paid-pillar-score {
-  font-size:13px; font-weight:700; color:var(--tp);
+  font-size:20px; font-weight:700; color:var(--tp);
+  letter-spacing:-0.02em;
 }
+.paid-pillar-score span { font-size:13px; font-weight:400; color:var(--tm); }
 .paid-pillar-analysis {
   font-size:14px; font-weight:400; color:var(--tb);
-  line-height:1.65; margin-bottom:10px;
+  line-height:1.75; margin-bottom:14px;
 }
 .paid-pillar-evidence {
   font-size:13px; font-weight:400; color:var(--tm);
-  line-height:1.6; font-style:italic;
-  border-left:2px solid var(--ac); padding-left:12px;
-  margin-top:8px;
+  line-height:1.65; font-style:italic;
+  background:var(--dk-3); padding:12px 14px;
+  border-left:2px solid var(--ac); margin-top:4px;
 }
 .paid-comp-found {
-  padding:20px; background:var(--dk-3);
+  padding:24px; background:var(--dk-2);
   border:1px solid var(--rule-d);
 }
 .paid-comp-name {
-  font-size:16px; font-weight:700; color:var(--tp);
-  margin-bottom:10px;
+  font-size:18px; font-weight:700; color:var(--tp);
+  margin-bottom:12px; letter-spacing:-0.01em;
 }
 .paid-comp-analysis {
   font-size:14px; font-weight:400; color:var(--tb);
-  line-height:1.65; margin-bottom:10px;
+  line-height:1.75; margin-bottom:14px;
 }
 .paid-comp-none {
   font-size:14px; font-weight:400; color:var(--tm);
-  line-height:1.65; font-style:italic;
+  line-height:1.75; font-style:italic; padding:20px;
+  background:var(--dk-2); border:1px solid var(--rule-d);
 }
-.paid-actions { display:flex; flex-direction:column; gap:12px; }
+.paid-actions { display:flex; flex-direction:column; gap:2px; }
 .paid-action {
-  padding:20px; background:var(--dk-3);
-  border:1px solid var(--rule-d); border-left:3px solid var(--rule-d);
+  padding:22px 24px; background:var(--dk-2);
+  border:1px solid var(--rule-d);
+  border-left:3px solid var(--rule-d);
+  transition: border-left-color 0.2s;
 }
 .paid-action-critical { border-left-color:var(--red); }
 .paid-action-high     { border-left-color:var(--amber); }
 .paid-action-medium   { border-left-color:var(--tm); }
 .paid-action-priority {
-  font-size:9px; font-weight:700; letter-spacing:0.15em;
-  color:var(--tm); margin-bottom:6px;
+  font-size:9px; font-weight:700; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:8px;
 }
 .paid-action-critical .paid-action-priority { color:var(--red); }
 .paid-action-high     .paid-action-priority { color:var(--amber); }
 .paid-action-title {
-  font-size:14px; font-weight:600; color:var(--tp);
-  margin-bottom:6px;
+  font-size:15px; font-weight:700; color:var(--tp);
+  margin-bottom:8px; letter-spacing:-0.01em;
 }
 .paid-action-body {
-  font-size:13px; font-weight:400; color:var(--tb);
-  line-height:1.6; margin-bottom:8px;
+  font-size:14px; font-weight:400; color:var(--tb);
+  line-height:1.7; margin-bottom:10px;
 }
 .paid-action-explanation {
-  font-size:12px; font-weight:400; color:var(--tm);
-  line-height:1.55; font-style:italic;
+  font-size:13px; font-weight:400; color:var(--tm);
+  line-height:1.65; padding-top:8px;
+  border-top:1px solid var(--rule-d);
+}
+.paid-section-header {
+  font-size:9px; font-weight:700; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--ac);
+  margin-bottom:16px; display:flex; align-items:center; gap:12px;
+}
+.paid-section-header::after {
+  content:''; flex:1; height:1px; background:var(--rule-d);
 }
 
 /* ─── MOBILE ─────────────────────────────────── */
@@ -2745,6 +2769,7 @@ function showResults(r, jobId) {
   zone.style.display = 'block';
 
   window.__choiveShareJobId = jobId || '';
+  window.__choiveLastResult  = r;
 
   // ── DEFENSIVE FALLBACKS ───────────────────────────────────────────────────
   if (!r || typeof r !== 'object') r = {};
@@ -2908,6 +2933,8 @@ function showResults(r, jobId) {
       <div class="pay-shift-item">— The one that feels inevitable</div>
       <div class="pay-shift-item">— The obvious choice</div>
       <button class="pay-btn-primary" onclick="openForm('CHOIVE System™')">Begin CHOIVE System™</button>
+        <button class="pay-btn-secondary" onclick="exportPDF()">Download PDF Report</button>
+      </div>
     </div>`;
 })() : `
     <div class="paywall-block">
@@ -3118,6 +3145,74 @@ async function submitCHOIVEForm(event) {
   } catch (err) {
     errorBox.textContent = 'Something went wrong. Try again.';
   }
+}
+
+function exportPDF() {
+  var biz  = bizData.name || 'business';
+  var date = new Date().toLocaleDateString('en-GB');
+
+  // Build print-friendly content
+  var content = document.createElement('div');
+  content.style.cssText = 'font-family:Inter,sans-serif;color:#0E0E11;background:#fff;padding:40px;max-width:800px;';
+
+  var r = window.__choiveLastResult;
+  if (!r) { alert('No result to export.'); return; }
+
+  content.innerHTML = '<h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">CHOIVE\u2122 Analysis</h1>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:32px;">' + biz.toUpperCase() + ' \u00b7 ' + date + '</div>'
+
+    + '<div style="display:flex;gap:32px;margin-bottom:32px;padding:24px;background:#F4F2EE;border-left:4px solid #C2F0D4;">'
+    + '<div><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin-bottom:4px;">CHOIVE INDEX\u2122</div>'
+    + '<div style="font-size:48px;font-weight:700;color:#0E0E11;line-height:1;">' + (r.overallScore || 0) + '</div>'
+    + '<div style="font-size:13px;color:#666;">/ 100</div></div>'
+    + '<div style="flex:1;padding-top:8px;">'
+    + '<div style="font-size:16px;font-weight:600;color:#0E0E11;margin-bottom:8px;">' + esc(r.verdictHeadline || '') + '</div>'
+    + '<div style="font-size:14px;color:#444;line-height:1.65;">' + esc(r.summaryParagraph || '') + '</div>'
+    + '</div></div>'
+
+    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Business Intelligence</h2>'
+    + '<p style="font-size:14px;color:#444;line-height:1.75;margin-bottom:24px;">' + esc(r.businessUnderstanding || '') + '</p>'
+
+    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Evidence Narrative</h2>'
+    + '<p style="font-size:14px;color:#444;line-height:1.75;margin-bottom:24px;">' + esc(r.evidenceNarrative || '') + '</p>'
+
+    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Selection Signals</h2>'
+    + ['clarity','trust','difference','ease'].map(function(key) {
+        var p = r.pillars && r.pillars[key];
+        if (!p) return '';
+        var label = key.charAt(0).toUpperCase() + key.slice(1);
+        return '<div style="margin-bottom:16px;padding:16px;background:#F4F2EE;">'
+          + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+          + '<span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;">' + label + '</span>'
+          + '<span style="font-size:16px;font-weight:700;color:#0E0E11;">' + (p.score||0) + ' / 25</span>'
+          + '</div>'
+          + (p.analysis ? '<p style="font-size:13px;color:#444;line-height:1.65;margin-bottom:8px;">' + esc(p.analysis) + '</p>' : '')
+          + (p.evidence ? '<p style="font-size:12px;color:#666;font-style:italic;border-left:2px solid #C2F0D4;padding-left:10px;">' + esc(p.evidence) + '</p>' : '')
+          + '</div>';
+      }).join('')
+
+    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Priority Actions</h2>'
+    + (Array.isArray(r.actions) ? r.actions.map(function(a) {
+        var colors = { critical:'#ff4444', high:'#ffaa33', medium:'#888' };
+        return '<div style="margin-bottom:12px;padding:16px;border-left:3px solid ' + (colors[a.priority]||'#888') + ';background:#F4F2EE;">'
+          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:' + (colors[a.priority]||'#888') + ';margin-bottom:6px;">' + (a.priority||'').toUpperCase() + '</div>'
+          + '<div style="font-size:14px;font-weight:700;color:#0E0E11;margin-bottom:6px;">' + esc(a.title||'') + '</div>'
+          + '<div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:6px;">' + esc(a.body||'') + '</div>'
+          + (a.explanation ? '<div style="font-size:12px;color:#666;font-style:italic;">' + esc(a.explanation) + '</div>' : '')
+          + '</div>';
+      }).join('') : '')
+
+    + '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;">Generated by CHOIVE\u2122 Decision Intelligence \u00b7 choive.com \u00b7 ' + date + '</div>';
+
+  // Open print window
+  var win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CHOIVE Analysis - ' + biz + '</title>'
+    + '<style>@import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap);'
+    + 'body{margin:0;padding:0;background:#fff;}@media print{body{-webkit-print-color-adjust:exact;}}</style>'
+    + '</head><body>' + content.outerHTML + '</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 800);
 }
 
 document.addEventListener('keydown', e => {
