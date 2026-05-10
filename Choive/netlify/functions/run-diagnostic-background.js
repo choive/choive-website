@@ -70,7 +70,6 @@ exports.handler = async function (event) {
       socialSignals:        serperPayload.socialSignals || {},
       summaries:            serperPayload.summaries     || {},
       collectedAt:          new Date().toISOString(),
-      knownCompetitors:     knownCompetitors || ''
     };
     await saveEvidence(jobId, evidence).catch(err =>
       console.warn('[' + jobId + '] saveEvidence failed:', err.message)
