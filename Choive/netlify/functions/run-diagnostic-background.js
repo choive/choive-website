@@ -4,7 +4,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 const { updateStatus, saveEvidence, saveResult, saveError } = require('./lib/supabase');
 const { searchSerper, inferOfficialSite, normalizeUrl } = require('./lib/serper');
-const { fetchWebsiteText, fetchCompetitorText } = require('./lib/fetchWebsite');
+const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
@@ -87,6 +87,22 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Social fetch failed:', err.message);
     }
 
+    // Fetch review platform pages found in search results
+    var reviewPages = {};
+    var reviewText  = 'No review platform pages found.';
+    try {
+      reviewPages = await fetchReviewPages(serperPayload.results || []);
+      reviewText  = buildReviewText(reviewPages);
+      evidence['reviewPages'] = reviewPages;
+      evidence['reviewText']  = reviewText;
+      var reviewKeys = Object.keys(reviewPages);
+      if (reviewKeys.length > 0) {
+        console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Review fetch failed:', err.message);
+    }
+
     // Fetch competitor homepage if one was identified
     var competitorPageText = '';
     if (serperPayload.competitors && serperPayload.competitors.length > 0) {
@@ -120,6 +136,9 @@ exports.handler = async function (event) {
     }
     if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
       finalResult['summaries'] = evidence['summaries'];
+    }
+    if (evidence['reviewText']) {
+      finalResult['reviewText'] = evidence['reviewText'];
     }
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
     await saveResult(jobId, finalResult);
