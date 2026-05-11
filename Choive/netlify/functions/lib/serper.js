@@ -322,13 +322,19 @@ async function searchSerper(name, category, city) {
 async function searchCompetitors(name, inferredCategory, city) {
   if (!inferredCategory) return { results: [], searchText: '' };
 
+  // Extract short keyword from inferred category for effective search queries
+  // e.g. "B2B OTT middleware platform for telcos" → "OTT middleware platform"
+  var catWords = inferredCategory.replace(/^b2b\s+/i, '').replace(/\s+for\s+.+$/i, '').trim();
+  // Cap at 5 words to keep queries effective
+  var catShort = catWords.split(' ').slice(0, 5).join(' ');
+
   var queries = [
-    { q: 'best ' + inferredCategory + ' vendors',                     type: 'comparison'  },
-    { q: 'top ' + inferredCategory + ' companies',                    type: 'comparison'  },
-    { q: inferredCategory + ' software comparison',                   type: 'comparison'  },
-    { q: inferredCategory + ' alternatives',                          type: 'competition' },
-    { q: name + ' vs ' + inferredCategory + ' alternatives',          type: 'competition' },
-    { q: inferredCategory + ' market leaders',                        type: 'comparison'  }
+    { q: 'best ' + catShort + ' vendors',               type: 'comparison'  },
+    { q: 'top ' + catShort + ' providers',              type: 'comparison'  },
+    { q: catShort + ' software comparison',             type: 'comparison'  },
+    { q: catShort + ' alternatives',                    type: 'competition' },
+    { q: name + ' competitors ' + catShort,             type: 'competition' },
+    { q: catShort + ' market leaders',                  type: 'comparison'  }
   ];
 
   var settled = await Promise.allSettled(
