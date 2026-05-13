@@ -234,29 +234,33 @@ function buildPrompt(evidence) {
     '  with full name and title count as strong trust signals — score minimum 15\n' +
     '- Required: name the specific sources found (e.g. Trustpilot, press, client names)\n\n' +
 
-    'DIFFERENCE (0-25): Can AI articulate why to choose this over alternatives?\n' +
-    'Use these four tiers strictly:\n' +
-    '- Score 20-25: specific machine-readable differentiator clearly stated and unique\n' +
-    '- Score 13-19: real differentiator exists and is visible but not machine-readable or not prominent\n' +
-    '  (example: niche market focus, named specialisation, unique client segment — even if not schema-encoded)\n' +
-    '- Score 7-12: differentiator implied but vague, generic, or interchangeable with competitors\n' +
-    '- Score 0-6: no differentiator found — completely generic positioning\n' +
-    'IMPORTANT: Do not confuse "not machine-readable" with "does not exist".\n' +
-    'If the business has a clear niche (e.g. automotive OTT, B2B telco platform, enterprise-only focus)\n' +
-    'that is visible in the evidence — score it 13-19, not 0-9.\n' +
-    'Only score 0-9 if the positioning is truly interchangeable with any generic competitor.\n' +
-    '- Required: quote the differentiator if found, or state exactly why none was found\n\n' +
+    'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n' +
+    'Score based on visible evidence only:\n' +
+    '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n' +
+    '  (named niche + unique use case + clear positioning all confirmed in evidence)\n' +
+    '- Score 15-19: real differentiator visible — niche market, named enterprise clients,\n' +
+    '  unique use case, or clear category focus — even if not schema-encoded\n' +
+    '- Score 8-14: differentiator implied but vague or interchangeable\n' +
+    '- Score 0-7: no differentiator found — generic positioning only\n' +
+    'RULE: niche specialization + named clients + unique use cases = score 15-19 minimum.\n' +
+    'RULE: do not confuse "not machine-readable" with "does not exist".\n' +
+    '- Required: quote the actual differentiator found, or state precisely why none exists\n\n' +
 
-    'EASE (0-25): How technically ready is this business for AI selection?\n' +
-    '- Score 20-25: schema confirmed, llms.txt, structured data, complete OG tags\n' +
-    '- Score 12-19: some structured signals present (OG tags, sitemap, partial schema)\n' +
-    '- Score 5-11: basic web presence only — no schema, no llms.txt, but website exists\n' +
-    '- Score 0-4: no detectable web presence or completely inaccessible\n' +
-    '- RULE: if schema is missing entirely, ease cannot exceed 8\n' +
-    '- RULE: score 0 only if the website is completely inaccessible or does not exist\n' +
-    '- RULE: a working website with no schema, no llms.txt, no OG tags scores 1-3\n' +
-    '- RULE: a working website with OG tags but no schema scores 3-5\n' +
-    '- Required: state exactly what structured signals were or were not found\n\n' +
+    'EASE (0-25): How quickly and confidently can this business be understood and selected?\n' +
+    'Evaluate these signals from evidence:\n' +
+    '- Schema markup (JSON-LD): present = strong signal, absent = weak machine readability\n' +
+    '- llms.txt: present = clear direct signal, absent = no direct machine instruction\n' +
+    '- Structured metadata: OG tags, canonical, meta description — each adds readability\n' +
+    '- Machine-readable entity definition: can the business be precisely described from evidence?\n' +
+    '- Search visibility: how quickly does this business appear when searched?\n' +
+    'Score tiers:\n' +
+    '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n' +
+    '- Score 12-19: partial structured signals — OG tags present, some metadata, no schema\n' +
+    '- Score 4-11: basic web presence, no schema, no llms.txt, limited metadata\n' +
+    '- Score 0-3: no structured signals at all, or website inaccessible\n' +
+    '- RULE: schema missing entirely = ease cannot exceed 8\n' +
+    '- RULE: working website with OG tags but no schema = 4-7 range\n' +
+    '- Required: state exactly which signals were found and which were absent\n\n' +
 
     'COMPETITOR RULE:\n' +
     'If the user provided known competitors above, use those as primary competitor candidates.\n' +
@@ -299,37 +303,27 @@ function buildPrompt(evidence) {
     '- Sentence 2: the single strongest evidence-based driver or gap\n' +
     '- Sentence 3: the consequence for selection\n\n' +
 
-    'CHOIVE LANGUAGE RULES — apply to every field you write:\n' +
-    'CHOIVE is a decision intelligence system, not an SEO tool or AI optimization service.\n' +
-    'The frame is always: why is this business structurally easier or harder to select?\n\n' +
-    'BANNED phrases — never use these:\n' +
-    '- AI discovery, AI optimization, AI-friendly, AI-ready\n' +
-    '- schema for AI, llms.txt for AI, structured data for AI\n' +
-    '- cannot be found, completely missing, required for AI\n' +
-    '- SEO, search optimization, search visibility\n' +
-    '- digital marketing, online presence, web presence\n\n' +
-    'PREFERRED phrases — use these instead:\n' +
-    '- harder to select, easier to choose, structurally preferred\n' +
-    '- creates doubt, removes doubt, reduces friction\n' +
-    '- machine-readable, structurally defined, consistently described\n' +
-    '- selection confidence, recommendation likelihood\n' +
-    '- not the obvious choice, harder to recommend with confidence\n\n' +
-    'TONE RULES:\n' +
-    '- Confident, precise, final. Not alarming, not generic.\n' +
-    '- Avoid binary language: not cannot/completely missing/required\n' +
-    '  Use: harder to / less likely to / not structured for\n' +
-    '- Every weakness is framed as a selection consequence, not a technical failure\n' +
-    '- The system understands business selection, not website performance\n\n' +
-    'PILLAR FINDING EXAMPLES (correct tone):\n' +
-    '- Clarity: "Clear positioning, inconsistent entity definition" not "Missing H1 tag"\n' +
-    '- Trust: "Trusted but not independently verified" not "No Trustpilot profile"\n' +
-    '- Difference: "Differentiator visible but not structurally expressed" not "No schema markup"\n' +
-    '- Ease: "Harder to select under comparison" not "No JSON-LD detected"\n\n' +
-    'ACTION LANGUAGE RULES:\n' +
-    '- Frame actions as selection improvements, not technical tasks\n' +
-    '- Not: Add JSON-LD schema. Instead: Make your entity definition machine-readable\n' +
-    '- Not: Create llms.txt for AI. Instead: Give AI systems a direct signal for what you are\n' +
-    '- Not: Optimize for search. Instead: Reduce the interpretation required to choose you\n\n' +
+        'CHOIVE LANGUAGE STANDARD:\n' +
+    'CHOIVE explains why a business is easy or hard to select. Nothing more.\n' +
+    'Every sentence must be immediately understandable. No jargon. No hype.\n\n' +
+
+    'DO NOT USE:\n' +
+    '- AI discovery, AI optimization, AI-friendly, AI ecosystems\n' +
+    '- Cannot be found, completely missing, required for AI\n' +
+    '- SEO, search optimization, digital marketing\n' +
+    '- Vague abstractions: recommendation confidence environments, evaluation ecosystems\n\n' +
+
+    'USE INSTEAD:\n' +
+    '- Weak machine readability / limited structured data\n' +
+    '- Harder to select under automated comparison\n' +
+    '- Clear positioning / strong trust signals / well-defined entity\n' +
+    '- Structurally preferred / easier to recommend with confidence\n' +
+    '- Creates selection doubt / reduces selection friction\n\n' +
+
+    'TONE: strategic, calm, precise, modern. Not alarming. Not generic.\n\n' +
+
+    
+
 
     'PILLAR FINDINGS — each exactly 4-8 words, evidence-based, final tone.\n' +
     'PILLAR ANALYSIS — 1-2 sentences explaining the score with specific evidence.\n' +
