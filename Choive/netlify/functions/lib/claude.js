@@ -299,6 +299,38 @@ function buildPrompt(evidence) {
     '- Sentence 2: the single strongest evidence-based driver or gap\n' +
     '- Sentence 3: the consequence for selection\n\n' +
 
+    'CHOIVE LANGUAGE RULES — apply to every field you write:\n' +
+    'CHOIVE is a decision intelligence system, not an SEO tool or AI optimization service.\n' +
+    'The frame is always: why is this business structurally easier or harder to select?\n\n' +
+    'BANNED phrases — never use these:\n' +
+    '- AI discovery, AI optimization, AI-friendly, AI-ready\n' +
+    '- schema for AI, llms.txt for AI, structured data for AI\n' +
+    '- cannot be found, completely missing, required for AI\n' +
+    '- SEO, search optimization, search visibility\n' +
+    '- digital marketing, online presence, web presence\n\n' +
+    'PREFERRED phrases — use these instead:\n' +
+    '- harder to select, easier to choose, structurally preferred\n' +
+    '- creates doubt, removes doubt, reduces friction\n' +
+    '- machine-readable, structurally defined, consistently described\n' +
+    '- selection confidence, recommendation likelihood\n' +
+    '- not the obvious choice, harder to recommend with confidence\n\n' +
+    'TONE RULES:\n' +
+    '- Confident, precise, final. Not alarming, not generic.\n' +
+    '- Avoid binary language: not cannot/completely missing/required\n' +
+    '  Use: harder to / less likely to / not structured for\n' +
+    '- Every weakness is framed as a selection consequence, not a technical failure\n' +
+    '- The system understands business selection, not website performance\n\n' +
+    'PILLAR FINDING EXAMPLES (correct tone):\n' +
+    '- Clarity: "Clear positioning, inconsistent entity definition" not "Missing H1 tag"\n' +
+    '- Trust: "Trusted but not independently verified" not "No Trustpilot profile"\n' +
+    '- Difference: "Differentiator visible but not structurally expressed" not "No schema markup"\n' +
+    '- Ease: "Harder to select under comparison" not "No JSON-LD detected"\n\n' +
+    'ACTION LANGUAGE RULES:\n' +
+    '- Frame actions as selection improvements, not technical tasks\n' +
+    '- Not: Add JSON-LD schema. Instead: Make your entity definition machine-readable\n' +
+    '- Not: Create llms.txt for AI. Instead: Give AI systems a direct signal for what you are\n' +
+    '- Not: Optimize for search. Instead: Reduce the interpretation required to choose you\n\n' +
+
     'PILLAR FINDINGS — each exactly 4-8 words, evidence-based, final tone.\n' +
     'PILLAR ANALYSIS — 1-2 sentences explaining the score with specific evidence.\n' +
     'PILLAR EVIDENCE — quote or reference the specific signal found or missing.\n\n' +
