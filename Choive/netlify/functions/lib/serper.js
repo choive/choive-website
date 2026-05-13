@@ -15,10 +15,24 @@ const PRIORITY_MAP = {
 };
 
 const DIRECTORY_DOMAINS = [
+  // Social platforms
   'yelp.com', 'tripadvisor.com', 'trustpilot.com', 'yellowpages.com',
   'google.com', 'facebook.com', 'linkedin.com', 'youtube.com',
   'instagram.com', 'tiktok.com', 'reddit.com', 'twitter.com', 'x.com',
-  'bbb.org', 'foursquare.com', 'angieslist.com', 'houzz.com'
+  // Software directories and review aggregators
+  'slashdot.org', 'sourceforge.net', 'capterra.com', 'g2.com',
+  'getapp.com', 'softwareadvice.com', 'techradar.com', 'pcmag.com',
+  'cnet.com', 'techcrunch.com', 'venturebeat.com', 'forbes.com',
+  'businessinsider.com', 'gartner.com', 'forrester.com',
+  // Industry blogs and news
+  'mediaentertainmentbusinessreview.com', 'sportspromedia.com',
+  'streamingmedia.com', 'rapid-tv-news.com', 'broadcastnow.co.uk',
+  'advanced-television.com', 'digitaltveurope.com',
+  // Generic directories
+  'bbb.org', 'foursquare.com', 'angieslist.com', 'houzz.com',
+  'clutch.co', 'goodfirms.co', 'crunchbase.com', 'producthunt.com',
+  'alternativeto.net', 'comparably.com', 'glassdoor.com', 'indeed.com',
+  'wikipedia.org', 'wikimedia.org', 'wikidata.org'
 ];
 
 const SOCIAL_DOMAINS = {
