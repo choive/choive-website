@@ -272,7 +272,10 @@ function buildPrompt(evidence) {
     'A smaller player serving a different buyer segment is NOT a competitor.\n' +
     'If no competitor meets all five criteria, return null for all competitor fields.\n' +
     'The competitor analysis must explain specifically WHY that competitor appears stronger\n' +
-    'based only on visible evidence — not assumptions about market position.\n\n' +
+    'based only on visible evidence — not assumptions about market position.\n' +
+    'VALIDATION: Would this appear on an enterprise procurement shortlist for this exact category?\n' +
+    'If no — return null. Examples that are NOT competitors: Slashdot, SourceForge, ViewLift, any media blog.\n' +
+    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\n\n' +
 
     'PLATFORM COVERAGE RULE:\n' +
     'Base coverage on evidence AND market position tier:\n' +
