@@ -2171,6 +2171,9 @@ footer {
         <div class="field-row">
           <input type="text" id="bD" placeholder="One line about you (optional)" />
         </div>
+        <div class="field-row">
+          <input type="text" id="bComp" placeholder="Known competitors (optional — e.g. Accedo, Kaltura, Nagra)" />
+        </div>
         <div style="font-size:12px;font-weight:400;color:var(--tm);letter-spacing:0.06em;margin-bottom:14px;text-align:center;">See how your business is understood, trusted, and selected.</div>
         <button class="run-btn" id="rBtn" onclick="runDiagnostic()">Run CHOIVE Diagnostic™ →</button>
         <div class="diag-note">Real AI diagnostic · Searches your actual online presence · Takes 30–45 seconds · No signup</div>
@@ -2439,11 +2442,12 @@ async function startDiagnostic(biz) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name:        biz.name,
-        category:    biz.category,
-        city:        biz.city,
-        website:     biz.website     || '',
-        description: biz.description || ''
+        name:             biz.name,
+        category:         biz.category,
+        city:             biz.city,
+        website:          biz.website          || '',
+        description:      biz.description      || '',
+        knownCompetitors: biz.knownCompetitors || ''
       })
     });
 
@@ -2880,13 +2884,16 @@ function showResults(r, jobId) {
   var compName = (r.competitor && r.competitor.name) || (r.displacement && r.displacement.competitorName) || '';
   var compAnalysis = (r.competitor && r.competitor.analysis) || (r.displacement && r.displacement.competitorWhy) || '';
   var compEvidence = (r.competitor && r.competitor.evidence) || '';
+  var compContext = (r.competitor && r.competitor.queryContext) || '';
+  var isCatBased  = compContext === 'category-based analysis';
   var compBlock = compName
     ? '<div class="paid-comp-found">'
+      + (isCatBased ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis \u2014 not confirmed in search evidence</div>' : '')
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
-      + (compEvidence ? '<div class="paid-pillar-evidence">“' + esc(compEvidence) + '”</div>' : '')
+      + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
       + '</div>'
-    : '<div class="paid-comp-none">No direct competitor identified in search evidence. This may mean your category lacks dominant alternatives — or that your presence is too weak to trigger comparison queries.</div>';
+    : '<div class="paid-comp-none">No dominant comparison pattern detected in available evidence.</div>';
 
   // ── actions ───────────────────────────────────────────────────────────────
   var actions = Array.isArray(r.actions) ? r.actions : [];
