@@ -240,12 +240,17 @@ function buildPrompt(evidence) {
     'Score based on visible evidence only:\n' +
     '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n' +
     '  (named niche + unique use case + clear positioning all confirmed in evidence)\n' +
-    '- Score 15-19: real differentiator visible — niche market, named enterprise clients,\n' +
-    '  unique use case, or clear category focus — even if not schema-encoded\n' +
-    '- Score 8-14: differentiator implied but vague or interchangeable\n' +
-    '- Score 0-7: no differentiator found — generic positioning only\n' +
-    'RULE: niche specialization + named clients + unique use cases = score 15-19 minimum.\n' +
-    'RULE: do not confuse "not machine-readable" with "does not exist".\n' +
+    '- Score 15-19: real differentiator visible in evidence — counts as 15+ if ANY of:\n' +
+    '  named niche market (automotive OTT, telco-only, specific vertical)\n' +
+    '  named enterprise clients in a specific segment (Škoda, TELUS, Proximus)\n' +
+    '  unique use case not common to all competitors (in-vehicle entertainment)\n' +
+    '  clear category specialization confirmed by multiple evidence sources\n' +
+    '- Score 8-14: differentiator exists but is vague, single-source, or easy to copy\n' +
+    '- Score 0-7: completely generic — no niche, no unique clients, no distinct use case\n' +
+    'CRITICAL RULE: a business with named automotive partnerships (Škoda, Zeekr, Geely)\n' +
+    'AND named telco clients (TELUS, Proximus) AND 15+ years in a specific niche\n' +
+    'CANNOT score below 14 on Difference. That is an established niche player.\n' +
+    'The tagline quality does not determine Difference score — the niche does.\n' +
     '- Required: quote the actual differentiator found, or state precisely why none exists\n\n' +
 
     'EASE (0-25): How quickly and confidently can this business be understood and selected?\n' +
@@ -293,15 +298,19 @@ function buildPrompt(evidence) {
     'Only name a competitor you are confident is real. If uncertain — return null.\\n\\n' +
 
     'COMPETITOR ANALYSIS DEPTH REQUIREMENT:\\n' +
-    'competitor.analysis must be 2-3 sentences minimum. It must answer:\\n' +
-    '1. What specific advantage does this competitor have over the business?\\n' +
-    '   (e.g. clearer positioning, stronger search visibility, better structured data,\\n' +
-    '   more independent citations, stronger review presence)\\n' +
-    '2. Where specifically does the comparison gap show up?\\n' +
-    '   (e.g. at comparison stage, at automated procurement, at search discovery)\\n' +
-    '3. What would the business need to close that gap?\\n' +
-    'Do NOT write: \'Typically stronger in structured web presence\'.\\n' +
-    'That is too vague. Be specific about what the competitor does better.\\n\\n' +
+    'competitor.analysis must be 3 sentences minimum. Each sentence must be specific:\\n' +
+    'Sentence 1: What specific structural or positioning advantage does this competitor have?\\n' +
+    '  Name the actual advantage — schema markup, clearer H1, stronger review presence,\\n' +
+    '  higher search position, dedicated comparison page, known brand.\\n' +
+    'Sentence 2: At what point in the selection process does this gap hurt the business?\\n' +
+    '  Be precise — during comparison search, during automated procurement,\\n' +
+    '  when a buyer asks an AI assistant, when a buyer compares two vendors side by side.\\n' +
+    'Sentence 3: What one specific change would close the gap?\\n' +
+    'BAD example: Accedo has stronger structured web presence.\\n' +
+    'GOOD example: Accedo publishes a detailed platform comparison page and has JSON-LD\\n' +
+    'Organization schema, which means it appears as a structured entity in AI-driven vendor\\n' +
+    'shortlists while 3SS appears only as a URL. Adding Organization schema would close\\n' +
+    'this gap immediately.\\n\\n' +
 
     'PLATFORM COVERAGE RULE:\n' +
     'Base coverage on evidence AND market position tier:\n' +
