@@ -263,21 +263,23 @@ function buildPrompt(evidence) {
     'The tagline quality does not determine Difference score — the niche does.\n' +
     '- Required: quote the actual differentiator found, or state precisely why none exists\n\n' +
 
-    'EASE (0-25): How quickly and confidently can this business be understood and selected?\n' +
-    'Evaluate these signals from evidence:\n' +
-    '- Schema markup (JSON-LD): present = strong signal, absent = weak machine readability\n' +
-    '- llms.txt: present = clear direct signal, absent = no direct machine instruction\n' +
-    '- Structured metadata: OG tags, canonical, meta description — each adds readability\n' +
-    '- Machine-readable entity definition: can the business be precisely described from evidence?\n' +
-    '- Search visibility: how quickly does this business appear when searched?\n' +
-    'Score tiers:\n' +
-    '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n' +
-    '- Score 12-19: partial structured signals — OG tags present, some metadata, no schema\n' +
-    '- Score 4-11: basic web presence, no schema, no llms.txt, limited metadata\n' +
-    '- Score 0-3: no structured signals at all, or website inaccessible\n' +
-    '- RULE: schema missing entirely = ease cannot exceed 8\n' +
-    '- RULE: working website with OG tags but no schema = 4-7 range\n' +
-    '- Required: state exactly which signals were found and which were absent\n\n' +
+    'EASE (0-25): How quickly and confidently can this business be understood and selected?\\n' +
+    'Evaluate these signals from evidence:\\n' +
+    '- Schema markup (JSON-LD): present = strong signal, absent = weak machine readability\\n' +
+    '- llms.txt: present = clear direct signal, absent = no direct machine instruction\\n' +
+    '- Structured metadata: OG tags, canonical, meta description — each adds readability\\n' +
+    '- Search visibility: how quickly does this business appear when searched?\\n' +
+    'Score tiers — apply strictly based on what was found in evidence:\\n' +
+    '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\\n' +
+    '- Score 14-19: schema present + complete metadata but no llms.txt\\n' +
+    '  (schema IS present = score at least 14, not 4)\\n' +
+    '- Score 8-13: partial structured signals — OG tags + some metadata, no schema\\n' +
+    '- Score 4-7: basic web presence — website works, OG tags present, no schema, no llms.txt\\n' +
+    '- Score 0-3: no structured signals at all, or website inaccessible\\n' +
+    'CRITICAL RULE: if evidence says Schema found: YES — score MINIMUM 14\\n' +
+    'CRITICAL RULE: schema missing entirely = ease cannot exceed 8\\n' +
+    'CRITICAL RULE: working website + OG tags but no schema = 4-7 range\\n' +
+    '- Required: state exactly which signals were found and which were absent\\n\\n' +
 
     'COMPETITOR RULE:\n' +
     'If the user provided known competitors above, use those as primary competitor candidates.\n' +
