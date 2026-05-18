@@ -1,178 +1,196 @@
-// run-diagnostic-background.js
-// CHOIVE™ background diagnostic engine
-// Stage 1: collect evidence — Stage 2: score — Stage 3: save
-// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
-const { updateStatus, saveEvidence, saveResult, saveError } = require('./lib/supabase');
-const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
-const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude, inferCategory } = require('./lib/claude');
-const { hasValidShape, buildSafeOutput } = require('./lib/validators');
-const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
-exports.handler = async function (event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
+// lib/apify.js
+// CHOIVE Apify integration — fetches real review and social evidence
+// Actors used:
+//   - Trustpilot scraper: easyapify/trustpilot-scraper
+//   - Google Maps reviews: compass/google-maps-reviews-scraper
+// ENV: APIFY_API_KEY
+
+const APIFY_BASE  = 'https://api.apify.com/v2';
+const TIMEOUT_MS  = 45000; // Apify runs can take 20-40s
+const POLL_MS     = 3000;  // Poll every 3s for result
+
+// ── Run an Apify actor and wait for result ────────────────────────────────────
+async function runActor(actorId, input) {
+  var apiKey = process.env.APIFY_API_KEY;
+  if (!apiKey) {
+    console.warn('APIFY_API_KEY not set — skipping Apify');
+    return null;
   }
-  let jobId;
-  try {
-    const body  = JSON.parse(event.body || '{}');
-    jobId       = safeStr(body.jobId);
-    const input = body.input && typeof body.input === 'object' ? body.input : {};
-    const name        = safeStr(input.name);
-    const category    = safeStr(input.category);
-    const city        = safeStr(input.city);
-    const website     = safeStr(input.website);
-    const description = safeStr(input.description);
-    if (!jobId)                   throw new Error('Missing jobId');
-    if (!name || !category || !city) throw new Error('Missing required input fields');
-    await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
-    let serperPayload = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
-    let websiteText   = '';
-    let inferredSite  = '';
-    let visibilityPos = -1;
-    const [serperSettled, webSettled] = await Promise.allSettled([
-      searchSerper(name, category, city),
-      website ? fetchWebsiteText(website) : Promise.resolve('')
-    ]);
-    if (serperSettled.status === 'fulfilled') {
-      serperPayload = serperSettled.value;
-    } else {
-      console.warn('[' + jobId + '] Serper failed:', serperSettled.reason?.message);
-    }
-    if (webSettled.status === 'fulfilled') {
-      websiteText = webSettled.value || '';
-    } else {
-      console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
-    }
-    inferredSite = inferOfficialSite(website, serperPayload, name);
-    if (!websiteText && inferredSite && inferredSite !== website) {
-      websiteText = await fetchWebsiteText(inferredSite).catch(() => '');
-    }
-    const targetDomain = normalizeUrl(website || '');
-    if (targetDomain) {
-      visibilityPos = (serperPayload.results || []).findIndex(
-        r => normalizeUrl(r.link || '') === targetDomain
-      );
-    }
-    const evidence = {
-      name, category, city, website, description,
-      inferredOfficialSite: inferredSite || '',
-      websiteText:          websiteText  || '',
-      searchText:           serperPayload.searchText   || 'No search results returned.',
-      kgText:               serperPayload.kgText       || 'None',
-      visibilityPosition:   visibilityPos,
-      competitors:          serperPayload.competitors   || [],
-      socialSignals:        serperPayload.socialSignals || {},
-      summaries:            serperPayload.summaries     || {},
-      collectedAt:          new Date().toISOString(),
-    };
-    await saveEvidence(jobId, evidence).catch(err =>
-      console.warn('[' + jobId + '] saveEvidence failed:', err.message)
-    );
-    // Fetch social media pages detected in search results
-    var socialEvidence = {};
-    var socialText     = 'No social media pages found.';
-    try {
-      socialEvidence = await fetchSocialEvidence(serperPayload.results || [], name);
-      socialText     = buildSocialText(socialEvidence);
-      evidence['socialEvidence'] = socialEvidence;
-      evidence['socialText']     = socialText;
-      console.log('[' + jobId + '] Social platforms fetched:', Object.keys(socialEvidence).join(', ') || 'none');
-    } catch (err) {
-      console.warn('[' + jobId + '] Social fetch failed:', err.message);
-    }
 
-    // Fetch review platform pages found in search results
-    var reviewPages = {};
-    var reviewText  = 'No review platform pages found.';
-    try {
-      reviewPages = await fetchReviewPages(serperPayload.results || []);
-      reviewText  = buildReviewText(reviewPages);
-      evidence['reviewPages'] = reviewPages;
-      evidence['reviewText']  = reviewText;
-      var reviewKeys = Object.keys(reviewPages);
-      if (reviewKeys.length > 0) {
-        console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
-      }
-    } catch (err) {
-      console.warn('[' + jobId + '] Review fetch failed:', err.message);
-    }
+  var startUrl = APIFY_BASE + '/acts/' + actorId + '/runs?token=' + apiKey;
 
-    // Fetch competitor homepage if one was identified
-    var competitorPageText = '';
-    if (serperPayload.competitors && serperPayload.competitors.length > 0) {
-      var topComp = serperPayload.competitors[0];
-      if (topComp && topComp['domain']) {
-        competitorPageText = await fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
-        if (competitorPageText) {
-          evidence['competitorPageText'] = competitorPageText;
-          evidence['competitorDomain']   = topComp['domain'];
-          console.log('[' + jobId + '] Fetched competitor: ' + topComp['domain']);
-        }
-      }
-    }
+  // Start the actor run
+  var startRes = await fetch(startUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: input })
+  }).catch(function(err) {
+    console.warn('Apify start failed:', err.message);
+    return null;
+  });
 
-    // ── STAGE 1b: INFER CATEGORY + SECOND-PASS COMPETITOR SEARCH ─────────
-    var inferredCat = category;
-    try {
-      var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
-      if (catResult && catResult !== category) {
-        inferredCat = catResult;
-        console.log('[' + jobId + '] Inferred category: ' + inferredCat);
-        var compSearch = await searchCompetitors(name, inferredCat, city);
-        if (compSearch.competitors && compSearch.competitors.length > 0) {
-          var existingDomains = (evidence['competitors'] || []).map(function(c) { return c['domain']; });
-          var newComps = compSearch.competitors.filter(function(c) { return existingDomains.indexOf(c['domain']) === -1; });
-          evidence['competitors'] = newComps.concat(evidence['competitors'] || []).slice(0, 5);
-          console.log('[' + jobId + '] Second-pass competitors:', evidence['competitors'].map(function(c) { return c['domain']; }).join(', '));
-        }
-        if (compSearch.searchText) {
-          evidence['searchText'] = evidence['searchText'] + '\n\nSECOND-PASS COMPETITOR SEARCH (inferred category: ' + inferredCat + '):\n' + compSearch.searchText;
-        }
-        evidence['inferredCategory'] = inferredCat;
-      }
-    } catch (err) {
-      console.warn('[' + jobId + '] Category inference/competitor search failed:', err.message);
-    }
-
-    await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
-    let rawOutput;
-    try {
-      rawOutput = await scoreWithClaude(evidence);
-    } catch (err) {
-      console.error('[' + jobId + '] Claude scoring failed:', err.message);
-      await saveError(jobId, 'Scoring failed: ' + err.message).catch(() => {});
-      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
-    }
-    if (!hasValidShape(rawOutput)) {
-      console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
-    }
-    const finalResult = buildSafeOutput(rawOutput);
-    // Merge evidence-level fields not returned by Claude into final result
-    if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
-      finalResult['socialSignals'] = evidence['socialSignals'];
-    }
-    if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
-      finalResult['summaries'] = evidence['summaries'];
-    }
-    if (evidence['reviewText']) {
-      finalResult['reviewText'] = evidence['reviewText'];
-    }
-    if (evidence['inferredCategory']) {
-      finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
-    }
-    console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
-    await saveResult(jobId, finalResult);
-    console.log('[' + jobId + '] Diagnostic complete.');
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
-  } catch (err) {
-    console.error('run-diagnostic-background error:', err.message);
-    if (jobId) await saveError(jobId, err.message).catch(() => {});
-    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: err.message }) };
+  if (!startRes || !startRes.ok) {
+    console.warn('Apify start returned', startRes ? startRes.status : 'no response');
+    return null;
   }
-};
+
+  var startData = await startRes.json();
+  var runId     = startData && startData.data && startData.data.id;
+  if (!runId) {
+    console.warn('Apify run ID not found');
+    return null;
+  }
+
+  // Poll for completion
+  var deadline = Date.now() + TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise(function(r) { setTimeout(r, POLL_MS); });
+
+    var statusRes = await fetch(
+      APIFY_BASE + '/actor-runs/' + runId + '?token=' + apiKey
+    ).catch(function() { return null; });
+
+    if (!statusRes || !statusRes.ok) continue;
+
+    var statusData = await statusRes.json();
+    var status     = statusData && statusData.data && statusData.data.status;
+
+    if (status === 'SUCCEEDED') {
+      // Fetch dataset items
+      var datasetId  = statusData.data.defaultDatasetId;
+      var itemsRes   = await fetch(
+        APIFY_BASE + '/datasets/' + datasetId + '/items?token=' + apiKey + '&limit=20'
+      ).catch(function() { return null; });
+
+      if (!itemsRes || !itemsRes.ok) return null;
+      return await itemsRes.json();
+    }
+
+    if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+      console.warn('Apify run', status, 'for actor', actorId);
+      return null;
+    }
+    // RUNNING or READY — keep polling
+  }
+
+  console.warn('Apify timeout for actor', actorId);
+  return null;
+}
+
+// ── Fetch Trustpilot reviews ──────────────────────────────────────────────────
+async function fetchTrustpilot(businessName, website) {
+  // Build Trustpilot search URL from business name
+  var domain  = (website || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  var tpQuery = domain || businessName;
+
+  var items = await runActor('easyapify~trustpilot-scraper', {
+    startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }],
+    maxReviews: 10,
+    reviewsLanguage: 'en'
+  });
+
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+
+  var company = items[0];
+  if (!company) return null;
+
+  var reviews = (company.reviews || []).slice(0, 5).map(function(r) {
+    return (r.rating ? r.rating + '/5: ' : '') + (r.text || '').slice(0, 200);
+  });
+
+  return {
+    platform:     'trustpilot',
+    name:         company.name         || businessName,
+    rating:       company.rating       || null,
+    reviewCount:  company.reviewCount  || 0,
+    ratingLabel:  company.ratingLabel  || '',
+    url:          company.url          || '',
+    reviews:      reviews,
+    source:       'apify'
+  };
+}
+
+// ── Fetch Google Maps reviews ─────────────────────────────────────────────────
+async function fetchGoogleReviews(businessName, city) {
+  var query = businessName + (city ? ' ' + city : '');
+
+  var items = await runActor('compass~google-maps-reviews-scraper', {
+    searchStringsArray: [query],
+    maxReviews:         10,
+    language:           'en',
+    maxCrawledPlaces:   1
+  });
+
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+
+  var place = items[0];
+  if (!place) return null;
+
+  var reviews = (place.reviews || []).slice(0, 5).map(function(r) {
+    return (r.stars ? r.stars + '/5: ' : '') + (r.text || '').slice(0, 200);
+  });
+
+  return {
+    platform:    'google_reviews',
+    name:        place.title          || businessName,
+    rating:      place.totalScore     || null,
+    reviewCount: place.reviewsCount   || 0,
+    address:     place.address        || '',
+    category:    place.categoryName   || '',
+    website:     place.website        || '',
+    reviews:     reviews,
+    source:      'apify'
+  };
+}
+
+// ── Build review text for Claude prompt ───────────────────────────────────────
+function buildApifyText(trustpilot, googleReviews) {
+  var parts = [];
+
+  if (trustpilot) {
+    parts.push('\nTRUSTPILOT:');
+    parts.push('Rating: ' + (trustpilot.rating || 'not found') + ' — ' + trustpilot.reviewCount + ' reviews');
+    if (trustpilot.ratingLabel) parts.push('Label: ' + trustpilot.ratingLabel);
+    if (trustpilot.reviews && trustpilot.reviews.length > 0) {
+      parts.push('Recent reviews:');
+      trustpilot.reviews.forEach(function(r) { parts.push('  - ' + r); });
+    }
+  }
+
+  if (googleReviews) {
+    parts.push('\nGOOGLE REVIEWS:');
+    parts.push('Rating: ' + (googleReviews.rating || 'not found') + ' — ' + googleReviews.reviewCount + ' reviews');
+    if (googleReviews.category) parts.push('Category: ' + googleReviews.category);
+    if (googleReviews.reviews && googleReviews.reviews.length > 0) {
+      parts.push('Recent reviews:');
+      googleReviews.reviews.forEach(function(r) { parts.push('  - ' + r); });
+    }
+  }
+
+  return parts.length > 0 ? parts.join('\n') : 'No review platform data retrieved.';
+}
+
+// ── Main: fetch all Apify evidence in parallel ────────────────────────────────
+async function fetchApifyEvidence(name, city, website) {
+  if (!process.env.APIFY_API_KEY) {
+    return { trustpilot: null, googleReviews: null, apifyText: '' };
+  }
+
+  console.log('Apify: fetching reviews for', name);
+
+  var settled = await Promise.allSettled([
+    fetchTrustpilot(name, website),
+    fetchGoogleReviews(name, city)
+  ]);
+
+  var trustpilot    = settled[0].status === 'fulfilled' ? settled[0].value : null;
+  var googleReviews = settled[1].status === 'fulfilled' ? settled[1].value : null;
+  var apifyText     = buildApifyText(trustpilot, googleReviews);
+
+  if (trustpilot)    console.log('Apify Trustpilot: rating', trustpilot.rating, '— reviews', trustpilot.reviewCount);
+  if (googleReviews) console.log('Apify Google: rating', googleReviews.rating, '— reviews', googleReviews.reviewCount);
+
+  return { trustpilot: trustpilot, googleReviews: googleReviews, apifyText: apifyText };
+}
+
+module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
