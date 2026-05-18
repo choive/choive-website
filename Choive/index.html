@@ -841,6 +841,55 @@ footer {
   content:''; flex:1; height:1px; background:var(--rule-d);
 }
 
+/* ─── AI SIMULATION ──────────────────────────── */
+.sim-section { padding:36px 0; border-bottom:1px solid var(--rule-d); }
+.sim-loading {
+  display:flex; align-items:center; gap:12px;
+  font-size:13px; color:var(--tm); padding:20px 0;
+}
+.sim-spinner {
+  width:14px; height:14px; border-radius:50%;
+  border:2px solid var(--rule-d); border-top-color:var(--ac);
+  animation:spin 0.8s linear infinite; flex-shrink:0;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.sim-results { display:flex; flex-direction:column; gap:2px; }
+.sim-query {
+  padding:20px 24px; background:var(--dk-2);
+  border:1px solid var(--rule-d);
+}
+.sim-query-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:10px;
+}
+.sim-query-label {
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm);
+}
+.sim-appeared {
+  font-size:10px; font-weight:700; letter-spacing:0.08em;
+  text-transform:uppercase; padding:3px 8px; border-radius:2px;
+}
+.sim-appeared.yes { color:var(--ac); background:rgba(194,240,212,0.1); border:1px solid var(--ac); }
+.sim-appeared.no  { color:var(--red); background:rgba(255,68,68,0.08); border:1px solid var(--red); }
+.sim-query-text {
+  font-size:13px; font-weight:500; color:var(--tp);
+  margin-bottom:12px; font-style:italic;
+}
+.sim-response {
+  font-size:13px; font-weight:400; color:var(--tb);
+  line-height:1.7; background:var(--dk-3); padding:14px 16px;
+  border-left:2px solid var(--rule-d);
+}
+.sim-response.appeared { border-left-color:var(--ac); }
+.sim-summary {
+  padding:16px 0; font-size:14px; font-weight:600;
+  color:var(--tp); border-top:1px solid var(--rule-d); margin-top:16px;
+}
+.sim-summary.zero { color:var(--red); }
+.sim-summary.some { color:var(--amber); }
+.sim-summary.all  { color:var(--ac); }
+
 /* ─── MOBILE ─────────────────────────────────── */
 @media (max-width:960px) { .offer-grid-3 { grid-template-columns:1fr; } }
 @media (max-width:768px) {
@@ -2905,6 +2954,16 @@ function showResults(r, jobId) {
       <div class="paid-narrative">${esc(r.businessUnderstanding || r.summaryParagraph || '')}</div>
     </div>
 
+    <div class="pay-section sim-section" id="simSection">
+      <div class="pay-eyebrow">AI Visibility Simulation</div>
+      <div style="font-size:13px;color:var(--tm);margin-bottom:16px;">We asked an AI the same questions your customers ask. Here is exactly what it said — and whether you appeared.</div>
+      <div class="sim-loading" id="simLoading">
+        <div class="sim-spinner"></div>
+        <span>Running live AI queries for ${esc(bizData.name || '')}...</span>
+      </div>
+      <div class="sim-results" id="simResults" style="display:none;"></div>
+    </div>
+
     <div class="pay-section">
       <div class="pay-eyebrow">Evidence Narrative</div>
       <div class="paid-narrative">${esc(r.evidenceNarrative || '')}</div>
@@ -3057,6 +3116,11 @@ function showResults(r, jobId) {
   }, 300);
 
   zone.scrollIntoView({ behavior: 'smooth' });
+
+  // Trigger AI simulation if paid
+  if (isPaid) {
+    runAISimulation(r);
+  }
 }
 
 
@@ -3152,6 +3216,56 @@ async function submitCHOIVEForm(event) {
     setTimeout(() => { closeForm(); errorBox.textContent = ''; }, 1500);
   } catch (err) {
     errorBox.textContent = 'Something went wrong. Try again.';
+  }
+}
+
+async function runAISimulation(r) {
+  var loading = document.getElementById('simLoading');
+  var results = document.getElementById('simResults');
+  if (!loading || !results) return;
+
+  try {
+    var res = await fetch('/.netlify/functions/ai-simulation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:             bizData.name             || '',
+        category:         bizData.category         || '',
+        city:             bizData.city             || '',
+        inferredCategory: r.inferredCategory       || bizData.category || ''
+      })
+    });
+
+    var data = await res.json();
+    loading.style.display = 'none';
+    results.style.display = 'flex';
+
+    if (!data.results || !data.results.length) {
+      results.innerHTML = '<div class="sim-query"><div class="sim-response">Simulation could not complete. Please try again.</div></div>';
+      return;
+    }
+
+    var summaryClass = data.appearedCount === 0 ? 'zero' : data.appearedCount === data.totalQueries ? 'all' : 'some';
+
+    results.innerHTML = data.results.map(function(qr) {
+      return '<div class="sim-query">'
+        + '<div class="sim-query-header">'
+        + '<span class="sim-query-label">' + esc(qr.label) + '</span>'
+        + '<span class="sim-appeared ' + (qr.appeared ? 'yes' : 'no') + '">'
+        + (qr.appeared ? 'You appeared' : 'Not mentioned') + '</span>'
+        + '</div>'
+        + '<div class="sim-query-text">“' + esc(qr.query) + '”</div>'
+        + '<div class="sim-response' + (qr.appeared ? ' appeared' : '') + '">'
+        + esc(qr.response) + '</div>'
+        + '</div>';
+    }).join('') + '<div class="sim-summary ' + summaryClass + '">' + esc(data.summary) + '</div>';
+
+  } catch (err) {
+    if (loading) loading.style.display = 'none';
+    if (results) {
+      results.style.display = 'flex';
+      results.innerHTML = '<div class="sim-query"><div class="sim-response">Simulation failed: ' + esc(err.message) + '</div></div>';
+    }
   }
 }
 
