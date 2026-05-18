@@ -281,7 +281,29 @@ function buildPrompt(evidence) {
     'based only on visible evidence — not assumptions about market position.\n' +
     'VALIDATION: Would this appear on an enterprise procurement shortlist for this exact category?\n' +
     'If no — return null. Examples that are NOT competitors: Slashdot, SourceForge, ViewLift, any media blog.\n' +
-    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\\n\\nIF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\\nUse inferredCategory to name the most likely real competitor.\\nSet competitor.queryContext = \"category-based analysis\" to flag this.\\nSet competitor.evidence = \"Based on inferred category — not found in search evidence\"\\nExplain in competitor.analysis why this competitor is typically stronger in this space.\\nB2B OTT middleware: name Accedo or Nagra\\nB2B HR platform: name Workday or BambooHR\\nLocal coffee: name Starbucks or dominant local chain\\nOnly name a competitor you are confident is real. If uncertain — return null.\\n\\n' +    'PLATFORM COVERAGE RULE:\n' +
+    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\\n\\n' +
+
+    'IF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\\n' +
+    'Use inferredCategory to name the most likely real competitor.\\n' +
+    'Set competitor.queryContext = \'category-based analysis\' to flag this.\\n' +
+    'Set competitor.evidence = \'Based on inferred category — not found in search evidence\'\\n' +
+    'B2B OTT middleware: name Accedo or Nagra\\n' +
+    'B2B HR platform: name Workday or BambooHR\\n' +
+    'Local coffee: name Starbucks or dominant local chain\\n' +
+    'Only name a competitor you are confident is real. If uncertain — return null.\\n\\n' +
+
+    'COMPETITOR ANALYSIS DEPTH REQUIREMENT:\\n' +
+    'competitor.analysis must be 2-3 sentences minimum. It must answer:\\n' +
+    '1. What specific advantage does this competitor have over the business?\\n' +
+    '   (e.g. clearer positioning, stronger search visibility, better structured data,\\n' +
+    '   more independent citations, stronger review presence)\\n' +
+    '2. Where specifically does the comparison gap show up?\\n' +
+    '   (e.g. at comparison stage, at automated procurement, at search discovery)\\n' +
+    '3. What would the business need to close that gap?\\n' +
+    'Do NOT write: \'Typically stronger in structured web presence\'.\\n' +
+    'That is too vague. Be specific about what the competitor does better.\\n\\n' +
+
+    'PLATFORM COVERAGE RULE:\n' +
     'Base coverage on evidence AND market position tier:\n' +
     '- present: business is clearly findable and citable on that platform from evidence\n' +
     '  OR marketPosition.tier is dominant or strong (well-known businesses are findable)\n' +
@@ -329,8 +351,15 @@ function buildPrompt(evidence) {
     'PILLAR ANALYSIS — 1-2 sentences explaining the score with specific evidence.\n' +
     'PILLAR EVIDENCE — quote or reference the specific signal found or missing.\n\n' +
 
-    'ACTION BODIES — max 20 words, specific to this business, based only on missing evidence.\n' +
-    'ACTION EXPLANATION — why this action matters for selection, based on evidence.\n\n' +
+    'ACTION RULES:\\n' +
+    'Every action must be SPECIFIC to this exact business — not generic advice.\\n' +
+    'Reference actual evidence: quote the H1, name the missing signal, cite the exact gap found.\\n\\n' +
+    'ACTION TITLE (3-6 words): specific, not generic.\\n' +
+    'BAD: Add JSON-LD schema | GOOD: Define [business] as SoftwareApplication entity\\n\\n' +
+    'ACTION BODY (max 20 words): name the gap and exact fix.\\n' +
+    'BAD: Add schema for discoverability | GOOD: No JSON-LD found — add Organization + SoftwareApplication schema\\n\\n' +
+    'ACTION EXPLANATION: what breaks if ignored, what improves if fixed — specific to this business.\\n' +
+    'BAD: Essential for AI platforms | GOOD: Without this, comparison tools cannot categorize this vendor correctly\\n\\n' +
 
     'EVIDENCE NARRATIVE — 2-3 sentences: what was found, what was missing, what that means.\n\n' +
 
