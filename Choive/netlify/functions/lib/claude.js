@@ -281,9 +281,7 @@ function buildPrompt(evidence) {
     'based only on visible evidence — not assumptions about market position.\n' +
     'VALIDATION: Would this appear on an enterprise procurement shortlist for this exact category?\n' +
     'If no — return null. Examples that are NOT competitors: Slashdot, SourceForge, ViewLift, any media blog.\n' +
-    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\n\n' +
-
-    'PLATFORM COVERAGE RULE:\n' +
+    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\\n\\nIF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\\nUse inferredCategory to name the most likely real competitor.\\nSet competitor.queryContext = \"category-based analysis\" to flag this.\\nSet competitor.evidence = \"Based on inferred category — not found in search evidence\"\\nExplain in competitor.analysis why this competitor is typically stronger in this space.\\nB2B OTT middleware: name Accedo or Nagra\\nB2B HR platform: name Workday or BambooHR\\nLocal coffee: name Starbucks or dominant local chain\\nOnly name a competitor you are confident is real. If uncertain — return null.\\n\\n' +    'PLATFORM COVERAGE RULE:\n' +
     'Base coverage on evidence AND market position tier:\n' +
     '- present: business is clearly findable and citable on that platform from evidence\n' +
     '  OR marketPosition.tier is dominant or strong (well-known businesses are findable)\n' +
