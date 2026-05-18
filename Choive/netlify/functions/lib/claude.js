@@ -1,379 +1,196 @@
-// lib/claude.js
-// CHOIVE™ evidence-first scoring engine
-// ENV: ANTHROPIC_API_KEY
+// lib/apify.js
+// CHOIVE Apify integration — fetches real review and social evidence
+// Actors used:
+//   - Trustpilot scraper: easyapify/trustpilot-scraper
+//   - Google Maps reviews: compass/google-maps-reviews-scraper
+// ENV: APIFY_API_KEY
 
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
-const TIMEOUT_MS  = 65000;
-const MAX_TOKENS  = 2800;
+const APIFY_BASE  = 'https://api.apify.com/v2';
+const TIMEOUT_MS  = 45000; // Apify runs can take 20-40s
+const POLL_MS     = 3000;  // Poll every 3s for result
 
-function truncate(text, max) {
-  max = max || 4000;
-  var value = String(text || '');
-  return value.length > max ? value.slice(0, max) : value;
-}
-
-
-// ── Fast category inference — runs before main scoring ───────────────────────
-async function inferCategory(name, category, websiteText, searchText) {
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 15000);
-
-  var prompt = 'Business name: ' + name + '\n'
-    + 'User-provided category: ' + category + '\n'
-    + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 800) + '\n'
-    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 800) + '\n\n'
-    + 'Based only on the evidence above, determine the precise real-world category this business operates in.\n'
-    + 'Return ONLY a JSON object with one field:\n'
-    + '{ "inferredCategory": "precise category name" }\n'
-    + 'Be specific. Examples:\n'
-    + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
-    + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
-    + '- Not "consulting" but "enterprise digital transformation consultancy for financial services"\n'
-    + 'Return only raw JSON. No markdown. No explanation.';
-
-  try {
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 100,
-        temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-
-    if (!response.ok) return category;
-    var data = await response.json();
-    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
-      .map(function(b) { return b.text || ''; }).join('').trim();
-    var clean = text.replace(/```json|```/g, '').trim();
-    var parsed = JSON.parse(clean);
-    return parsed.inferredCategory || category;
-  } catch (err) {
-    clearTimeout(timer);
-    return category; // fallback to user input
+// ── Run an Apify actor and wait for result ────────────────────────────────────
+async function runActor(actorId, input) {
+  var apiKey = process.env.APIFY_API_KEY;
+  if (!apiKey) {
+    console.warn('APIFY_API_KEY not set — skipping Apify');
+    return null;
   }
-}
 
-async function scoreWithClaude(evidence) {
-  var prompt = buildPrompt(evidence);
-  var controller = new AbortController();
-  var timeout = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+  var startUrl = APIFY_BASE + '/acts/' + actorId + '/runs?token=' + apiKey;
 
-  try {
-    var response = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: MAX_TOKENS,
-        temperature: 0.1,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: controller.signal
-    });
+  // Start the actor run
+  var startRes = await fetch(startUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: input })
+  }).catch(function(err) {
+    console.warn('Apify start failed:', err.message);
+    return null;
+  });
 
-    clearTimeout(timeout);
-    var data = await response.json();
+  if (!startRes || !startRes.ok) {
+    console.warn('Apify start returned', startRes ? startRes.status : 'no response');
+    return null;
+  }
 
-    if (!response.ok) {
-      throw new Error(data && data.error && data.error.message ? data.error.message : 'Anthropic HTTP ' + response.status);
+  var startData = await startRes.json();
+  var runId     = startData && startData.data && startData.data.id;
+  if (!runId) {
+    console.warn('Apify run ID not found');
+    return null;
+  }
+
+  // Poll for completion
+  var deadline = Date.now() + TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise(function(r) { setTimeout(r, POLL_MS); });
+
+    var statusRes = await fetch(
+      APIFY_BASE + '/actor-runs/' + runId + '?token=' + apiKey
+    ).catch(function() { return null; });
+
+    if (!statusRes || !statusRes.ok) continue;
+
+    var statusData = await statusRes.json();
+    var status     = statusData && statusData.data && statusData.data.status;
+
+    if (status === 'SUCCEEDED') {
+      // Fetch dataset items
+      var datasetId  = statusData.data.defaultDatasetId;
+      var itemsRes   = await fetch(
+        APIFY_BASE + '/datasets/' + datasetId + '/items?token=' + apiKey + '&limit=20'
+      ).catch(function() { return null; });
+
+      if (!itemsRes || !itemsRes.ok) return null;
+      return await itemsRes.json();
     }
 
-    return parseClaudeResponse(data);
-  } catch (error) {
-    clearTimeout(timeout);
-    if (error.name === 'AbortError') throw new Error('Claude request timed out');
-    throw error;
-  }
-}
-
-function parseClaudeResponse(data) {
-  var text = (data.content || [])
-    .filter(function(b) { return b.type === 'text'; })
-    .map(function(b) { return b.text || ''; })
-    .join('')
-    .trim();
-
-  if (!text) throw new Error('Claude returned empty response');
-
-  var clean = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-
-  try { return JSON.parse(clean); } catch (_) {}
-
-  // Try extracting first complete JSON object
-  var start = clean.indexOf('{');
-  var end   = clean.lastIndexOf('}');
-  if (start !== -1 && end !== -1 && end > start) {
-    try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
+    if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+      console.warn('Apify run', status, 'for actor', actorId);
+      return null;
+    }
+    // RUNNING or READY — keep polling
   }
 
-  console.error('Claude parse failed. Raw:', text.slice(0, 300));
-  throw new Error('Could not parse Claude response as JSON');
+  console.warn('Apify timeout for actor', actorId);
+  return null;
 }
 
-function buildPrompt(evidence) {
-  var name               = evidence.name        || '';
-  var category           = evidence.category    || '';
-  var city               = evidence.city        || '';
-  var website            = evidence.website     || 'not provided';
-  var description        = evidence.description || 'not provided';
-  var inferredSite       = evidence.inferredOfficialSite || 'not found';
-  var websiteText        = truncate(evidence.websiteText, 3000)  || 'No website content available.';
-  var searchText         = truncate(evidence.searchText, 5000)   || 'No search results returned.';
-  var kgText             = truncate(evidence.kgText, 1200)       || 'None';
-  var visibilityPosition = evidence.visibilityPosition;
-  var competitors        = evidence.competitors        || [];
-  var knownCompetitors   = evidence.knownCompetitors   || '';
-  var competitorDomain   = evidence.competitorDomain   || '';
-  var competitorPageText = evidence.competitorPageText || '';
-  var socialText         = evidence.socialText         || 'No social media pages found.';
-  var reviewText         = evidence.reviewText         || 'No review platform pages found.';
-  var socialSignals      = evidence.socialSignals || {};
-  var summaries          = evidence.summaries     || {};
+// ── Fetch Trustpilot reviews ──────────────────────────────────────────────────
+async function fetchTrustpilot(businessName, website) {
+  // Build Trustpilot search URL from business name
+  var domain  = (website || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  var tpQuery = domain || businessName;
 
-  var competitorText = competitors.length > 0
-    ? competitors.map(function(c) { return '- ' + c.domain + ': ' + (c.snippet || ''); }).join('\n')
-    : 'No clear competitors identified in search results.';
+  var items = await runActor('easyapify~trustpilot-scraper', {
+    startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }],
+    maxReviews: 10,
+    reviewsLanguage: 'en'
+  });
 
-  var socialList = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
-  var socialText = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
 
-  var visibilityText = visibilityPosition !== -1
-    ? 'YES (position ' + (visibilityPosition + 1) + ')'
-    : 'NO';
+  var company = items[0];
+  if (!company) return null;
 
-  return 'BUSINESS:\n' +
-    'Name: ' + name + '\n' +
-    'Category: ' + category + '\n' +
-    'Location: ' + city + '\n' +
-    'Website: ' + website + '\n' +
-    'Description: ' + description + '\n' +
-    (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '') +
-    '\nINFERRED OFFICIAL SITE: ' + inferredSite +
-    '\n\nKNOWLEDGE GRAPH:\n' + kgText +
-    '\n\nWEBSITE CONTENT:\n' + websiteText +
-    '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText +
-    '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText +
-    (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '') +
-    '\n\nSOCIAL PRESENCE DETECTED (from search results):\n' + socialList +
-    '\n\nSOCIAL MEDIA PAGE CONTENT (fetched from detected pages):\n' + socialText +
-    '\n\nREVIEW PLATFORM CONTENT (fetched pages):\n' + reviewText +
-    '\n\nEVIDENCE SUMMARIES:\n' +
-    'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n' +
-    'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n' +
-    'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n' +
-    'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n' +
-    '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText +
+  var reviews = (company.reviews || []).slice(0, 5).map(function(r) {
+    return (r.rating ? r.rating + '/5: ' : '') + (r.text || '').slice(0, 200);
+  });
 
-    '\n\n---\n' +
-    'YOU ARE CHOIVE™ — A DECISION INTELLIGENCE ENGINE.\n\n' +
-
-    'YOUR ONLY JOB:\n' +
-    'Determine why a customer would or would not choose this business over alternatives.\n\n' +
-
-    'STRICT RULES — READ CAREFULLY:\n' +
-    '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n' +
-    '2. Every score must be justified by specific evidence from the data above.\n' +
-    '3. If a signal is missing, say it is missing. Do not invent it.\n' +
-    '4. Every pillar finding must quote or directly reference specific evidence.\n' +
-    '5. Competitor must appear directly in the search evidence above. If none clearly appears, return null.\n' +
-    '6. Platform coverage must reflect what the evidence actually shows — not assumptions about company size.\n' +
-    '7. DO NOT reward signals that are not present in the evidence.\n' +
-    '8. DO NOT penalise signals that are clearly present in the evidence.\n\n' +
-
-    'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n' +
-    'User provided category: "' + category + '" — this may be vague or incorrect.\n' +
-    'Using ONLY the evidence, determine:\n' +
-    '1. What does this business actually sell?\n' +
-    '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n' +
-    '3. What precise industry category would buyers use to find this?\n' +
-    '4. B2B, B2C, or both?\n' +
-    'Return this as inferredCategory. Use it for all scoring and competitor logic.\n' +
-    'Examples:\n' +
-    '- User typed OTT platform, evidence shows white-label middleware for telcos → B2B OTT middleware platform vendor\n' +
-    '- User typed coffee shop, evidence shows wholesale roastery → B2B specialty coffee roaster\n\n' +
-
-    'DECISION ENVIRONMENT — classify first:\n' +
-    '- discovery_driven: local, map-based, search-based selection\n' +
-    '- comparison_driven: evaluated against alternatives before decision\n' +
-    '- authority_driven: selected based on reputation, partnerships, capability\n' +
-    '- default_driven: category leader chosen automatically\n\n' +
-
-    'SCORING — four pillars, each 0-25:\n\n' +
-
-    'CLARITY (0-25): How precisely and consistently is this business defined?\n' +
-    '- Score 20+: specific H1, clear category, consistent naming across all sources\n' +
-    '- Score 10-19: partially defined, some inconsistency\n' +
-    '- Score 0-9: vague, inconsistent, or undefined\n' +
-    '- Required: quote the actual H1 or description found in evidence\n\n' +
-
-    'TRUST (0-25): How much independent third-party verification exists?\n' +
-    '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n' +
-    '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n' +
-    '  OR verified review platform presence with ratings, OR confirmed press coverage\n' +
-    '- Score 8-14: some third-party signals but limited — one or two sources only\n' +
-    '- Score 0-7: only owned channels, no independent confirmation found\n' +
-    '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n' +
-    '  with full name and title count as strong trust signals — score minimum 15\n' +
-    '- Required: name the specific sources found (e.g. Trustpilot, press, client names)\n\n' +
-
-    'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n' +
-    'Score based on visible evidence only:\n' +
-    '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n' +
-    '  (named niche + unique use case + clear positioning all confirmed in evidence)\n' +
-    '- Score 15-19: real differentiator visible — niche market, named enterprise clients,\n' +
-    '  unique use case, or clear category focus — even if not schema-encoded\n' +
-    '- Score 8-14: differentiator implied but vague or interchangeable\n' +
-    '- Score 0-7: no differentiator found — generic positioning only\n' +
-    'RULE: niche specialization + named clients + unique use cases = score 15-19 minimum.\n' +
-    'RULE: do not confuse "not machine-readable" with "does not exist".\n' +
-    '- Required: quote the actual differentiator found, or state precisely why none exists\n\n' +
-
-    'EASE (0-25): How quickly and confidently can this business be understood and selected?\n' +
-    'Evaluate these signals from evidence:\n' +
-    '- Schema markup (JSON-LD): present = strong signal, absent = weak machine readability\n' +
-    '- llms.txt: present = clear direct signal, absent = no direct machine instruction\n' +
-    '- Structured metadata: OG tags, canonical, meta description — each adds readability\n' +
-    '- Machine-readable entity definition: can the business be precisely described from evidence?\n' +
-    '- Search visibility: how quickly does this business appear when searched?\n' +
-    'Score tiers:\n' +
-    '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n' +
-    '- Score 12-19: partial structured signals — OG tags present, some metadata, no schema\n' +
-    '- Score 4-11: basic web presence, no schema, no llms.txt, limited metadata\n' +
-    '- Score 0-3: no structured signals at all, or website inaccessible\n' +
-    '- RULE: schema missing entirely = ease cannot exceed 8\n' +
-    '- RULE: working website with OG tags but no schema = 4-7 range\n' +
-    '- Required: state exactly which signals were found and which were absent\n\n' +
-
-    'COMPETITOR RULE:\n' +
-    'If the user provided known competitors above, use those as primary competitor candidates.\n' +
-    'Verify they appear in the search evidence OR are in the same category before including.\n' +
-    'Only name a competitor if ALL of these are true:\n' +
-    '1. The competitor domain appears in the search evidence above\n' +
-    '2. It is in the exact same category as this business\n' +
-    '3. It competes for the same buyer type at the same deal size\n' +
-    '   (e.g. enterprise vs enterprise, SMB vs SMB — do not mix)\n' +
-    '4. It is not a directory, review platform, aggregator, or listing site\n' +
-    '5. It would realistically appear in the same sales conversation\n' +
-    'Directories like Slashdot, SourceForge, Capterra, G2, Clutch are NOT competitors.\n' +
-    'A smaller player serving a different buyer segment is NOT a competitor.\n' +
-    'If no competitor meets all five criteria, return null for all competitor fields.\n' +
-    'The competitor analysis must explain specifically WHY that competitor appears stronger\n' +
-    'based only on visible evidence — not assumptions about market position.\n' +
-    'VALIDATION: Would this appear on an enterprise procurement shortlist for this exact category?\n' +
-    'If no — return null. Examples that are NOT competitors: Slashdot, SourceForge, ViewLift, any media blog.\n' +
-    'Valid B2B OTT middleware competitors: Accedo, Nagra, Kaltura, Synamedia, Amino, Zattoo\n\n' +
-
-    'PLATFORM COVERAGE RULE:\n' +
-    'Base coverage on evidence AND market position tier:\n' +
-    '- present: business is clearly findable and citable on that platform from evidence\n' +
-    '  OR marketPosition.tier is dominant or strong (well-known businesses are findable)\n' +
-    '- weak: business appears in search results but lacks structured signals\n' +
-    '  OR marketPosition.tier is upper_mid with some web presence\n' +
-    '- absent: genuinely no evidence of presence — only for unknown or very new businesses\n' +
-    'DO NOT mark all platforms absent for a business with 15+ years, named clients,\n' +
-    'and confirmed web presence. Use weak as the floor for established businesses.\n\n' +
-
-    'MARKET POSITION TIERS:\n' +
-    'dominant, strong, upper_mid, mid, weak, absent\n\n' +
-
-    'DECISION STATES:\n' +
-    'not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, chosen_by_default\n\n' +
-
-    'SUMMARY PARAGRAPH — exactly 3 sentences:\n' +
-    '- If tier is dominant or strong: start with "This business is currently chosen because..."\n' +
-    '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n' +
-    '- Sentence 2: the single strongest evidence-based driver or gap\n' +
-    '- Sentence 3: the consequence for selection\n\n' +
-
-        'CHOIVE LANGUAGE STANDARD:\n' +
-    'CHOIVE explains why a business is easy or hard to select. Nothing more.\n' +
-    'Every sentence must be immediately understandable. No jargon. No hype.\n\n' +
-
-    'DO NOT USE:\n' +
-    '- AI discovery, AI optimization, AI-friendly, AI ecosystems\n' +
-    '- Cannot be found, completely missing, required for AI\n' +
-    '- SEO, search optimization, digital marketing\n' +
-    '- Vague abstractions: recommendation confidence environments, evaluation ecosystems\n\n' +
-
-    'USE INSTEAD:\n' +
-    '- Weak machine readability / limited structured data\n' +
-    '- Harder to select under automated comparison\n' +
-    '- Clear positioning / strong trust signals / well-defined entity\n' +
-    '- Structurally preferred / easier to recommend with confidence\n' +
-    '- Creates selection doubt / reduces selection friction\n\n' +
-
-    'TONE: strategic, calm, precise, modern. Not alarming. Not generic.\n\n' +
-
-    
-
-
-    'PILLAR FINDINGS — each exactly 4-8 words, evidence-based, final tone.\n' +
-    'PILLAR ANALYSIS — 1-2 sentences explaining the score with specific evidence.\n' +
-    'PILLAR EVIDENCE — quote or reference the specific signal found or missing.\n\n' +
-
-    'ACTION BODIES — max 20 words, specific to this business, based only on missing evidence.\n' +
-    'ACTION EXPLANATION — why this action matters for selection, based on evidence.\n\n' +
-
-    'EVIDENCE NARRATIVE — 2-3 sentences: what was found, what was missing, what that means.\n\n' +
-
-    'Return ONLY raw JSON. No markdown. No backticks. No explanation. Start with { end with }.\n\n' +
-
-    '{\n' +
-    '  "overallScore": 0,\n' +
-    '  "inferredCategory": "",\n' +
-    '  "verdictHeadline": "",\n' +
-    '  "verdictLevel": "absent",\n' +
-    '  "signatureLine": "",\n' +
-    '  "decisionState": "",\n' +
-    '  "decisionEnvironment": "",\n' +
-    '  "summaryParagraph": "",\n' +
-    '  "businessUnderstanding": "",\n' +
-    '  "marketPosition": { "tier": "", "label": "", "explanation": "" },\n' +
-    '  "pillars": {\n' +
-    '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
-    '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
-    '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
-    '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n' +
-    '  },\n' +
-    '  "platformCoverage": {\n' +
-    '    "chatgpt":    { "status": "absent", "detail": "" },\n' +
-    '    "perplexity": { "status": "absent", "detail": "" },\n' +
-    '    "gemini":     { "status": "absent", "detail": "" },\n' +
-    '    "claude":     { "status": "absent", "detail": "" }\n' +
-    '  },\n' +
-    '  "evidenceNarrative": "",\n' +
-    '  "competitor": {\n' +
-    '    "name": null,\n' +
-    '    "domain": null,\n' +
-    '    "analysis": null,\n' +
-    '    "evidence": null,\n' +
-    '    "queryContext": null\n' +
-    '  },\n' +
-    '  "actions": [\n' +
-    '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
-    '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
-    '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n' +
-    '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n' +
-    '  ]\n' +
-    '}';
+  return {
+    platform:     'trustpilot',
+    name:         company.name         || businessName,
+    rating:       company.rating       || null,
+    reviewCount:  company.reviewCount  || 0,
+    ratingLabel:  company.ratingLabel  || '',
+    url:          company.url          || '',
+    reviews:      reviews,
+    source:       'apify'
+  };
 }
 
-module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
+// ── Fetch Google Maps reviews ─────────────────────────────────────────────────
+async function fetchGoogleReviews(businessName, city) {
+  var query = businessName + (city ? ' ' + city : '');
+
+  var items = await runActor('compass~google-maps-reviews-scraper', {
+    searchStringsArray: [query],
+    maxReviews:         10,
+    language:           'en',
+    maxCrawledPlaces:   1
+  });
+
+  if (!items || !Array.isArray(items) || items.length === 0) return null;
+
+  var place = items[0];
+  if (!place) return null;
+
+  var reviews = (place.reviews || []).slice(0, 5).map(function(r) {
+    return (r.stars ? r.stars + '/5: ' : '') + (r.text || '').slice(0, 200);
+  });
+
+  return {
+    platform:    'google_reviews',
+    name:        place.title          || businessName,
+    rating:      place.totalScore     || null,
+    reviewCount: place.reviewsCount   || 0,
+    address:     place.address        || '',
+    category:    place.categoryName   || '',
+    website:     place.website        || '',
+    reviews:     reviews,
+    source:      'apify'
+  };
+}
+
+// ── Build review text for Claude prompt ───────────────────────────────────────
+function buildApifyText(trustpilot, googleReviews) {
+  var parts = [];
+
+  if (trustpilot) {
+    parts.push('\nTRUSTPILOT:');
+    parts.push('Rating: ' + (trustpilot.rating || 'not found') + ' — ' + trustpilot.reviewCount + ' reviews');
+    if (trustpilot.ratingLabel) parts.push('Label: ' + trustpilot.ratingLabel);
+    if (trustpilot.reviews && trustpilot.reviews.length > 0) {
+      parts.push('Recent reviews:');
+      trustpilot.reviews.forEach(function(r) { parts.push('  - ' + r); });
+    }
+  }
+
+  if (googleReviews) {
+    parts.push('\nGOOGLE REVIEWS:');
+    parts.push('Rating: ' + (googleReviews.rating || 'not found') + ' — ' + googleReviews.reviewCount + ' reviews');
+    if (googleReviews.category) parts.push('Category: ' + googleReviews.category);
+    if (googleReviews.reviews && googleReviews.reviews.length > 0) {
+      parts.push('Recent reviews:');
+      googleReviews.reviews.forEach(function(r) { parts.push('  - ' + r); });
+    }
+  }
+
+  return parts.length > 0 ? parts.join('\n') : 'No review platform data retrieved.';
+}
+
+// ── Main: fetch all Apify evidence in parallel ────────────────────────────────
+async function fetchApifyEvidence(name, city, website) {
+  if (!process.env.APIFY_API_KEY) {
+    return { trustpilot: null, googleReviews: null, apifyText: '' };
+  }
+
+  console.log('Apify: fetching reviews for', name);
+
+  var settled = await Promise.allSettled([
+    fetchTrustpilot(name, website),
+    fetchGoogleReviews(name, city)
+  ]);
+
+  var trustpilot    = settled[0].status === 'fulfilled' ? settled[0].value : null;
+  var googleReviews = settled[1].status === 'fulfilled' ? settled[1].value : null;
+  var apifyText     = buildApifyText(trustpilot, googleReviews);
+
+  if (trustpilot)    console.log('Apify Trustpilot: rating', trustpilot.rating, '— reviews', trustpilot.reviewCount);
+  if (googleReviews) console.log('Apify Google: rating', googleReviews.rating, '— reviews', googleReviews.reviewCount);
+
+  return { trustpilot: trustpilot, googleReviews: googleReviews, apifyText: apifyText };
+}
+
+module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
