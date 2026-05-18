@@ -226,15 +226,25 @@ function buildPrompt(evidence) {
     '- Score 0-9: vague, inconsistent, or undefined\n' +
     '- Required: quote the actual H1 or description found in evidence\n\n' +
 
-    'TRUST (0-25): How much independent third-party verification exists?\n' +
-    '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n' +
-    '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n' +
-    '  OR verified review platform presence with ratings, OR confirmed press coverage\n' +
-    '- Score 8-14: some third-party signals but limited — one or two sources only\n' +
-    '- Score 0-7: only owned channels, no independent confirmation found\n' +
-    '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n' +
-    '  with full name and title count as strong trust signals — score minimum 15\n' +
-    '- Required: name the specific sources found (e.g. Trustpilot, press, client names)\n\n' +
+    'TRUST (0-25): How much independent third-party verification exists?\\n' +
+    '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\\n' +
+    '- Score 15-19: solid third-party signals — named client testimonials from known companies,\\n' +
+    '  OR verified review platform presence with ratings, OR confirmed press coverage\\n' +
+    '- Score 8-14: some third-party signals but limited — one or two sources only\\n' +
+    '- Score 0-7: only owned channels, no independent confirmation found\\n' +
+    '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\\n' +
+    '  with full name and title count as strong trust signals — score minimum 15\\n' +
+    '- RULE: for consumer brands, count exact review numbers visible in evidence\\n' +
+    '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\\n' +
+    '- Required: name specific sources AND exact numbers (e.g. Trustpilot 4.3 from 127 reviews)\\n\\n' +
+    'TRUST ACTION RULE:\\n' +
+    'When trust is low, action body must state:\\n' +
+    '1. Exactly what was found (e.g. only 1 Facebook review found, 330 likes)\\n' +
+    '2. The number needed to be credible in this category:\\n' +
+    '   premium consumer brand = 50+ reviews minimum\\n' +
+    '   B2B software = 10+ G2 or Capterra reviews\\n' +
+    '   local service = 20+ Google reviews\\n' +
+    '3. The specific platform that matters most for this buyer type\\n\\n' +
 
     'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n' +
     'Score based on visible evidence only:\n' +
