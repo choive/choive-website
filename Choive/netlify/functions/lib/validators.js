@@ -150,11 +150,18 @@ function buildSafeOutput(output) {
 
   safe.pillars.clarity.score    = cs;
   safe.pillars.trust.score      = ts;
-  safe.pillars.difference.score = ds;
+
+  // Difference floor for dominant/strong brands
+  // A globally recognized brand cannot score below 13 on Difference
+  var dsAdjusted = ds;
+  if (DOMINANT_TIERS.includes(safe.marketPosition.tier) && ds < 13) {
+    dsAdjusted = 13;
+  }
+  safe.pillars.difference.score = dsAdjusted;
   safe.pillars.ease.score       = es;
 
   // overallScore = deterministic sum of clamped pillars
-  safe.overallScore = cs + ts + ds + es;
+  safe.overallScore = cs + ts + dsAdjusted + es;
 
   const marketTier = safe.marketPosition.tier;
   const isDominant = DOMINANT_TIERS.includes(marketTier);
@@ -164,9 +171,14 @@ function buildSafeOutput(output) {
   // overallScore = AI readability (pillar evidence driven)
   // These are intentionally separate dimensions.
 
+  var isStrong = safe.marketPosition.tier === 'strong';
+
   if (isDominant) {
     safe.verdictLevel    = 'present';
     safe.verdictHeadline = 'Chosen by default — but infrastructure is exposed';
+  } else if (isStrong && safe.overallScore >= 40) {
+    safe.verdictLevel    = 'present';
+    safe.verdictHeadline = 'Strong market position — but harder to select digitally';
   } else if (safe.overallScore <= 30) {
     safe.verdictLevel    = 'absent';
     safe.verdictHeadline = 'Not the obvious choice — losing decisions';
