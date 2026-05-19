@@ -80,25 +80,39 @@ exports.handler = async function(event) {
       body: JSON.stringify({ error: 'Missing name or category' }) };
   }
 
+  // Build natural-sounding queries from the inferred category
+  // Strip B2B/B2C prefix and make conversational
+  var catClean = inferredCategory
+    .replace(/^b2b\s+/i, '')
+    .replace(/^b2c\s+/i, '')
+    .replace(/\s+vendor(s)?$/i, '')
+    .replace(/\s+provider(s)?$/i, '')
+    .replace(/\s+platform(s)?$/i, ' platform')
+    .replace(/\s+direct-to-consumer$/i, '')
+    .trim();
+
+  var locationStr = city ? ' in ' + city : '';
+  var forStr      = city ? ' for ' + city : '';
+
   // Three simulation queries — different buyer intents
   var queries = [
     {
       label:  'Discovery query',
-      intent: 'A potential buyer searching for vendors in this category',
-      system: 'You are a helpful assistant. Answer directly and concisely. Do not mention that you are Claude or an AI.',
-      query:  'What are the best ' + inferredCategory + ' companies' + (city ? ' in ' + city : '') + '? Give me 3-5 options with a brief reason for each.'
+      intent: 'A potential buyer searching for options in this category',
+      system: 'You are a helpful AI assistant. Answer naturally and directly as you would to someone asking for recommendations. Be specific and name real companies.',
+      query:  'What are the best ' + catClean + ' options' + locationStr + '? I need 3-5 recommendations with a brief reason for each.'
     },
     {
       label:  'Comparison query',
-      intent: 'A buyer comparing options before a decision',
-      system: 'You are a helpful assistant. Answer directly and concisely. Do not mention that you are Claude or an AI.',
-      query:  'I am evaluating ' + inferredCategory + ' vendors. Who are the main players and what makes each one different?'
+      intent: 'A buyer evaluating alternatives before deciding',
+      system: 'You are a helpful AI assistant. Answer naturally and directly as you would to someone asking for recommendations. Be specific and name real companies.',
+      query:  'I am comparing ' + catClean + ' options. Who are the main players and what makes each one stand out?'
     },
     {
       label:  'Direct recommendation query',
-      intent: 'A buyer asking for a specific recommendation',
-      system: 'You are a helpful assistant. Answer directly and concisely. Do not mention that you are Claude or an AI.',
-      query:  'Recommend the best ' + inferredCategory + ' for a company like mine' + (city ? ' based in ' + city : '') + '. What should I look for and who offers it?'
+      intent: 'A buyer ready to decide and asking for a specific name',
+      system: 'You are a helpful AI assistant. Answer naturally and directly as you would to someone asking for recommendations. Be specific and name real companies.',
+      query:  'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your top pick and why.'
     }
   ];
 
