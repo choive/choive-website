@@ -3219,6 +3219,18 @@ async function submitCHOIVEForm(event) {
   }
 }
 
+function stripMd(text) {
+  if (!text) return '';
+  return text
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^[-*]\s+/gm, '\u2022 ')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 async function runAISimulation(r) {
   var loading = document.getElementById('simLoading');
   var results = document.getElementById('simResults');
@@ -3256,7 +3268,7 @@ async function runAISimulation(r) {
         + '</div>'
         + '<div class="sim-query-text">“' + esc(qr.query) + '”</div>'
         + '<div class="sim-response' + (qr.appeared ? ' appeared' : '') + '">'
-        + esc(qr.response) + '</div>'
+        + esc(stripMd(qr.response)) + '</div>'
         + '</div>';
     }).join('') + '<div class="sim-summary ' + summaryClass + '">' + esc(data.summary) + '</div>';
 
