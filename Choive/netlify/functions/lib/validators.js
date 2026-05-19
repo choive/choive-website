@@ -156,15 +156,7 @@ function buildSafeOutput(output) {
   }
 
   safe.pillars.clarity.score    = cs;
-
-  // Trust floor for dominant brands
-  // Magic Circle law firms, Big Four, global institutions don't collect public reviews
-  // Their trust comes from institutional recognition — floor at 16
-  var tsAdjusted = ts;
-  if (isDominant && ts < 16) {
-    tsAdjusted = 16;
-  }
-  safe.pillars.trust.score = tsAdjusted;
+  safe.pillars.trust.score      = ts;
 
   // Difference floor for dominant/strong brands
   // A globally recognized brand cannot score below 13 on Difference
@@ -176,10 +168,19 @@ function buildSafeOutput(output) {
   safe.pillars.ease.score       = es;
 
   // overallScore = deterministic sum of clamped pillars
-  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
-
   const marketTier = safe.marketPosition.tier;
   const isDominant = DOMINANT_TIERS.includes(marketTier);
+
+  // Trust floor for dominant brands — after isDominant is defined
+  // Magic Circle law firms, Big Four don't collect public reviews
+  // Their trust comes from institutional recognition — floor at 16
+  if (isDominant && safe.pillars.trust.score < 16) {
+    safe.pillars.trust.score = 16;
+  }
+  var tsAdjusted = safe.pillars.trust.score;
+
+  // Recalculate overallScore with adjusted trust
+  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
 
   // ── VERDICT OVERRIDE ─────────────────────────────────────────────────────
   // verdictLevel = recommendation likelihood (market position driven)
