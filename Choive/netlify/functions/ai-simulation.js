@@ -124,11 +124,17 @@ exports.handler = async function(event) {
   var results = queries.map(function(q, i) {
     var response = settled[i].status === 'fulfilled' ? settled[i].value : null;
     var appeared = response ? businessMentioned(response, name) : false;
+    var rClean = response || 'Query failed.';
+    rClean = rClean.replace(/[#]+[ ]/g, '').replace(/[ ]*[*][*]([^*]+)[*][*][ ]*/g, '$1 ').replace(/[*]([^*]+)[*]/g, '$1').trim();
+    if (rClean.length > 500) {
+      var cut = rClean.lastIndexOf('.', 500);
+      rClean = cut > 150 ? rClean.slice(0, cut + 1) : rClean.slice(0, 500);
+    }
     return {
       label:    q.label,
       intent:   q.intent,
       query:    q.query,
-      response: response ? response.slice(0, 600) : 'Query failed — no response returned.',
+      response: rClean,
       appeared: appeared
     };
   });
