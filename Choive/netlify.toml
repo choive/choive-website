@@ -12,6 +12,9 @@
 [functions."run-diagnostic-background"]
   timeout = 900
 
+[functions."ai-simulation"]
+  timeout = 60
+
 [[redirects]]
   from = "/result"
   to = "/index.html"
