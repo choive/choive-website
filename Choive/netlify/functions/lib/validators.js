@@ -1,6 +1,5 @@
 // lib/validators.js
 // Input validation, result shape validation, score clamping
-// Supports both old (displacement) and new (competitor) Claude output shapes
 
 function validateInput(body) {
   const { name, category, city } = body || {};
@@ -9,7 +8,7 @@ function validateInput(body) {
   if (!category || !String(category).trim()) missing.push('category');
   if (!city || !String(city).trim()) missing.push('city');
   if (missing.length > 0) {
-    return { valid: false, error: `Missing required fields: ${missing.join(', ')}` };
+    return { valid: false, error: 'Missing required fields: ' + missing.join(', ') };
   }
   return { valid: true };
 }
@@ -18,13 +17,12 @@ function clampScore(n) {
   return Math.max(0, Math.min(25, Number(n) || 0));
 }
 
-const VALID_VERDICT_LEVELS   = ['absent', 'weak', 'present'];
-const VALID_DECISION_STATES  = ['not_seen', 'seen_not_considered', 'considered_not_chosen', 'trusted_not_chosen', 'chosen_by_default'];
+const VALID_VERDICT_LEVELS    = ['absent', 'weak', 'present'];
+const VALID_DECISION_STATES   = ['not_seen', 'seen_not_considered', 'considered_not_chosen', 'trusted_not_chosen', 'chosen_by_default'];
 const VALID_PLATFORM_STATUSES = ['absent', 'weak', 'present'];
-const VALID_TIERS            = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent'];
-const DOMINANT_TIERS         = ['dominant', 'strong'];
-
-const VALID_DECISION_ENVS = ['discovery_driven', 'comparison_driven', 'authority_driven', 'default_driven'];
+const VALID_TIERS             = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent'];
+const DOMINANT_TIERS          = ['dominant', 'strong'];
+const VALID_DECISION_ENVS     = ['discovery_driven', 'comparison_driven', 'authority_driven', 'default_driven'];
 
 function hasValidShape(output) {
   if (!output || typeof output !== 'object') return false;
@@ -41,8 +39,6 @@ function hasValidShape(output) {
   );
 }
 
-// ── Normalize a single pillar ────────────────────────────────────────────────
-// Accepts both old shape { score, finding } and new shape { score, finding, analysis, evidence }
 function normalizePillar(raw) {
   if (!raw || typeof raw !== 'object') {
     return { score: 0, finding: 'Insufficient data.', analysis: '', evidence: '' };
@@ -55,32 +51,22 @@ function normalizePillar(raw) {
   };
 }
 
-// ── Resolve displacement from old or new competitor shape ────────────────────
-// Old shape: output.displacement.competitorName / competitorWhy / competitorQuery
-// New shape: output.competitor.name / analysis / queryContext
-// Frontend always receives: displacement.competitorName / competitorWhy / competitorQuery
 function resolveDisplacement(output) {
   const empty = { competitorName: '', competitorWhy: '', competitorQuery: '' };
-
-  // Prefer new competitor field if present and has a name
-  if (output?.competitor?.name) {
+  if (output && output.competitor && output.competitor.name) {
     return {
       competitorName:  output.competitor.name        || '',
       competitorWhy:   output.competitor.analysis    || '',
       competitorQuery: output.competitor.queryContext || ''
     };
   }
-
-  // Fall back to old displacement field
-  if (output?.displacement?.competitorName) {
+  if (output && output.displacement && output.displacement.competitorName) {
     return {
       competitorName:  output.displacement.competitorName  || '',
       competitorWhy:   output.displacement.competitorWhy   || '',
       competitorQuery: output.displacement.competitorQuery || ''
     };
   }
-
-  // No competitor — return empty (do not invent data)
   return empty;
 }
 
@@ -89,18 +75,18 @@ function buildSafeOutput(output) {
 
   const safe = {
     overallScore:          typeof output?.overallScore === 'number' ? output.overallScore : 0,
-    inferredCategory:      output?.inferredCategory || '',
-    verdictHeadline:       output?.verdictHeadline       || 'Diagnostic incomplete',
+    inferredCategory:      output?.inferredCategory      || '',
+    verdictHeadline:       output?.verdictHeadline        || 'Diagnostic incomplete',
     verdictLevel:          VALID_VERDICT_LEVELS.includes(output?.verdictLevel) ? output.verdictLevel : 'absent',
-    signatureLine:         output?.signatureLine          || 'Present — but not chosen.',
+    signatureLine:         output?.signatureLine           || 'Present — but not chosen.',
     decisionState:         VALID_DECISION_STATES.includes(output?.decisionState) ? output.decisionState : 'considered_not_chosen',
     decisionEnvironment:   VALID_DECISION_ENVS.includes(output?.decisionEnvironment) ? output.decisionEnvironment : '',
-    summaryParagraph:      output?.summaryParagraph       || 'The diagnostic could not fully assess this business.',
-    businessUnderstanding: output?.businessUnderstanding  || '',
+    summaryParagraph:      output?.summaryParagraph        || 'The diagnostic could not fully assess this business.',
+    businessUnderstanding: output?.businessUnderstanding   || '',
     marketPosition: {
       tier:        VALID_TIERS.includes(output?.marketPosition?.tier) ? output.marketPosition.tier : 'unknown',
-      label:       output?.marketPosition?.label       || 'Unknown position',
-      explanation: output?.marketPosition?.explanation || ''
+      label:       output?.marketPosition?.label        || 'Unknown position',
+      explanation: output?.marketPosition?.explanation  || ''
     },
     evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
     pillars: {
@@ -121,17 +107,50 @@ function buildSafeOutput(output) {
     displacement:   resolveDisplacement(output),
     competitors:    Array.isArray(output && output.competitors)   ? output.competitors   : [],
     socialSignals:  (output && output.socialSignals && typeof output.socialSignals === 'object') ? output.socialSignals : {},
-    summaries:      (output && output.summaries && typeof output.summaries === 'object') ? output.summaries : {}
+    summaries:      (output && output.summaries    && typeof output.summaries    === 'object') ? output.summaries    : {}
   };
 
-  // Validate platform statuses
-  // Dominant brands are known to all AI platforms — force present
+  // ── Validate platform statuses ────────────────────────────────────────────
   for (const platform of ['chatgpt', 'perplexity', 'gemini', 'claude']) {
     const s = safe.platformCoverage[platform].status;
     if (!VALID_PLATFORM_STATUSES.includes(s)) {
       safe.platformCoverage[platform].status = 'absent';
     }
-    if (isDominant) {
+  }
+
+  // ── Clamp pillar scores ───────────────────────────────────────────────────
+  const cs = clampScore(safe.pillars.clarity.score);
+  const ts = clampScore(safe.pillars.trust.score);
+  const ds = clampScore(safe.pillars.difference.score);
+  const es = clampScore(safe.pillars.ease.score);
+
+  safe.pillars.clarity.score    = cs;
+  safe.pillars.trust.score      = ts;
+  safe.pillars.difference.score = ds;
+  safe.pillars.ease.score       = es;
+
+  // ── Market tier ───────────────────────────────────────────────────────────
+  const marketTier  = safe.marketPosition.tier;
+  const isDominant  = DOMINANT_TIERS.includes(marketTier);
+  const isStrong    = marketTier === 'strong';
+
+  // ── Difference floor: dominant/strong brands ──────────────────────────────
+  // A globally recognized brand cannot score below 13 on Difference
+  const dsAdjusted = (isDominant && ds < 13) ? 13 : ds;
+  safe.pillars.difference.score = dsAdjusted;
+
+  // ── Trust floor: dominant brands ──────────────────────────────────────────
+  // Magic Circle, Big Four, global institutions don't collect public reviews
+  // Their trust comes from institutional recognition
+  const tsAdjusted = (isDominant && ts < 16) ? 16 : ts;
+  safe.pillars.trust.score = tsAdjusted;
+
+  // ── Overall score ─────────────────────────────────────────────────────────
+  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
+
+  // ── Platform override: dominant brands always PRESENT ────────────────────
+  if (isDominant) {
+    for (const platform of ['chatgpt', 'perplexity', 'gemini', 'claude']) {
       safe.platformCoverage[platform].status = 'present';
       if (!safe.platformCoverage[platform].detail || safe.platformCoverage[platform].detail === 'No data available.') {
         safe.platformCoverage[platform].detail = 'Established brand with confirmed market presence.';
@@ -139,56 +158,7 @@ function buildSafeOutput(output) {
     }
   }
 
-  // Clamp pillar scores
-  const cs = clampScore(safe.pillars.clarity.score);
-  const ts = clampScore(safe.pillars.trust.score);
-  const ds = clampScore(safe.pillars.difference.score);
-  var es = clampScore(safe.pillars.ease.score);
-  // Correct Claude reasoning error: ease=0 means site doesn't exist.
-  // If trust+clarity scores show real evidence was found, site clearly exists.
-  // OG tags present (from websiteText) = minimum 3. No schema = max 8.
-  // This corrects a known Claude error, not an artificial boost.
-  if (es === 0 && (cs + ts) >= 20) {
-    es = 3;
-    if (safe.pillars.ease.finding === 'Insufficient data.' || !safe.pillars.ease.finding) {
-      safe.pillars.ease.finding = 'Website present. No schema or structured data detected.';
-    }
-  }
-
-  safe.pillars.clarity.score    = cs;
-  safe.pillars.trust.score      = ts;
-
-  // Difference floor for dominant/strong brands
-  // A globally recognized brand cannot score below 13 on Difference
-  var dsAdjusted = ds;
-  if (DOMINANT_TIERS.includes(safe.marketPosition.tier) && ds < 13) {
-    dsAdjusted = 13;
-  }
-  safe.pillars.difference.score = dsAdjusted;
-  safe.pillars.ease.score       = es;
-
-  // overallScore = deterministic sum of clamped pillars
-  const marketTier = safe.marketPosition.tier;
-  const isDominant = DOMINANT_TIERS.includes(marketTier);
-
-  // Trust floor for dominant brands — after isDominant is defined
-  // Magic Circle law firms, Big Four don't collect public reviews
-  // Their trust comes from institutional recognition — floor at 16
-  if (isDominant && safe.pillars.trust.score < 16) {
-    safe.pillars.trust.score = 16;
-  }
-  var tsAdjusted = safe.pillars.trust.score;
-
-  // Recalculate overallScore with adjusted trust
-  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
-
   // ── VERDICT OVERRIDE ─────────────────────────────────────────────────────
-  // verdictLevel = recommendation likelihood (market position driven)
-  // overallScore = AI readability (pillar evidence driven)
-  // These are intentionally separate dimensions.
-
-  var isStrong = safe.marketPosition.tier === 'strong';
-
   if (isDominant) {
     safe.verdictLevel    = 'present';
     safe.verdictHeadline = 'Chosen by default — but infrastructure is exposed';
