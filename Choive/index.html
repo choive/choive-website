@@ -841,6 +841,52 @@ footer {
   content:''; flex:1; height:1px; background:var(--rule-d);
 }
 
+/* ─── DELIVERABLES ───────────────────────────── */
+.deliv-section { padding:36px 0; border-bottom:1px solid var(--rule-d); }
+.deliv-tabs {
+  display:flex; gap:2px; margin-bottom:20px; flex-wrap:wrap;
+}
+.deliv-tab {
+  font-size:11px; font-weight:700; letter-spacing:0.08em;
+  text-transform:uppercase; padding:8px 16px; cursor:pointer;
+  background:var(--dk-3); border:1px solid var(--rule-d); color:var(--tm);
+  transition:all 0.15s;
+}
+.deliv-tab.active { background:var(--ac); color:var(--dk); border-color:var(--ac); }
+.deliv-tab:hover:not(.active) { color:var(--tp); border-color:var(--tm); }
+.deliv-panel { display:none; }
+.deliv-panel.active { display:block; }
+.deliv-label {
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--tm); margin-bottom:8px;
+}
+.deliv-current {
+  font-size:13px; color:var(--tm); margin-bottom:12px;
+  padding:10px 14px; background:var(--dk-3); border-left:2px solid var(--rule-d);
+  font-style:italic;
+}
+.deliv-code {
+  font-family:'DM Mono', 'Courier New', monospace;
+  font-size:12px; line-height:1.65; color:var(--tb);
+  background:var(--dk-3); padding:16px; overflow-x:auto;
+  white-space:pre; border:1px solid var(--rule-d); margin-bottom:12px;
+}
+.deliv-options { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.deliv-option {
+  padding:14px 16px; background:var(--dk-3); border:1px solid var(--rule-d);
+  cursor:pointer; transition:border-color 0.15s;
+}
+.deliv-option:hover { border-color:var(--ac); }
+.deliv-option-text { font-size:14px; font-weight:500; color:var(--tp); margin-bottom:4px; }
+.deliv-option-note { font-size:11px; color:var(--tm); }
+.deliv-copy-btn {
+  font-size:11px; font-weight:700; letter-spacing:0.08em;
+  text-transform:uppercase; padding:8px 16px; cursor:pointer;
+  background:transparent; border:1px solid var(--rule-d); color:var(--tm);
+  transition:all 0.15s;
+}
+.deliv-copy-btn:hover { border-color:var(--ac); color:var(--ac); }
+
 /* ─── AI SIMULATION ──────────────────────────── */
 .sim-section { padding:36px 0; border-bottom:1px solid var(--rule-d); }
 .sim-loading {
@@ -2954,6 +3000,12 @@ function showResults(r, jobId) {
       <div class="paid-narrative">${esc(r.businessUnderstanding || r.summaryParagraph || '')}</div>
     </div>
 
+    <div class="pay-section deliv-section" id="delivSection">
+      <div class="pay-eyebrow">Ready-to-Use Assets</div>
+      <div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ${esc(bizData.name || '')}. Copy and implement these directly — no further work needed.</div>
+      <div id="delivContent"></div>
+    </div>
+
     <div class="pay-section sim-section" id="simSection">
       <div class="pay-eyebrow">AI Visibility Simulation</div>
       <div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries — the same questions your customers ask when looking for what you offer. Below is exactly what the AI said, and whether your business appeared.</div>
@@ -3117,6 +3169,15 @@ function showResults(r, jobId) {
 
   zone.scrollIntoView({ behavior: 'smooth' });
 
+  // Populate deliverables after DOM is ready
+  try {
+    var delivEl = document.getElementById('delivContent');
+    if (delivEl) delivEl.innerHTML = buildDeliverables(r);
+  } catch(e) {
+    var delivEl = document.getElementById('delivContent');
+    if (delivEl) delivEl.innerHTML = '<div style="font-size:13px;color:var(--tm);">Deliverables unavailable for this diagnostic.</div>';
+  }
+
   // Trigger AI simulation if paid
   if (isPaid) {
     runAISimulation(r);
@@ -3217,6 +3278,112 @@ async function submitCHOIVEForm(event) {
   } catch (err) {
     errorBox.textContent = 'Something went wrong. Try again.';
   }
+}
+
+function buildDeliverables(r) {
+  var d = r.deliverables;
+  if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available. Run a new diagnostic to generate them.</div>';
+
+  function codeBlock(id, content) {
+    return '<div class="deliv-code" id="' + id + '">' + esc(content) + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, ' + JSON.stringify(id) + ')">Copy</button>';
+  }
+
+  var jsonLdHtml = d.jsonLd
+    ? '<div class="deliv-label">Paste inside your &lt;head&gt; tag</div>' + codeBlock('dj', d.jsonLd)
+    : '<div style="font-size:13px;color:var(--tm);">Schema not generated.</div>';
+
+  var llmsHtml = d.llmsTxt
+    ? '<div class="deliv-label">Save as /llms.txt on your website root</div>' + codeBlock('dl', d.llmsTxt)
+    : '<div style="font-size:13px;color:var(--tm);">llms.txt not generated.</div>';
+
+  var h1Html = '';
+  if (d.h1Rewrite) {
+    if (d.h1Rewrite.current) h1Html += '<div class="deliv-label">Current H1</div><div class="deliv-current">' + esc(d.h1Rewrite.current) + '</div>';
+    if (d.h1Rewrite.options && d.h1Rewrite.options.length > 0) {
+      h1Html += '<div class="deliv-label">Suggested rewrites — click to copy</div><div class="deliv-options">';
+      d.h1Rewrite.options.forEach(function(opt) {
+        var safeOpt = JSON.stringify(opt);
+        h1Html += '<div class="deliv-option" onclick="copyText(' + safeOpt + ', this)">'
+          + '<div class="deliv-option-text">' + esc(opt) + '</div>'
+          + '<div class="deliv-option-note">Click to copy</div></div>';
+      });
+      h1Html += '</div>';
+    }
+  }
+
+  var metaHtml = '';
+  if (d.metaRewrite) {
+    if (d.metaRewrite.current) metaHtml += '<div class="deliv-label">Current meta description</div><div class="deliv-current">' + esc(d.metaRewrite.current) + '</div>';
+    if (d.metaRewrite.improved) metaHtml += '<div class="deliv-label">Improved meta description</div>' + codeBlock('dm', d.metaRewrite.improved);
+  }
+
+  var tabs = [
+    { id: 'dSchema', label: 'Schema',   content: jsonLdHtml },
+    { id: 'dLlms',   label: 'llms.txt', content: llmsHtml   },
+    { id: 'dH1',     label: 'H1',       content: h1Html     },
+    { id: 'dMeta',   label: 'Meta',     content: metaHtml   }
+  ];
+
+  var html = '<div class="deliv-tabs">';
+  tabs.forEach(function(tab, i) {
+    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(' + JSON.stringify(tab.id) + ', this)">' + tab.label + '</button>';
+  });
+  html += '</div>';
+  tabs.forEach(function(tab, i) {
+    html += '<div class="deliv-panel' + (i === 0 ? ' active' : '') + '" id="' + tab.id + '">' + tab.content + '</div>';
+  });
+  return html;
+}
+
+
+function switchDelivTab(id, btn) {
+  var container = btn.closest('.deliv-section') || document;
+  container.querySelectorAll('.deliv-tab').forEach(function(el) { el.classList.remove('active'); });
+  container.querySelectorAll('.deliv-panel').forEach(function(el) { el.classList.remove('active'); });
+  btn.classList.add('active');
+  var panel = document.getElementById(id);
+  if (panel) panel.classList.add('active');
+}
+
+function switchTab(id) {
+  document.querySelectorAll('.deliv-tab').forEach(function(el, i) {
+    el.classList.toggle('active', el.textContent.toLowerCase() === id.replace('tab-', ''));
+  });
+  document.querySelectorAll('.deliv-panel').forEach(function(el) {
+    el.classList.toggle('active', el.id === id);
+  });
+  // Fix: match by id directly
+  document.querySelectorAll('.deliv-tab').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.deliv-panel').forEach(function(el) { el.classList.remove('active'); });
+  var panel = document.getElementById(id);
+  if (panel) panel.classList.add('active');
+  // Activate matching tab button by index
+  var tabs = document.querySelectorAll('.deliv-tab');
+  var panels = document.querySelectorAll('.deliv-panel');
+  for (var i = 0; i < panels.length; i++) {
+    if (panels[i].id === id && tabs[i]) tabs[i].classList.add('active');
+  }
+}
+
+function copyDeliv(btn, id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  });
+}
+
+function copyText(text, el) {
+  navigator.clipboard.writeText(text).then(function() {
+    var note = el && el.querySelector('.deliv-option-note');
+    if (note) {
+      note.textContent = 'Copied!';
+      setTimeout(function() { note.textContent = 'Click to copy'; }, 1500);
+    }
+  });
 }
 
 function stripMd(text) {
