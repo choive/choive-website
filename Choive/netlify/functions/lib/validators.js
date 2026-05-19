@@ -180,6 +180,17 @@ function buildSafeOutput(output) {
     safe.verdictHeadline = 'The obvious choice — winning decisions';
   }
 
+  // Fix summary paragraph framing for dominant brands
+  if (isDominant && safe.summaryParagraph && safe.summaryParagraph.startsWith('This business is not the obvious choice')) {
+    safe.summaryParagraph = safe.summaryParagraph.replace(
+      'This business is not the obvious choice because it',
+      'This business is currently chosen because it'
+    ).replace(
+      'This business is not the obvious choice because',
+      'This business is currently chosen despite the fact that'
+    );
+  }
+
   return safe;
 }
 
