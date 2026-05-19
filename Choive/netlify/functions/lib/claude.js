@@ -334,8 +334,21 @@ function buildPrompt(evidence) {
     'DO NOT mark all platforms absent for a business with 15+ years, named clients,\n' +
     'and confirmed web presence. Use weak as the floor for established businesses.\n\n' +
 
-    'MARKET POSITION TIERS:\n' +
-    'dominant, strong, upper_mid, mid, weak, absent\n\n' +
+    'MARKET POSITION TIERS:\\n' +
+    'dominant: globally or nationally recognized — appears in AI recommendations unprompted\\n' +
+    '  Examples: Nike, Starbucks, Nobu, Salesforce, McKinsey\\n' +
+    'strong: well-known in category — named by buyers without prompting\\n' +
+    '  Examples: Pipedrive, Freshfields, leading regional chains\\n' +
+    'upper_mid: known within category but not immediately top-of-mind\\n' +
+    'mid: present but requires active search to find\\n' +
+    'weak: limited presence — hard to find without knowing the name\\n' +
+    'absent: no detectable presence in evidence\\n\\n' +
+    'TIER RULES (critical):\\n' +
+    '- Michelin stars + celebrity founder + global locations + press = dominant or strong\\n' +
+    '- Technical gaps (no schema, no llms.txt) do NOT lower market position tier\\n' +
+    '- Tier = real-world selection likelihood, not website quality\\n' +
+    '- A dominant brand with poor schema is still dominant\\n' +
+    '- The schema gap belongs in Ease score, not tier\\n\\n' +
 
     'DECISION STATES:\n' +
     'not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, chosen_by_default\n\n' +
