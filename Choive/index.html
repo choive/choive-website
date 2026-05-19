@@ -3225,6 +3225,7 @@ function stripMd(text) {
     .replace(/#{1,6}\s+/g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/^[-*]\s+/gm, '\u2022 ')
     .replace(/^\d+\.\s+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
