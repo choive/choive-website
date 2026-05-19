@@ -3237,6 +3237,8 @@ async function runAISimulation(r) {
   var results = document.getElementById('simResults');
   if (!loading || !results) return;
 
+  console.log('[CHOIVE] runAISimulation called for:', bizData.name, '| isPaid:', typeof isPaid !== 'undefined' ? isPaid : 'undefined');
+
   try {
     var res = await fetch('/.netlify/functions/ai-simulation', {
       method: 'POST',
