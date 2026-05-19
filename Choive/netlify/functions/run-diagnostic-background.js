@@ -8,7 +8,8 @@ const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText
 const { scoreWithClaude, inferCategory } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
-const { fetchApifyEvidence } = require('./lib/apify');
+const { fetchApifyEvidence }      = require('./lib/apify');
+const { generateDeliverables }    = require('./lib/deliverables');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -185,6 +186,14 @@ exports.handler = async function (event) {
       finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
     }
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
+    // Generate ready-to-use deliverables
+    try {
+      var deliverables = generateDeliverables(evidence, finalResult);
+      finalResult['deliverables'] = deliverables;
+    } catch (err) {
+      console.warn('[' + jobId + '] Deliverables failed:', err.message);
+    }
+
     await saveResult(jobId, finalResult);
     console.log('[' + jobId + '] Diagnostic complete.');
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
