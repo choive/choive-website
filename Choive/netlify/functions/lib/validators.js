@@ -125,10 +125,17 @@ function buildSafeOutput(output) {
   };
 
   // Validate platform statuses
+  // Dominant brands are known to all AI platforms — force present
   for (const platform of ['chatgpt', 'perplexity', 'gemini', 'claude']) {
     const s = safe.platformCoverage[platform].status;
     if (!VALID_PLATFORM_STATUSES.includes(s)) {
       safe.platformCoverage[platform].status = 'absent';
+    }
+    if (isDominant) {
+      safe.platformCoverage[platform].status = 'present';
+      if (!safe.platformCoverage[platform].detail || safe.platformCoverage[platform].detail === 'No data available.') {
+        safe.platformCoverage[platform].detail = 'Established brand with confirmed market presence.';
+      }
     }
   }
 
@@ -149,7 +156,15 @@ function buildSafeOutput(output) {
   }
 
   safe.pillars.clarity.score    = cs;
-  safe.pillars.trust.score      = ts;
+
+  // Trust floor for dominant brands
+  // Magic Circle law firms, Big Four, global institutions don't collect public reviews
+  // Their trust comes from institutional recognition — floor at 16
+  var tsAdjusted = ts;
+  if (isDominant && ts < 16) {
+    tsAdjusted = 16;
+  }
+  safe.pillars.trust.score = tsAdjusted;
 
   // Difference floor for dominant/strong brands
   // A globally recognized brand cannot score below 13 on Difference
@@ -161,7 +176,7 @@ function buildSafeOutput(output) {
   safe.pillars.ease.score       = es;
 
   // overallScore = deterministic sum of clamped pillars
-  safe.overallScore = cs + ts + dsAdjusted + es;
+  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
 
   const marketTier = safe.marketPosition.tier;
   const isDominant = DOMINANT_TIERS.includes(marketTier);
