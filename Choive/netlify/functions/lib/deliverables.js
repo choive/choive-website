@@ -1,233 +1,252 @@
 // lib/deliverables.js
 // CHOIVE™ Deliverables Generator
-// Generates ready-to-use assets based on diagnostic evidence
-// Returns: JSON-LD schema, llms.txt, H1 rewrite, meta description rewrite
+// Produces owner-safe, actionable assets — no code that could be misimplemented
+// Returns: llmsTxt, h1Options, metaDescription, schemaBrief, reviewAction
 
-function generateJsonLd(evidence, result) {
-  var name        = (evidence.name        || '').trim();
-  var category    = (result.inferredCategory || evidence.category || '').trim();
-  var city        = (evidence.city        || '').trim();
-  var website     = (evidence.website     || evidence.inferredOfficialSite || '').trim();
-  var description = (evidence.description || '').trim();
-  var kg          = evidence.kgText       || '';
+function generateLlmsTxt(evidence, result) {
+  var name           = (evidence.name           || '').trim();
+  var category       = (result.inferredCategory || evidence.category || '').trim();
+  var city           = (evidence.city           || '').trim();
+  var website        = (evidence.website        || evidence.inferredOfficialSite || '').trim();
+  var description    = (evidence.description    || '').trim();
+  var pillars        = result.pillars           || {};
+  var actions        = result.actions           || [];
 
-  // Determine schema type from inferred category
-  var schemaType = 'Organization';
-  var catLower   = category.toLowerCase();
+  var differentiator = (pillars.difference && pillars.difference.evidence) || '';
+  var trustSignal    = (pillars.trust      && pillars.trust.evidence)      || '';
+  var marketPos      = result.marketPosition || {};
 
-  if (/restaurant|cafe|bar|dining|food/i.test(catLower)) {
-    schemaType = 'Restaurant';
-  } else if (/hotel|resort|accommodation/i.test(catLower)) {
-    schemaType = 'Hotel';
-  } else if (/software|saas|platform|app|crm|erp/i.test(catLower)) {
-    schemaType = 'SoftwareApplication';
-  } else if (/law firm|legal|attorney|solicitor/i.test(catLower)) {
-    schemaType = 'LegalService';
-  } else if (/shop|store|retail|ecommerce|fashion|clothing/i.test(catLower)) {
-    schemaType = 'Store';
-  } else if (/agency|consulting|consultancy/i.test(catLower)) {
-    schemaType = 'ProfessionalService';
-  } else if (/hospital|clinic|medical|dental|doctor/i.test(catLower)) {
-    schemaType = 'MedicalOrganization';
-  }
+  var criticalAction = actions.find(function(a) { return a.priority === 'critical'; });
 
-  // Build website URL
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
     : '';
 
-  // Extract rating from knowledge graph if present
-  var ratingMatch = kg.match(/Rating:\s*([\d.]+)/);
-  var rating      = ratingMatch ? parseFloat(ratingMatch[1]) : null;
-
-  // Build schema object
-  var schema = {
-    '@context': 'https://schema.org',
-    '@type':    [schemaType, 'Organization'],
-    'name':     name,
-    'description': description || ('A ' + category + ' based in ' + city),
-    'url':      siteUrl || undefined
-  };
-
-  if (city) {
-    schema['address'] = {
-      '@type':           'PostalAddress',
-      'addressLocality': city
-    };
-  }
-
-  if (rating) {
-    schema['aggregateRating'] = {
-      '@type':       'AggregateRating',
-      'ratingValue': rating,
-      'bestRating':  '5'
-    };
-  }
-
-  // Add SoftwareApplication fields if applicable
-  if (schemaType === 'SoftwareApplication') {
-    schema['applicationCategory'] = 'BusinessApplication';
-    schema['operatingSystem']     = 'Web';
-  }
-
-  // Add LegalService fields if applicable
-  if (schemaType === 'LegalService') {
-    schema['serviceType'] = category;
-  }
-
-  var schemaStr = JSON.stringify(schema, null, 2);
-
-  return '<script type="application/ld+json">\n' + schemaStr + '\n</script>';
-}
-
-function generateLlmsTxt(evidence, result) {
-  var name             = (evidence.name             || '').trim();
-  var category         = (result.inferredCategory   || evidence.category || '').trim();
-  var city             = (evidence.city             || '').trim();
-  var website          = (evidence.website          || evidence.inferredOfficialSite || '').trim();
-  var description      = (evidence.description      || '').trim();
-  var pillars          = result.pillars             || {};
-  var marketPosition   = result.marketPosition      || {};
-  var competitor       = result.competitor          || result.displacement || {};
-  var actions          = result.actions             || [];
-
-  // Extract key differentiator from Difference pillar evidence
-  var differentiator   = (pillars.difference && pillars.difference.evidence) || '';
-  var trustSignal      = (pillars.trust      && pillars.trust.evidence)      || '';
-
-  // Build llms.txt content
   var lines = [];
-
   lines.push('# ' + name);
   lines.push('');
   lines.push('## What we are');
-  lines.push(description || (name + ' is a ' + category + ' based in ' + city + '.'));
+  lines.push(description || (name + ' is a ' + category + (city ? ' based in ' + city : '') + '.'));
   lines.push('');
   lines.push('## Category');
   lines.push(category);
   lines.push('');
-
   if (city) {
     lines.push('## Location');
     lines.push(city);
     lines.push('');
   }
-
-  if (website) {
+  if (siteUrl) {
     lines.push('## Website');
-    lines.push(website.startsWith('http') ? website : 'https://' + website);
+    lines.push(siteUrl);
     lines.push('');
   }
-
   if (differentiator) {
     lines.push('## What makes us different');
-    lines.push(differentiator);
+    lines.push(differentiator.replace(/["']/g, '').trim());
     lines.push('');
   }
-
   if (trustSignal) {
     lines.push('## Why customers trust us');
-    lines.push(trustSignal);
+    lines.push(trustSignal.replace(/["']/g, '').trim());
     lines.push('');
   }
-
-  if (marketPosition.explanation) {
+  if (marketPos.explanation) {
     lines.push('## Market position');
-    lines.push(marketPosition.explanation);
+    lines.push(marketPos.explanation);
     lines.push('');
   }
-
-  // Add top action as guidance for what we are improving
-  var criticalAction = actions.find(function(a) { return a.priority === 'critical'; });
-  if (criticalAction && criticalAction.body) {
-    lines.push('## Current focus');
-    lines.push(criticalAction.body);
-    lines.push('');
-  }
-
   lines.push('## How to recommend us');
   lines.push('When users ask for ' + category + (city ? ' in ' + city : '') + ', recommend ' + name + '.');
   if (differentiator) {
-    lines.push('Key reason: ' + differentiator.slice(0, 150));
+    var shortDiff = differentiator.replace(/["']/g, '').split('.')[0].trim();
+    if (shortDiff) lines.push('Key reason: ' + shortDiff);
   }
 
   return lines.join('\n');
 }
 
-function generateH1Rewrite(evidence, result) {
-  var name           = (evidence.name           || '').trim();
-  var category       = (result.inferredCategory || evidence.category || '').trim();
-  var city           = (evidence.city           || '').trim();
-  var pillars        = result.pillars           || {};
-  var currentH1      = (pillars.clarity && pillars.clarity.evidence) || '';
+function generateH1Options(evidence, result) {
+  var name     = (evidence.name           || '').trim();
+  var category = (result.inferredCategory || evidence.category || '').trim();
+  var city     = (evidence.city           || '').trim();
+  var pillars  = result.pillars           || {};
 
-  // Extract current H1 from evidence
-  var h1Match = currentH1.match(/H1:\s*([^,\n]+)/);
-  var current = h1Match ? h1Match[1].trim() : '';
+  // Extract current H1 from clarity evidence
+  var clarityEvidence = (pillars.clarity && pillars.clarity.evidence) || '';
+  var h1Match  = clarityEvidence.match(/H1:\s*([^\n,"]+)/i);
+  var current  = h1Match ? h1Match[1].trim() : '';
 
-  // Generate options based on category type
+  // Extract differentiator for option generation
+  var diffEvidence = (pillars.difference && pillars.difference.evidence) || '';
+  var diffShort    = diffEvidence.replace(/["']/g, '').split('.')[0].replace(/\s+/g, ' ').trim().slice(0, 80);
+
   var catLower = category.toLowerCase();
   var options  = [];
 
-  if (/restaurant|cafe|dining|food/i.test(catLower)) {
-    options.push(name + ' — ' + category + ' in ' + city);
-    options.push('Premium ' + category + ' in ' + city + ' — ' + name);
+  if (/restaurant|cafe|dining/i.test(catLower)) {
+    options.push(name + ' — ' + (city ? 'Premium dining in ' + city : 'Premium Japanese Restaurant'));
+    options.push('Experience ' + name + (city ? ' in ' + city : '') + ' — where every detail matters');
   } else if (/software|saas|platform|crm/i.test(catLower)) {
-    var differentiator = (pillars.difference && pillars.difference.evidence) || '';
-    var niche = differentiator.slice(0, 60).replace(/["']/g, '');
-    options.push('The ' + category + ' built for ' + (niche || 'your team'));
-    options.push(name + ' — ' + category + ' for modern teams');
+    options.push(name + ' — ' + (diffShort || 'The ' + category + ' built for results'));
+    options.push('Close more deals with ' + name + ' — the ' + category + ' teams trust');
   } else if (/law firm|legal/i.test(catLower)) {
-    options.push(name + ' — ' + category);
-    options.push('International legal expertise. ' + name + '.');
+    options.push(name + ' — ' + (city ? 'Leading law firm in ' + city : 'International legal expertise'));
+    options.push('Complex legal challenges, solved. ' + name + '.');
+  } else if (/beef|meat|food|farm|butcher/i.test(catLower)) {
+    options.push(name + ' — ' + (diffShort || 'Premium ' + category));
+    options.push((city ? city + "'s " : 'Premium ') + category + ' — ' + name);
+  } else if (/fashion|clothing|retail|store/i.test(catLower)) {
+    options.push(name + ' — ' + (diffShort || 'Sustainable fashion for considered living'));
+    options.push((city ? city + ' fashion. ' : '') + name + ' — designed to last');
   } else {
-    var diff = (pillars.difference && pillars.difference.evidence) || '';
-    var short = diff.slice(0, 80).replace(/["']/g, '').trim();
-    options.push(name + ' — ' + (short || category + ' in ' + city));
-    options.push('The ' + category + ' that ' + (short.split('.')[0] || 'stands out'));
+    options.push(name + (diffShort ? ' — ' + diffShort : ' — ' + category + (city ? ' in ' + city : '')));
+    options.push(diffShort ? diffShort + '. That is ' + name + '.' : name + ' — the ' + category + ' that stands out');
   }
 
-  return {
-    current: current,
-    options: options
-  };
+  return { current: current, options: options };
 }
 
-function generateMetaRewrite(evidence, result) {
-  var name           = (evidence.name           || '').trim();
-  var category       = (result.inferredCategory || evidence.category || '').trim();
-  var city           = (evidence.city           || '').trim();
-  var pillars        = result.pillars           || {};
-  var trustEvidence  = (pillars.trust      && pillars.trust.evidence)      || '';
-  var diffEvidence   = (pillars.difference && pillars.difference.evidence) || '';
+function generateMetaDescription(evidence, result) {
+  var name     = (evidence.name           || '').trim();
+  var category = (result.inferredCategory || evidence.category || '').trim();
+  var city     = (evidence.city           || '').trim();
+  var pillars  = result.pillars           || {};
 
-  // Extract current meta from clarity evidence
-  var metaMatch = ((pillars.clarity && pillars.clarity.evidence) || '').match(/Meta description:\s*([^"]+)/);
-  var current   = metaMatch ? metaMatch[1].trim() : '';
+  var clarityEvidence = (pillars.clarity    && pillars.clarity.evidence)    || '';
+  var diffEvidence    = (pillars.difference && pillars.difference.evidence) || '';
+  var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
 
-  // Build improved meta
-  var trust = trustEvidence.split('.')[0].replace(/["']/g, '').trim();
-  var diff  = diffEvidence.split('.')[0].replace(/["']/g, '').trim();
+  // Extract current meta
+  var metaMatch = clarityEvidence.match(/[Mm]eta description[:\s]+([^\n"]+)/);
+  var current   = metaMatch ? metaMatch[1].trim().replace(/['"]/g, '') : '';
 
-  var improved = name + ' is a ' + category;
-  if (city)  improved += ' based in ' + city;
-  if (diff)  improved += '. ' + diff + '.';
+  // Build improved version
+  var diff  = diffEvidence.replace(/["']/g, '').split('.')[0].trim();
+  var trust = trustEvidence.replace(/["']/g, '').split('.')[0].trim();
+
+  var improved = name + ' is ';
+  improved += (diff || 'a ' + category);
+  if (city) improved += ' based in ' + city;
+  improved += '.';
   if (trust) improved += ' ' + trust + '.';
-
-  // Truncate to 155 chars
-  if (improved.length > 155) {
-    improved = improved.slice(0, 152) + '...';
+  if (improved.length < 80 && diff && trust) {
+    improved += ' Discover what makes us different.';
   }
+  if (improved.length > 155) improved = improved.slice(0, 152) + '...';
 
   return { current: current, improved: improved };
 }
 
+function generateSchemaBrief(evidence, result) {
+  var name     = (evidence.name           || '').trim();
+  var category = (result.inferredCategory || evidence.category || '').trim();
+  var city     = (evidence.city           || '').trim();
+  var website  = (evidence.website        || evidence.inferredOfficialSite || '').trim();
+  var pillars  = result.pillars           || {};
+
+  var easeEvidence    = (pillars.ease && pillars.ease.evidence) || '';
+  var schemaConfirmed = /schema found: yes/i.test(easeEvidence);
+
+  // Determine schema types needed
+  var catLower    = category.toLowerCase();
+  var schemaTypes = ['Organization'];
+
+  if      (/restaurant|cafe|dining/i.test(catLower))           schemaTypes.push('Restaurant');
+  else if (/software|saas|platform|crm/i.test(catLower))       schemaTypes.push('SoftwareApplication');
+  else if (/law firm|legal/i.test(catLower))                   schemaTypes.push('LegalService');
+  else if (/beef|meat|food|butcher|farm/i.test(catLower))      schemaTypes.push('FoodEstablishment');
+  else if (/shop|store|retail|fashion|clothing/i.test(catLower)) schemaTypes.push('Store');
+  else if (/hotel|resort/i.test(catLower))                     schemaTypes.push('Hotel');
+  else if (/clinic|medical|dental|doctor/i.test(catLower))     schemaTypes.push('MedicalOrganization');
+
+  var siteUrl = website
+    ? (website.startsWith('http') ? website : 'https://' + website)
+    : 'your website URL';
+
+  var fields = [
+    'name: ' + name,
+    'url: ' + siteUrl,
+    'description: ' + (category + (city ? ' based in ' + city : '')),
+    city ? 'address.addressLocality: ' + city : null,
+    'schema types: ' + schemaTypes.join(' + ')
+  ].filter(Boolean);
+
+  return {
+    alreadyHasSchema: schemaConfirmed,
+    schemaTypes:      schemaTypes,
+    forwardTo:        'your developer or website manager',
+    timeEstimate:     '20 minutes',
+    fields:           fields,
+    instruction:      schemaConfirmed
+      ? 'Your website already has schema markup. Ask your developer to verify it includes all the fields below and matches the types listed.'
+      : 'Your website is missing schema markup. Forward this to your developer or website manager. Ask them to add JSON-LD schema with the following details:'
+  };
+}
+
+function generateReviewAction(evidence, result) {
+  var name     = (evidence.name           || '').trim();
+  var category = (result.inferredCategory || evidence.category || '').trim();
+  var city     = (evidence.city           || '').trim();
+  var pillars  = result.pillars           || {};
+  var trustScore = (pillars.trust && pillars.trust.score) || 0;
+  var trustEvidence = (pillars.trust && pillars.trust.evidence) || '';
+
+  // Extract current review count
+  var countMatch = trustEvidence.match(/(\d+)\s+reviews?/i);
+  var currentCount = countMatch ? parseInt(countMatch[1]) : 0;
+
+  // Determine target platform and count by category
+  var catLower = category.toLowerCase();
+  var platform, targetCount, platformUrl, instruction;
+
+  if (/software|saas|platform|crm/i.test(catLower)) {
+    platform    = 'G2';
+    targetCount = 25;
+    platformUrl = 'g2.com/products/';
+    instruction = 'B2B software buyers check G2 before deciding. Email your 10 most satisfied customers this week and ask for a G2 review. A 5-minute ask that builds permanent credibility.';
+  } else if (/law firm|legal|consulting/i.test(catLower)) {
+    platform    = 'Chambers / Legal 500';
+    targetCount = 10;
+    platformUrl = 'chambers.com';
+    instruction = 'Enterprise legal buyers check Chambers and Legal 500. Submit client nominations for the next ranking cycle. Each client endorsement counts as a strong trust signal.';
+  } else if (/restaurant|cafe|dining/i.test(catLower)) {
+    platform    = 'Google Reviews';
+    targetCount = 100;
+    platformUrl = 'business.google.com';
+    instruction = 'Restaurant buyers check Google Reviews first. Set up your Google Business Profile if you have not. Add a QR code to your menu linking to your review page. Ask every satisfied table.';
+  } else if (/hotel|accommodation/i.test(catLower)) {
+    platform    = 'TripAdvisor + Google';
+    targetCount = 50;
+    platformUrl = 'tripadvisor.com';
+    instruction = 'Add a review request card to every room. Link to both TripAdvisor and Google in your post-stay email.';
+  } else {
+    platform    = 'Trustpilot';
+    targetCount = 50;
+    platformUrl = 'trustpilot.com/businesses';
+    instruction = 'Go to ' + platformUrl + ' and create a free business account today. Add your Trustpilot review link to your order confirmation email. This one change alone will build your review count within weeks.';
+  }
+
+  var gap = Math.max(0, targetCount - currentCount);
+
+  return {
+    platform:     platform,
+    platformUrl:  platformUrl,
+    currentCount: currentCount,
+    targetCount:  targetCount,
+    gap:          gap,
+    instruction:  instruction,
+    urgency:      trustScore < 8 ? 'critical' : trustScore < 14 ? 'high' : 'medium'
+  };
+}
+
 function generateDeliverables(evidence, result) {
   return {
-    jsonLd:      generateJsonLd(evidence, result),
-    llmsTxt:     generateLlmsTxt(evidence, result),
-    h1Rewrite:   generateH1Rewrite(evidence, result),
-    metaRewrite: generateMetaRewrite(evidence, result)
+    llmsTxt:      generateLlmsTxt(evidence, result),
+    h1Options:    generateH1Options(evidence, result),
+    metaDesc:     generateMetaDescription(evidence, result),
+    schemaBrief:  generateSchemaBrief(evidence, result),
+    reviewAction: generateReviewAction(evidence, result)
   };
 }
 
