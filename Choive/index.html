@@ -3282,52 +3282,108 @@ async function submitCHOIVEForm(event) {
 
 function buildDeliverables(r) {
   var d = r.deliverables;
-  if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available. Run a new diagnostic to generate them.</div>';
+  if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available for this diagnostic.</div>';
 
-  function codeBlock(id, content) {
-    return '<div class="deliv-code" id="' + id + '">' + esc(content) + '</div>'
-      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, ' + JSON.stringify(id) + ')">Copy</button>';
+  function ownerTag() {
+    return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);background:rgba(194,240,212,0.1);border:1px solid var(--ac);padding:2px 7px;margin-left:8px;">You can do this</span>';
+  }
+  function devTag() {
+    return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span>';
   }
 
-  var jsonLdHtml = d.jsonLd
-    ? '<div class="deliv-label">Paste inside your &lt;head&gt; tag</div>' + codeBlock('dj', d.jsonLd)
-    : '<div style="font-size:13px;color:var(--tm);">Schema not generated.</div>';
+  // llms.txt
+  var llmsHtml = '<div style="margin-bottom:16px;">'
+    + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Save this file as <strong>llms.txt</strong> and upload it to your website root so it is accessible at <strong>yourdomain.com/llms.txt</strong>. Works in Shopify, Squarespace, WordPress, and any website builder that allows file uploads.</div>'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
+    + '<div class="deliv-code" id="dLlms">' + esc(d.llmsTxt || '') + '</div>'
+    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \"dLlms\")">Copy llms.txt</button>'
+    + '</div>';
 
-  var llmsHtml = d.llmsTxt
-    ? '<div class="deliv-label">Save as /llms.txt on your website root</div>' + codeBlock('dl', d.llmsTxt)
-    : '<div style="font-size:13px;color:var(--tm);">llms.txt not generated.</div>';
-
+  // H1
   var h1Html = '';
-  if (d.h1Rewrite) {
-    if (d.h1Rewrite.current) h1Html += '<div class="deliv-label">Current H1</div><div class="deliv-current">' + esc(d.h1Rewrite.current) + '</div>';
-    if (d.h1Rewrite.options && d.h1Rewrite.options.length > 0) {
-      h1Html += '<div class="deliv-label">Suggested rewrites — click to copy</div><div class="deliv-options">';
-      d.h1Rewrite.options.forEach(function(opt) {
-        var safeOpt = JSON.stringify(opt);
-        h1Html += '<div class="deliv-option" onclick="copyText(' + safeOpt + ', this)">'
+  if (d.h1Options) {
+    h1Html = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Tell your website designer or update it yourself. Change your homepage headline to one of the options below. This is the first thing visitors and AI systems read.</div>';
+    if (d.h1Options.current) {
+      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Your current H1</div>'
+        + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.h1Options.current) + '</div>';
+    }
+    if (d.h1Options.options && d.h1Options.options.length > 0) {
+      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Suggested rewrites — click to copy</div>';
+      h1Html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      d.h1Options.options.forEach(function(opt) {
+        var safe = JSON.stringify(opt);
+        h1Html += '<div class="deliv-option" onclick="copyText(' + safe + ', this)">'
           + '<div class="deliv-option-text">' + esc(opt) + '</div>'
           + '<div class="deliv-option-note">Click to copy</div></div>';
       });
       h1Html += '</div>';
     }
+    h1Html += '</div>';
   }
 
+  // Meta
   var metaHtml = '';
-  if (d.metaRewrite) {
-    if (d.metaRewrite.current) metaHtml += '<div class="deliv-label">Current meta description</div><div class="deliv-current">' + esc(d.metaRewrite.current) + '</div>';
-    if (d.metaRewrite.improved) metaHtml += '<div class="deliv-label">Improved meta description</div>' + codeBlock('dm', d.metaRewrite.improved);
+  if (d.metaDesc) {
+    metaHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy the improved version below and paste it into your website SEO settings. In Shopify: Online Store → Preferences. In WordPress: Yoast or RankMath plugin. In Squarespace: Pages → Edit → SEO.</div>';
+    if (d.metaDesc.current) {
+      metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Current</div>'
+        + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.metaDesc.current) + '</div>';
+    }
+    metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
+      + '<div class="deliv-code" id="dMeta">' + esc(d.metaDesc.improved || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \"dMeta\")">Copy Meta Description</button>'
+      + '</div>';
+  }
+
+  // Schema brief
+  var schemaHtml = '';
+  if (d.schemaBrief) {
+    var sb = d.schemaBrief;
+    schemaHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + devTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(sb.instruction) + '</div>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Fields to include</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">';
+    (sb.fields || []).forEach(function(f) {
+      schemaHtml += '<div style="font-size:13px;color:var(--tb);padding:8px 12px;background:var(--dk-3);border-left:2px solid var(--rule-d);">' + esc(f) + '</div>';
+    });
+    schemaHtml += '</div>'
+      + '<div style="font-size:12px;color:var(--tm);">Estimated time: ' + esc(sb.timeEstimate) + '</div>'
+      + '</div>';
+  }
+
+  // Review action
+  var reviewHtml = '';
+  if (d.reviewAction) {
+    var ra = d.reviewAction;
+    var urgencyColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
+    reviewHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Current reviews</div><div style="font-size:28px;font-weight:700;color:var(--tp);">' + ra.currentCount + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + ra.targetCount + '+</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform) + '</div></div>'
+      + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction) + '</div>'
+      + '</div>';
   }
 
   var tabs = [
-    { id: 'dSchema', label: 'Schema',   content: jsonLdHtml },
-    { id: 'dLlms',   label: 'llms.txt', content: llmsHtml   },
-    { id: 'dH1',     label: 'H1',       content: h1Html     },
-    { id: 'dMeta',   label: 'Meta',     content: metaHtml   }
+    { id: 'dLlms',   label: 'llms.txt', content: llmsHtml,   who: 'owner' },
+    { id: 'dH1',     label: 'H1',       content: h1Html,     who: 'owner' },
+    { id: 'dMeta',   label: 'Meta',     content: metaHtml,   who: 'owner' },
+    { id: 'dReview', label: 'Reviews',  content: reviewHtml, who: 'owner' },
+    { id: 'dSchema', label: 'Schema',   content: schemaHtml, who: 'dev'   }
   ];
 
   var html = '<div class="deliv-tabs">';
   tabs.forEach(function(tab, i) {
-    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(' + JSON.stringify(tab.id) + ', this)">' + tab.label + '</button>';
+    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(\' + tab.id + \', this)">' + tab.label + '</button>';
   });
   html += '</div>';
   tabs.forEach(function(tab, i) {
