@@ -1,4 +1,12 @@
 // lib/deliverables.js
+
+// Helper: capitalise city name
+function capitaliseCity(city) {
+  if (!city) return '';
+  return city.split(' ').map(function(w) {
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
+}
 // CHOIVE™ Deliverables Generator
 // Produces owner-safe, actionable assets — no code that could be misimplemented
 // Returns: llmsTxt, h1Options, metaDescription, schemaBrief, reviewAction
@@ -22,10 +30,7 @@ function generateLlmsTxt(evidence, result) {
     ? (website.startsWith('http') ? website : 'https://' + website)
     : '';
 
-  // Capitalise city properly
-  var cityDisplay = city
-    ? city.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }).join(' ')
-    : '';
+  var cityDisplay = capitaliseCity(city);
 
   var lines = [];
   lines.push('# ' + name);
@@ -83,6 +88,7 @@ function generateLlmsTxt(evidence, result) {
 }
 
 function generateH1Options(evidence, result) {
+  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
@@ -124,6 +130,7 @@ function generateH1Options(evidence, result) {
 }
 
 function generateMetaDescription(evidence, result) {
+  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
@@ -155,6 +162,7 @@ function generateMetaDescription(evidence, result) {
 }
 
 function generateSchemaBrief(evidence, result) {
+  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
@@ -201,6 +209,7 @@ function generateSchemaBrief(evidence, result) {
 }
 
 function generateReviewAction(evidence, result) {
+  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
