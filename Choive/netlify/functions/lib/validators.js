@@ -122,7 +122,23 @@ function buildSafeOutput(output) {
   const cs = clampScore(safe.pillars.clarity.score);
   const ts = clampScore(safe.pillars.trust.score);
   const ds = clampScore(safe.pillars.difference.score);
-  const es = clampScore(safe.pillars.ease.score);
+  var esRaw = clampScore(safe.pillars.ease.score);
+  // If evidence confirms schema present, ease cannot be below 10
+  // Claude sometimes under-scores when schema is confirmed in evidence
+  var easeEvidence   = safe.pillars.ease.evidence || '';
+  var easeFinding    = safe.pillars.ease.finding  || '';
+  var schemaConfirmed = (
+    /schema found: yes/i.test(easeEvidence) ||
+    /schema.*yes/i.test(easeEvidence) ||
+    /schema found: yes/i.test(easeFinding) ||
+    /YES.*schema/i.test(easeEvidence) ||
+    /json-ld.*detected/i.test(easeEvidence) ||
+    /\(3 block/i.test(easeEvidence) ||
+    /\(2 block/i.test(easeEvidence) ||
+    /\(1 block/i.test(easeEvidence)
+  );
+  var esFloor = schemaConfirmed ? Math.max(esRaw, 10) : esRaw;
+  const es = esFloor;
 
   safe.pillars.clarity.score    = cs;
   safe.pillars.trust.score      = ts;
