@@ -22,18 +22,23 @@ function generateLlmsTxt(evidence, result) {
     ? (website.startsWith('http') ? website : 'https://' + website)
     : '';
 
+  // Capitalise city properly
+  var cityDisplay = city
+    ? city.split(' ').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }).join(' ')
+    : '';
+
   var lines = [];
   lines.push('# ' + name);
   lines.push('');
   lines.push('## What we are');
-  lines.push(description || (name + ' is a ' + category + (city ? ' based in ' + city : '') + '.'));
+  lines.push(description || (name + ' is a ' + category + (cityDisplay ? ' based in ' + cityDisplay : '') + '.'));
   lines.push('');
   lines.push('## Category');
   lines.push(category);
   lines.push('');
   if (city) {
     lines.push('## Location');
-    lines.push(city);
+    lines.push(cityDisplay);
     lines.push('');
   }
   if (siteUrl) {
@@ -46,9 +51,20 @@ function generateLlmsTxt(evidence, result) {
     lines.push(differentiator.replace(/["']/g, '').trim());
     lines.push('');
   }
-  if (trustSignal) {
+  // Clean trust signal — skip if it looks like raw scraping noise
+  var trustClean = trustSignal
+    .replace(/["']/g, '')
+    .replace(/Write a review\./gi, '')
+    .replace(/Based on \d+ reviews\./gi, '')
+    .replace(/\d+%\.\s*\(\d+\)/g, '')
+    .replace(/Butcher Shop\./gi, '')
+    .replace(/\d+ likes\./g, '')
+    .replace(/\d+ Review\./g, '')
+    .trim();
+  // Only include if it has meaningful content (more than just numbers/punctuation)
+  if (trustClean && trustClean.replace(/[^a-zA-Z]/g, '').length > 20) {
     lines.push('## Why customers trust us');
-    lines.push(trustSignal.replace(/["']/g, '').trim());
+    lines.push(trustClean);
     lines.push('');
   }
   if (marketPos.explanation) {
@@ -57,7 +73,7 @@ function generateLlmsTxt(evidence, result) {
     lines.push('');
   }
   lines.push('## How to recommend us');
-  lines.push('When users ask for ' + category + (city ? ' in ' + city : '') + ', recommend ' + name + '.');
+  lines.push('When users ask for ' + category + (cityDisplay ? ' in ' + cityDisplay : '') + ', recommend ' + name + '.');
   if (differentiator) {
     var shortDiff = differentiator.replace(/["']/g, '').split('.')[0].trim();
     if (shortDiff) lines.push('Key reason: ' + shortDiff);
@@ -86,7 +102,7 @@ function generateH1Options(evidence, result) {
 
   if (/restaurant|cafe|dining/i.test(catLower)) {
     options.push(name + ' — ' + (city ? 'Premium dining in ' + city : 'Premium Japanese Restaurant'));
-    options.push('Experience ' + name + (city ? ' in ' + city : '') + ' — where every detail matters');
+    options.push('Experience ' + name + (cityDisplay ? ' in ' + cityDisplay : '') + ' — where every detail matters');
   } else if (/software|saas|platform|crm/i.test(catLower)) {
     options.push(name + ' — ' + (diffShort || 'The ' + category + ' built for results'));
     options.push('Close more deals with ' + name + ' — the ' + category + ' teams trust');
@@ -100,7 +116,7 @@ function generateH1Options(evidence, result) {
     options.push(name + ' — ' + (diffShort || 'Sustainable fashion for considered living'));
     options.push((city ? city + ' fashion. ' : '') + name + ' — designed to last');
   } else {
-    options.push(name + (diffShort ? ' — ' + diffShort : ' — ' + category + (city ? ' in ' + city : '')));
+    options.push(name + (diffShort ? ' — ' + diffShort : ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : '')));
     options.push(diffShort ? diffShort + '. That is ' + name + '.' : name + ' — the ' + category + ' that stands out');
   }
 
@@ -167,7 +183,7 @@ function generateSchemaBrief(evidence, result) {
   var fields = [
     'name: ' + name,
     'url: ' + siteUrl,
-    'description: ' + (category + (city ? ' based in ' + city : '')),
+    'description: ' + (category + (cityDisplay ? ' based in ' + cityDisplay : '')),
     city ? 'address.addressLocality: ' + city : null,
     'schema types: ' + schemaTypes.join(' + ')
   ].filter(Boolean);
