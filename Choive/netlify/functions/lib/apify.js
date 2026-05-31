@@ -178,24 +178,9 @@ function buildApifyText(trustpilot, googleReviews) {
 
 // ── Main: fetch all Apify evidence in parallel ────────────────────────────────
 async function fetchApifyEvidence(name, city, website) {
-  if (!process.env.APIFY_API_KEY) {
-    return { trustpilot: null, googleReviews: null, apifyText: '' };
-  }
-
-  console.log('Apify: fetching Trustpilot for', name);
-
-  // Only run Trustpilot — Google Maps actor IDs change frequently
-  // Add Google Reviews back once correct actor ID is confirmed on apify.com/store
-  var trustpilot = null;
-  try {
-    trustpilot = await fetchTrustpilot(name, website);
-    if (trustpilot) console.log('Apify Trustpilot: rating', trustpilot.rating, '— reviews', trustpilot.reviewCount);
-  } catch (err) {
-    console.warn('Apify Trustpilot failed:', err.message);
-  }
-
-  var apifyText = buildApifyText(trustpilot, null);
-  return { trustpilot: trustpilot, googleReviews: null, apifyText: apifyText };
+  // Apify disabled — actor IDs need verification on apify.com/store
+  // To re-enable: find correct actor IDs, update fetchTrustpilot and fetchGoogleReviews above
+  return { trustpilot: null, googleReviews: null, apifyText: '' };
 }
 
 module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
