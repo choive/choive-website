@@ -114,12 +114,18 @@ async function fetchTrustpilot(businessName, website) {
 async function fetchGoogleReviews(businessName, city) {
   var query = businessName + (city ? ' ' + city : '');
 
-  var items = await runActor('compass~google-maps-reviews-scraper', {
-    searchStringsArray: [query],
-    maxReviews:         10,
-    language:           'en',
-    maxCrawledPlaces:   1
-  });
+  // Try multiple actor IDs - Google Maps actors change frequently
+  var actors = [
+    { id: 'compass~google-maps-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
+    { id: 'nwua9Gu5YkAVuf7GY', input: { searchString: query, maxReviews: 10 } }
+  ];
+
+  var items = null;
+  for (var i = 0; i < actors.length; i++) {
+    items = await runActor(actors[i].id, actors[i].input);
+    if (items && Array.isArray(items) && items.length > 0) break;
+    items = null;
+  }
 
   if (!items || !Array.isArray(items) || items.length === 0) return null;
 
