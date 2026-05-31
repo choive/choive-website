@@ -1,4 +1,4 @@
-// lib/deliverables.js
+// lib/deliverables.js — v3 cityDisplay scope fix
 
 // Helper: capitalise city name
 function capitaliseCity(city) {
