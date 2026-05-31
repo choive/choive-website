@@ -234,6 +234,8 @@ function buildPrompt(evidence) {
     '- Score 0-7: only owned channels, no independent confirmation found\\n' +
     '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\\n' +
     '  with full name and title count as strong trust signals — score minimum 15\\n' +
+    '- RULE: global top-tier firms (Magic Circle law, Big Four accounting) = minimum 16\\n' +
+    '- RULE: Legal 500 or Chambers rankings count as strong independent citations\\n' +
     '- RULE: for consumer brands, count exact review numbers visible in evidence\\n' +
     '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\\n' +
     '- Required: name specific sources AND exact numbers (e.g. Trustpilot 4.3 from 127 reviews)\\n\\n' +
@@ -311,13 +313,12 @@ function buildPrompt(evidence) {
 
     'COMPETITOR ANALYSIS DEPTH REQUIREMENT:\\n' +
     'competitor.analysis must be 3 sentences minimum. Each sentence must be specific:\\n' +
-    'Sentence 1: What specific structural or positioning advantage does this competitor have?\\n' +
-    '  Name the actual advantage — schema markup, clearer H1, stronger review presence,\\n' +
-    '  higher search position, dedicated comparison page, known brand.\\n' +
-    'Sentence 2: At what point in the selection process does this gap hurt the business?\\n' +
-    '  Be precise — during comparison search, during automated procurement,\\n' +
-    '  when a buyer asks an AI assistant, when a buyer compares two vendors side by side.\\n' +
-    'Sentence 3: What one specific change would close the gap?\\n' +
+    'For each competitor use these exact fields:\\n' +
+    'advantage: one sentence — what specific structural or positioning advantage do they have?\\n' +
+    '  (schema markup, clearer positioning, stronger reviews, higher search position, known brand)\\n' +
+    'gapLocation: one sentence — at what exact point in selection does this hurt the business?\\n' +
+    '  (comparison search, AI recommendation, procurement shortlist, side-by-side evaluation)\\n' +
+    'closeGap: one sentence — what single specific change would close this gap?\\n' +
     'BAD example: Accedo has stronger structured web presence.\\n' +
     'GOOD example: Accedo publishes a detailed platform comparison page and has JSON-LD\\n' +
     'Organization schema, which means it appears as a structured entity in AI-driven vendor\\n' +
@@ -327,24 +328,30 @@ function buildPrompt(evidence) {
     'PLATFORM COVERAGE RULE:\n' +
     'Base coverage on evidence AND market position tier:\n' +
     '- present: business is clearly findable and citable on that platform from evidence\n' +
-    '  OR marketPosition.tier is dominant or strong (well-known businesses are findable)\n' +
+    '  OR marketPosition.tier is dominant (known global brand = present on all platforms)\n' +
     '- weak: business appears in search results but lacks structured signals\n' +
-    '  OR marketPosition.tier is upper_mid with some web presence\n' +
+    '  OR marketPosition.tier is strong with confirmed web presence\n' +
     '- absent: genuinely no evidence of presence — only for unknown or very new businesses\n' +
-    'DO NOT mark all platforms absent for a business with 15+ years, named clients,\n' +
-    'and confirmed web presence. Use weak as the floor for established businesses.\n\n' +
+    'RULE: dominant tier = PRESENT on all platforms. No exceptions.\n' +
+    'RULE: strong tier = minimum WEAK on all platforms.\n' +
+    'RULE: a brand that appears in AI simulation queries = PRESENT on those platforms.\n\n' +
 
     'MARKET POSITION TIERS:\\n' +
     'dominant: globally or nationally recognized — appears in AI recommendations unprompted\\n' +
-    '  Examples: Nike, Starbucks, Nobu, Salesforce, McKinsey\\n' +
+    '  Examples: Nike, Starbucks, Nobu, Salesforce, McKinsey, Freshfields, Clifford Chance,\\n' +
+    '  Goldman Sachs, Deloitte, Google, Apple — household names in their sector\\n' +
+    '  Magic Circle law firms = dominant. Big Four accounting = dominant.\\n' +
     'strong: well-known in category — named by buyers without prompting\\n' +
-    '  Examples: Pipedrive, Freshfields, leading regional chains\\n' +
+    '  Examples: Pipedrive, a leading regional restaurant chain, a well-known national brand\\n' +
     'upper_mid: known within category but not immediately top-of-mind\\n' +
     'mid: present but requires active search to find\\n' +
     'weak: limited presence — hard to find without knowing the name\\n' +
     'absent: no detectable presence in evidence\\n\\n' +
     'TIER RULES (critical):\\n' +
-    '- Michelin stars + celebrity founder + global locations + press = dominant or strong\\n' +
+    '- Magic Circle law firm = dominant\\n' +
+    '- Big Four accounting firm = dominant\\n' +
+    '- Michelin-starred global restaurant chain = dominant\\n' +
+    '- Global tech platform (Salesforce, HubSpot, etc) = dominant or strong\\n' +
     '- Technical gaps (no schema, no llms.txt) do NOT lower market position tier\\n' +
     '- Tier = real-world selection likelihood, not website quality\\n' +
     '- A dominant brand with poor schema is still dominant\\n' +
@@ -423,14 +430,10 @@ function buildPrompt(evidence) {
     '    "claude":     { "status": "absent", "detail": "" }\n' +
     '  },\n' +
     '  "evidenceNarrative": "",\n' +
-    '  "competitor": {\n' +
-    '    "name": null,\n' +
-    '    "domain": null,\n' +
-    '    "analysis": null,\n' +
-    '    "evidence": null,\n' +
-    '    "queryContext": null\n' +
-    '  },\n' +
-    '  "actions": [\n' +
+    '  "competitors": [\\n' +
+    '    { "name": null, "advantage": null, "gapLocation": null, "closeGap": null, "evidence": null, "queryContext": null }\\n' +
+    '  ],\\n' +
+    '"actions": [\n' +
     '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
     '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
     '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n' +
