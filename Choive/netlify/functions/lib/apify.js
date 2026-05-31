@@ -1,4 +1,4 @@
-// lib/apify.js
+// lib/apify.js — v2 disabled pending actor ID verification
 // CHOIVE Apify integration — fetches real review and social evidence
 // Actors used:
 //   - Trustpilot scraper: easyapify/trustpilot-scraper
