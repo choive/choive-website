@@ -2468,6 +2468,26 @@ footer {
 </div>
 
 <script>
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function showError(msg) {
+  var zone = document.getElementById('resultsZone');
+  if (zone) {
+    zone.style.display = 'block';
+    zone.innerHTML = '<div style="padding:32px;max-width:760px;">'
+      + '<div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:10px;">Diagnostic interrupted</div>'
+      + '<div style="font-size:14px;color:var(--tb);margin-bottom:16px;">' + (msg || 'An error occurred.') + '</div>'
+      + '<button onclick="resetDiagnostic()" style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:10px 20px;background:transparent;border:1px solid var(--rule-d);color:var(--tm);cursor:pointer;">Try again</button>'
+      + '</div>';
+  }
+}
+
+
 const START_API = '/.netlify/functions/start-diagnostic';
 const GET_API   = '/.netlify/functions/get-diagnostic';
 let bizData   = {};
