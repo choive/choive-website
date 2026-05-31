@@ -2695,7 +2695,7 @@ function buildShareBlock(jobId) {
   return [
     '<div class="share-block" id="shareBlock">',
     '  <div class="share-label">Share this result</div>',
-    '  <div class="share-url" id="shareUrl">' + esc(getShareUrl()) + '</div>',
+    '  <div class="share-url" id="shareUrl">' + esc(getShareUrl(jobId)) + '</div>',
     '  <div style="display:flex;gap:8px;flex-shrink:0;">',
     '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy Diagnostic Link</button>',
     '    <button class="share-btn" onclick="openShareUrl()">Open Shareable View</button>',
@@ -2971,13 +2971,30 @@ function showResults(r, jobId) {
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
   // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
+  var inferredCat = r.inferredCategory && r.inferredCategory !== bizData.category
+    ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
+    : '';
+
+  var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
+    + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
+    + inferredCat
+    + '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px;">'
+    + '<div class="mono-score" id="scoreNum">0</div>'
+    + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
+    + '</div>'
+    + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">' + esc(r.verdictHeadline || '') + '</div>'
+    + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(r.summaryParagraph || r.signatureLine || '') + '</div>'
+    + '</div>';
+
   zone.innerHTML =
-    buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
-    + buildDisplacementBlock(r)
-    + buildGapBlock(r, googleIcon, googleSignal, hasSocial)
+    scoreHeader
+    + buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
+    + [].concat(buildDisplacementBlock(r)).join('')
+    + [].concat(buildGapBlock(r, googleIcon, googleSignal, hasSocial)).join('')
     + buildWhnBlock(r)
-    + buildPillarCards(r)
-    + buildShareBlock(jobId)
+    + [].concat(buildPillarCards(r)).join('')
+    + [].concat(buildShareBlock(jobId)).join('')
     + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">Full analysis</div>'
         + '<div class="paywall-headline">See exactly why — and what to fix</div>'
@@ -3078,6 +3095,7 @@ function showResults(r, jobId) {
       + '</div></div></div>';
   })() : '';
 
+  console.log('[CHOIVE] isPaid:', isPaid, '| paidSections length:', paidSections.length);
   zone.innerHTML += paidSections;
 
   try {
