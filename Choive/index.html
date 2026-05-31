@@ -2950,18 +2950,19 @@ function showResults(r, jobId) {
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
-  const paidSections = isPaid ? (function() {
-  // ── helpers ──────────────────────────────────────────────────────────────
   function pillarDetail(key, label) {
     var p = r.pillars && r.pillars[key];
     if (!p) return '';
+    var score = p.score || 0;
+    var pct   = Math.round(score / 25 * 100);
     return '<div class="paid-pillar">'
-      + '<div class="paid-pillar-head">'
-      + '<span class="paid-pillar-name">' + label + '</span>'
-      + '<span class="paid-pillar-score">' + (p.score || 0) + ' / 25</span>'
-      + '</div>'
+      + '<div class="paid-pillar-head"><span class="paid-pillar-name">' + label + '</span>'
+      + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
+      + '<div style="height:2px;background:rgba(255,255,255,0.06);margin-bottom:14px;">'
+      + '<div style="height:100%;width:' + pct + '%;background:var(--ac);"></div></div>'
+      + (p.finding  ? '<div style="font-size:12px;font-weight:600;color:var(--tm);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
       + (p.analysis ? '<div class="paid-pillar-analysis">' + esc(p.analysis) + '</div>' : '')
-      + (p.evidence ? '<div class="paid-pillar-evidence">“' + esc(p.evidence) + '”</div>' : '')
+      + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
       + '</div>';
   }
 
@@ -2975,310 +2976,83 @@ function showResults(r, jobId) {
       + '</div>';
   }
 
-  // ── competitor block ──────────────────────────────────────────────────────
-  var compName = (r.competitor && r.competitor.name) || (r.displacement && r.displacement.competitorName) || '';
-  var compAnalysis = (r.competitor && r.competitor.analysis) || (r.displacement && r.displacement.competitorWhy) || '';
-  var compEvidence = (r.competitor && r.competitor.evidence) || '';
-  var compContext = (r.competitor && r.competitor.queryContext) || '';
-  var isCatBased  = compContext === 'category-based analysis';
+  var compList = [];
+  if (Array.isArray(r.competitors) && r.competitors.length > 0) {
+    compList = r.competitors.filter(function(cp) { return cp && cp.name; });
+  } else if (r.competitor && r.competitor.name) {
+    compList = [r.competitor];
+  }
+  if (compList.length === 0 && r.displacement && r.displacement.competitorName) {
+    compList = [{ name: r.displacement.competitorName, analysis: r.displacement.competitorWhy, queryContext: r.displacement.competitorQuery }];
+  }
+  var compName     = compList.length > 0 ? compList[0].name : '';
+  var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
+  var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
+  var compContext  = compList.length > 0 ? (compList[0].queryContext || '') : '';
+  var isCatBased   = compContext === 'category-based analysis';
+
   var compBlock = compName
     ? '<div class="paid-comp-found">'
-      + (isCatBased ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis \u2014 not confirmed in search evidence</div>' : '')
+      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
       + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
       + '</div>'
     : '<div class="paid-comp-none">No dominant comparison pattern detected in available evidence.</div>';
 
-  // ── actions ───────────────────────────────────────────────────────────────
-  var actions = Array.isArray(r.actions) ? r.actions : [];
-  var actionsHtml = actions.map(actionItem).join('');
+  var extraCompsHtml = compList.slice(1).map(function(cp) {
+    if (!cp || !cp.name) return '';
+    var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+    return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
+      + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
+      + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + esc(an) + '</div>' : '')
+      + '</div>';
+  }).join('');
 
-  return `
-    <div class="pay-section">
-      <div class="pay-eyebrow">Business Intelligence</div>
-      <div class="paid-narrative">${esc(r.businessUnderstanding || r.summaryParagraph || '')}</div>
-    </div>
+  var paidSections = isPaid ? (function() {
+    return '<div class="pay-section deliv-section" id="delivSection">'
+      + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
+      + '<div id="delivContent"></div></div>'
+      + '<div class="pay-section sim-section" id="simSection">'
+      + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business appeared.</div>'
+      + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
+      + '<div class="sim-results" id="simResults" style="display:none;"></div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Business Intelligence</div>'
+      + '<div class="paid-narrative">' + esc(r.businessUnderstanding || r.summaryParagraph || '') + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Evidence Narrative</div>'
+      + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
+      + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
+      + pillarDetail('difference','Difference') + pillarDetail('ease','Ease')
+      + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Competitor Reality</div>'
+      + compBlock + extraCompsHtml + '</div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
+      + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
+      + '<div class="pay-section" style="border-bottom:none;"><div class="pay-eyebrow">Next Step</div>'
+      + '<div class="pay-cta-block"><div class="pay-cta-headline">Begin CHOIVE System\u2122</div>'
+      + '<div class="pay-cta-body">Turn this analysis into a complete implementation.</div>'
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">'
+      + '<button class="pay-btn-primary" onclick="openForm(\x27CHOIVE System\u2122\x27)">Begin CHOIVE System\u2122</button>'
+      + '<button class="pay-btn-secondary" onclick="exportPDF()">Download PDF Report</button>'
+      + '</div></div></div>';
+  })() : '';
 
-    <div class="pay-section deliv-section" id="delivSection">
-      <div class="pay-eyebrow">Ready-to-Use Assets</div>
-      <div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ${esc(bizData.name || '')}. Copy and implement these directly — no further work needed.</div>
-      <div id="delivContent"></div>
-    </div>
+  zone.innerHTML += paidSections;
 
-    <div class="pay-section sim-section" id="simSection">
-      <div class="pay-eyebrow">AI Visibility Simulation</div>
-      <div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries — the same questions your customers ask when looking for what you offer. Below is exactly what the AI said, and whether your business appeared.</div>
-      <div class="sim-loading" id="simLoading">
-        <div class="sim-spinner"></div>
-        <span>Running live AI queries for ${esc(bizData.name || '')}...</span>
-      </div>
-      <div class="sim-results" id="simResults" style="display:none;"></div>
-    </div>
-
-    <div class="pay-section">
-      <div class="pay-eyebrow">Evidence Narrative</div>
-      <div class="paid-narrative">${esc(r.evidenceNarrative || '')}</div>
-    </div>
-
-    <div class="pay-section">
-      <div class="pay-eyebrow">Why You Score This Way</div>
-      <div class="paid-pillars">
-        ${pillarDetail('clarity', 'Clarity')}
-        ${pillarDetail('trust', 'Trust')}
-        ${pillarDetail('difference', 'Difference')}
-        ${pillarDetail('ease', 'Ease')}
-      </div>
-    </div>
-
-    <div class="pay-section">
-      <div class="pay-eyebrow">Competitor Reality</div>
-      ${compBlock}
-    </div>
-
-    <div class="pay-section">
-      <div class="pay-eyebrow">Priority Actions</div>
-      <div class="paid-actions">${actionsHtml}</div>
-    </div>
-
-    <div class="pay-section pay-final">
-      <div class="pay-final-line">This is where CHOIVE changes the outcome.</div>
-      <div class="pay-final-line muted">Not by making you louder.</div>
-      <div class="pay-final-line muted">By making you easier to choose.</div>
-      <div class="pay-product-name">CHOIVE SYSTEM™</div>
-      <div class="pay-product-desc">We restructure your selection position so you become:</div>
-      <div class="pay-shift-item">— The first option that removes doubt</div>
-      <div class="pay-shift-item">— The one that feels inevitable</div>
-      <div class="pay-shift-item">— The obvious choice</div>
-      <button class="pay-btn-primary" onclick="openForm('CHOIVE System™')">Begin CHOIVE System™</button>
-        <button class="pay-btn-secondary" onclick="exportPDF()">Download PDF Report</button>
-      </div>
-    </div>`;
-})() : `
-    <div class="paywall-block">
-      <div class="paywall-eyebrow">Unlock your CHOIVE Analysis\u2122</div>
-      <div class="paywall-items">
-        <div class="paywall-item">\u2022 Why AI systems do not select your business</div>
-        <div class="paywall-item">\u2022 Where you lose to competitors</div>
-        <div class="paywall-item">\u2022 The exact shifts required to become the chosen option</div>
-      </div>
-      <button class="paywall-btn" onclick="const _jid = window.__choiveShareJobId || ''; localStorage.setItem('choive_pending_jobId', _jid); sessionStorage.setItem('choive_pending_jobId', _jid); window.location.href='${STRIPE_LINK}'">Unlock Full Analysis \u2192 \u20ac49</button>
-    </div>`;
-
-  zone.innerHTML = `
-    <div class="mono-result">
-
-      <div class="mono-section">
-        <div class="mono-eyebrow">CHOIVE INDEX™</div>
-      ${r.inferredCategory && r.inferredCategory !== bizData.category ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>' : ''}
-        <div class="mono-score-row">
-          <span class="mono-score-num" id="scoreNum">0</span>
-          <span class="mono-score-denom">/ 100</span>
-        </div>
-        <div class="mono-score-bar-track"><div class="mono-score-bar-fill" id="scoreBar"></div></div>
-        <div class="verdict-tag ${r.verdictLevel}" style="margin-top:14px;display:inline-block;">${r.verdictLevel === 'absent' ? 'Not being chosen' : r.verdictLevel === 'weak' ? 'Being overlooked' : 'Being chosen'}</div>
-        <div class="mono-score-label" style="margin-top:10px;">${esc(r.verdictHeadline || scoreLabel)}</div>
-        ${r.signatureLine ? '<div style="font-size:13px;font-weight:500;color:var(--tm);margin-top:6px;letter-spacing:0.04em;">' + esc(r.signatureLine) + '</div>' : ''}
-      </div>
-
-      <div class="mono-section">
-        <div class="mono-score-label" style="font-size:15px;font-weight:400;line-height:1.8;color:var(--tb);">${esc(r.summaryParagraph || '')}</div>
-      </div>
-
-      <div class="mono-section">
-        <div class="mono-eyebrow">Digital Presence Coverage</div>
-        <div class="mono-presence-group">
-          <div class="mono-presence-label">Core Presence</div>
-          <div class="mono-presence-row"><span class="mono-pi green">\u2714</span><span class="mono-pk">Website</span><span class="mono-pv">STRONG</span></div>
-          <div class="mono-presence-row"><span class="mono-pi ${googleSignal === 'STRONG' ? 'green' : 'amber'}">${googleIcon}</span><span class="mono-pk">Google</span><span class="mono-pv">${googleSignal}</span></div>
-        </div>
-        <div class="mono-presence-group">
-          <div class="mono-presence-label">Social Proof</div>
-          ${hasSocial
-            ? '<div class="mono-presence-row"><span class="mono-pi green">\u2714</span><span class="mono-pk">Presence detected</span><span class="mono-pv amber">Weak consistency</span></div>'
-            : '<div class="mono-presence-row"><span class="mono-pi red">\u2716</span><span class="mono-pk">Not detected</span><span class="mono-pv red">\u2014</span></div>'
-          }
-        </div>
-        <div class="mono-presence-group">
-          <div class="mono-presence-label">Authority</div>
-          ${(function() {
-            var authSummary = r.summaries && r.summaries.authoritySummary && r.summaries.authoritySummary !== 'No authority data.';
-            var rSoc        = r.socialSignals || {};
-            var hasSocAuth  = rSoc.linkedin || rSoc.youtube || rSoc.twitter;
-            var trustScore  = r.pillars && r.pillars.trust ? r.pillars.trust.score : 0;
-            var hasAuth     = authSummary || hasSocAuth || trustScore >= 16;
-            var authLabel   = hasAuth ? 'Signals detected' : 'Not established';
-            var authStrength = trustScore >= 20 ? 'STRONG' : trustScore >= 14 ? 'PARTIAL' : '\u2014';
-            var authIcon    = hasAuth ? '\u2714' : '\u2716';
-            var authColor   = hasAuth ? 'green' : 'red';
-            var authValColor = trustScore >= 20 ? '' : trustScore >= 14 ? 'amber' : 'red';
-            return '<div class="mono-presence-row"><span class="mono-pi ' + authColor + '">' + authIcon + '</span><span class="mono-pk">' + authLabel + '</span><span class="mono-pv ' + authValColor + '">' + authStrength + '</span></div>';
-          })()}
-        </div>
-      </div>
-
-      <div class="mono-section mono-break">
-        <div class="mono-break-line">You lose at comparison — not discovery.</div>
-        <div class="mono-break-line muted">Not because you are worse.</div>
-        <div class="mono-break-line muted">Because another option feels easier to choose.</div>
-      </div>
-
-      <div class="mono-section">
-        <div class="mono-eyebrow">Selection Signals</div>
-        <div class="pillars-grid">
-          ${buildPillarCards(r)}
-        </div>
-      </div>
-
-      <div class="mono-section">
-        <div class="mono-eyebrow">Platform Selection</div>
-        <div class="platform-row">
-          ${(r.platformCoverage ? ['chatgpt','perplexity','gemini','claude'] : []).map(function(key) {
-            var val = (r.platformCoverage || {})[key] || {status:'absent',detail:''};
-            var names = {chatgpt:'ChatGPT',perplexity:'Perplexity',gemini:'Gemini',claude:'Claude'};
-            var label = val.status === 'present' ? 'PRESENT' : val.status === 'weak' ? 'WEAK' : 'NOT FOUND';
-            return '<div class="platform-cell">'
-              + '<div class="platform-name">' + names[key] + '</div>'
-              + '<div class="platform-verdict ' + val.status + '">' + label + '</div>'
-              + '<div class="platform-detail">' + esc(val.detail || '') + '</div>'
-              + '</div>';
-          }).join('')}
-        </div>
-      </div>
-
-      ${paidSections}
-
-      ${buildShareBlock(jobId)}
-
-      <div class="rnd-bottom">
-        <button class="rnd-btn" onclick="resetDiagnostic()">Run New Diagnostic</button>
-        <div class="rnd-micro">Compare another business.</div>
-      </div>
-
-    </div>`;
-
-  setTimeout(() => {
-    animateNum('scoreNum', 0, score, 1200);
-    document.getElementById('scoreBar').style.width = score + '%';
-  }, 100);
-  setTimeout(() => {
-    document.querySelectorAll('.pillar-bar-fill').forEach(el => {
-      el.style.width = el.dataset.pct + '%';
-    });
-  }, 300);
-
-  zone.scrollIntoView({ behavior: 'smooth' });
-
-  // Populate deliverables after DOM is ready
   try {
     var delivEl = document.getElementById('delivContent');
     if (delivEl) delivEl.innerHTML = buildDeliverables(r);
-  } catch(e) {
-    var delivEl = document.getElementById('delivContent');
-    if (delivEl) delivEl.innerHTML = '<div style="font-size:13px;color:var(--tm);">Deliverables unavailable for this diagnostic.</div>';
-  }
+  } catch(e) {}
 
-  // Trigger AI simulation if paid
-  if (isPaid) {
-    runAISimulation(r);
-  }
+  zone.scrollIntoView({ behavior: 'smooth' });
+  window.__choiveLastResult = r;
+  window.__choiveShareJobId = jobId || '';
+  if (isPaid) { runAISimulation(r); }
 }
 
-
-function esc(s) {
-  if (!s) return '';
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function animateNum(id, from, to, dur) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const start = performance.now();
-  function tick(now) {
-    const p = Math.min((now - start) / dur, 1);
-    const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(from + (to - from) * eased);
-    if (p < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-function showError(msg) {
-  document.getElementById('dS').classList.remove('active');
-  const zone = document.getElementById('dR');
-  zone.style.display = 'block';
-  zone.innerHTML = `
-    <div class="error-frame">
-      <div class="error-title">DIAGNOSTIC INTERRUPTED</div>
-      <div class="error-body">${esc(msg)}</div>
-      <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="cta-primary" onclick="resetDiagnostic()">Try again \u2192</button>
-        <a href="mailto:hello&#64;choive.com?subject=CHOIVE Diagnostic Support" class="cta-secondary">Contact support</a>
-      </div>
-      <div style="margin-top:18px;font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--tm);">The CHOIVE\u00b7 engine could not complete this run. Your inputs were not lost.</div>
-    </div>`;
-}
-
-function resetDiagnostic() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  document.getElementById('dR').style.display = 'none';
-  document.getElementById('dR').innerHTML = '';
-  document.getElementById('dS').classList.remove('active');
-  document.getElementById('dI').style.display = 'block';
-  document.getElementById('rBtn').disabled = false;
-  document.getElementById('diagnostic').scrollIntoView({ behavior: 'smooth' });
-}
-
-function openForm(service, businessName = '', category = '', city = '') {
-  document.getElementById('formModal').classList.add('active');
-  document.getElementById('formTitle').textContent = service;
-  document.getElementById('serviceType').value = service;
-  if (businessName && !document.getElementById('leadBusiness').value) {
-    document.getElementById('leadBusiness').value = businessName;
-  }
-  const noteField = document.getElementById('leadNote');
-  if ((category || city) && !noteField.value) {
-    let noteText = '';
-    if (category) noteText += `Category: ${category}`;
-    if (category && city) noteText += `\n`;
-    if (city) noteText += `Location: ${city}`;
-    noteField.value = noteText;
-  }
-}
-
-function closeForm() {
-  document.getElementById('formModal').classList.remove('active');
-}
-
-async function submitCHOIVEForm(event) {
-  event.preventDefault();
-  const name     = document.getElementById('leadName').value.trim();
-  const business = document.getElementById('leadBusiness').value.trim();
-  const email    = document.getElementById('leadEmail').value.trim();
-  const website  = document.getElementById('leadWebsite').value.trim();
-  const note     = document.getElementById('leadNote').value.trim();
-  const service  = document.getElementById('serviceType').value;
-  const errorBox = document.getElementById('formError');
-  errorBox.textContent = '';
-  if (!name || !business || !email) {
-    errorBox.textContent = 'Enter your name, business name, and email.';
-    return;
-  }
-  try {
-    await fetch('/.netlify/functions/lead', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, business, email, website, note, service })
-    });
-    errorBox.style.color = '#4A9965';
-    errorBox.textContent = 'Your CHOIVE\u00b7 Blueprint is being prepared.';
-    setTimeout(() => { closeForm(); errorBox.textContent = ''; }, 1500);
-  } catch (err) {
-    errorBox.textContent = 'Something went wrong. Try again.';
-  }
-}
 
 function buildDeliverables(r) {
   var d = r.deliverables;
@@ -3291,27 +3065,25 @@ function buildDeliverables(r) {
     return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span>';
   }
 
-  // llms.txt
   var llmsHtml = '<div style="margin-bottom:16px;">'
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Save this file as <strong>llms.txt</strong> and upload it to your website root so it is accessible at <strong>yourdomain.com/llms.txt</strong>. Works in Shopify, Squarespace, WordPress, and any website builder that allows file uploads.</div>'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
     + '<div class="deliv-code" id="dLlms">' + esc(d.llmsTxt || '') + '</div>'
-    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \"dLlms\")">Copy llms.txt</button>'
+    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dLlms\\")">Copy llms.txt</button>'
     + '</div>';
 
-  // H1
   var h1Html = '';
   if (d.h1Options) {
     h1Html = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Tell your website designer or update it yourself. Change your homepage headline to one of the options below. This is the first thing visitors and AI systems read.</div>';
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Tell your website designer or update it yourself. Change your homepage headline to one of the options below.</div>';
     if (d.h1Options.current) {
       h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Your current H1</div>'
         + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.h1Options.current) + '</div>';
     }
     if (d.h1Options.options && d.h1Options.options.length > 0) {
-      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Suggested rewrites — click to copy</div>';
+      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Suggested rewrites \u2014 click to copy</div>';
       h1Html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       d.h1Options.options.forEach(function(opt) {
         var safe = JSON.stringify(opt);
@@ -3324,66 +3096,87 @@ function buildDeliverables(r) {
     h1Html += '</div>';
   }
 
-  // Meta
   var metaHtml = '';
   if (d.metaDesc) {
     metaHtml = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy the improved version below and paste it into your website SEO settings. In Shopify: Online Store → Preferences. In WordPress: Yoast or RankMath plugin. In Squarespace: Pages → Edit → SEO.</div>';
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy the improved version and paste it into your website SEO settings.</div>';
     if (d.metaDesc.current) {
       metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Current</div>'
         + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.metaDesc.current) + '</div>';
     }
     metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
       + '<div class="deliv-code" id="dMeta">' + esc(d.metaDesc.improved || '') + '</div>'
-      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \"dMeta\")">Copy Meta Description</button>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dMeta\\")">Copy Meta Description</button>'
       + '</div>';
   }
 
-  // Schema brief
+  var reviewHtml = '';
+  if (d.reviewAction) {
+    var ra = d.reviewAction;
+    var urgColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
+    reviewHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Current reviews</div><div style="font-size:28px;font-weight:700;color:var(--tp);">' + (ra.currentCount || 0) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + (ra.targetCount || 50) + '+</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform || 'Trustpilot') + '</div></div>'
+      + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
+      + '</div>';
+  }
+
   var schemaHtml = '';
   if (d.schemaBrief) {
     var sb = d.schemaBrief;
     schemaHtml = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + devTag() + '</div>'
-      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(sb.instruction) + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(sb.instruction || '') + '</div>'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Fields to include</div>'
-      + '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">';
-    (sb.fields || []).forEach(function(f) {
-      schemaHtml += '<div style="font-size:13px;color:var(--tb);padding:8px 12px;background:var(--dk-3);border-left:2px solid var(--rule-d);">' + esc(f) + '</div>';
-    });
-    schemaHtml += '</div>'
-      + '<div style="font-size:12px;color:var(--tm);">Estimated time: ' + esc(sb.timeEstimate) + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">'
+      + (sb.fields || []).map(function(f) {
+          return '<div style="font-size:13px;color:var(--tb);padding:8px 12px;background:var(--dk-3);border-left:2px solid var(--rule-d);">' + esc(f) + '</div>';
+        }).join('')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);">Estimated time: ' + esc(sb.timeEstimate || '20 minutes') + '</div>'
       + '</div>';
   }
 
-  // Review action
-  var reviewHtml = '';
-  if (d.reviewAction) {
-    var ra = d.reviewAction;
-    var urgencyColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
-    reviewHtml = '<div style="margin-bottom:16px;">'
-      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-      + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Current reviews</div><div style="font-size:28px;font-weight:700;color:var(--tp);">' + ra.currentCount + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + ra.targetCount + '+</div></div>'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform) + '</div></div>'
-      + '</div>'
-      + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction) + '</div>'
-      + '</div>';
+  var planHtml = '';
+  if (d.actionPlan && d.actionPlan.weeks) {
+    var wkColors = { you: 'var(--ac)', developer: 'var(--amber)' };
+    planHtml = d.actionPlan.weeks.map(function(wk) {
+      return '<div style="margin-bottom:20px;padding:20px 24px;background:var(--dk-2);border:1px solid var(--rule-d);">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:4px;">Week ' + wk.week + '</div>'
+        + '<div style="font-size:15px;font-weight:700;color:var(--tp);margin-bottom:14px;">' + esc(wk.title) + '</div>'
+        + wk.tasks.map(function(t) {
+            var tc = wkColors[t.owner] || 'var(--tm)';
+            var tl = t.owner === 'developer' ? 'Forward to developer' : 'You can do this';
+            return '<div style="margin-bottom:12px;padding:12px 14px;background:var(--dk-3);border-left:2px solid ' + tc + ';">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+              + '<span style="font-size:13px;font-weight:700;color:var(--tp);">' + esc(t.task) + '</span>'
+              + '<span style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:' + tc + ';white-space:nowrap;margin-left:12px;">' + tl + '</span>'
+              + '</div>'
+              + '<div style="font-size:13px;color:var(--tb);line-height:1.65;margin-bottom:6px;">' + esc(t.how) + '</div>'
+              + '<div style="font-size:11px;color:var(--tm);font-style:italic;">' + esc(t.impact) + '</div>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+    }).join('');
   }
 
   var tabs = [
-    { id: 'dLlms',   label: 'llms.txt', content: llmsHtml,   who: 'owner' },
-    { id: 'dH1',     label: 'H1',       content: h1Html,     who: 'owner' },
-    { id: 'dMeta',   label: 'Meta',     content: metaHtml,   who: 'owner' },
-    { id: 'dReview', label: 'Reviews',  content: reviewHtml, who: 'owner' },
-    { id: 'dSchema', label: 'Schema',   content: schemaHtml, who: 'dev'   }
+    { id: 'dPlan',   label: '30-day plan', content: planHtml   },
+    { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
+    { id: 'dH1',     label: 'H1',         content: h1Html     },
+    { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
+    { id: 'dReview', label: 'Reviews',    content: reviewHtml },
+    { id: 'dSchema', label: 'Schema',     content: schemaHtml }
   ];
 
   var html = '<div class="deliv-tabs">';
   tabs.forEach(function(tab, i) {
-    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(\' + tab.id + \', this)">' + tab.label + '</button>';
+    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(\'' + tab.id + '\', this)">' + tab.label + '</button>';
   });
   html += '</div>';
   tabs.forEach(function(tab, i) {
@@ -3392,34 +3185,14 @@ function buildDeliverables(r) {
   return html;
 }
 
-
 function switchDelivTab(id, btn) {
-  var container = btn.closest('.deliv-section') || document;
-  container.querySelectorAll('.deliv-tab').forEach(function(el) { el.classList.remove('active'); });
-  container.querySelectorAll('.deliv-panel').forEach(function(el) { el.classList.remove('active'); });
+  var tabs   = document.querySelectorAll('.deliv-tab');
+  var panels = document.querySelectorAll('.deliv-panel');
+  tabs.forEach(function(el) { el.classList.remove('active'); });
+  panels.forEach(function(el) { el.classList.remove('active'); });
   btn.classList.add('active');
   var panel = document.getElementById(id);
   if (panel) panel.classList.add('active');
-}
-
-function switchTab(id) {
-  document.querySelectorAll('.deliv-tab').forEach(function(el, i) {
-    el.classList.toggle('active', el.textContent.toLowerCase() === id.replace('tab-', ''));
-  });
-  document.querySelectorAll('.deliv-panel').forEach(function(el) {
-    el.classList.toggle('active', el.id === id);
-  });
-  // Fix: match by id directly
-  document.querySelectorAll('.deliv-tab').forEach(function(el) { el.classList.remove('active'); });
-  document.querySelectorAll('.deliv-panel').forEach(function(el) { el.classList.remove('active'); });
-  var panel = document.getElementById(id);
-  if (panel) panel.classList.add('active');
-  // Activate matching tab button by index
-  var tabs = document.querySelectorAll('.deliv-tab');
-  var panels = document.querySelectorAll('.deliv-panel');
-  for (var i = 0; i < panels.length; i++) {
-    if (panels[i].id === id && tabs[i]) tabs[i].classList.add('active');
-  }
 }
 
 function copyDeliv(btn, id) {
@@ -3460,9 +3233,12 @@ async function runAISimulation(r) {
   var results = document.getElementById('simResults');
   if (!loading || !results) return;
 
-  console.log('[CHOIVE] runAISimulation called for:', bizData.name, '| isPaid:', typeof isPaid !== 'undefined' ? isPaid : 'undefined');
+  console.log('[CHOIVE] runAISimulation called for:', bizData.name);
 
   try {
+    var diffEv  = (r.pillars && r.pillars.difference && r.pillars.difference.evidence) || '';
+    var trustEv = (r.pillars && r.pillars.trust      && r.pillars.trust.evidence)      || '';
+
     var res = await fetch('/.netlify/functions/ai-simulation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3470,7 +3246,9 @@ async function runAISimulation(r) {
         name:             bizData.name             || '',
         category:         bizData.category         || '',
         city:             bizData.city             || '',
-        inferredCategory: r.inferredCategory       || bizData.category || ''
+        inferredCategory: r.inferredCategory       || bizData.category || '',
+        differentiator:   diffEv.slice(0, 200),
+        trustSignal:      trustEv.slice(0, 200)
       })
     });
 
@@ -3478,25 +3256,50 @@ async function runAISimulation(r) {
     loading.style.display = 'none';
     results.style.display = 'flex';
 
-    if (!data.results || !data.results.length) {
+    if (!data || (!data.results && !data.before)) {
       results.innerHTML = '<div class="sim-query"><div class="sim-response">Simulation could not complete. Please try again.</div></div>';
       return;
     }
 
-    var summaryClass = data.appearedCount === 0 ? 'zero' : data.appearedCount === data.totalQueries ? 'all' : 'some';
+    var hasBefore = data.before && data.before.results;
+    var bc = hasBefore ? (data.before.appearedCount || 0) : 0;
+    var ac = hasBefore && data.after ? (data.after.appearedCount || 0) : 0;
+    var flatResults = data.results || (hasBefore ? data.before.results : []);
+    var summaryText = hasBefore ? data.before.summary : (data.summary || '');
+    var summaryClass = bc === 0 ? 'zero' : bc === 3 ? 'all' : 'some';
 
-    results.innerHTML = data.results.map(function(qr) {
-      return '<div class="sim-query">'
-        + '<div class="sim-query-header">'
-        + '<span class="sim-query-label">' + esc(qr.label) + '</span>'
-        + '<span class="sim-appeared ' + (qr.appeared ? 'yes' : 'no') + '">'
-        + (qr.appeared ? 'You appeared' : 'Not mentioned') + '</span>'
-        + '</div>'
-        + '<div class="sim-query-text">“' + esc(qr.query) + '”</div>'
-        + '<div class="sim-response' + (qr.appeared ? ' appeared' : '') + '">'
-        + esc(stripMd(qr.response)) + '</div>'
-        + '</div>';
-    }).join('') + '<div class="sim-summary ' + summaryClass + '">' + esc(data.summary) + '</div>';
+    function renderQSet(qResults, label) {
+      if (!qResults || !qResults.length) return '';
+      var html = label ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--rule-d);">' + label + '</div>' : '';
+      return html + qResults.map(function(qr) {
+        return '<div class="sim-query">'
+          + '<div class="sim-query-header">'
+          + '<span class="sim-query-label">' + esc(qr.label) + '</span>'
+          + '<span class="sim-appeared ' + (qr.appeared ? 'yes' : 'no') + '">'
+          + (qr.appeared ? 'You appeared' : 'Not mentioned') + '</span>'
+          + '</div>'
+          + '<div class="sim-query-text">\u201c' + esc(qr.query) + '\u201d</div>'
+          + '<div class="sim-response' + (qr.appeared ? ' appeared' : '') + '">'
+          + esc(stripMd(qr.response)) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    if (hasBefore && data.after) {
+      results.innerHTML = renderQSet(data.before.results, 'Current state')
+        + '<div style="margin:20px 0;padding:16px;background:var(--dk-3);border:1px solid var(--rule-d);">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">After implementing top fixes</div>'
+        + '<div style="font-size:13px;color:var(--tb);line-height:1.65;">'
+        + (ac > bc
+          ? 'With schema, llms.txt, and improved positioning: appeared in <strong style="color:var(--ac);">' + ac + ' of 3</strong> queries \u2014 up from ' + bc + '.'
+          : 'Even with optimisation signals, appearing in AI recommendations for this category requires more trust-building work.')
+        + '</div></div>'
+        + renderQSet(data.after.results, 'After optimisation')
+        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
+    } else {
+      results.innerHTML = renderQSet(flatResults, '')
+        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
+    }
 
   } catch (err) {
     if (loading) loading.style.display = 'none';
@@ -3508,238 +3311,117 @@ async function runAISimulation(r) {
 }
 
 function exportPDF() {
-  var biz  = bizData.name || 'business';
-  var date = new Date().toLocaleDateString('en-GB');
-
-  // Build print-friendly content
-  var content = document.createElement('div');
-  content.style.cssText = 'font-family:Inter,sans-serif;color:#0E0E11;background:#fff;padding:40px;max-width:800px;';
-
   var r = window.__choiveLastResult;
   if (!r) { alert('No result to export.'); return; }
-
-  content.innerHTML = '<h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">CHOIVE\u2122 Analysis</h1>'
-    + '<div style="font-size:13px;color:#666;margin-bottom:32px;">' + biz.toUpperCase() + ' \u00b7 ' + date + '</div>'
-
-    + '<div style="display:flex;gap:32px;margin-bottom:32px;padding:24px;background:#F4F2EE;border-left:4px solid #C2F0D4;">'
-    + '<div><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin-bottom:4px;">CHOIVE INDEX\u2122</div>'
-    + '<div style="font-size:48px;font-weight:700;color:#0E0E11;line-height:1;">' + (r.overallScore || 0) + '</div>'
-    + '<div style="font-size:13px;color:#666;">/ 100</div></div>'
-    + '<div style="flex:1;padding-top:8px;">'
-    + '<div style="font-size:16px;font-weight:600;color:#0E0E11;margin-bottom:8px;">' + esc(r.verdictHeadline || '') + '</div>'
-    + '<div style="font-size:14px;color:#444;line-height:1.65;">' + esc(r.summaryParagraph || '') + '</div>'
-    + '</div></div>'
-
-    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Business Intelligence</h2>'
-    + '<p style="font-size:14px;color:#444;line-height:1.75;margin-bottom:24px;">' + esc(r.businessUnderstanding || '') + '</p>'
-
-    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Evidence Narrative</h2>'
-    + '<p style="font-size:14px;color:#444;line-height:1.75;margin-bottom:24px;">' + esc(r.evidenceNarrative || '') + '</p>'
-
-    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Selection Signals</h2>'
-    + ['clarity','trust','difference','ease'].map(function(key) {
-        var p = r.pillars && r.pillars[key];
-        if (!p) return '';
-        var label = key.charAt(0).toUpperCase() + key.slice(1);
-        return '<div style="margin-bottom:16px;padding:16px;background:#F4F2EE;">'
-          + '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
-          + '<span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;">' + label + '</span>'
-          + '<span style="font-size:16px;font-weight:700;color:#0E0E11;">' + (p.score||0) + ' / 25</span>'
-          + '</div>'
-          + (p.analysis ? '<p style="font-size:13px;color:#444;line-height:1.65;margin-bottom:8px;">' + esc(p.analysis) + '</p>' : '')
-          + (p.evidence ? '<p style="font-size:12px;color:#666;font-style:italic;border-left:2px solid #C2F0D4;padding-left:10px;">' + esc(p.evidence) + '</p>' : '')
-          + '</div>';
-      }).join('')
-
-    + '<h2 style="font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin:24px 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px;">Priority Actions</h2>'
-    + (Array.isArray(r.actions) ? r.actions.map(function(a) {
-        var colors = { critical:'#ff4444', high:'#ffaa33', medium:'#888' };
-        return '<div style="margin-bottom:12px;padding:16px;border-left:3px solid ' + (colors[a.priority]||'#888') + ';background:#F4F2EE;">'
-          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:' + (colors[a.priority]||'#888') + ';margin-bottom:6px;">' + (a.priority||'').toUpperCase() + '</div>'
-          + '<div style="font-size:14px;font-weight:700;color:#0E0E11;margin-bottom:6px;">' + esc(a.title||'') + '</div>'
-          + '<div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:6px;">' + esc(a.body||'') + '</div>'
-          + (a.explanation ? '<div style="font-size:12px;color:#666;font-style:italic;">' + esc(a.explanation) + '</div>' : '')
-          + '</div>';
-      }).join('') : '')
-
-    + '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;">Generated by CHOIVE\u2122 Decision Intelligence \u00b7 choive.com \u00b7 ' + date + '</div>';
-
-  // Open print window
-  var win = window.open('', '_blank');
+  var biz  = bizData.name || 'business';
+  var date = new Date().toLocaleDateString('en-GB');
+  var win  = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CHOIVE Analysis - ' + biz + '</title>'
     + '<style>@import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap);'
-    + 'body{margin:0;padding:0;background:#fff;}@media print{body{-webkit-print-color-adjust:exact;}}</style>'
-    + '</head><body>' + content.outerHTML + '</body></html>');
+    + 'body{margin:0;padding:40px;font-family:Inter,sans-serif;background:#fff;color:#0E0E11;max-width:800px;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;}}</style>'
+    + '</head><body>'
+    + '<h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">CHOIVE\u2122 Analysis</h1>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:32px;">' + biz.toUpperCase() + ' \u00b7 ' + date + '</div>'
+    + '<div style="padding:24px;background:#F4F2EE;border-left:4px solid #C2F0D4;margin-bottom:32px;">'
+    + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin-bottom:4px;">CHOIVE INDEX\u2122</div>'
+    + '<div style="font-size:48px;font-weight:700;line-height:1;">' + (r.overallScore || 0) + '</div>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:12px;">/ 100</div>'
+    + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">' + (r.verdictHeadline || '') + '</div>'
+    + '<div style="font-size:14px;color:#444;line-height:1.65;">' + (r.summaryParagraph || '') + '</div>'
+    + '</div>'
+    + '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;">Generated by CHOIVE\u2122 \u00b7 choive.com \u00b7 ' + date + '</div>'
+    + '</body></html>');
   win.document.close();
   win.focus();
   setTimeout(function() { win.print(); }, 800);
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('dI') && document.getElementById('dI').style.display !== 'none') {
-    runDiagnostic();
+function animateNum(id, from, to, dur) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var start = performance.now();
+  function tick(now) {
+    var p = Math.min((now - start) / dur, 1);
+    var eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(tick);
   }
-});
+  requestAnimationFrame(tick);
+}
 
-// ── SHAREABLE RESULT ROUTE ────────────────────────────────────────────────────
-(function initResultRoute() {
-  const params    = new URLSearchParams(window.location.search);
-  const sessionId = params.get('session_id');
-  let   jobId     = params.get('jobId');
-  const paid      = params.get('paid') === 'true';
+function resetDiagnostic() {
+  document.getElementById('resultsZone') && (document.getElementById('resultsZone').style.display = 'none');
+  document.getElementById('inputZone')   && (document.getElementById('inputZone').style.display   = 'block');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-  // Nothing to do on normal homepage
-  if (!sessionId && !jobId) return;
+function openForm(product) {
+  var name    = bizData.name    || '';
+  var subject = encodeURIComponent('CHOIVE ' + product + ' \u2014 ' + name);
+  var body    = encodeURIComponent('Hi,\n\nI just ran a CHOIVE diagnostic for ' + name + ' and scored ' + (window.__choiveLastResult && window.__choiveLastResult.overallScore || '?') + '/100.\n\nI am interested in ' + product + '.\n\nBest regards');
+  window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
+}
 
-  // Hide homepage sections
-  ['dI','dS'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  document.querySelectorAll('.hero, .ga-strip, .marquee-wrap, .shift-section, .body-lt, .diag-section nav').forEach(el => {
-    el.style.display = 'none';
-  });
-  const diagSection = document.getElementById('diagnostic');
-  if (diagSection) {
-    diagSection.style.paddingTop = '80px';
-    diagSection.scrollIntoView({ behavior: 'instant' });
-  }
-
-  const zone = document.getElementById('dR');
-  if (!zone) return;
-  zone.style.display = 'block';
-  zone.innerHTML = `
-    <div class="scan-frame" style="text-align:center;padding:48px;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
-        <div class="spin"></div>
-        <div class="scan-ttl">Loading diagnostic result</div>
-      </div>
-      <div style="font-size:12px;color:var(--tm);">Retrieving your CHOIVE· Index</div>
-    </div>`;
-
-  if (sessionId && paid) {
-    // Stripe payment return — verify session and get jobId from backend
-    verifyAndLoad(sessionId);
-  } else if (jobId) {
-    // Direct share link — load result normally
-    // localStorage/sessionStorage as fallback only
-    fetchSharedResult(jobId);
-  }
-})();
-
-async function verifyAndLoad(sessionId) {
-  const zone = document.getElementById('dR');
-  try {
-    const res  = await fetch(`/.netlify/functions/verify-payment?session_id=${encodeURIComponent(sessionId)}`);
-    const data = await res.json();
-
-    if (!data.paid) {
-      zone.innerHTML = `
-        <div class="error-frame">
-          <div class="error-title">Payment Not Verified</div>
-          <div class="error-body">${esc(data.error || 'Payment could not be confirmed.')}</div>
-          <div style="margin-top:22px;"><a href="/" class="cta-primary">Return to CHOIVE·</a></div>
-        </div>`;
-      return;
-    }
-
-    let jobId = data.jobId;
-
-    // Fallback: try storage if backend couldn't return jobId
-    if (!jobId) {
-      jobId = sessionStorage.getItem('choive_pending_jobId') || localStorage.getItem('choive_pending_jobId') || '';
-    }
-
-    if (!jobId) {
-      zone.innerHTML = `
-        <div class="error-frame">
-          <div class="error-title">Result Not Found</div>
-          <div class="error-body">Payment confirmed but diagnostic could not be identified. Please contact hello@choive.com with your payment reference.</div>
-          <div style="margin-top:22px;"><a href="/" class="cta-primary">Return to CHOIVE·</a></div>
-        </div>`;
-      return;
-    }
-
-    // Clean up storage
-    sessionStorage.removeItem('choive_pending_jobId');
-    localStorage.removeItem('choive_pending_jobId');
-
-    // Force paid = true since payment is verified
-    window.__choivePaidVerified = true;
-
-    fetchSharedResult(jobId);
-
-  } catch (err) {
-    zone.innerHTML = `
-      <div class="error-frame">
-        <div class="error-title">Verification Failed</div>
-        <div class="error-body">Could not verify your payment. Please try again or contact hello@choive.com.</div>
-        <div style="margin-top:22px;display:flex;gap:12px;">
-          <button class="cta-primary" onclick="verifyAndLoad('${esc(sessionId)}')">Try again</button>
-          <a href="/" class="cta-secondary">Return to CHOIVE·</a>
-        </div>
-      </div>`;
-  }
+function getShareUrl(jobId) {
+  return window.location.origin + '/?jobId=' + jobId;
 }
 
 async function fetchSharedResult(jobId) {
-  const zone = document.getElementById('dR');
-  console.log('[CHOIVE] fetchSharedResult called with jobId:', jobId);
-  console.log('[CHOIVE] localStorage pending jobId:', localStorage.getItem('choive_pending_jobId'));
   try {
-    const url = `/.netlify/functions/get-result?jobId=${encodeURIComponent(jobId)}`;
-    console.log('[CHOIVE] fetching:', url);
-    const res  = await fetch(url);
-    console.log('[CHOIVE] response status:', res.status);
-    const data = await res.json();
-    console.log('[CHOIVE] response data:', JSON.stringify(data).slice(0, 200));
-
-    if (data.status === 'complete' && data.result) {
-      // Restore bizData from stored input
-      bizData = {
-        name:        data.input?.name        || '',
-        category:    data.input?.category    || '',
-        city:        data.input?.city        || '',
-        website:     data.input?.website     || '',
-        description: data.input?.description || ''
-      };
-      // Merge paid status from DB into result so r.paid === true works
-      const resultWithPaid = Object.assign({}, data.result, {
-        paid: data.paid === true || data.result?.paid === true
-      });
-      showResults(resultWithPaid, jobId);
-    } else if (data.status && data.status !== 'complete') {
-      zone.innerHTML = `
-        <div class="scan-frame" style="text-align:center;padding:48px;">
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
-            <div class="spin"></div>
-            <div class="scan-ttl">Diagnostic still processing</div>
-          </div>
-          <div style="font-size:12px;color:var(--tm);margin-bottom:24px;">Status: ${esc(data.status)}</div>
-          <button class="cta-secondary" onclick="fetchSharedResult('${esc(jobId)}')">Check again</button>
-        </div>`;
-    } else {
-      zone.innerHTML = `
-        <div class="error-frame">
-          <div class="error-title">Result Not Found</div>
-          <div class="error-body">This diagnostic result could not be retrieved. It will have expired or the link is incorrect.</div>
-          <div style="margin-top:22px;">
-            <a href="/" class="cta-primary">Run a new diagnostic</a>
-          </div>
-        </div>`;
+    var res  = await fetch('/.netlify/functions/get-result?jobId=' + jobId);
+    var data = await res.json();
+    if (data && data.result) {
+      if (data.input) {
+        bizData.name     = data.input.name     || '';
+        bizData.category = data.input.category || '';
+        bizData.city     = data.input.city     || '';
+        bizData.website  = data.input.website  || '';
+      }
+      showResults(data.result, jobId);
     }
   } catch (err) {
-    if (zone) zone.innerHTML = `
-      <div class="error-frame">
-        <div class="error-title">Could Not Load Result</div>
-        <div class="error-body">Connection error. Please try again.</div>
-        <div style="margin-top:22px;display:flex;gap:12px;">
-          <button class="cta-primary" onclick="fetchSharedResult('${esc(jobId)}')">Try again</button>
-          <a href="/" class="cta-secondary">New diagnostic</a>
-        </div>
-      </div>`;
+    console.error('fetchSharedResult error:', err);
   }
 }
+
+async function verifyAndLoad(sessionId) {
+  try {
+    var res  = await fetch('/.netlify/functions/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: sessionId })
+    });
+    var data = await res.json();
+    if (data && data.paid && data.jobId) {
+      window.__choivePaidVerified = true;
+      await fetchSharedResult(data.jobId);
+    }
+  } catch (err) {
+    console.error('verifyAndLoad error:', err);
+  }
+}
+
+function initResultRoute() {
+  var params    = new URLSearchParams(window.location.search);
+  var jobId     = params.get('jobId');
+  var sessionId = params.get('session_id');
+  var paid      = params.get('paid');
+  if (sessionId && paid === 'true') {
+    verifyAndLoad(sessionId);
+  } else if (jobId) {
+    fetchSharedResult(jobId);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var inputZone = document.getElementById('inputZone');
+    if (inputZone && inputZone.style.display !== 'none') runDiagnostic();
+  }
+});
+
+initResultRoute();
 </script>
 </body>
 </html>
