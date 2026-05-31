@@ -182,21 +182,20 @@ async function fetchApifyEvidence(name, city, website) {
     return { trustpilot: null, googleReviews: null, apifyText: '' };
   }
 
-  console.log('Apify: fetching reviews for', name);
+  console.log('Apify: fetching Trustpilot for', name);
 
-  var settled = await Promise.allSettled([
-    fetchTrustpilot(name, website),
-    fetchGoogleReviews(name, city)
-  ]);
+  // Only run Trustpilot — Google Maps actor IDs change frequently
+  // Add Google Reviews back once correct actor ID is confirmed on apify.com/store
+  var trustpilot = null;
+  try {
+    trustpilot = await fetchTrustpilot(name, website);
+    if (trustpilot) console.log('Apify Trustpilot: rating', trustpilot.rating, '— reviews', trustpilot.reviewCount);
+  } catch (err) {
+    console.warn('Apify Trustpilot failed:', err.message);
+  }
 
-  var trustpilot    = settled[0].status === 'fulfilled' ? settled[0].value : null;
-  var googleReviews = settled[1].status === 'fulfilled' ? settled[1].value : null;
-  var apifyText     = buildApifyText(trustpilot, googleReviews);
-
-  if (trustpilot)    console.log('Apify Trustpilot: rating', trustpilot.rating, '— reviews', trustpilot.reviewCount);
-  if (googleReviews) console.log('Apify Google: rating', googleReviews.rating, '— reviews', googleReviews.reviewCount);
-
-  return { trustpilot: trustpilot, googleReviews: googleReviews, apifyText: apifyText };
+  var apifyText = buildApifyText(trustpilot, null);
+  return { trustpilot: trustpilot, googleReviews: null, apifyText: apifyText };
 }
 
 module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
