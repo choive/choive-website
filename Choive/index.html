@@ -2970,6 +2970,24 @@ function showResults(r, jobId) {
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
+  // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
+  zone.innerHTML =
+    buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
+    + buildDisplacementBlock(r)
+    + buildGapBlock(r, googleIcon, googleSignal, hasSocial)
+    + buildWhnBlock(r)
+    + buildPillarCards(r)
+    + buildShareBlock(jobId)
+    + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
+        + '<div class="paywall-eyebrow">Full analysis</div>'
+        + '<div class="paywall-headline">See exactly why — and what to fix</div>'
+        + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
+        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">Unlock Full Analysis — €49</a>'
+        + '</div>');
+
+  // Animate score
+  setTimeout(function() { animateNum('scoreNum', 0, score, 1200); }, 100);
+
   function pillarDetail(key, label) {
     var p = r.pillars && r.pillars[key];
     if (!p) return '';
