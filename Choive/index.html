@@ -2805,9 +2805,9 @@ function buildWhnBlock(r, gap) {
 
       <div class="whn-section">
         <div class="whn-reality">
-          You are being chosen by habit.<br>
-          Not by structure.<br>
-          That is not a secure position.
+          ${risk === 'The position is structurally sound.'
+            ? 'You are in a strong position. Keep it that way.'
+            : 'You are being chosen by habit.<br>Not by structure.<br>That is not a secure position.'}
         </div>
       </div>
 
@@ -2992,7 +2992,7 @@ function showResults(r, jobId) {
     + buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r, googleIcon, googleSignal, hasSocial)).join('')
-    + buildWhnBlock(r)
+    + buildWhnBlock(r, r.selectionGap || (100 - (r.overallScore || 0)))
     + [].concat(buildPillarCards(r)).join('')
     + [].concat(buildShareBlock(jobId)).join('')
     + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
