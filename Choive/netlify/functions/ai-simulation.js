@@ -35,12 +35,17 @@ async function runQuery(systemPrompt, userQuery) {
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      var errText = await res.text().catch(function() { return ''; });
+      console.warn('[ai-simulation] API returned', res.status, errText.slice(0, 200));
+      return null;
+    }
     var data = await res.json();
     return (data.content || []).filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; }).join('').trim();
   } catch (err) {
     clearTimeout(timer);
+    console.warn('[ai-simulation] runQuery failed:', err.message);
     return null;
   }
 }
