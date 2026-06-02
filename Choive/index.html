@@ -2805,8 +2805,8 @@ function buildWhnBlock(r, gap) {
 
       <div class="whn-section">
         <div class="whn-reality">
-          ${risk === 'The position is structurally sound.'
-            ? 'You are in a strong position. Keep it that way.'
+          ${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
+            ? 'You are in a strong position. The gap is small.'
             : 'You are being chosen by habit.<br>Not by structure.<br>That is not a secure position.'}
         </div>
       </div>
@@ -2843,7 +2843,7 @@ function buildWhnBlock(r, gap) {
       </div>
 
       <div class="whn-section">
-        <div class="whn-tension">Close this gap before it is exploited.</div>
+        <div class="whn-tension">${risk === 'The position is structurally sound.' ? 'The position is sound. Keep building on it.' : 'Close this gap before it is exploited.'}</div>
       </div>
 
       <div class="whn-section">
@@ -2851,7 +2851,9 @@ function buildWhnBlock(r, gap) {
           <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
             Unlock Your CHOIVE Analysis™
           </button>
-          <span class="whn-cta-micro">Right now, you are being chosen by habit — not by structure.</span>
+          <span class="whn-cta-micro">${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
+            ? 'Strengthen your position before a competitor closes the gap.'
+            : 'Right now, you are being chosen by habit — not by structure.'}</span>
         </div>
       </div>
     </div>`;
@@ -2992,7 +2994,13 @@ function showResults(r, jobId) {
     + buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r, googleIcon, googleSignal, hasSocial)).join('')
-    + buildWhnBlock(r, r.selectionGap || (100 - (r.overallScore || 0)))
+    + (function() {
+    var _tier = r.marketPosition && r.marketPosition.tier;
+    var _tMap = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
+    var _like = typeof _tMap[_tier] === 'number' ? _tMap[_tier] : 0;
+    var _gap  = Math.max(0, _like - (r.overallScore || 0));
+    return buildWhnBlock(r, _gap);
+  })()
     + [].concat(buildPillarCards(r)).join('')
     + [].concat(buildShareBlock(jobId)).join('')
     + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
