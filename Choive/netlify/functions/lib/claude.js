@@ -81,6 +81,7 @@ async function scoreWithClaude(evidence) {
         max_tokens: MAX_TOKENS,
         temperature: 0.1,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: 'You are a JSON-only response engine. You MUST respond with a single valid JSON object and absolutely nothing else. No prose, no markdown, no explanation, no preamble, no steps. Your entire response must start with { and end with }. Any text outside the JSON object will break the system.',
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -511,7 +512,7 @@ function buildPrompt(evidence) {
     '  ]\n' +
     '}';
 
-  return systemPrompt + userPrompt + jsonSchema + "\n\nRespond ONLY with the JSON object. No markdown. No explanation.";
+  return systemPrompt + userPrompt + jsonSchema + "\n\nCRITICAL: Respond with ONLY the JSON object. Start your response with { and end with }. No prose, no steps, no markdown, no preamble, no explanation before or after the JSON.";
 }
 
 module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
