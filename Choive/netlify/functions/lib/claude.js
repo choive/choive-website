@@ -115,13 +115,18 @@ function parseClaudeResponse(data) {
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/```\s*$/i, '')
+    .replace(/]*>/gi, '')
+    .replace(/<\/antml:cite>/gi, '')
+    .replace(/<antCiting[^>]*\/>/gi, '')
     .trim();
 
   try { return JSON.parse(clean); } catch (_) {}
 
   // Try extracting first complete JSON object
+  // Find the outermost JSON object
   var start = clean.indexOf('{');
   var end   = clean.lastIndexOf('}');
+  if (start > 0) { console.log('[CHOIVE] Non-JSON prefix:', JSON.stringify(clean.slice(0, Math.min(start, 100)))); }
   if (start !== -1 && end !== -1 && end > start) {
     try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
   }
@@ -233,19 +238,9 @@ function buildPrompt(evidence) {
     '7. DO NOT reward signals that are not present in the evidence.\n' +
     '8. DO NOT penalise signals that are clearly present in the evidence.\n\n' +
 
-    'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n' +
-    'User provided category: "' + category + '" — this may be vague or incorrect.\n' +
-    'Using ONLY the evidence, determine:\n' +
-    '1. What does this business actually sell?\n' +
-    '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n' +
-    '3. What precise industry category would buyers use to find this?\n' +
-    '4. B2B, B2C, or both?\n' +
-    'Return this as inferredCategory. Use it for all scoring and competitor logic.\n' +
-    'Examples:\n' +
-    '- User typed OTT platform, evidence shows white-label middleware for telcos → B2B OTT middleware platform vendor\n' +
-    '- User typed coffee shop, evidence shows wholesale roastery → B2B specialty coffee roaster\n\n' +
-
-    'DECISION ENVIRONMENT — classify first:\n' +
+    'Set inferredCategory in your JSON to the precise business category inferred from evidence.\\n' +
+    'User-provided category: "' + category + '" — verify against evidence.\\n' +
+    'Use B2B/B2C prefix. Examples: B2B OTT middleware platform vendor, B2C premium beef direct-to-consumer.\\n\\n' +    'DECISION ENVIRONMENT — classify first:\n' +
     '- discovery_driven: local, map-based, search-based selection\n' +
     '- comparison_driven: evaluated against alternatives before decision\n' +
     '- authority_driven: selected based on reputation, partnerships, capability\n' +
