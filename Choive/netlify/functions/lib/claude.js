@@ -406,54 +406,16 @@ function buildPrompt(evidence) {
     '- Sentence 2: the single strongest evidence-based driver or gap\n' +
     '- Sentence 3: the consequence for selection\n\n' +
 
-        'CHOIVE LANGUAGE STANDARD\n=========================\n\n' +
-    'WHAT CHOIVE IS:\n' +
-    'A business selection diagnostic. Explains why a business is chosen, overlooked, trusted, compared, or ignored.\n' +
-    'Not an SEO audit. Not an AI visibility tool.\n\n' +
-    'PRIORITY RULE:\n' +
-    'If a sentence is technically correct but harder to understand, choose the clearer version.\n' +
-    'A business owner must understand the diagnosis within 30 seconds.\n\n' +
-    'UNDERSTANDING VS SELECTION:\n' +
-    'If you have identified the category, product, customers, positioning, and differentiation,\n' +
-    'the business HAS ALREADY BEEN UNDERSTOOD. The question is not understanding. The question is selection.\n\n' +
-    'NEVER SAY:\n' +
-    '- AI cannot understand the business\n' +
-    '- AI does not know what the company does\n' +
-    '- AI cannot categorize this business\n' +
-    '- machines cannot read this website\n\n' +
-    'INSTEAD SAY:\n' +
-    '- The business is understood, but not consistently selected during comparison.\n' +
-    '- Recommendation confidence is low because...\n' +
-    '- Selection friction exists because...\n' +
-    '- Comparison readiness is weak because...\n\n' +
-    'BANNED TECHNICAL TERMS IN DIAGNOSIS AND RECOMMENDATIONS:\n' +
-    'JSON-LD, metadata, canonical tags, schema markup, llms.txt\n' +
-    'Replace with: structured web presence, machine-readable definition, comparison signals, selection infrastructure\n\n' +
-    'TRUST SCORING RULE:\n' +
-    'Trust is NOT the same as review volume.\n' +
-    'Named Fortune 500 clients, public case studies, major partnerships, long operating history = HIGH TRUST.\n' +
-    'Low review volume alone does NOT mean low trust.\n' +
-    'Score trust based on totality of credibility signals.\n\n' +
-    'EASE SCORING RULE:\n' +
-    'Ease measures how quickly the business can be understood, categorized, and selected.\n' +
-    'Schema and llms.txt are factors — NOT the entire Ease score.\n' +
-    'Clear positioning, strong search presence, consistent messaging can score well on Ease.\n\n' +
-    'COMPETITOR RULE — ABSOLUTE:\n' +
-    'Never invent competitors. Only use competitors found in search evidence.\n' +
-    'If no competitor found: write exactly "No dominant comparison pattern was detected in the available evidence."\n\n' +
-    'RECOMMENDATION LANGUAGE:\n' +
-    'Explain the outcome, not the task.\n' +
-    'BAD: "Add schema markup." GOOD: "Make this business easier to classify and compare during evaluation."\n' +
-    'BAD: "Create llms.txt." GOOD: "Define this business clearly so its positioning is consistently understood."\n' +
-    'BAD: "Missing JSON-LD." GOOD: "The business is trusted once discovered, but harder to compare consistently."\n\n' +
-    'CHOIVE TONE — STRATEGIC ADVISOR:\n' +
-    'Write like a strategic advisor, not an SEO consultant or technical auditor.\n' +
-    'Best language: "Strong reputation, weak comparison visibility."\n' +
-    '"Trusted provider, weak selection signals." "The business is discovered. The problem is selection."\n\n' +
-    'CORE FRAMEWORK:\n' +
-    'Discovery: Can people find the business?\n' +
-    'Selection: Will people choose the business?\n' +
-    'CHOIVE focuses on SELECTION.\n\n' +
+        'CHOIVE LANGUAGE STANDARD\\n=========================\\n\\n' +
+    'WHAT CHOIVE IS: A business selection diagnostic. Why a business is chosen, overlooked, trusted, compared, or ignored.\\n' +
+    'NOT an SEO audit. NOT an AI visibility tool. Focus on SELECTION.\\n\\n' +
+    'NEVER WRITE: AI cannot understand / AI does not know / AI cannot categorize\\n' +
+    'INSTEAD WRITE: not consistently selected / recommendation confidence low / selection friction exists\\n\\n' +
+    'TRUST: Named Fortune 500 clients, partnerships, long history = HIGH TRUST. Review volume alone is not trust.\\n' +
+    'EASE: How quickly understood, categorized, selected. Schema is one factor, not the whole score.\\n' +
+    'COMPETITORS: Only from evidence. Never invent. If none found: No dominant comparison pattern detected.\\n' +
+    'RECOMMENDATIONS: Explain outcome not task. BAD: Add schema. GOOD: Make this business easier to compare.\\n' +
+    'TONE: Strategic advisor. Strong reputation, weak comparison visibility. Trusted provider, weak selection signals.\\n\\n' +
 
     'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n' +
     'Clarity finding: [one short phrase, max 6 words, no punctuation]\n' +
