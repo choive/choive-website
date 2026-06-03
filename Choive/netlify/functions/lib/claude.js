@@ -5,7 +5,7 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const TIMEOUT_MS  = 65000;
-const MAX_TOKENS  = 4000;
+const MAX_TOKENS  = 2800;
 
 function truncate(text, max) {
   max = max || 4000;
@@ -80,7 +80,7 @@ async function scoreWithClaude(evidence) {
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
         temperature: 0.1,
-        system: 'You are a JSON-only response engine. You MUST respond with a single valid JSON object and absolutely nothing else. No prose, no markdown, no explanation, no preamble, no steps. Your entire response must start with { and end with }. Any text outside the JSON object will break the system.',
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -240,9 +240,19 @@ function buildPrompt(evidence) {
     '7. DO NOT reward signals that are not present in the evidence.\n' +
     '8. DO NOT penalise signals that are clearly present in the evidence.\n\n' +
 
-    'Set inferredCategory in your JSON to the precise business category inferred from evidence.\\n' +
-    'User-provided category: "' + category + '" — verify against evidence.\\n' +
-    'Use B2B/B2C prefix. Examples: B2B OTT middleware platform vendor, B2C premium beef direct-to-consumer.\\n\\n' +    'DECISION ENVIRONMENT — classify first:\n' +
+    'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\\n' +
+    'User provided category: "' + category + '" — this may be vague or incorrect.\\n' +
+    'Using ONLY the evidence, determine:\\n' +
+    '1. What does this business actually sell?\\n' +
+    '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\\n' +
+    '3. What precise industry category would buyers use to find this?\\n' +
+    '4. B2B, B2C, or both?\\n' +
+    'Return this as inferredCategory. Use it for all scoring and competitor logic.\\n' +
+    'Examples:\\n' +
+    '- User typed OTT platform, evidence shows white-label middleware for telcos -> B2B OTT middleware platform vendor\\n' +
+    '- User typed coffee shop, evidence shows wholesale roastery -> B2B specialty coffee roaster\\n\\n' +
+
+    'DECISION ENVIRONMENT — classify first:\n' +
     '- discovery_driven: local, map-based, search-based selection\n' +
     '- comparison_driven: evaluated against alternatives before decision\n' +
     '- authority_driven: selected based on reputation, partnerships, capability\n' +
