@@ -80,6 +80,7 @@ async function scoreWithClaude(evidence) {
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
         temperature: 0.1,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -92,7 +93,7 @@ async function scoreWithClaude(evidence) {
       throw new Error(data && data.error && data.error.message ? data.error.message : 'Anthropic HTTP ' + response.status);
     }
 
-    return parseClaudeResponse(data);
+    return safeOutput(parseClaudeResponse(data));
   } catch (error) {
     clearTimeout(timeout);
     if (error.name === 'AbortError') throw new Error('Claude request timed out');
@@ -126,6 +127,37 @@ function parseClaudeResponse(data) {
 
   console.error('Claude parse failed. Raw:', text.slice(0, 300));
   throw new Error('Could not parse Claude response as JSON');
+}
+
+function safeOutput(raw) {
+  var r = raw || {};
+  var pillars = r.pillars || {};
+  function safePillar(p) {
+    p = p || {};
+    return { score: Number(p.score) || 0, finding: p.finding || '', analysis: p.analysis || '', evidence: p.evidence || '' };
+  }
+  return {
+    overallScore:        Number(r.overallScore) || 0,
+    verdictHeadline:     r.verdictHeadline     || '',
+    summaryParagraph:    r.summaryParagraph    || '',
+    businessUnderstanding: r.businessUnderstanding || r.summaryParagraph || '',
+    evidenceNarrative:   r.evidenceNarrative   || '',
+    inferredCategory:    r.inferredCategory    || '',
+    signatureLine:       r.signatureLine       || '',
+    marketPosition:      r.marketPosition      || { tier: 'unknown', reasoning: '' },
+    platformCoverage:    r.platformCoverage    || { chatgpt: 'weak', perplexity: 'weak', gemini: 'weak', claude: 'weak' },
+    selectionGap:        r.selectionGap        || 0,
+    pillars: {
+      clarity:    safePillar(pillars.clarity),
+      trust:      safePillar(pillars.trust),
+      difference: safePillar(pillars.difference),
+      ease:       safePillar(pillars.ease)
+    },
+    competitors: Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
+    competitor:  r.competitor || null,
+    actions:     Array.isArray(r.actions) ? r.actions : [],
+    deliverables: r.deliverables || null
+  };
 }
 
 function buildPrompt(evidence) {
@@ -366,80 +398,120 @@ function buildPrompt(evidence) {
     '- Sentence 2: the single strongest evidence-based driver or gap\n' +
     '- Sentence 3: the consequence for selection\n\n' +
 
-        'CHOIVE LANGUAGE STANDARD:\n' +
-    'CHOIVE explains why a business is easy or hard to select. Nothing more.\n' +
-    'Every sentence must be immediately understandable. No jargon. No hype.\n\n' +
+        'CHOIVE LANGUAGE STANDARD\n=========================\n\n' +
+    'WHAT CHOIVE IS:\n' +
+    'A business selection diagnostic. Explains why a business is chosen, overlooked, trusted, compared, or ignored.\n' +
+    'Not an SEO audit. Not an AI visibility tool.\n\n' +
+    'PRIORITY RULE:\n' +
+    'If a sentence is technically correct but harder to understand, choose the clearer version.\n' +
+    'A business owner must understand the diagnosis within 30 seconds.\n\n' +
+    'UNDERSTANDING VS SELECTION:\n' +
+    'If you have identified the category, product, customers, positioning, and differentiation,\n' +
+    'the business HAS ALREADY BEEN UNDERSTOOD. The question is not understanding. The question is selection.\n\n' +
+    'NEVER SAY:\n' +
+    '- AI cannot understand the business\n' +
+    '- AI does not know what the company does\n' +
+    '- AI cannot categorize this business\n' +
+    '- machines cannot read this website\n\n' +
+    'INSTEAD SAY:\n' +
+    '- The business is understood, but not consistently selected during comparison.\n' +
+    '- Recommendation confidence is low because...\n' +
+    '- Selection friction exists because...\n' +
+    '- Comparison readiness is weak because...\n\n' +
+    'BANNED TECHNICAL TERMS IN DIAGNOSIS AND RECOMMENDATIONS:\n' +
+    'JSON-LD, metadata, canonical tags, schema markup, llms.txt\n' +
+    'Replace with: structured web presence, machine-readable definition, comparison signals, selection infrastructure\n\n' +
+    'TRUST SCORING RULE:\n' +
+    'Trust is NOT the same as review volume.\n' +
+    'Named Fortune 500 clients, public case studies, major partnerships, long operating history = HIGH TRUST.\n' +
+    'Low review volume alone does NOT mean low trust.\n' +
+    'Score trust based on totality of credibility signals.\n\n' +
+    'EASE SCORING RULE:\n' +
+    'Ease measures how quickly the business can be understood, categorized, and selected.\n' +
+    'Schema and llms.txt are factors — NOT the entire Ease score.\n' +
+    'Clear positioning, strong search presence, consistent messaging can score well on Ease.\n\n' +
+    'COMPETITOR RULE — ABSOLUTE:\n' +
+    'Never invent competitors. Only use competitors found in search evidence.\n' +
+    'If no competitor found: write exactly "No dominant comparison pattern was detected in the available evidence."\n\n' +
+    'RECOMMENDATION LANGUAGE:\n' +
+    'Explain the outcome, not the task.\n' +
+    'BAD: "Add schema markup." GOOD: "Make this business easier to classify and compare during evaluation."\n' +
+    'BAD: "Create llms.txt." GOOD: "Define this business clearly so its positioning is consistently understood."\n' +
+    'BAD: "Missing JSON-LD." GOOD: "The business is trusted once discovered, but harder to compare consistently."\n\n' +
+    'CHOIVE TONE — STRATEGIC ADVISOR:\n' +
+    'Write like a strategic advisor, not an SEO consultant or technical auditor.\n' +
+    'Best language: "Strong reputation, weak comparison visibility."\n' +
+    '"Trusted provider, weak selection signals." "The business is discovered. The problem is selection."\n\n' +
+    'CORE FRAMEWORK:\n' +
+    'Discovery: Can people find the business?\n' +
+    'Selection: Will people choose the business?\n' +
+    'CHOIVE focuses on SELECTION.\n\n' +
 
-    'DO NOT USE:\n' +
-    '- AI discovery, AI optimization, AI-friendly, AI ecosystems\n' +
-    '- Cannot be found, completely missing, required for AI\n' +
-    '- SEO, search optimization, digital marketing\n' +
-    '- Vague abstractions: recommendation confidence environments, evaluation ecosystems\n\n' +
+    'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n' +
+    'Clarity finding: [one short phrase, max 6 words, no punctuation]\n' +
+    'Trust finding: [one short phrase, max 6 words, no punctuation]\n' +
+    'Difference finding: [one short phrase, max 6 words, no punctuation]\n' +
+    'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n' +
+    'PILLAR ANALYSIS — 2 sentences each:\n' +
+    'Sentence 1: What is true about this pillar based on evidence?\n' +
+    'Sentence 2: What is the selection consequence?\n\n' +
+    'PILLAR EVIDENCE — quote the exact evidence string, max 200 chars\n\n' +
+    'VERDICT HEADLINE — max 10 words, no punctuation, strategic advisor tone\n' +
+    'Examples:\n' +
+    '- Strong reputation, weak comparison visibility\n' +
+    '- Trusted provider, weak selection signals\n' +
+    '- Clear expertise, unclear positioning\n' +
+    '- The business is discovered. The problem is selection.\n\n' +
+    'SUMMARY PARAGRAPH — 3 sentences:\n' +
+    'Sentence 1: Why is this business not the obvious choice? (or why it IS if dominant)\n' +
+    'Sentence 2: What is the strongest evidence-based driver or gap?\n' +
+    'Sentence 3: What is the consequence for selection?\n\n' +
+    'COMPETITOR RULE:\n' +
+    'Return UP TO 3 competitors in the competitors array.\n' +
+    'Only include a competitor if ALL of these are true:\n' +
+    '1. The competitor domain appeared in actual search results\n' +
+    '2. The competitor is in the same category and serves the same buyer\n' +
+    '3. You can explain a specific structural advantage they have\n' +
+    'If no real competitor found: set name to null and queryContext to "no-evidence"\n\n' +
+    'For each competitor use these exact fields:\n' +
+    'advantage: one sentence — what specific structural or positioning advantage do they have?\n' +
+    'gapLocation: one sentence — at what exact point in selection does this hurt the business?\n' +
+    'closeGap: one sentence — what single specific change would close this gap?\n\n' +
+    'ACTION RULES:\n' +
+    '- Actions must be specific to this business\n' +
+    '- Title must name the exact entity type (e.g. "OTT middleware vendor", "premium beef brand")\n' +
+    '- Body must cite actual evidence found\n' +
+    '- Explanation must explain the selection consequence, not the technical task\n' +
+    '- Never use: JSON-LD, schema markup, metadata, canonical, llms.txt in action body\n' +
+    '- Instead use: structured presence, machine-readable definition, comparison signals\n\n';
 
-    'USE INSTEAD:\n' +
-    '- Weak machine readability / limited structured data\n' +
-    '- Harder to select under automated comparison\n' +
-    '- Clear positioning / strong trust signals / well-defined entity\n' +
-    '- Structurally preferred / easier to recommend with confidence\n' +
-    '- Creates selection doubt / reduces selection friction\n\n' +
-
-    'TONE: strategic, calm, precise, modern. Not alarming. Not generic.\n\n' +
-
-    
-
-
-    'PILLAR FINDINGS — each exactly 4-8 words, evidence-based, final tone.\n' +
-    'PILLAR ANALYSIS — 1-2 sentences explaining the score with specific evidence.\n' +
-    'PILLAR EVIDENCE — quote or reference the specific signal found or missing.\n\n' +
-
-    'ACTION RULES:\\n' +
-    'Every action must be SPECIFIC to this exact business — not generic advice.\\n' +
-    'Reference actual evidence: quote the H1, name the missing signal, cite the exact gap found.\\n\\n' +
-    'ACTION TITLE (3-6 words): specific, not generic.\\n' +
-    'BAD: Add JSON-LD schema | GOOD: Define [business] as SoftwareApplication entity\\n\\n' +
-    'ACTION BODY (max 20 words): name the gap and exact fix.\\n' +
-    'BAD: Add schema for discoverability | GOOD: No JSON-LD found — add Organization + SoftwareApplication schema\\n\\n' +
-    'ACTION EXPLANATION: what breaks if ignored, what improves if fixed — specific to this business.\\n' +
-    'BAD: Essential for AI platforms | GOOD: Without this, comparison tools cannot categorize this vendor correctly\\n\\n' +
-
-    'EVIDENCE NARRATIVE — 2-3 sentences: what was found, what was missing, what that means.\n\n' +
-
-    'Return ONLY raw JSON. No markdown. No backticks. No explanation. Start with { end with }.\n\n' +
-
-    '{\n' +
+  var jsonSchema = '{\n' +
     '  "overallScore": 0,\n' +
-    '  "inferredCategory": "",\n' +
     '  "verdictHeadline": "",\n' +
-    '  "verdictLevel": "absent",\n' +
-    '  "signatureLine": "",\n' +
-    '  "decisionState": "",\n' +
-    '  "decisionEnvironment": "",\n' +
     '  "summaryParagraph": "",\n' +
     '  "businessUnderstanding": "",\n' +
-    '  "marketPosition": { "tier": "", "label": "", "explanation": "" },\n' +
+    '  "evidenceNarrative": "",\n' +
+    '  "inferredCategory": "",\n' +
+    '  "marketPosition": { "tier": "", "reasoning": "" },\n' +
+    '  "platformCoverage": { "chatgpt": "", "perplexity": "", "gemini": "", "claude": "" },\n' +
     '  "pillars": {\n' +
     '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
     '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
     '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
     '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n' +
     '  },\n' +
-    '  "platformCoverage": {\n' +
-    '    "chatgpt":    { "status": "absent", "detail": "" },\n' +
-    '    "perplexity": { "status": "absent", "detail": "" },\n' +
-    '    "gemini":     { "status": "absent", "detail": "" },\n' +
-    '    "claude":     { "status": "absent", "detail": "" }\n' +
-    '  },\n' +
-    '  "evidenceNarrative": "",\n' +
-    '  "competitors": [\\n' +
-    '    { "name": null, "advantage": null, "gapLocation": null, "closeGap": null, "evidence": null, "queryContext": null }\\n' +
-    '  ],\\n' +
-    '"actions": [\n' +
+    '  "competitors": [\n' +
+    '    { "name": null, "advantage": null, "gapLocation": null, "closeGap": null, "evidence": null, "queryContext": null }\n' +
+    '  ],\n' +
+    '  "actions": [\n' +
     '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
     '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n' +
     '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n' +
     '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n' +
     '  ]\n' +
     '}';
+
+  return systemPrompt + userPrompt + jsonSchema + "\n\nRespond ONLY with the JSON object. No markdown. No explanation.";
 }
 
 module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
