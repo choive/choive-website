@@ -80,7 +80,6 @@ async function scoreWithClaude(evidence) {
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
         temperature: 0.1,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         system: 'You are a JSON-only response engine. You MUST respond with a single valid JSON object and absolutely nothing else. No prose, no markdown, no explanation, no preamble, no steps. Your entire response must start with { and end with }. Any text outside the JSON object will break the system.',
         messages: [{ role: 'user', content: prompt }]
       }),
