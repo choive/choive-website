@@ -5,7 +5,7 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 const TIMEOUT_MS  = 65000;
-const MAX_TOKENS  = 2800;
+const MAX_TOKENS  = 4000;
 
 function truncate(text, max) {
   max = max || 4000;
@@ -88,6 +88,9 @@ async function scoreWithClaude(evidence) {
 
     clearTimeout(timeout);
     var data = await response.json();
+    if (data.stop_reason && data.stop_reason !== 'end_turn') {
+      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason);
+    }
 
     if (!response.ok) {
       throw new Error(data && data.error && data.error.message ? data.error.message : 'Anthropic HTTP ' + response.status);
@@ -488,7 +491,7 @@ function buildPrompt(evidence) {
     '  "evidenceNarrative": "",\n' +
     '  "inferredCategory": "",\n' +
     '  "marketPosition": { "tier": "", "reasoning": "" },\n' +
-    '  "platformCoverage": { "chatgpt": "", "perplexity": "", "gemini": "", "claude": "" },\n' +
+    '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n' +
     '  "pillars": {\n' +
     '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
     '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n' +
