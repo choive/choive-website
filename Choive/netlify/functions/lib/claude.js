@@ -80,7 +80,6 @@ async function scoreWithClaude(evidence) {
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
         temperature: 0.1,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
