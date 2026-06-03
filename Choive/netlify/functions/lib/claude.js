@@ -246,10 +246,9 @@ function buildPrompt(evidence) {
     '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\\n' +
     '3. What precise industry category would buyers use to find this?\\n' +
     '4. B2B, B2C, or both?\\n' +
-    'Return this as inferredCategory. Use it for all scoring and competitor logic.\\n' +
-    'Examples:\\n' +
-    '- User typed OTT platform, evidence shows white-label middleware for telcos -> B2B OTT middleware platform vendor\\n' +
-    '- User typed coffee shop, evidence shows wholesale roastery -> B2B specialty coffee roaster\\n\\n' +
+    'Return this as inferredCategory in the JSON only. No prose headers.\\n' +
+    '- User typed OTT platform -> B2B OTT middleware platform vendor\\n' +
+    '- User typed coffee shop -> B2B specialty coffee roaster\\n\\n' +
 
     'DECISION ENVIRONMENT — classify first:\n' +
     '- discovery_driven: local, map-based, search-based selection\n' +
