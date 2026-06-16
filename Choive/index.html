@@ -2995,15 +2995,6 @@ function showResults(r, jobId) {
     + buildScoreLabels(r)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
-    + (function() {
-    var _tier = r.marketPosition && r.marketPosition.tier;
-    var _tMap = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
-    var _like = typeof _tMap[_tier] === 'number' ? _tMap[_tier] : 0;
-    var _gap  = Math.max(0, _like - (r.overallScore || 0));
-    // Dominant/strong brands are already chosen - cap gap messaging at "close"
-    if (_tier === 'dominant' || _tier === 'strong') _gap = Math.min(_gap, 14);
-    return buildWhnBlock(r, _gap);
-  })()
     + [].concat(buildPillarCards(r)).join('')
     + [].concat(buildShareBlock(jobId)).join('')
     + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
