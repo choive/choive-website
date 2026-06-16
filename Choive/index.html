@@ -2531,14 +2531,15 @@ function runDiagnostic() {
   const category    = document.getElementById('bC').value.trim();
   const city        = document.getElementById('bL').value.trim();
   const website     = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
-  const description = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
+  const description      = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
+  const knownCompetitors = document.getElementById('bComp') ? document.getElementById('bComp').value.trim() : '';
 
   if (!name || !category || !city) {
     alert('Please fill in your business name, category, and city.');
     return;
   }
 
-  bizData = { name, category, city, website, description };
+  bizData = { name, category, city, website, knownCompetitors, description };
 
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').classList.add('active');
@@ -2981,7 +2982,7 @@ function showResults(r, jobId) {
     + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
     + inferredCat
     + '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px;">'
-    + '<div class="mono-score" id="scoreNum">0</div>'
+    + '<div class="mono-score-num" id="scoreNum">0</div>'
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">' + esc(r.verdictHeadline || '') + '</div>'
@@ -2991,9 +2992,9 @@ function showResults(r, jobId) {
 
   zone.innerHTML =
     scoreHeader
-    + buildScoreLabels(r, score, scoreLabel, bName, bCat, bCity)
+    + buildScoreLabels(r)
     + [].concat(buildDisplacementBlock(r)).join('')
-    + [].concat(buildGapBlock(r, googleIcon, googleSignal, hasSocial)).join('')
+    + [].concat(buildGapBlock(r)).join('')
     + (function() {
     var _tier = r.marketPosition && r.marketPosition.tier;
     var _tMap = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
@@ -3417,8 +3418,14 @@ function animateNum(id, from, to, dur) {
 }
 
 function resetDiagnostic() {
-  document.getElementById('resultsZone') && (document.getElementById('resultsZone').style.display = 'none');
-  document.getElementById('inputZone')   && (document.getElementById('inputZone').style.display   = 'block');
+  var dR = document.getElementById('dR');
+  var dI = document.getElementById('dI');
+  var dS = document.getElementById('dS');
+  if (dR) { dR.style.display = 'none'; dR.innerHTML = ''; }
+  if (dS) dS.classList.remove('active');
+  if (dI) dI.style.display = 'block';
+  var rBtn = document.getElementById('rBtn');
+  if (rBtn) rBtn.disabled = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -3453,10 +3460,9 @@ async function fetchSharedResult(jobId) {
 
 async function verifyAndLoad(sessionId) {
   try {
-    var res  = await fetch('/.netlify/functions/verify-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: sessionId })
+    var res  = await fetch('/.netlify/functions/verify-payment?session_id=' + encodeURIComponent(sessionId), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     });
     var data = await res.json();
     if (data && data.paid && data.jobId) {
