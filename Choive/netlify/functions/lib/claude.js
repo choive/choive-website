@@ -3,7 +3,7 @@
 // ENV: ANTHROPIC_API_KEY
 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
+const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS      = 65000;
 const MAX_TOKENS      = 2800;
 
@@ -333,12 +333,15 @@ function buildPrompt(evidence) {
     + '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n'
     + '- Sentence 2: the single strongest evidence-based driver or gap\n'
     + '- Sentence 3: the consequence for selection\n\n'
-    + 'ACTION RULES:\n'
-    + '- Actions must be specific to this business\n'
-    + '- Body must cite actual evidence found\n'
-    + '- Explanation must explain the selection consequence, not the technical task\n'
-    + '- Use: structured presence, machine-readable definition, comparison signals\n'
-    + '- Not: JSON-LD, schema markup, metadata, canonical, llms.txt\n\n'
+    + 'ACTION RULES:\\n'
+    + '- Actions must be specific to this business\\n'
+    + '- Body must cite actual evidence found\\n'
+    + '- Explanation must explain the selection consequence, not the technical task\\n'
+    + '- TITLE BANNED WORDS: schema, schema markup, JSON-LD, llms.txt, metadata, canonical — never in title\\n'
+    + '- TITLE GOOD: Make this business machine-readable, Define your business for AI systems, Close the comparison gap\\n'
+    + '- TITLE BAD: Add schema markup to homepage, Create llms.txt file, Implement JSON-LD\\n'
+    + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\\n'
+    + '- Body/explanation avoid: JSON-LD, schema markup, metadata, canonical, llms.txt\\n\\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
 
   var jsonSchema = '{\n'
