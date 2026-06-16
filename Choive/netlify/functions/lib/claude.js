@@ -4,8 +4,8 @@
 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const TIMEOUT_MS      = 65000;
-const MAX_TOKENS      = 4000;
+const TIMEOUT_MS      = 90000;
+const MAX_TOKENS      = 3000;
 
 function truncate(text, max) {
   max = max || 4000;
