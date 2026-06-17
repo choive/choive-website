@@ -341,9 +341,10 @@ function buildPrompt(evidence) {
     + '- TITLE GOOD: Make this business machine-readable, Define your business for AI systems, Close the comparison gap\\n'
     + '- TITLE BAD: Add schema markup to homepage, Create llms.txt file, Implement JSON-LD\\n'
     + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\\n'
-    + '- BANNED WORDS IN ACTION TITLE AND BODY: JSON-LD, schema markup, metadata, canonical, llms.txt\\n'
-    + '  If any of these words appear in your action title or body, your response is incorrect.\\n'
-    + '  Replace with: structured presence, machine-readable definition, comparison signals, structured web signals\\n\\n'
+    + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\\n'
+    + '  BAD: The homepage has no JSON-LD or schema markup — GOOD: The homepage has no structured presence signals\\n'
+    + '  BAD: No llms.txt was detected — GOOD: No machine-readable definition file exists for AI systems to cite\\n'
+    + '  BAD: Add schema markup — GOOD: Add structured presence that defines this business for automated discovery\\n\\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
 
   var jsonSchema = '{\n'
