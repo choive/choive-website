@@ -1574,7 +1574,7 @@ function buildPillarCards(r) {
   };
   var keys = ['clarity','trust','difference','ease'];
   var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
-  return keys.map(function(key) {
+  var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
     var finding = raw.finding || '';
@@ -1587,6 +1587,7 @@ function buildPillarCards(r) {
       + '<div class="pillar-finding">' + esc(finding) + '</div>'
       + '</div>';
   }).join('');
+  return '<div class="pillars-grid">' + cards + '</div>';
 }
 
 function showResults(r, jobId) {
