@@ -30,6 +30,7 @@ exports.handler = async function (event) {
     const city        = safeStr(input.city);
     const website     = safeStr(input.website);
     const description = safeStr(input.description);
+    const knownCompetitors = safeStr(input.knownCompetitors);
     if (!jobId)                   throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
@@ -62,7 +63,7 @@ exports.handler = async function (event) {
       );
     }
     const evidence = {
-      name, category, city, website, description,
+      name, category, city, website, description, knownCompetitors,
       inferredOfficialSite: inferredSite || '',
       websiteText:          websiteText  || '',
       searchText:           serperPayload.searchText   || 'No search results returned.',
@@ -140,7 +141,7 @@ exports.handler = async function (event) {
       if (catResult && catResult !== category) {
         inferredCat = catResult;
         console.log('[' + jobId + '] Inferred category: ' + inferredCat);
-        var compSearch = await searchCompetitors(name, inferredCat, city);
+        var compSearch = await searchCompetitors(name, inferredCat, city, knownCompetitors);
         if (compSearch.competitors && compSearch.competitors.length > 0) {
           var existingDomains = (evidence['competitors'] || []).map(function(c) { return c['domain']; });
           var newComps = compSearch.competitors.filter(function(c) { return existingDomains.indexOf(c['domain']) === -1; });
