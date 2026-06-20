@@ -5,7 +5,7 @@
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS      = 90000;
-const MAX_TOKENS      = 3000;
+const MAX_TOKENS      = 4500;
 
 function truncate(text, max) {
   max = max || 4000;
@@ -116,7 +116,9 @@ function parseClaudeResponse(data) {
   if (start !== -1 && end !== -1 && end > start) {
     try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
   }
-  console.error('Claude parse failed. Raw:', text.slice(0, 300));
+  console.error('Claude parse failed. Raw start:', text.slice(0, 300));
+  console.error('Claude parse failed. Raw end:', text.slice(-300));
+  console.error('Claude parse failed. Total length:', text.length);
   throw new Error('Could not parse Claude response as JSON');
 }
 
