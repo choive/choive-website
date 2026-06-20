@@ -118,7 +118,7 @@ function extractCompetitors(queryResults, businessName) {
 
   for (var i = 0; i < queryResults.length; i++) {
     var qr = queryResults[i];
-    if (qr.signalType !== 'comparison') continue;
+    if (qr.signalType !== 'comparison' && qr.signalType !== 'named_competitor') continue;
     for (var j = 0; j < qr.items.length; j++) {
       var item   = qr.items[j];
       var domain = normalizeUrl(item.link || '');
@@ -131,6 +131,7 @@ function extractCompetitors(queryResults, businessName) {
       if (isDir) continue;
       if (!found[domain]) found[domain] = { domain: domain, title: item.title || '', snippet: item.snippet || '', count: 0 };
       found[domain].count++;
+      if (qr.signalType === 'named_competitor') found[domain].count += 10; // boost user-verified names to the top
     }
   }
 
@@ -195,6 +196,7 @@ function buildSearchText(queryResults) {
   var grouped = {};
   for (var i = 0; i < queryResults.length; i++) {
     var sig = queryResults[i].signalType || 'identity';
+    if (sig === 'named_competitor') sig = 'comparison';
     if (!grouped[sig]) grouped[sig] = [];
     grouped[sig].push(queryResults[i]);
   }
@@ -333,7 +335,11 @@ async function searchSerper(name, category, city) {
 }
 
 // ── Second-pass competitor search using inferred category ─────────────────────
-async function searchCompetitors(name, inferredCategory, city) {
+// knownCompetitors (optional): comma/semicolon-separated names the business owner
+// provided directly. This is verified ground truth, so we run real targeted
+// searches for each one instead of only hoping generic category queries surface
+// the same names. Matches from these named searches are boosted to the top.
+async function searchCompetitors(name, inferredCategory, city, knownCompetitors) {
   if (!inferredCategory) return { results: [], searchText: '' };
 
   // Extract short keyword from inferred category for effective search queries
@@ -351,6 +357,18 @@ async function searchCompetitors(name, inferredCategory, city) {
     { q: catShort + ' market leaders',                  type: 'comparison'  }
   ];
 
+  // If the user named specific competitors, search each one directly — this is
+  // verified ground truth from the business owner, not a guess, so it deserves
+  // real targeted searches rather than hoping generic category queries surface
+  // the same names by chance.
+  if (knownCompetitors && typeof knownCompetitors === 'string' && knownCompetitors.trim()) {
+    var namedList = knownCompetitors.split(/[,;]/).map(function(s) { return s.trim(); }).filter(Boolean).slice(0, 3);
+    namedList.forEach(function(compName) {
+      queries.push({ q: compName + ' ' + catShort,        type: 'named_competitor' });
+      queries.push({ q: compName + ' vs ' + name,         type: 'named_competitor' });
+    });
+  }
+
   var settled = await Promise.allSettled(
     queries.map(function(item) { return fetchSerper(item.q); })
   );
@@ -364,7 +382,7 @@ async function searchCompetitors(name, inferredCategory, city) {
     var queryDef = queries[i];
     var sig      = classifySignal(queryDef.q);
     var signalType = queryDef.type || sig.type;
-    var priority   = PRIORITY_MAP[signalType] || sig.priority;
+    var priority   = queryDef.type === 'named_competitor' ? 100 : (PRIORITY_MAP[signalType] || sig.priority);
 
     var items = [];
     var orgs  = data.organic || [];
