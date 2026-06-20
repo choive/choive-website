@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHOIVE· — AI Selection Diagnostic</title>
 <meta name="description" content="Find out if AI recommends your business. Real diagnostic. Real signals. Any business, any category, anywhere in the world.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230C0C0E'/%3E%3Ccircle cx='62' cy='62' r='12' fill='%23C9A86A'/%3E%3Ctext x='38' y='62' font-family='Georgia,serif' font-size='52' fill='%23F5F2EE' text-anchor='middle' dominant-baseline='central'%3EC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
@@ -26,11 +27,19 @@
   --ink-2:   #1A1A1E;
   --ink-3:   #28282E;
   --body:    #48484F;
-  --muted:   #88888F;
+  --muted:   #67676E;
   --faint:   #BBBBC2;
   --rule:    rgba(12,12,14,0.08);
   --rule-2:  rgba(12,12,14,0.04);
-  --ac:      #0C0C0E;
+  --ac:      #C9A86A;
+  --ac-d:    #B8935A;
+  /* Aliases for JS-generated inline styles (light-surface context) */
+  --tm:      #67676E;
+  --tp:      #0C0C0E;
+  --tb:      #48484F;
+  --dk-3:    #EDEAE5;
+  --dk-2:    #E4E0D9;
+  --rule-d:  rgba(12,12,14,0.1);
   /* Void for dark sections */
   --void:    #0C0C0E;
   --void-2:  #111116;
@@ -47,6 +56,12 @@
   --red-bg:  rgba(184,50,50,0.06);
   --amb-bg:  rgba(154,106,20,0.06);
   --grn-bg:  rgba(42,122,72,0.06);
+  /* Depth — warm-toned shadows, never pure grey/black */
+  --sh-1: 0 1px 2px rgba(40,32,20,0.04), 0 2px 6px rgba(40,32,20,0.04);
+  --sh-2: 0 2px 6px rgba(40,32,20,0.06), 0 8px 24px rgba(40,32,20,0.07);
+  --sh-3: 0 4px 12px rgba(40,32,20,0.08), 0 24px 48px -12px rgba(40,32,20,0.16);
+  --sh-dark: 0 4px 16px rgba(0,0,0,0.28), 0 24px 48px -12px rgba(0,0,0,0.4);
+  --edge-lt: inset 0 1px 0 rgba(255,255,255,0.5);
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -84,11 +99,11 @@ nav {
 .nav-link:hover { color:var(--ink); }
 .nav-cta {
   font-size:11px; font-weight:700; letter-spacing:0.06em;
-  color:var(--paper); background:var(--ink);
-  padding:9px 18px; text-decoration:none;
+  color:var(--void); background:var(--ac);
+  padding:10px 18px; text-decoration:none;
   transition:background 0.15s;
 }
-.nav-cta:hover { background:var(--ink-2); }
+.nav-cta:hover { background:var(--ac-d); }
 
 /* ── HERO ── */
 /* Light. Open. The question arrives before the form. */
@@ -102,7 +117,9 @@ nav {
   max-width:1280px;
   margin:0 auto;
 }
-.hero-left {}
+.hero-left {
+  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) both;
+}
 .hero-kicker {
   font-size:11px; font-weight:700; letter-spacing:0.2em;
   text-transform:uppercase; color:var(--muted);
@@ -147,7 +164,9 @@ nav {
 }
 
 /* Hero right — the real example */
-.hero-right {}
+.hero-right {
+  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) 0.18s both;
+}
 .example-label {
   font-size:11px; font-weight:700; letter-spacing:0.16em;
   text-transform:uppercase; color:var(--muted);
@@ -155,12 +174,13 @@ nav {
 }
 .example-dot {
   width:5px; height:5px; border-radius:50%;
-  background:var(--green); display:inline-block;
+  background:var(--ac); display:inline-block;
 }
 .example-card {
   background:var(--paper-2);
   border:1px solid var(--rule);
   overflow:hidden;
+  box-shadow:var(--sh-2);
 }
 .ex-header {
   padding:16px 24px;
@@ -223,6 +243,7 @@ nav {
   padding:16px 24px;
   background:var(--void);
   border-top:1px solid rgba(245,242,238,0.06);
+  box-shadow:inset 0 3px 8px rgba(0,0,0,0.25);
   display:grid; grid-template-columns:1fr 1fr;
   gap:1px;
 }
@@ -292,6 +313,13 @@ nav {
   text-transform:uppercase; color:var(--ghost-3);
   margin-bottom:8px; display:block;
 }
+.diag-form-panel {
+  background:var(--void-2);
+  border:1px solid rgba(245,242,238,0.08);
+  border-radius:2px;
+  padding:1px;
+  box-shadow:var(--sh-dark), inset 0 1px 0 rgba(245,242,238,0.06);
+}
 .field-row {
   display:grid; grid-template-columns:1fr 1fr;
   gap:1px; margin-bottom:1px;
@@ -303,7 +331,7 @@ nav {
   color:var(--ghost);
   font-family:'Inter', sans-serif;
   font-size:14px; font-weight:400;
-  padding:17px 18px;
+  padding:18px;
   outline:none; width:100%;
   transition:background 0.2s, border-color 0.2s;
 }
@@ -313,14 +341,14 @@ nav {
   border-bottom-color:rgba(245,242,238,0.3);
 }
 .run-btn {
-  width:100%; background:var(--ghost); color:var(--void);
+  width:100%; background:var(--ac); color:var(--void);
   border:none; font-family:'Inter', sans-serif;
   font-size:14px; font-weight:700; letter-spacing:0.04em;
-  padding:19px; cursor:pointer; margin-top:1px;
+  padding:20px; cursor:pointer; margin-top:1px;
   transition:background 0.15s;
   display:flex; align-items:center; justify-content:center; gap:10px;
 }
-.run-btn:hover { background:var(--paper-4); }
+.run-btn:hover { background:var(--ac-d); }
 .run-btn:disabled { opacity:0.25; cursor:not-allowed; }
 .diag-note {
   font-size:12px; font-weight:400; color:var(--ghost-2);
@@ -490,6 +518,27 @@ nav {
   letter-spacing:-0.05em;
 }
 .verdict-score-denom { font-size:11px; color:var(--muted); letter-spacing:0.04em; }
+/* The live score number — actual class rendered by showResults().
+   Scaled as a deliberate typographic moment: the verdict, not a label. */
+.mono-score-num {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(64px, 11vw, 132px);
+  font-weight:700;
+  color:var(--ink); line-height:0.9; display:block;
+  letter-spacing:-0.05em;
+  animation:scoreArrive 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes scoreArrive {
+  from { opacity:0; transform:scale(0.92) translateY(8px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mono-score-num { animation:none; }
+}
+.mono-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:16px;
+}
 .verdict-summary {
   font-size:16px; font-weight:400; line-height:1.9;
   color:var(--body); border-top:1px solid var(--rule);
@@ -505,7 +554,7 @@ nav {
   background:var(--paper-2); padding:24px 28px;
   margin-bottom:2px; border-bottom:1px solid var(--rule);
 }
-.score-label-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--rule-2); }
+.score-label-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-2); }
 .score-label-row:last-child { border-bottom:none; }
 .score-label-key { font-size:12px; font-weight:400; color:var(--body); }
 .score-label-val { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
@@ -553,7 +602,16 @@ nav {
 
 /* Pillars */
 .pillars-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--rule); margin-bottom:2px; }
-.pillar-card { background:var(--paper); padding:32px 28px; }
+.pillar-card {
+  background:var(--paper); padding:32px 28px;
+  transition:box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  position:relative; z-index:1;
+}
+.pillar-card:hover {
+  box-shadow:var(--sh-2);
+  transform:translateY(-2px);
+  z-index:2;
+}
 .pillar-num { font-size:11px; font-weight:700; letter-spacing:0.16em; color:var(--muted); margin-bottom:12px; }
 .pillar-name { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ink); margin-bottom:16px; }
 .pillar-score-row { display:flex; align-items:baseline; gap:3px; margin-bottom:10px; }
@@ -619,12 +677,12 @@ nav {
 .paywall-headline { font-family:'Libre Baskerville', serif; font-size:24px; font-weight:400; font-style:italic; color:var(--ghost); margin-bottom:12px; line-height:1.2; }
 .paywall-body { font-size:14px; font-weight:400; color:var(--ghost-2); line-height:1.75; margin-bottom:24px; }
 .paywall-btn {
-  background:var(--ghost); color:var(--void); border:none;
+  background:var(--ac); color:var(--void); border:none;
   font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
-  letter-spacing:0.04em; padding:15px 28px; cursor:pointer;
-  transition:background 0.15s; min-height:50px; display:inline-block;
+  letter-spacing:0.04em; padding:16px 28px; cursor:pointer;
+  transition:background 0.15s; min-height:52px; display:inline-block;
 }
-.paywall-btn:hover { background:var(--paper-4); }
+.paywall-btn:hover { background:var(--ac-d); }
 
 /* CTA block */
 .cta-block { background:var(--void); padding:52px 48px; margin-top:2px; position:relative; }
@@ -634,9 +692,9 @@ nav {
 .cta-headline { font-family:'Libre Baskerville', serif; font-size:28px; font-weight:400; color:var(--ghost); margin-bottom:12px; line-height:1.15; }
 .cta-body { font-size:14px; font-weight:400; line-height:1.8; color:var(--ghost-2); margin-bottom:32px; max-width:440px; }
 .cta-buttons { display:flex; gap:12px; flex-wrap:wrap; }
-.cta-primary { background:var(--ghost); color:var(--void); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; padding:15px 28px; cursor:pointer; text-decoration:none; display:inline-block; transition:background 0.15s; min-height:50px; }
-.cta-primary:hover { background:var(--paper-4); }
-.cta-secondary { background:transparent; color:var(--ghost-3); border:1px solid var(--rd); font-family:'Inter', sans-serif; font-size:11px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; padding:15px 20px; cursor:pointer; text-decoration:none; display:inline-block; transition:all 0.15s; min-height:50px; }
+.cta-primary { background:var(--ac); color:var(--void); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; padding:16px 28px; cursor:pointer; text-decoration:none; display:inline-block; transition:background 0.15s; min-height:52px; }
+.cta-primary:hover { background:var(--ac-d); }
+.cta-secondary { background:transparent; color:var(--ghost-3); border:1px solid var(--rd); font-family:'Inter', sans-serif; font-size:11px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; padding:16px 20px; cursor:pointer; text-decoration:none; display:inline-block; transition:all 0.15s; min-height:52px; }
 .cta-secondary:hover { color:var(--ghost); border-color:var(--ghost-3); }
 
 /* Pay/paid classes */
@@ -644,8 +702,8 @@ nav {
 .pay-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
 .paid-narrative { font-size:15px; font-weight:400; color:var(--body); line-height:1.9; border-left:2px solid var(--ink); padding-left:18px; }
 .paid-pillars { display:flex; flex-direction:column; gap:1px; }
-.paid-pillar { padding:22px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); transition:background 0.15s; }
-.paid-pillar:hover { background:var(--paper-3); }
+.paid-pillar { padding:22px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); border-left:3px solid transparent; transition:background 0.15s, border-left-color 0.2s, box-shadow 0.2s; }
+.paid-pillar:hover { background:var(--paper-3); border-left-color:var(--ac); box-shadow:var(--sh-1); }
 .paid-pillar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--rule); }
 .paid-pillar-name { font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
 .paid-pillar-score { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ink); }
@@ -672,9 +730,9 @@ nav {
 .pay-lines { display:flex; flex-direction:column; gap:8px; }
 .pay-line { font-size:15px; font-weight:500; color:var(--ink); }
 .pay-line.muted { color:var(--muted); font-weight:300; font-size:13px; }
-.pay-btn-primary { background:var(--ink); color:var(--paper); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:600; letter-spacing:0.04em; padding:15px 28px; cursor:pointer; transition:background 0.15s; display:inline-block; min-height:50px; }
+.pay-btn-primary { background:var(--ink); color:var(--paper); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:600; letter-spacing:0.04em; padding:16px 28px; cursor:pointer; transition:background 0.15s; display:inline-block; min-height:52px; }
 .pay-btn-primary:hover { background:var(--ink-2); }
-.pay-btn-secondary { background:transparent; color:var(--body); border:1px solid var(--rule); font-family:'Inter', sans-serif; font-size:12px; font-weight:500; letter-spacing:0.04em; padding:15px 20px; cursor:pointer; transition:all 0.15s; display:inline-block; min-height:50px; }
+.pay-btn-secondary { background:transparent; color:var(--body); border:1px solid var(--rule); font-family:'Inter', sans-serif; font-size:12px; font-weight:500; letter-spacing:0.04em; padding:16px 20px; cursor:pointer; transition:all 0.15s; display:inline-block; min-height:52px; }
 .pay-btn-secondary:hover { border-color:var(--ink); color:var(--ink); }
 .pay-cta-block { padding:20px 0; }
 .pay-cta-headline { font-family:'Libre Baskerville', serif; font-size:22px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:8px; }
@@ -683,7 +741,7 @@ nav {
 /* Deliverables */
 .deliv-section { padding:32px 0; border-bottom:1px solid var(--rule); }
 .deliv-tabs { display:flex; gap:1px; margin-bottom:16px; flex-wrap:wrap; }
-.deliv-tab { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:9px 14px; cursor:pointer; background:var(--paper-2); border:1px solid var(--rule); color:var(--muted); transition:all 0.15s; }
+.deliv-tab { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:10px 14px; cursor:pointer; background:var(--paper-2); border:1px solid var(--rule); color:var(--muted); transition:all 0.15s; }
 .deliv-tab.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
 .deliv-tab:hover:not(.active) { color:var(--ink); }
 .deliv-panel { display:none; }
@@ -701,6 +759,10 @@ nav {
 .sim-loading { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:400; color:var(--muted); padding:20px 0; }
 .sim-spinner { width:12px; height:12px; border-radius:50%; border:1px solid var(--rule); border-top-color:var(--ink); animation:spin 0.8s linear infinite; flex-shrink:0; }
 @keyframes spin { to { transform:rotate(360deg); } }
+@keyframes heroEnter {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
 .sim-results { display:flex; flex-direction:column; gap:1px; }
 .sim-query { padding:20px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
 .sim-query-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
@@ -772,6 +834,100 @@ footer {
   .cta-block { padding:40px 24px; }
   .paywall-block { padding:36px 24px; }
 }
+
+/* ── SCROLL REVEAL SYSTEM ── */
+/* Pure presentation layer — observes elements, adds .is-visible. Never touches engine state. */
+.reveal {
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.is-visible { opacity:1; transform:translateY(0); }
+.reveal-stagger > * {
+  opacity:0; transform:translateY(20px);
+  transition:opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay:0.05s; }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay:0.12s; }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay:0.19s; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay:0.26s; }
+.reveal-stagger.is-visible > * { opacity:1; transform:translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal-stagger > * { opacity:1 !important; transform:none !important; transition:none !important; }
+  .hero-left, .hero-right { animation:none !important; opacity:1 !important; }
+  .example-card:hover { transform:none !important; }
+}
+
+/* ── PILLAR CONNECTOR LINE ── */
+/* Visual thread linking the four pillars as one system, not four bullets */
+.pillars-row { position:relative; }
+.pillars-row::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--ac) 0%, var(--ac) 100%);
+  opacity:0.35; transform:scaleX(0); transform-origin:left;
+  transition:transform 1.1s cubic-bezier(0.16,1,0.3,1) 0.2s;
+}
+.pillars-row.is-visible::before { transform:scaleX(1); }
+.pillar-block { position:relative; }
+.pillar-idx::after {
+  content:''; display:inline-block; width:6px; height:6px;
+  border-radius:50%; background:var(--ac); margin-left:8px;
+  vertical-align:middle; opacity:0;
+  transition:opacity 0.4s ease 0.6s;
+}
+.pillars-row.is-visible .pillar-idx::after { opacity:1; }
+
+/* ── REFINED HOVER PERSONALITY ── */
+a, button, input { -webkit-tap-highlight-color:transparent; }
+.nav-link, .footer-link { position:relative; }
+.nav-link::after, .footer-link::after {
+  content:''; position:absolute; left:0; right:100%; bottom:-3px; height:1px;
+  background:currentColor; transition:right 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+.nav-link:hover::after, .footer-link:hover::after { right:0; }
+.run-btn, .nav-cta, .paywall-btn, .cta-primary { position:relative; overflow:hidden; }
+.run-btn::before, .nav-cta::before, .paywall-btn::before, .cta-primary::before {
+  content:''; position:absolute; inset:0;
+  background:rgba(255,255,255,0.15);
+  transform:translateX(-101%);
+  transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.run-btn:hover::before, .nav-cta:hover::before, .paywall-btn:hover::before, .cta-primary:hover::before {
+  transform:translateX(0);
+}
+.field-row input {
+  transition:border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.field-row input:focus { transform:translateY(-1px); }
+
+/* ── FOOTER — DELIBERATE CLOSE ── */
+footer { position:relative; }
+footer::before {
+  content:'';
+  position:absolute; top:0; left:52px; right:52px; height:1px;
+  background:linear-gradient(90deg, var(--ac) 0%, transparent 40%, transparent 60%, var(--ac) 100%);
+  opacity:0.25;
+}
+.footer-tagline {
+  font-family:'Libre Baskerville', serif;
+  font-style:italic; font-size:14px;
+  color:var(--ghost-3); margin-top:6px;
+  max-width:280px;
+}
+
+/* ── EXAMPLE CARD ENTRANCE ── */
+.example-card { transition:transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease; }
+.example-card:hover {
+  transform:translateY(-3px);
+  box-shadow:var(--sh-3);
+}
+
+/* ── PILLAR BLOCK CONNECTOR DOT ANIMATION SUPPORT ── */
+@media (max-width:960px) {
+  .reveal { transform:translateY(16px); }
+  footer::before { left:24px; right:24px; }
+}
 </style>
 </head>
 <body>
@@ -806,8 +962,8 @@ footer {
     </p>
     <div class="hero-proof">
       <div class="hero-proof-item">
-        <div class="hero-proof-num">31</div>
-        <div class="hero-proof-label">Average score across businesses tested</div>
+        <div class="hero-proof-num">4</div>
+        <div class="hero-proof-label">Pillars scored — Clarity, Trust, Difference, Ease</div>
       </div>
       <div class="hero-proof-item">
         <div class="hero-proof-num">1</div>
@@ -883,13 +1039,13 @@ footer {
 </section>
 
 <!-- RULE STRIP -->
-<div class="rule-strip">
+<div class="rule-strip reveal">
   <div class="rule-item">Google returned <strong>10 results</strong></div>
   <div class="rule-item">AI returns <strong>one</strong></div>
   <div class="rule-item">Either it names <strong>your business</strong></div>
   <div class="rule-item">Or it names <strong>your competitor</strong></div>
 </div>
-<div style="background:var(--paper-3);border-bottom:1px solid var(--rule);padding:16px 52px;text-align:center;">
+<div class="reveal" style="background:var(--paper-3);border-bottom:1px solid var(--rule);padding:16px 52px;text-align:center;">
   <span style="font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-right:20px;">Measured across</span>
   <span style="font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0.04em;">ChatGPT</span>
   <span style="color:var(--faint);margin:0 12px;">·</span>
@@ -936,7 +1092,7 @@ footer {
 
 <!-- DIAGNOSTIC FORM -->
 <section class="diag-section" id="diagnostic">
-  <div class="diag-inner">
+  <div class="diag-inner reveal">
     <div class="diag-eyebrow">CHOIVE Index™</div>
     <h2 class="diag-h2">
       What does AI say<br>
@@ -947,7 +1103,7 @@ footer {
       search data, website inspection, citation evidence, competitor presence.
       Real results in 30–45 seconds.
     </p>
-    <div id="dI">
+    <div id="dI" class="diag-form-panel">
       <div class="field-row">
         <input type="text" id="bN" placeholder="Business name" autocomplete="organization" />
         <input type="text" id="bC" placeholder="What you do  (e.g. luxury real estate agency)" />
@@ -963,7 +1119,7 @@ footer {
         <input type="text" id="bComp" placeholder="Known competitors  (optional)" />
       </div>
       <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
-        Run Diagnostic →
+        Find out what AI says about you →
       </button>
       <div class="diag-note">Free · No signup · Real signals · 30–45 seconds</div>
     </div>
@@ -973,12 +1129,12 @@ footer {
 
 <!-- HOW IT WORKS -->
 <section class="how-section" id="how">
-  <div class="how-eyebrow">The CHOIVE framework</div>
-  <h2 class="how-h2">
+  <div class="how-eyebrow reveal">The CHOIVE framework</div>
+  <h2 class="how-h2 reveal">
     Four signals.<br>
     <em>One decision.</em>
   </h2>
-  <div class="pillars-row">
+  <div class="pillars-row reveal-stagger reveal">
     <div class="pillar-block">
       <div class="pillar-idx">01</div>
       <div class="pillar-title">Clarity</div>
@@ -1004,7 +1160,10 @@ footer {
 
 <!-- FOOTER -->
 <footer>
-  <a href="/" class="footer-logo">CHOIVE<span>·</span></a>
+  <div>
+    <a href="/" class="footer-logo">CHOIVE<span>·</span></a>
+    <div class="footer-tagline">Be the answer. Not the alternative.</div>
+  </div>
   <div class="footer-right">
     <a href="#diagnostic" class="footer-link">Run diagnostic</a>
     <a href="mailto:hello@choive.com" class="footer-link">hello@choive.com</a>
@@ -1633,12 +1792,11 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
-      + '<div class="pay-section" style="border-bottom:none;"><div class="pay-eyebrow">Next Step</div>'
-      + '<div class="pay-cta-block"><div class="pay-cta-headline">Begin CHOIVE System\u2122</div>'
-      + '<div class="pay-cta-body">Turn this analysis into a complete implementation.</div>'
+      + '<div class="pay-section" style="border-bottom:none;"><div class="pay-eyebrow">Your Report</div>'
+      + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your results</div>'
+      + '<div class="pay-cta-body">Download a PDF copy of this diagnostic for your records.</div>'
       + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">'
-      + '<button class="pay-btn-primary" onclick="openForm(\x27CHOIVE System\u2122\x27)">Begin CHOIVE System\u2122</button>'
-      + '<button class="pay-btn-secondary" onclick="exportPDF()">Download PDF Report</button>'
+      + '<button class="pay-btn-primary" onclick="exportPDF()">Download PDF Report</button>'
       + '</div></div></div>';
   })() : '';
 
@@ -2055,6 +2213,26 @@ initResultRoute();
       dR.scrollIntoView({ behavior:'smooth' });
     }
   };
+})();
+</script>
+
+<script>
+// Scroll-reveal — purely presentational, observes static marketing sections only.
+// Never touches #dR, #dS, #dI, or any diagnostic state.
+(function() {
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('is-visible'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
 })();
 </script>
 
