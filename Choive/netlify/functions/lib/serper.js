@@ -1,11 +1,11 @@
 // lib/serper.js
 // CHOIVE evidence collector — Serper multi-query
 // ENV: SERPER_API_KEY
-
+ 
 const SERPER_URL    = 'https://google.serper.dev/search';
 const TIMEOUT_MS    = 8000;
 const RESULTS_PER_Q = 5;
-
+ 
 const PRIORITY_MAP = {
   reviews:    5,
   comparison: 5,
@@ -13,7 +13,7 @@ const PRIORITY_MAP = {
   authority:  4,
   identity:   3
 };
-
+ 
 const DIRECTORY_DOMAINS = [
   // Social platforms
   'yelp.com', 'tripadvisor.com', 'trustpilot.com', 'yellowpages.com',
@@ -34,7 +34,7 @@ const DIRECTORY_DOMAINS = [
   'alternativeto.net', 'comparably.com', 'glassdoor.com', 'indeed.com',
   'wikipedia.org', 'wikimedia.org', 'wikidata.org'
 ];
-
+ 
 const SOCIAL_DOMAINS = {
   instagram: 'instagram.com',
   tiktok:    'tiktok.com',
@@ -44,7 +44,7 @@ const SOCIAL_DOMAINS = {
   twitter:   'twitter.com',
   reddit:    'reddit.com'
 };
-
+ 
 // ── Fetch single Serper query ─────────────────────────────────────────────────
 async function fetchSerper(query) {
   var controller = new AbortController();
@@ -65,7 +65,7 @@ async function fetchSerper(query) {
     return null;
   }
 }
-
+ 
 // ── Normalize domain ──────────────────────────────────────────────────────────
 function normalizeUrl(url) {
   if (!url) return '';
@@ -76,7 +76,7 @@ function normalizeUrl(url) {
     return url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
   }
 }
-
+ 
 // ── Classify signal type from query text ──────────────────────────────────────
 function classifySignal(query) {
   var q = query.toLowerCase();
@@ -86,7 +86,7 @@ function classifySignal(query) {
   if (/news|press|linkedin|youtube|directory/.test(q)) return { type: 'authority',  priority: 4 };
   return                                                       { type: 'identity',   priority: 3 };
 }
-
+ 
 // ── Deduplicate by domain + title ─────────────────────────────────────────────
 function deduplicate(results) {
   var seen = new Set();
@@ -97,7 +97,7 @@ function deduplicate(results) {
     return true;
   });
 }
-
+ 
 // ── Detect social platforms from all results ──────────────────────────────────
 function detectSocialSignals(allResults) {
   var signals = { instagram: false, tiktok: false, facebook: false, linkedin: false, youtube: false, twitter: false, reddit: false };
@@ -110,12 +110,12 @@ function detectSocialSignals(allResults) {
   }
   return signals;
 }
-
+ 
 // ── Extract real competitors from comparison results ──────────────────────────
 function extractCompetitors(queryResults, businessName) {
   var nameLower = (businessName || '').toLowerCase().replace(/\s+/g, '');
   var found = {};
-
+ 
   for (var i = 0; i < queryResults.length; i++) {
     var qr = queryResults[i];
     if (qr.signalType !== 'comparison' && qr.signalType !== 'named_competitor') continue;
@@ -134,16 +134,16 @@ function extractCompetitors(queryResults, businessName) {
       if (qr.signalType === 'named_competitor') found[domain].count += 10; // boost user-verified names to the top
     }
   }
-
+ 
   return Object.values(found).sort(function(a, b) { return b.count - a.count; }).slice(0, 3);
 }
-
+ 
 // ── Build simple summaries for Claude ────────────────────────────────────────
 function buildSummaries(queryResults, competitors, socialSignals) {
   var reviewItems     = [];
   var reputationItems = [];
   var authorityItems  = [];
-
+ 
   for (var i = 0; i < queryResults.length; i++) {
     var qr = queryResults[i];
     for (var j = 0; j < qr.items.length; j++) {
@@ -153,26 +153,26 @@ function buildSummaries(queryResults, competitors, socialSignals) {
       if (qr.signalType === 'authority')  authorityItems.push(item.snippet);
     }
   }
-
+ 
   var reviewSummary = reviewItems.length > 0
     ? 'Found ' + reviewItems.length + ' review signal(s). Samples: ' + reviewItems.slice(0, 2).join(' | ')
     : 'No review signals found.';
-
+ 
   var reputationSummary = reputationItems.length > 0
     ? 'Found ' + reputationItems.length + ' reputation mention(s). Samples: ' + reputationItems.slice(0, 2).join(' | ')
     : 'No reputation mentions found.';
-
+ 
   var authoritySummary = authorityItems.length > 0
     ? 'Found ' + authorityItems.length + ' authority signal(s). Samples: ' + authorityItems.slice(0, 2).join(' | ')
     : 'No authority signals found.';
-
+ 
   var competitorSummary = competitors.length > 0
     ? 'Top competitors appearing in search: ' + competitors.map(function(c) { return c.domain; }).join(', ')
     : 'No clear competitors identified in search results.';
-
+ 
   var socialList = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
   var socialStr  = socialList.length > 0 ? 'Social presence detected on: ' + socialList.join(', ') : 'No social presence detected in search results.';
-
+ 
   return {
     reviewSummary:     reviewSummary,
     reputationSummary: reputationSummary,
@@ -181,7 +181,7 @@ function buildSummaries(queryResults, competitors, socialSignals) {
     socialSummary:     socialStr
   };
 }
-
+ 
 // ── Build grouped searchText for Claude ───────────────────────────────────────
 function buildSearchText(queryResults) {
   var ORDER  = ['reviews', 'comparison', 'reputation', 'authority', 'identity'];
@@ -192,7 +192,7 @@ function buildSearchText(queryResults) {
     authority:  '=== AUTHORITY & PRESS SIGNALS ===',
     identity:   '=== IDENTITY & PRESENCE SIGNALS ==='
   };
-
+ 
   var grouped = {};
   for (var i = 0; i < queryResults.length; i++) {
     var sig = queryResults[i].signalType || 'identity';
@@ -200,7 +200,7 @@ function buildSearchText(queryResults) {
     if (!grouped[sig]) grouped[sig] = [];
     grouped[sig].push(queryResults[i]);
   }
-
+ 
   var lines = [];
   for (var s = 0; s < ORDER.length; s++) {
     var sigType = ORDER[s];
@@ -218,7 +218,7 @@ function buildSearchText(queryResults) {
   }
   return lines.join('\n');
 }
-
+ 
 // ── Build kgText ──────────────────────────────────────────────────────────────
 function buildKgText(kg) {
   if (!kg) return '';
@@ -232,7 +232,7 @@ function buildKgText(kg) {
   if (kg.address)     parts.push('Address: '      + kg.address);
   return parts.join('\n');
 }
-
+ 
 // ── Infer official website ────────────────────────────────────────────────────
 function inferOfficialSite(website, serperPayload, name) {
   if (website && website.trim()) return normalizeUrl(website.trim());
@@ -246,7 +246,7 @@ function inferOfficialSite(website, serperPayload, name) {
   }
   return results.length > 0 ? normalizeUrl(results[0].link || '') : '';
 }
-
+ 
 // ── Main search function ──────────────────────────────────────────────────────
 async function searchSerper(name, category, city) {
   var queries = [
@@ -274,27 +274,27 @@ async function searchSerper(name, category, city) {
     { q: name + ' vs OR alternative OR competitor',            type: 'competition'},
     { q: category + ' alternatives ' + city,                   type: 'comparison' }
   ];
-
+ 
   var settled = await Promise.allSettled(
     queries.map(function(item) { return fetchSerper(item.q); })
   );
-
+ 
   var knowledgeGraph = null;
   var queryResults   = [];
   var allResults     = [];
-
+ 
   for (var i = 0; i < settled.length; i++) {
     if (settled[i].status !== 'fulfilled' || !settled[i].value) continue;
     var data     = settled[i].value;
     var queryDef = queries[i];
-
+ 
     if (!knowledgeGraph && data.knowledgeGraph) knowledgeGraph = data.knowledgeGraph;
-
+ 
     // Use manual type first, fall back to classifier
     var sig        = classifySignal(queryDef.q);
     var signalType = queryDef.type || sig.type;
     var priority   = PRIORITY_MAP[signalType] || sig.priority;
-
+ 
     var items = [];
     var orgs  = data.organic || [];
     for (var j = 0; j < orgs.length; j++) {
@@ -312,7 +312,7 @@ async function searchSerper(name, category, city) {
     }
     queryResults.push({ query: queryDef.q, signalType: signalType, items: items });
   }
-
+ 
   var results      = deduplicate(allResults).sort(function(a, b) {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return a.position - b.position;
@@ -322,7 +322,7 @@ async function searchSerper(name, category, city) {
   var summaries    = buildSummaries(queryResults, competitors, socialSignals);
   var searchText   = buildSearchText(queryResults);
   var kgText       = buildKgText(knowledgeGraph);
-
+ 
   return {
     results:       results,
     knowledgeGraph: knowledgeGraph,
@@ -333,7 +333,7 @@ async function searchSerper(name, category, city) {
     summaries:     summaries
   };
 }
-
+ 
 // ── Second-pass competitor search using inferred category ─────────────────────
 // knownCompetitors (optional): comma/semicolon-separated names the business owner
 // provided directly. This is verified ground truth, so we run real targeted
@@ -341,13 +341,13 @@ async function searchSerper(name, category, city) {
 // the same names. Matches from these named searches are boosted to the top.
 async function searchCompetitors(name, inferredCategory, city, knownCompetitors) {
   if (!inferredCategory) return { results: [], searchText: '' };
-
+ 
   // Extract short keyword from inferred category for effective search queries
   // e.g. "B2B OTT middleware platform for telcos" → "OTT middleware platform"
   var catWords = inferredCategory.replace(/^b2b\s+/i, '').replace(/\s+for\s+.+$/i, '').trim();
   // Cap at 5 words to keep queries effective
   var catShort = catWords.split(' ').slice(0, 5).join(' ');
-
+ 
   var queries = [
     { q: 'best ' + catShort + ' vendors',               type: 'comparison'  },
     { q: 'top ' + catShort + ' providers',              type: 'comparison'  },
@@ -367,7 +367,7 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     { q: name + ' partnership OR announcement OR news',     type: 'comparison' },
     { q: name + ' ' + catShort.split(' ').slice(0, 2).join(' '), type: 'comparison' }
   ];
-
+ 
   // If the user named specific competitors, search each one directly — this is
   // verified ground truth from the business owner, not a guess, so it deserves
   // real targeted searches rather than hoping generic category queries surface
@@ -379,14 +379,14 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
       queries.push({ q: compName + ' vs ' + name,         type: 'named_competitor' });
     });
   }
-
+ 
   var settled = await Promise.allSettled(
     queries.map(function(item) { return fetchSerper(item.q); })
   );
-
+ 
   var queryResults = [];
   var allResults   = [];
-
+ 
   for (var i = 0; i < settled.length; i++) {
     if (settled[i].status !== 'fulfilled' || !settled[i].value) continue;
     var data     = settled[i].value;
@@ -394,7 +394,7 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     var sig      = classifySignal(queryDef.q);
     var signalType = queryDef.type || sig.type;
     var priority   = queryDef.type === 'named_competitor' ? 100 : (PRIORITY_MAP[signalType] || sig.priority);
-
+ 
     var items = [];
     var orgs  = data.organic || [];
     for (var j = 0; j < orgs.length; j++) {
@@ -412,19 +412,20 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     }
     queryResults.push({ query: queryDef.q, signalType: signalType, items: items });
   }
-
+ 
   var results     = deduplicate(allResults).sort(function(a, b) {
     return b.priority !== a.priority ? b.priority - a.priority : a.position - b.position;
   });
   var competitors = extractCompetitors(queryResults, name);
   var searchText  = buildSearchText(queryResults);
-
+ 
   return { results: results, competitors: competitors, searchText: searchText };
 }
-
+ 
 module.exports = {
   searchSerper:      searchSerper,
   searchCompetitors: searchCompetitors,
   inferOfficialSite: inferOfficialSite,
   normalizeUrl:      normalizeUrl
 };
+ 
