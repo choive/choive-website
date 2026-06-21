@@ -3,7 +3,8 @@
 // Fetches homepage + about page, extracts schema, meta, H1/H2, OG tags
 // Also fetches competitor homepage for comparison
 
-const TIMEOUT_MS     = 8000;
+const TIMEOUT_MS = 8000;
+const LLMS_TIMEOUT_MS = 5000;
 const MAX_CHARS_PAGE = 3000;
 const MAX_CHARS_COMP = 2000;
 
@@ -56,6 +57,39 @@ async function fetchHtml(url) {
   }
 }
 
+// ── Check whether {domain}/llms.txt actually exists ──────────────────────────
+// This is the real, authoritative check — fetches the file directly and
+// verifies a 200 response with plausible text content. The previous approach
+// only checked whether the homepage HTML happened to contain the literal
+// string "llms.txt" somewhere, which misses every business that has deployed
+// a real llms.txt file but never linked to it from their homepage (the
+// overwhelmingly common case, since llms.txt is meant to be discovered by
+// convention at a fixed path, not linked).
+async function checkLlmsTxtExists(baseUrl) {
+  if (!baseUrl) return false;
+  var url = baseUrl.replace(/\/$/, '') + '/llms.txt';
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, LLMS_TIMEOUT_MS);
+  try {
+    var res = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return false;
+    var text = await res.text();
+    // Guard against catch-all routes that return 200 with a generic HTML
+    // error/404 page instead of a real 404 status — require it to look like
+    // plain text content, not an HTML document.
+    var looksLikeHtml = /<html[\s>]|<!doctype html/i.test(text.slice(0, 200));
+    return text.trim().length > 0 && !looksLikeHtml;
+  } catch (err) {
+    clearTimeout(timer);
+    return false;
+  }
+}
+
 // ── Strip HTML to readable text ───────────────────────────────────────────────
 function extractText(html, maxChars) {
   if (!html) return '';
@@ -74,9 +108,8 @@ function extractText(html, maxChars) {
 function extractSchema(html) {
   if (!html) return { found: false, types: [], raw: '' };
   var schemas = [];
-  var types   = [];
+  var types = [];
 
-  // Find all JSON-LD blocks
   var regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   var match;
   while ((match = regex.exec(html)) !== null) {
@@ -91,10 +124,10 @@ function extractSchema(html) {
   }
 
   return {
-    found:   schemas.length > 0,
-    types:   types,
-    count:   schemas.length,
-    raw:     schemas.length > 0 ? JSON.stringify(schemas[0]).slice(0, 500) : ''
+    found: schemas.length > 0,
+    types: types,
+    count: schemas.length,
+    raw: schemas.length > 0 ? JSON.stringify(schemas[0]).slice(0, 500) : ''
   };
 }
 
@@ -126,11 +159,9 @@ function extractMeta(html) {
     return '';
   }
 
-  // Extract H1
   var h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
   var h1 = h1Match ? h1Match[1].trim() : '';
 
-  // Extract H2s
   var h2s = [];
   var h2Regex = /<h2[^>]*>([^<]+)<\/h2>/gi;
   var h2Match;
@@ -138,38 +169,40 @@ function extractMeta(html) {
     h2s.push(h2Match[1].trim());
   }
 
-  // Check llms.txt
-  var hasLlmsTxt = html.toLowerCase().includes('llms.txt');
+  // Kept as a weak secondary signal (a homepage *linking* to llms.txt is
+  // still informative even though the authoritative check is now the direct
+  // fetch in checkLlmsTxtExists).
+  var mentionsLlmsTxt = html.toLowerCase().includes('llms.txt');
 
-  // Check canonical
   var canonicalMatch = html.match(/<link[^>]+rel=["\']canonical["\'][^>]+href=["\']([^"\']+)["\']>/i);
   var canonical = canonicalMatch ? canonicalMatch[1].trim() : '';
 
   return {
-    title:       getMeta('title') || (html.match(/<title>([^<]+)<\/title>/i) || [])[1] || '',
+    title: getMeta('title') || (html.match(/<title>([^<]+)<\/title>/i) || [])[1] || '',
     description: getMeta('description'),
-    keywords:    getMeta('keywords'),
-    ogTitle:     getOg('title'),
+    keywords: getMeta('keywords'),
+    ogTitle: getOg('title'),
     ogDescription: getOg('description'),
-    ogType:      getOg('type'),
-    h1:          h1,
-    h2s:         h2s,
-    canonical:   canonical,
-    hasLlmsTxt:  hasLlmsTxt
+    ogType: getOg('type'),
+    h1: h1,
+    h2s: h2s,
+    canonical: canonical,
+    mentionsLlmsTxt: mentionsLlmsTxt
   };
 }
 
 // ── Build structured website summary for Claude ───────────────────────────────
-function buildWebsiteSummary(meta, schema, homepageText, aboutText) {
+function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists) {
   var parts = [];
 
-  if (meta.h1)          parts.push('H1: ' + meta.h1);
-  if (meta.title)       parts.push('Title: ' + meta.title);
+  if (meta.h1) parts.push('H1: ' + meta.h1);
+  if (meta.title) parts.push('Title: ' + meta.title);
   if (meta.description) parts.push('Meta description: ' + meta.description);
   if (meta.h2s && meta.h2s.length > 0) parts.push('H2s: ' + meta.h2s.join(' | '));
-  if (meta.ogTitle)     parts.push('OG Title: ' + meta.ogTitle);
-  if (meta.canonical)   parts.push('Canonical: ' + meta.canonical);
-  parts.push('llms.txt detected: ' + (meta.hasLlmsTxt ? 'YES' : 'NO'));
+  if (meta.ogTitle) parts.push('OG Title: ' + meta.ogTitle);
+  if (meta.canonical) parts.push('Canonical: ' + meta.canonical);
+  // Authoritative check: did we actually fetch {domain}/llms.txt successfully?
+  parts.push('llms.txt detected: ' + (llmsTxtExists ? 'YES (verified by direct fetch)' : 'NO'));
 
   parts.push('\nSCHEMA MARKUP:');
   if (schema.found) {
@@ -195,25 +228,27 @@ function buildWebsiteSummary(meta, schema, homepageText, aboutText) {
 async function fetchWebsiteText(url) {
   if (!url) return '';
   var safeUrl = url.startsWith('http') ? url : 'https://' + url;
-  var base    = safeUrl.replace(/\/$/, '');
+  var base = safeUrl.replace(/\/$/, '');
 
-  // Fetch homepage HTML and about page in parallel
+  // Fetch homepage HTML, about page, and llms.txt existence check in parallel
   var settled = await Promise.allSettled([
     fetchHtml(base),
     safeFetch(base + '/about', MAX_CHARS_PAGE),
-    safeFetch(base + '/about-us', MAX_CHARS_PAGE)
+    safeFetch(base + '/about-us', MAX_CHARS_PAGE),
+    checkLlmsTxtExists(base)
   ]);
 
   var homepageHtml = settled[0].status === 'fulfilled' ? settled[0].value : '';
-  var aboutText1   = settled[1].status === 'fulfilled' ? settled[1].value : '';
-  var aboutText2   = settled[2].status === 'fulfilled' ? settled[2].value : '';
-  var aboutText    = aboutText1 || aboutText2;
+  var aboutText1 = settled[1].status === 'fulfilled' ? settled[1].value : '';
+  var aboutText2 = settled[2].status === 'fulfilled' ? settled[2].value : '';
+  var aboutText = aboutText1 || aboutText2;
+  var llmsTxtExists = settled[3].status === 'fulfilled' ? settled[3].value : false;
 
-  var meta         = extractMeta(homepageHtml);
-  var schema       = extractSchema(homepageHtml);
+  var meta = extractMeta(homepageHtml);
+  var schema = extractSchema(homepageHtml);
   var homepageText = extractText(homepageHtml, MAX_CHARS_PAGE);
 
-  return buildWebsiteSummary(meta, schema, homepageText, aboutText);
+  return buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists);
 }
 
 // ── Fetch competitor homepage for comparison ──────────────────────────────────
@@ -228,15 +263,15 @@ async function fetchCompetitorText(domain) {
   var html = settled[0].status === 'fulfilled' ? settled[0].value : '';
   if (!html) return '';
 
-  var meta   = extractMeta(html);
+  var meta = extractMeta(html);
   var schema = extractSchema(html);
-  var text   = extractText(html, MAX_CHARS_COMP);
+  var text = extractText(html, MAX_CHARS_COMP);
 
   var parts = [];
-  if (meta.h1)          parts.push('Competitor H1: ' + meta.h1);
+  if (meta.h1) parts.push('Competitor H1: ' + meta.h1);
   if (meta.description) parts.push('Competitor description: ' + meta.description);
-  if (schema.found)     parts.push('Competitor schema: ' + schema.types.join(', '));
-  if (text)             parts.push('Competitor content: ' + text);
+  if (schema.found) parts.push('Competitor schema: ' + schema.types.join(', '));
+  if (text) parts.push('Competitor content: ' + text);
 
   return parts.join('\n');
 }
@@ -247,13 +282,12 @@ async function fetchReviewPages(serperResults) {
 
   var REVIEW_PLATFORMS = {
     trustpilot: /trustpilot\.com\/review\//i,
-    g2:         /g2\.com\/products\//i,
-    glassdoor:  /glassdoor\.com\/(Overview|Reviews)\//i,
-    capterra:   /capterra\.com\/p\//i,
-    clutch:     /clutch\.co\/profile\//i
+    g2: /g2\.com\/products\//i,
+    glassdoor: /glassdoor\.com\/(Overview|Reviews)\//i,
+    capterra: /capterra\.com\/p\//i,
+    clutch: /clutch\.co\/profile\//i
   };
 
-  // Find matching URLs
   var found = {};
   for (var i = 0; i < serperResults.length; i++) {
     var link = serperResults[i].link || '';
@@ -267,17 +301,16 @@ async function fetchReviewPages(serperResults) {
 
   if (Object.keys(found).length === 0) return {};
 
-  // Fetch each in parallel
   var platforms = Object.keys(found);
-  var tasks     = platforms.map(function(p) { return safeFetch(found[p], 2000); });
-  var settled   = await Promise.allSettled(tasks);
+  var tasks = platforms.map(function(p) { return safeFetch(found[p], 2000); });
+  var settled = await Promise.allSettled(tasks);
 
   var results = {};
   for (var s = 0; s < settled.length; s++) {
     if (settled[s].status === 'fulfilled' && settled[s].value) {
       results[platforms[s]] = {
-        url:      found[platforms[s]],
-        text:     settled[s].value,
+        url: found[platforms[s]],
+        text: settled[s].value,
         platform: platforms[s]
       };
     }
@@ -291,7 +324,7 @@ function buildReviewText(reviewPages) {
     return 'No review platform pages found or accessible.';
   }
   var lines = [];
-  var keys  = Object.keys(reviewPages);
+  var keys = Object.keys(reviewPages);
   for (var i = 0; i < keys.length; i++) {
     var p = reviewPages[keys[i]];
     if (!p || !p.text) continue;
@@ -302,10 +335,10 @@ function buildReviewText(reviewPages) {
 }
 
 module.exports = {
-  fetchWebsiteText:     fetchWebsiteText,
-  fetchCompetitorText:  fetchCompetitorText,
-  fetchReviewPages:     fetchReviewPages,
-  buildReviewText:      buildReviewText,
-  extractSchema:        extractSchema,
-  extractMeta:          extractMeta
+  fetchWebsiteText: fetchWebsiteText,
+  fetchCompetitorText: fetchCompetitorText,
+  fetchReviewPages: fetchReviewPages,
+  buildReviewText: buildReviewText,
+  extractSchema: extractSchema,
+  extractMeta: extractMeta
 };
