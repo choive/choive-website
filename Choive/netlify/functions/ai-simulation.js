@@ -1,20 +1,19 @@
-
 // ai-simulation.js
 // CHOIVE™ AI Visibility Simulation
 // Runs BEFORE queries (current state) and AFTER queries (optimised state)
 // Shows the business owner what changes if they implement the top fixes
 // ENV: ANTHROPIC_API_KEY
- 
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const TIMEOUT_MS = 25000;
- 
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
- 
+
 async function runQuery(systemPrompt, userQuery) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
@@ -50,7 +49,7 @@ async function runQuery(systemPrompt, userQuery) {
     return null;
   }
 }
- 
+
 function cleanResponse(response) {
   if (!response) return 'Query failed.';
   var cleaned = response
@@ -67,7 +66,7 @@ function cleanResponse(response) {
   }
   return cleaned;
 }
- 
+
 // Detects whether the business actually appears in the AI's response.
 // Primary check requires the full name as a phrase — the strongest signal.
 // Fallback (for cases with minor name variation) requires ALL significant
@@ -78,15 +77,15 @@ function businessMentioned(response, name) {
   if (!response || !name) return false;
   var respLower = response.toLowerCase();
   var nameLower = name.toLowerCase().trim();
- 
+
   if (respLower.includes(nameLower)) return true;
- 
+
   var words = nameLower.split(/\s+/).filter(function(w) { return w.length > 2; });
   if (words.length === 0) return false;
   if (words.length === 1) return respLower.includes(words[0]);
   return words.every(function(w) { return respLower.includes(w); });
 }
- 
+
 function buildQueries(catClean, city, name) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
@@ -111,11 +110,11 @@ function buildQueries(catClean, city, name) {
     }
   ];
 }
- 
+
 function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
- 
+
   var enrichedSystem = 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.\n\n'
     + 'You have access to the following verified information about ' + name + ':\n'
     + '- Category: ' + catClean + (city ? ', based in ' + city : '') + '\n'
@@ -124,7 +123,7 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
     + '- Has structured web presence with schema markup and llms.txt\n'
     + '- Has verified customer reviews on major platforms\n'
     + 'Use this information naturally in your answer if relevant.';
- 
+
   return [
     {
       label: 'Discovery query',
@@ -146,7 +145,7 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
     }
   ];
 }
- 
+
 async function runQuerySet(queries, name) {
   var settled = await Promise.allSettled(
     queries.map(function(q) { return runQuery(q.system, q.query); })
@@ -163,7 +162,7 @@ async function runQuerySet(queries, name) {
     };
   });
 }
- 
+
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -171,42 +170,42 @@ exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
- 
+
   var body;
   try { body = JSON.parse(event.body || '{}'); }
   catch (_) { return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
- 
+
   var name = String(body.name || '').trim();
   var category = String(body.category || '').trim();
   var city = String(body.city || '').trim();
   var inferredCategory = String(body.inferredCategory || category).trim();
   var differentiator = String(body.differentiator || '').trim();
   var trustSignal = String(body.trustSignal || '').trim();
- 
+
   if (!name || !category) {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Missing name or category' }) };
   }
- 
+
   var catClean = inferredCategory
     .replace(/^b2b\s+/i, '').replace(/^b2c\s+/i, '')
     .replace(/\s+vendor(s)?$/i, '').replace(/\s+provider(s)?$/i, '')
     .replace(/\s+platform(s)?$/i, ' platform').replace(/\s+direct-to-consumer$/i, '')
     .trim();
- 
+
   var beforeQueries = buildQueries(catClean, city, name);
   var afterQueries = buildAfterQueries(catClean, city, name, differentiator, trustSignal);
- 
+
   var settled = await Promise.allSettled([
     runQuerySet(beforeQueries, name),
     runQuerySet(afterQueries, name)
   ]);
- 
+
   var beforeResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
   var afterResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
- 
+
   var beforeCount = beforeResults.filter(function(r) { return r.appeared; }).length;
   var afterCount = afterResults.filter(function(r) { return r.appeared; }).length;
- 
+
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -232,4 +231,3 @@ exports.handler = async function(event) {
     })
   };
 };
- 
