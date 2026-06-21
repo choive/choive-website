@@ -1,17 +1,17 @@
 // start-diagnostic.js
 // CHOIVE Stage 1 — Entry point
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, URL
-
+ 
 const crypto = require('crypto');
 const supabase = require('./lib/supabase');
 const valid = require('./lib/validators');
-
+ 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
-
+ 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -19,7 +19,7 @@ exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
-
+ 
   var body;
   try {
     body = JSON.parse(event.body || '{}');
@@ -30,7 +30,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ error: 'Invalid JSON body' })
     };
   }
-
+ 
   var validation = valid.validateInput(body);
   if (!validation.valid) {
     return {
@@ -39,7 +39,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ error: validation.error })
     };
   }
-
+ 
   var input = {
     name: String(body['name'] || '').trim(),
     category: String(body['category'] || '').trim(),
@@ -48,9 +48,9 @@ exports.handler = async function (event) {
     description: String(body['description'] || '').trim(),
     knownCompetitors: String(body['knownCompetitors'] || '').trim()
   };
-
+ 
   var jobId = crypto.randomUUID();
-
+ 
   try {
     await supabase.createDiagnostic(jobId, input);
   } catch (err) {
@@ -61,11 +61,11 @@ exports.handler = async function (event) {
       body: JSON.stringify({ error: 'Failed to initialize diagnostic' })
     };
   }
-
+ 
   var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
   var backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
   console.log('CHOIVE background trigger:', backgroundUrl);
-
+ 
   try {
     var triggerRes = await fetch(backgroundUrl, {
       method: 'POST',
@@ -91,7 +91,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({ error: 'Could not start diagnostic. Please try again.' })
     };
   }
-
+ 
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
