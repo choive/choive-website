@@ -1803,6 +1803,9 @@ function showResults(r, jobId) {
 
   console.log('[CHOIVE] isPaid:', isPaid, '| paidSections length:', paidSections.length);
   zone.innerHTML += paidSections;
+  zone.innerHTML += '<div class="pay-section" style="border-bottom:none;text-align:center;padding-top:32px;">'
+    + '<button class="pay-btn-secondary" onclick="resetDiagnostic()">Run another diagnostic →</button>'
+    + '</div>';
 
   try {
     var delivEl = document.getElementById('delivContent');
