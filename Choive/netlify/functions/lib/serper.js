@@ -354,7 +354,14 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     { q: catShort + ' software comparison',             type: 'comparison'  },
     { q: catShort + ' alternatives',                    type: 'competition' },
     { q: name + ' competitors ' + catShort,             type: 'competition' },
-    { q: catShort + ' market leaders',                  type: 'comparison'  }
+    { q: catShort + ' market leaders',                  type: 'comparison'  },
+    // Industry press tends to name real, relevant competitors in context
+    // (panel discussions, partnership announcements, analyst commentary) —
+    // this surfaces genuine industry relationships that generic "best/top/
+    // alternatives" listicle queries often miss in favour of SEO-optimised
+    // comparison sites.
+    { q: name + ' industry panel OR conference',        type: 'comparison'  },
+    { q: '"' + name + '" "' + catShort + '" news',       type: 'comparison'  }
   ];
 
   // If the user named specific competitors, search each one directly — this is
