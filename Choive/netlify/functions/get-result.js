@@ -3,22 +3,22 @@
 // Returns full diagnostic result for a given jobId
 // Used by the shareable URL: /result?jobId=...
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- 
+
 const { getDiagnostic } = require('./lib/supabase');
- 
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS'
 };
- 
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
- 
+
   const jobId = event.queryStringParameters?.jobId;
- 
+
   if (!jobId) {
     return {
       statusCode: 400,
@@ -26,10 +26,10 @@ exports.handler = async function (event) {
       body: JSON.stringify({ error: 'Missing jobId' })
     };
   }
- 
+
   try {
     const diagnostic = await getDiagnostic(jobId);
- 
+
     if (!diagnostic) {
       return {
         statusCode: 404,
@@ -37,7 +37,7 @@ exports.handler = async function (event) {
         body: JSON.stringify({ error: 'Diagnostic not found' })
       };
     }
- 
+
     if (diagnostic.status !== 'complete') {
       return {
         statusCode: 200,
@@ -48,7 +48,7 @@ exports.handler = async function (event) {
         })
       };
     }
- 
+
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
