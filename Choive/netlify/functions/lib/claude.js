@@ -1,4 +1,4 @@
-/ lib/claude.js
+// lib/claude.js
 // CHOIVE™ evidence-first scoring engine
 // ENV: ANTHROPIC_API_KEY
  
