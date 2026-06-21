@@ -359,9 +359,13 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     // (panel discussions, partnership announcements, analyst commentary) —
     // this surfaces genuine industry relationships that generic "best/top/
     // alternatives" listicle queries often miss in favour of SEO-optimised
-    // comparison sites.
-    { q: name + ' industry panel OR conference',        type: 'comparison'  },
-    { q: '"' + name + '" "' + catShort + '" news',       type: 'comparison'  }
+    // comparison sites. Avoid forcing exact-phrase category matches (e.g.
+    // "OTT middleware platform" in quotes) since journalists rarely use
+    // category-taxonomy wording verbatim — broader OR terms find real
+    // coverage that strict phrase-matching misses.
+    { q: name + ' industry panel OR conference OR webinar', type: 'comparison' },
+    { q: name + ' partnership OR announcement OR news',     type: 'comparison' },
+    { q: name + ' ' + catShort.split(' ').slice(0, 2).join(' '), type: 'comparison' }
   ];
 
   // If the user named specific competitors, search each one directly — this is
