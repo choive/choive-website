@@ -1,18 +1,18 @@
-// lib/claude.js
+/ lib/claude.js
 // CHOIVE™ evidence-first scoring engine
 // ENV: ANTHROPIC_API_KEY
-
+ 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS      = 90000;
 const MAX_TOKENS      = 4500;
-
+ 
 function truncate(text, max) {
   max = max || 4000;
   var value = String(text || '');
   return value.length > max ? value.slice(0, max) : value;
 }
-
+ 
 // ── Fast category inference ───────────────────────────────────────────────────
 async function inferCategory(name, category, websiteText, searchText) {
   var controller = new AbortController();
@@ -57,7 +57,7 @@ async function inferCategory(name, category, websiteText, searchText) {
     return category;
   }
 }
-
+ 
 // ── Main scoring ──────────────────────────────────────────────────────────────
 async function scoreWithClaude(evidence) {
   var prompt = buildPrompt(evidence);
@@ -94,7 +94,7 @@ async function scoreWithClaude(evidence) {
     throw error;
   }
 }
-
+ 
 function parseClaudeResponse(data) {
   var text = (data.content || [])
     .filter(function(b) { return b.type === 'text'; })
@@ -121,7 +121,7 @@ function parseClaudeResponse(data) {
   console.error('Claude parse failed. Total length:', text.length);
   throw new Error('Could not parse Claude response as JSON');
 }
-
+ 
 function safeOutput(raw) {
   var r = raw || {};
   var pillars = r.pillars || {};
@@ -152,7 +152,7 @@ function safeOutput(raw) {
     deliverables: r.deliverables || null
   };
 }
-
+ 
 function buildPrompt(evidence) {
   var name               = evidence.name        || '';
   var category           = evidence.category    || '';
@@ -173,18 +173,18 @@ function buildPrompt(evidence) {
   var apifyText          = evidence.apifyText          || '';
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
-
+ 
   var competitorText = competitors.length > 0
     ? competitors.map(function(c) { return '- ' + c.domain + ': ' + (c.snippet || ''); }).join('\n')
     : 'No clear competitors identified in search results.';
-
+ 
   var socialList = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
   var socialDisplay = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
-
+ 
   var visibilityText = visibilityPosition !== -1
     ? 'YES (position ' + (visibilityPosition + 1) + ')'
     : 'NO';
-
+ 
   var prompt = 'BUSINESS:\n'
     + 'Name: ' + name + '\n'
     + 'Category: ' + category + '\n'
@@ -326,6 +326,17 @@ function buildPrompt(evidence) {
     + 'IF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\n'
     + 'Use inferredCategory to name the most likely real competitor.\n'
     + 'Set competitor.queryContext = "category-based analysis" to flag this.\n\n'
+    + 'IF A COMPETITOR HAS REBRANDED OR CHANGED ITS NAME:\n'
+    + 'If evidence shows a competitor has rebranded, merged, or changed its name (e.g. evidence states\n'
+    + '"X is now Y" or "X and Z, together under one brand"), the CURRENT name is the real competitor —\n'
+    + 'use it as the primary name a buyer would actually encounter today. Do not lead with a retired\n'
+    + 'or former name.\n'
+    + 'name field: use the CURRENT name only (e.g. "Leyra", not "Magine Pro (now Leyra)" or "Magine Pro").\n'
+    + 'In advantage/gapLocation/closeGap, refer to the competitor by its CURRENT name throughout \u2014\n'
+    + 'never revert to the old name once the rebrand is established. You may mention the former name\n'
+    + 'once, in evidence only, for context (e.g. "Leyra (formed from the merger of Magine Pro and\n'
+    + 'Accedo One)") \u2014 but the name buyers would search for and find today is what belongs in name,\n'
+    + 'advantage, gapLocation, and closeGap.\n\n'
     + 'COMPETITOR ANALYSIS DEPTH:\n'
     + 'advantage: one sentence \u2014 what specific structural or positioning advantage do they have?\n'
     + 'gapLocation: one sentence \u2014 at what exact point in selection does this hurt the business?\n'
@@ -400,7 +411,7 @@ function buildPrompt(evidence) {
     + 'sections above — only use null fields if you have already determined zero valid\n'
     + 'competitors exist after actually scanning the evidence, not as a default.\n\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
-
+ 
   var jsonSchema = '{\n'
     + '  "overallScore": 0,\n'
     + '  "verdictHeadline": "",\n'
@@ -426,8 +437,9 @@ function buildPrompt(evidence) {
     + '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n'
     + '  ]\n'
     + '}';
-
+ 
   return prompt + jsonSchema;
 }
-
+ 
 module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
+ 
