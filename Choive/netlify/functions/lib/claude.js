@@ -1,4 +1,4 @@
-// lib/claude.js
+/ lib/claude.js
 // CHOIVE™ evidence-first scoring engine
 // ENV: ANTHROPIC_API_KEY
  
@@ -175,7 +175,10 @@ function buildPrompt(evidence) {
   var summaries          = evidence.summaries     || {};
  
   var competitorText = competitors.length > 0
-    ? competitors.map(function(c) { return '- ' + c.domain + ': ' + (c.snippet || ''); }).join('\n')
+    ? competitors.map(function(c) {
+        var tag = c.isLocal ? ' [found via local-market search — likely a local/domestic competitor]' : '';
+        return '- ' + c.domain + tag + ': ' + (c.snippet || '');
+      }).join('\n')
     : 'No clear competitors identified in search results.';
  
   var socialList = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
@@ -316,13 +319,22 @@ function buildPrompt(evidence) {
     + 'If a listicle-only name and a press-named name both appear in evidence, the press-named one\n'
     + 'is the stronger, more accurate competitor — use it first.\n\n'
     + 'GEOGRAPHIC COVERAGE — IMPORTANT:\n'
-    + 'Return UP TO 3 competitors in the competitors array. If the search evidence contains\n'
-    + 'competitors from MULTIPLE geographies, prioritise returning a MIX:\n'
-    + '- One LOCAL or REGIONAL competitor (same country/region as this business) if one appears in evidence\n'
-    + '- One INTERNATIONAL or GLOBAL competitor (different country, but same category/buyer type) if one appears in evidence\n'
-    + 'A buyer often compares against both a known local option AND a global brand — show both when evidence supports it.\n'
-    + 'Do not default to only international competitors just because they are more prominent in search results.\n'
-    + 'Do not invent a local competitor if none appears in evidence — only surface what the evidence actually shows.\n\n'
+    + 'Return UP TO 3 competitors in the competitors array. The TARGET shape is:\n'
+    + '- One LOCAL or DOMESTIC competitor (same country/region as this business)\n'
+    + '- One INTERNATIONAL or GLOBAL competitor (different country, same category/buyer type)\n'
+    + 'Some entries in COMPETITORS APPEARING IN SEARCH are tagged\n'
+    + '"[found via local-market search — likely a local/domestic competitor]" — these came from\n'
+    + 'queries specifically targeting this business\'s own city/country. TREAT THESE AS YOUR FIRST\n'
+    + 'CHOICE for the local slot when present and otherwise valid (same category, same buyer type,\n'
+    + 'not a directory). A buyer comparing options locally sees this competitor; a buyer comparing\n'
+    + 'globally sees the international one — showing both gives a fuller picture than either alone.\n'
+    + 'Do not default to only international competitors just because they are more prominent in\n'
+    + 'search results — actively check for a tagged local-market entry before settling on an\n'
+    + 'all-international set.\n'
+    + 'Do not invent a local competitor if none appears in evidence — if no local-tagged entry\n'
+    + 'exists and no other domestic competitor appears anywhere in evidence, it is correct and\n'
+    + 'expected to return international-only (or none) rather than fabricate one. Only surface\n'
+    + 'what the evidence actually shows.\n\n'
     + 'IF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\n'
     + 'Use inferredCategory to name the most likely real competitor.\n'
     + 'Set competitor.queryContext = "category-based analysis" to flag this.\n\n'
