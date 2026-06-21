@@ -2,9 +2,9 @@
 // CHOIVE Stage 1 — Entry point
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, URL
 
-const crypto   = require('crypto');
+const crypto = require('crypto');
 const supabase = require('./lib/supabase');
-const valid    = require('./lib/validators');
+const valid = require('./lib/validators');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,11 +41,12 @@ exports.handler = async function (event) {
   }
 
   var input = {
-    name:        String(body['name']        || '').trim(),
-    category:    String(body['category']    || '').trim(),
-    city:        String(body['city']        || '').trim(),
-    website:     String(body['website']     || '').trim(),
-    description: String(body['description'] || '').trim()
+    name: String(body['name'] || '').trim(),
+    category: String(body['category'] || '').trim(),
+    city: String(body['city'] || '').trim(),
+    website: String(body['website'] || '').trim(),
+    description: String(body['description'] || '').trim(),
+    knownCompetitors: String(body['knownCompetitors'] || '').trim()
   };
 
   var jobId = crypto.randomUUID();
@@ -61,7 +62,7 @@ exports.handler = async function (event) {
     };
   }
 
-  var siteUrl       = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
+  var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
   var backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
   console.log('CHOIVE background trigger:', backgroundUrl);
 
