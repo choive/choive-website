@@ -801,6 +801,44 @@ nav {
 .share-btn:hover { color:var(--ink); border-color:var(--ink); }
 .share-btn.copied { color:var(--green); border-color:rgba(42,122,72,0.3); }
 
+/* Lead email capture */
+.lead-capture-block {
+  background:var(--paper-2); border:1px solid var(--rule);
+  padding:36px 40px; margin:44px 0 0;
+}
+.lead-capture-inner { max-width:480px; }
+.lead-capture-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--ac); margin-bottom:10px;
+}
+.lead-capture-headline {
+  font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400;
+  font-style:italic; color:var(--ink); margin-bottom:10px; line-height:1.3;
+}
+.lead-capture-sub {
+  font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:20px;
+}
+.lead-capture-form { display:flex; gap:8px; flex-wrap:wrap; }
+.lead-email-input {
+  flex:1; min-width:200px; font-family:'Inter', sans-serif;
+  font-size:14px; padding:12px 16px; border:1px solid var(--rule);
+  background:var(--paper); color:var(--ink); outline:none;
+  transition:border-color 0.2s;
+}
+.lead-email-input:focus { border-color:var(--ac); }
+.lead-email-input::placeholder { color:var(--muted); }
+.lead-submit-btn {
+  background:var(--ink); color:var(--ghost); border:none;
+  font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  letter-spacing:0.06em; padding:12px 20px; cursor:pointer;
+  transition:background 0.15s; white-space:nowrap;
+}
+.lead-submit-btn:hover { background:var(--ink-2); }
+.lead-submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.lead-msg { font-size:13px; margin-top:12px; min-height:18px; }
+.lead-msg.ok  { color:var(--green); }
+.lead-msg.err { color:var(--red); }
+
 /* Paywall */
 .paywall-block {
   background:var(--void); padding:48px; margin:44px 0;
@@ -2001,7 +2039,7 @@ function showResults(r, jobId) {
   // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
   //    which retrieves the Stripe session and reads client_reference_id as jobId.
   // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
-  const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
+  const stripeBase   = 'https://buy.stripe.com/test_bJe6oG4HH1qh1go08XbMQ01';
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
@@ -2029,11 +2067,23 @@ function showResults(r, jobId) {
     + [].concat(buildGapBlock(r)).join('')
     + [].concat(buildPillarCards(r)).join('')
     + [].concat(buildShareBlock(jobId)).join('')
-    + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
+    + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
+        + '<div class="lead-capture-inner">'
+        + '<div class="lead-capture-eyebrow">Get your full report</div>'
+        + '<div class="lead-capture-headline">Enter your email to receive your complete analysis</div>'
+        + '<div class="lead-capture-sub">We\'ll send you a link to your full results — including competitor intelligence, priority actions, and ready-to-use assets. No spam. Unsubscribe any time.</div>'
+        + '<div class="lead-capture-form">'
+        + '<input type="email" id="leadEmail" placeholder="your@email.com" class="lead-email-input" />'
+        + '<button class="lead-submit-btn" onclick="submitLeadEmail()">Send my report →</button>'
+        + '</div>'
+        + '<div id="leadMsg" class="lead-msg"></div>'
+        + '</div>'
+        + '</div>'
+        + '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">Full analysis</div>'
         + '<div class="paywall-headline">See exactly why — and what to fix</div>'
         + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
-        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">Unlock Full Analysis — €49</a>'
+        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">Unlock Full Analysis — $99</a>'
         + '</div>');
 
   // Animate score
@@ -2506,6 +2556,49 @@ function animateNum(id, from, to, dur) {
     if (p < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+}
+
+function submitLeadEmail() {
+  var emailEl = document.getElementById('leadEmail');
+  var btn = document.querySelector('.lead-submit-btn');
+  var msgEl = document.getElementById('leadMsg');
+  if (!emailEl || !msgEl) return;
+
+  var email = emailEl.value.trim();
+  if (!email || !email.includes('@')) {
+    msgEl.textContent = 'Please enter a valid email address.';
+    msgEl.className = 'lead-msg err';
+    return;
+  }
+
+  var jobId = window.__choiveShareJobId || '';
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  msgEl.textContent = '';
+  msgEl.className = 'lead-msg';
+
+  fetch('/.netlify/functions/save-lead', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, jobId: jobId, source: 'free_result' })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      msgEl.textContent = 'Done — check your inbox.';
+      msgEl.className = 'lead-msg ok';
+      btn.textContent = 'Sent ✓';
+      emailEl.disabled = true;
+    } else {
+      throw new Error(data.error || 'Could not save email.');
+    }
+  })
+  .catch(function(err) {
+    msgEl.textContent = err.message || 'Something went wrong. Try again.';
+    msgEl.className = 'lead-msg err';
+    btn.disabled = false;
+    btn.textContent = 'Send my report →';
+  });
 }
 
 function resetDiagnostic() {
