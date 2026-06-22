@@ -101,6 +101,28 @@ async function markDiagnosticPaid(jobId) {
   return data;
 }
 
+// Save email lead capture — from free result form or post-payment
+// Best-effort: errors are logged but never thrown to callers
+async function saveLead(opts) {
+  var email = (opts.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    throw new Error('saveLead: invalid email');
+  }
+  const supabase = getClient();
+  const { error } = await supabase
+    .from('leads')
+    .upsert({
+      email:     email,
+      job_id:    opts.jobId    || null,
+      source:    opts.source   || 'unknown',
+      name:      opts.name     || '',
+      amount:    opts.amount   || 0,
+      currency:  opts.currency || 'eur',
+      created_at: new Date().toISOString()
+    }, { onConflict: 'email' });
+  if (error) throw new Error('Supabase saveLead failed: ' + error.message);
+}
+
 module.exports = {
   createDiagnostic,
   updateStatus,
@@ -108,5 +130,6 @@ module.exports = {
   saveResult,
   saveError,
   getDiagnostic,
-  markDiagnosticPaid
+  markDiagnosticPaid,
+  saveLead
 };
