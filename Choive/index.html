@@ -843,13 +843,16 @@ nav {
 .paywall-block {
   background:var(--void); padding:48px; margin:44px 0;
   position:relative; overflow:hidden;
+  border:1px solid rgba(201,168,106,0.2);
 }
 .paywall-block::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:1px;
-  background:var(--ghost); opacity:0.1;
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--ac), transparent);
+  opacity:0.6;
 }
-.paywall-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ghost-3); margin-bottom:12px; }
-.paywall-headline { font-family:'Libre Baskerville', serif; font-size:24px; font-weight:400; font-style:italic; color:var(--ghost); margin-bottom:12px; line-height:1.2; }
+.paywall-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ac); margin-bottom:12px; }
+.paywall-headline { font-family:'Libre Baskerville', serif; font-size:28px; font-weight:400; font-style:italic; color:var(--ghost); margin-bottom:16px; line-height:1.2; }
+.paywall-urgency { font-size:13px; color:var(--ac); font-weight:600; margin-bottom:16px; padding:10px 16px; background:rgba(201,168,106,0.08); border-left:2px solid var(--ac); }
 .paywall-body { font-size:14px; font-weight:400; color:var(--ghost-2); line-height:1.75; margin-bottom:24px; }
 .paywall-btn {
   background:var(--ac); color:var(--void); border:none;
@@ -2069,9 +2072,9 @@ function showResults(r, jobId) {
     + [].concat(buildShareBlock(jobId)).join('')
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
         + '<div class="lead-capture-inner">'
-        + '<div class="lead-capture-eyebrow">Get your full report</div>'
-        + '<div class="lead-capture-headline">Enter your email to receive your complete analysis</div>'
-        + '<div class="lead-capture-sub">We\'ll send you a link to your full results — including competitor intelligence, priority actions, and ready-to-use assets. No spam. Unsubscribe any time.</div>'
+        + '<div class="lead-capture-eyebrow">Save your result</div>'
+        + '<div class="lead-capture-headline">Get a link back to this result by email.</div>'
+        + '<div class="lead-capture-sub">Enter your email and we\'ll send you a permanent link to this diagnostic — so you can return to it any time. Free. No spam. No commitment.</div>'
         + '<div class="lead-capture-form">'
         + '<input type="email" id="leadEmail" placeholder="your@email.com" class="lead-email-input" />'
         + '<button class="lead-submit-btn" onclick="submitLeadEmail()">Send my report →</button>'
@@ -2080,10 +2083,12 @@ function showResults(r, jobId) {
         + '</div>'
         + '</div>'
         + '<div class="paywall-block" id="paywallBlock">'
-        + '<div class="paywall-eyebrow">Full analysis</div>'
-        + '<div class="paywall-headline">See exactly why — and what to fix</div>'
-        + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
-        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">Unlock Full Analysis — $99</a>'
+        + '<div class="paywall-eyebrow">Full analysis — one decision away</div>'
+        + '<div class="paywall-headline">Find out who is being chosen instead of you — and the exact fixes.</div>'
+        + '<div class="paywall-urgency">Your score is ' + score + '/100. The full analysis reveals your top competitor\'s score, the exact gap, and 3 specific actions to close it this week.</div>'
+        + '<div class="paywall-body" style="margin-bottom:12px;">What you get: real competitor intelligence with their CHOIVE score, full pillar breakdown with evidence quotes, priority actions with copy you can use today, and ready-to-use structured data assets.</div>'
+        + '<a href="' + STRIPE_LINK + '?client_reference_id=' + (jobId||'') + '" class="pay-btn-primary" style="display:block;margin-top:20px;text-decoration:none;text-align:center;padding:18px 32px;font-size:16px;">Unlock Full Analysis — $99 →</a>'
+        + '<div style="font-size:11px;color:rgba(245,242,238,0.3);margin-top:12px;text-align:center;">One-time payment · Instant access · No subscription</div>'
         + '</div>');
 
   // Animate score
