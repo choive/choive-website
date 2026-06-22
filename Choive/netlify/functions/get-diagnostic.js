@@ -41,6 +41,15 @@ exports.handler = async function (event) {
     };
   }
  
+  // Null check — job not found in Supabase
+  if (!job) {
+    return {
+      statusCode: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Diagnostic not found', jobId })
+    };
+  }
+
   // Processing — return status and current stage only
   if (job.status === 'queued' || job.status === 'collecting_evidence' || job.status === 'scoring') {
     return {
@@ -93,4 +102,3 @@ exports.handler = async function (event) {
     body: JSON.stringify({ jobId: job.job_id, status: job.status })
   };
 };
- 
