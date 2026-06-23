@@ -2042,14 +2042,9 @@ function showResults(r, jobId) {
   // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
   //    which retrieves the Stripe session and reads client_reference_id as jobId.
   // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
-  const stripeBase   = 'https://buy.stripe.com/test_bJe6oG4HH1qh1go08XbMQ01';
-  const returnUrl    = window.location.origin + '/?jobId=' + encodeURIComponent(jobId || '') + '&paid=1';
-  const stripeParams = new URLSearchParams({
-    client_reference_id: jobId || '',
-    prefilled_email:     '',
-    return_url:          returnUrl
-  });
-  const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
+  // Stripe link is generated dynamically via create-checkout endpoint
+  // The button calls initiateCheckout(jobId) instead of linking directly
+  const STRIPE_LINK = '#checkout';
 
   // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
   var inferredCat = r.inferredCategory && r.inferredCategory !== bizData.category
@@ -2092,7 +2087,7 @@ function showResults(r, jobId) {
         + '<div class="paywall-headline">Find out who is being chosen instead of you — and the exact fixes.</div>'
         + '<div class="paywall-urgency">Your score is ' + score + '/100. The full analysis reveals your top competitor\'s score, the exact gap, and 3 specific actions to close it this week.</div>'
         + '<div class="paywall-body" style="margin-bottom:12px;">What you get: real competitor intelligence with their CHOIVE score, full pillar breakdown with evidence quotes, priority actions with copy you can use today, and ready-to-use structured data assets.</div>'
-        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:block;margin-top:20px;text-decoration:none;text-align:center;padding:18px 32px;font-size:16px;">Unlock Full Analysis — $99 →</a>'
+        + '<button onclick="initiateCheckout(\'' + (jobId||'') + '\')" class="pay-btn-primary" style="display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;" id="checkoutBtn">Unlock Full Analysis — $99 →</button>'
         + '<div style="font-size:11px;color:rgba(245,242,238,0.3);margin-top:12px;text-align:center;">One-time payment · Instant access · No subscription</div>'
         + '</div>');
 
@@ -2609,6 +2604,29 @@ function submitLeadEmail() {
     btn.disabled = false;
     btn.textContent = 'Send my report →';
   });
+}
+
+async function initiateCheckout(jobId) {
+  var btn = document.getElementById('checkoutBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing checkout...'; }
+
+  try {
+    var res = await fetch('/.netlify/functions/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: jobId })
+    });
+    var data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Could not create checkout');
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Analysis — $99 →'; }
+    alert('Could not start checkout. Please try again.');
+    console.error('initiateCheckout error:', err);
+  }
 }
 
 function resetDiagnostic() {
