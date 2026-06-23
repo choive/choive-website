@@ -2043,7 +2043,12 @@ function showResults(r, jobId) {
   //    which retrieves the Stripe session and reads client_reference_id as jobId.
   // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
   const stripeBase   = 'https://buy.stripe.com/test_bJe6oG4HH1qh1go08XbMQ01';
-  const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
+  const returnUrl    = window.location.origin + '/?jobId=' + encodeURIComponent(jobId || '') + '&paid=1';
+  const stripeParams = new URLSearchParams({
+    client_reference_id: jobId || '',
+    prefilled_email:     '',
+    return_url:          returnUrl
+  });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
   // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
@@ -2087,7 +2092,7 @@ function showResults(r, jobId) {
         + '<div class="paywall-headline">Find out who is being chosen instead of you — and the exact fixes.</div>'
         + '<div class="paywall-urgency">Your score is ' + score + '/100. The full analysis reveals your top competitor\'s score, the exact gap, and 3 specific actions to close it this week.</div>'
         + '<div class="paywall-body" style="margin-bottom:12px;">What you get: real competitor intelligence with their CHOIVE score, full pillar breakdown with evidence quotes, priority actions with copy you can use today, and ready-to-use structured data assets.</div>'
-        + '<a href="' + STRIPE_LINK + '?client_reference_id=' + (jobId||'') + '" class="pay-btn-primary" style="display:block;margin-top:20px;text-decoration:none;text-align:center;padding:18px 32px;font-size:16px;">Unlock Full Analysis — $99 →</a>'
+        + '<a href="' + STRIPE_LINK + '" class="pay-btn-primary" style="display:block;margin-top:20px;text-decoration:none;text-align:center;padding:18px 32px;font-size:16px;">Unlock Full Analysis — $99 →</a>'
         + '<div style="font-size:11px;color:rgba(245,242,238,0.3);margin-top:12px;text-align:center;">One-time payment · Instant access · No subscription</div>'
         + '</div>');
 
@@ -2668,9 +2673,16 @@ function initResultRoute() {
   var jobId     = params.get('jobId');
   var sessionId = params.get('session_id');
   var paid      = params.get('paid');
-  if (sessionId && paid === 'true') {
+
+  if (sessionId) {
+    // Legacy: session_id in URL
     verifyAndLoad(sessionId);
+  } else if (jobId && (paid === '1' || paid === 'true')) {
+    // Returning from Stripe payment — jobId + paid=1
+    // Webhook has already marked it paid. Just load the result.
+    fetchSharedResult(jobId);
   } else if (jobId) {
+    // Shared result link — load normally
     fetchSharedResult(jobId);
   }
 }
