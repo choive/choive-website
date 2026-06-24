@@ -12,6 +12,30 @@ function truncate(text, max) {
   var value = String(text || '');
   return value.length > max ? value.slice(0, max) : value;
 }
+
+// ── Sanitize external content against prompt injection ────────────────────────
+// Removes common adversarial instruction patterns from scraped content
+// before it is injected into the scoring prompt.
+// This reduces but cannot eliminate prompt injection risk —
+// the JSON-only output requirement and temperature:0 are the primary defenses.
+function sanitizeExternal(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    // Remove common injection openers
+    .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/you\s+are\s+now\s+(a\s+)?(different|new|another)/gi, '[removed]')
+    .replace(/new\s+instructions?:/gi, '[removed]')
+    .replace(/system\s*:\s*you\s+are/gi, '[removed]')
+    .replace(/\[INST\]|\[\/INST\]|<\|im_start\|>|<\|im_end\|>/g, '[removed]')
+    .replace(/CHOIVE.*?score.*?must\s+be/gi, '[removed]')
+    .replace(/set\s+(the\s+)?(overall|clarity|trust|difference|ease)\s+score\s+to/gi, '[removed]')
+    // Truncate any single line that is suspiciously long (>500 chars) without spaces
+    .split('\n').map(function(line) {
+      return line.replace(/\S{500,}/g, '[long-token-removed]');
+    }).join('\n');
+}
  
 // ── Fast category inference ───────────────────────────────────────────────────
 async function inferCategory(name, category, websiteText, searchText) {
@@ -160,17 +184,17 @@ function buildPrompt(evidence) {
   var website            = evidence.website     || 'not provided';
   var description        = evidence.description || 'not provided';
   var inferredSite       = evidence.inferredOfficialSite || 'not found';
-  var websiteText        = truncate(evidence.websiteText, 3000)  || 'No website content available.';
-  var searchText         = truncate(evidence.searchText, 5000)   || 'No search results returned.';
-  var kgText             = truncate(evidence.kgText, 1200)       || 'None';
+  var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
+  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
+  var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
   var visibilityPosition = evidence.visibilityPosition;
   var competitors        = evidence.competitors        || [];
   var knownCompetitors   = evidence.knownCompetitors   || '';
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
-  var socialText         = evidence.socialText         || 'No social media pages found.';
-  var reviewText         = evidence.reviewText         || 'No review platform pages found.';
-  var apifyText          = evidence.apifyText          || '';
+  var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
+  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
+  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
  
