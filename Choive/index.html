@@ -1,77 +1,2656 @@
-<div style="background:#F5F2EE;padding:100px 40px;font-family:'Inter',system-ui,sans-serif;">
-<div style="max-width:920px;margin:0 auto;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOIVE· — AI Selection Diagnostic</title>
+<meta name="description" content="Find out if AI recommends your business. Real diagnostic. Real signals. Any business, any category, anywhere in the world.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230C0C0E'/%3E%3Ccircle cx='62' cy='62' r='12' fill='%23C9A86A'/%3E%3Ctext x='38' y='62' font-family='Georgia,serif' font-size='52' fill='%23F5F2EE' text-anchor='middle' dominant-baseline='central'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta property="og:type" content="website">
+<meta property="og:title" content="CHOIVE· — AI Selection Diagnostic">
+<meta property="og:description" content="Find out if AI recommends your business. Real diagnostic. Any business, any category, anywhere.">
+<meta property="og:url" content="https://choive.com">
+<meta property="og:image" content="https://choive.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://choive.com/og-image.png">
+<link rel="canonical" href="https://choive.com">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://choive.com/#organization","name":"CHOIVE","url":"https://choive.com","description":"CHOIVE is the AI selection diagnostic that shows businesses exactly why they are or are not being recommended by AI platforms.","contactPoint":{"@type":"ContactPoint","email":"hello@choive.com","contactType":"customer service"}},{"@type":"WebSite","@id":"https://choive.com/#website","url":"https://choive.com","name":"CHOIVE·","publisher":{"@id":"https://choive.com/#organization"}}]}
+</script>
+<style>
+/* ── TOKENS ── */
+:root {
+  --paper:   #F5F2EE;
+  --paper-2: #EDEAE5;
+  --paper-3: #E4E0D9;
+  --paper-4: #D8D4CC;
+  --ink:     #0C0C0E;
+  --ink-2:   #1A1A1E;
+  --ink-3:   #28282E;
+  --body:    #48484F;
+  --muted:   #67676E;
+  --faint:   #BBBBC2;
+  --rule:    rgba(12,12,14,0.08);
+  --rule-2:  rgba(12,12,14,0.04);
+  --ac:      #C9A86A;
+  --ac-d:    #B8935A;
+  /* Aliases for JS-generated inline styles (light-surface context) */
+  --tm:      #67676E;
+  --tp:      #0C0C0E;
+  --tb:      #48484F;
+  --dk-3:    #EDEAE5;
+  --dk-2:    #E4E0D9;
+  --rule-d:  rgba(12,12,14,0.1);
+  /* Void for dark sections */
+  --void:    #0C0C0E;
+  --void-2:  #111116;
+  --void-3:  #18181E;
+  --ghost:   #F5F2EE;
+  --ghost-2: #BBBBC2;
+  --ghost-3: #6E6E76;
+  --rd:      rgba(245,242,238,0.07);
+  --rd2:     rgba(245,242,238,0.03);
+  /* Signals */
+  --red:     #B83232;
+  --amber:   #9A6A14;
+  --green:   #2A7A48;
+  --red-bg:  rgba(184,50,50,0.06);
+  --amb-bg:  rgba(154,106,20,0.06);
+  --grn-bg:  rgba(42,122,72,0.06);
+  /* Depth — warm-toned shadows, never pure grey/black */
+  --sh-1: 0 1px 2px rgba(40,32,20,0.04), 0 2px 6px rgba(40,32,20,0.04);
+  --sh-2: 0 2px 6px rgba(40,32,20,0.06), 0 8px 24px rgba(40,32,20,0.07);
+  --sh-3: 0 4px 12px rgba(40,32,20,0.08), 0 24px 48px -12px rgba(40,32,20,0.16);
+  --sh-dark: 0 4px 16px rgba(0,0,0,0.28), 0 24px 48px -12px rgba(0,0,0,0.4);
+  --edge-lt: inset 0 1px 0 rgba(255,255,255,0.5);
+}
 
-  <div style="text-align:center;margin-bottom:64px;">
-    <div style="display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#888;margin-bottom:24px;">
-      <span style="display:block;width:28px;height:1px;background:#888;"></span>
-      The problem with SEO tools
-      <span style="display:block;width:28px;height:1px;background:#888;"></span>
-    </div>
-    <h2 style="font-family:Georgia,'Times New Roman',serif;font-size:44px;font-weight:400;color:#1a1a1a;line-height:1.15;letter-spacing:-0.02em;margin:0 0 24px;">
-      AI doesn't rank.<br><em style="color:#C9A86A;">It selects.</em>
-    </h2>
-    <p style="font-size:18px;color:#888;max-width:560px;margin:0 auto;line-height:1.7;font-weight:400;">
-      SEO optimises for a list of ten results. AI gives one answer. The signals that determine which business gets that answer are entirely different.
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { background:var(--paper); scroll-behavior:smooth; }
+body {
+  font-family:'Inter', sans-serif;
+  font-weight:400;
+  background:var(--paper);
+  color:var(--ink);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── NAV ── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  height:56px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 52px;
+  background:rgba(245,242,238,0.94);
+  border-bottom:1px solid var(--rule);
+  backdrop-filter:blur(20px);
+}
+.nav-logo {
+  font-size:15px; font-weight:700; letter-spacing:0.12em;
+  color:var(--ink); text-decoration:none;
+}
+.nav-logo-dot { color:var(--muted); }
+.nav-right { display:flex; align-items:center; gap:32px; }
+.nav-link {
+  font-size:11px; font-weight:500; color:var(--muted);
+  text-decoration:none; letter-spacing:0.04em;
+  transition:color 0.15s;
+}
+.nav-link:hover { color:var(--ink); }
+.nav-cta {
+  font-size:11px; font-weight:700; letter-spacing:0.06em;
+  color:var(--void); background:var(--ac);
+  padding:10px 18px; text-decoration:none;
+  transition:background 0.15s;
+}
+.nav-cta:hover { background:var(--ac-d); }
+
+/* ── HERO ── */
+/* Light. Open. The question arrives before the form. */
+.hero {
+  min-height:100vh;
+  padding:140px 52px 80px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:80px;
+  align-items:center;
+  max-width:1280px;
+  margin:0 auto;
+}
+.hero-left {
+  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) both;
+}
+.hero-kicker {
+  font-size:11px; font-weight:700; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--muted);
+  margin-bottom:32px;
+  display:flex; align-items:center; gap:12px;
+}
+.hero-kicker::before { content:''; width:20px; height:1px; background:var(--muted); }
+.hero-h1 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(40px, 5vw, 64px);
+  font-weight:400;
+  letter-spacing:-0.02em;
+  line-height:1.1;
+  color:var(--ink);
+  margin-bottom:28px;
+}
+.hero-h1 em {
+  font-style:italic;
+  color:var(--muted);
+}
+.hero-sub {
+  font-size:17px; font-weight:400; line-height:1.85;
+  color:var(--body); margin-bottom:44px; max-width:420px;
+}
+.hero-proof {
+  display:flex; gap:0;
+  border-top:1px solid var(--rule);
+  padding-top:32px;
+}
+.hero-proof-item {
+  padding-right:36px; margin-right:36px;
+  border-right:1px solid var(--rule);
+}
+.hero-proof-item:last-child { border-right:none; padding-right:0; margin-right:0; }
+.hero-proof-num {
+  font-family:'Libre Baskerville', serif;
+  font-size:40px; font-weight:400; color:var(--ink);
+  letter-spacing:-0.02em; line-height:1; margin-bottom:6px;
+}
+.hero-proof-label {
+  font-size:12px; font-weight:400; color:var(--muted); line-height:1.5; max-width:120px;
+}
+
+/* Hero right — the real example */
+.hero-right {
+  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) 0.18s both;
+}
+.example-label {
+  font-size:11px; font-weight:700; letter-spacing:0.16em;
+  text-transform:uppercase; color:var(--muted);
+  margin-bottom:16px; display:flex; align-items:center; gap:8px;
+}
+.example-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--ac); display:inline-block;
+}
+.example-card {
+  background:var(--paper-2);
+  border:1px solid var(--rule);
+  overflow:hidden;
+  box-shadow:var(--sh-2);
+}
+.ex-header {
+  padding:16px 24px;
+  border-bottom:1px solid var(--rule);
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--paper-3);
+}
+.ex-biz {
+  font-size:11px; font-weight:600; letter-spacing:0.06em;
+  color:var(--ink);
+}
+.ex-tag {
+  font-size:11px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; padding:3px 8px; border:1px solid;
+  color:var(--amber); border-color:rgba(154,106,20,0.25);
+  background:var(--amb-bg);
+}
+.ex-body { padding:28px 24px; }
+.ex-score-row { display:flex; align-items:flex-end; gap:6px; margin-bottom:8px; }
+.ex-score {
+  font-family:'Libre Baskerville', serif;
+  font-size:72px; font-weight:700; color:var(--ink);
+  line-height:1; letter-spacing:-0.04em;
+  margin-left:-4px;
+}
+.ex-score-den { font-size:13px; color:var(--muted); padding-bottom:10px; }
+.ex-headline {
+  font-size:14px; font-weight:500; color:var(--ink);
+  margin-bottom:14px; line-height:1.4;
+}
+.ex-summary {
+  font-size:13px; font-weight:400; line-height:1.85; color:var(--body);
+  padding-top:16px; border-top:1px solid var(--rule); margin-bottom:20px;
+}
+.ex-pillars {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:0; border-top:1px solid var(--rule);
+  margin:0 -24px -28px;
+}
+.ex-pillar {
+  padding:14px 16px;
+  border-right:1px solid var(--rule);
+  background:var(--paper-3);
+}
+.ex-pillar:last-child { border-right:none; }
+.ex-pillar-name {
+  font-size:11px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:6px;
+}
+.ex-pillar-score {
+  font-family:'Libre Baskerville', serif;
+  font-size:20px; font-weight:400; color:var(--ink); line-height:1;
+}
+.ex-pillar-den { font-size:11px; color:var(--muted); }
+.ex-bar { height:1px; background:var(--rule); margin-top:8px; }
+.ex-bar-fill { height:100%; background:var(--ink); opacity:0.4; }
+
+/* The key insight — before/after */
+.ex-insight {
+  margin:16px -24px -28px;
+  padding:16px 24px;
+  background:var(--void);
+  border-top:1px solid rgba(245,242,238,0.06);
+  box-shadow:inset 0 3px 8px rgba(0,0,0,0.25);
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:1px;
+}
+.ex-insight-col { padding:14px 16px; }
+.ex-insight-col:first-child { border-right:1px solid rgba(245,242,238,0.06); }
+.ex-insight-label {
+  font-size:11px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--ghost-3); margin-bottom:8px;
+}
+.ex-insight-val {
+  font-family:'Libre Baskerville', serif;
+  font-size:18px; font-weight:400; line-height:1.2; color:var(--ghost);
+}
+.ex-insight-val.bad  { color:#E05252; }
+.ex-insight-val.good { color:#4ADE80; }
+.ex-insight-val.bad { color:#E05252; font-style:italic; }
+.ex-insight-val.good { color:#4ADE80; font-style:italic; }
+.ex-insight-note {
+  font-size:12px; font-weight:400; color:var(--ghost-2);
+  margin-top:4px; line-height:1.5;
+}
+
+/* ── RULE STRIP ── */
+.rule-strip {
+  background:var(--paper-2);
+  border-top:1px solid var(--rule);
+  border-bottom:1px solid var(--rule);
+  padding:24px 52px;
+  display:flex; align-items:center; justify-content:center;
+  gap:0; overflow:hidden;
+}
+.rule-item {
+  font-size:12px; font-weight:400; color:var(--muted);
+  padding:0 36px; border-right:1px solid var(--rule);
+  white-space:nowrap; letter-spacing:0.02em;
+}
+.rule-item:last-child { border-right:none; }
+.rule-item strong { color:var(--ink); font-weight:600; }
+
+/* ── DIAGNOSTIC SECTION ── */
+.diag-section {
+  background:var(--void) radial-gradient(ellipse 800px 500px at 50% 0%, rgba(201,168,106,0.04), transparent 70%);
+  padding:100px 52px 64px;
+  border-top:1px solid var(--rule);
+}
+.diag-inner { max-width:640px; margin:0 auto; }
+.diag-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--ghost-3);
+  margin-bottom:24px; display:flex; align-items:center; gap:12px;
+}
+.diag-eyebrow::before { content:''; width:20px; height:1px; background:var(--ghost-3); }
+.diag-h2 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(28px, 4vw, 44px); font-weight:400;
+  color:var(--ghost); letter-spacing:-0.02em; line-height:1.1;
+  margin-bottom:16px;
+}
+.diag-h2 em { font-style:italic; color:var(--ghost-3); }
+.diag-sub {
+  font-size:16px; font-weight:400; line-height:1.8;
+  color:var(--ghost-2); margin-bottom:48px; max-width:480px;
+}
+#dI {}
+.field-lbl {
+  font-size:11px; font-weight:600; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--ghost-3);
+  margin-bottom:8px; display:block;
+}
+.diag-form-panel {
+  background:var(--void-2);
+  border:1px solid rgba(245,242,238,0.08);
+  border-radius:2px;
+  padding:1px;
+  box-shadow:var(--sh-dark), inset 0 1px 0 rgba(245,242,238,0.06);
+}
+.field-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:1px; margin-bottom:1px;
+}
+.field-row input {
+  background:var(--void-3);
+  border:none;
+  border-bottom:1px solid rgba(245,242,238,0.1);
+  color:var(--ghost);
+  font-family:'Inter', sans-serif;
+  font-size:14px; font-weight:400;
+  padding:18px;
+  outline:none; width:100%;
+  transition:background 0.2s, border-color 0.2s;
+}
+.field-row input::placeholder { color:rgba(245,242,238,0.2); font-size:13px; }
+.field-row input:focus {
+  background:rgba(245,242,238,0.06);
+  border-bottom-color:rgba(245,242,238,0.3);
+  box-shadow:0 1px 0 0 var(--ac);
+}
+.run-btn {
+  width:100%; background:var(--ac); color:var(--void);
+  border:none; font-family:'Inter', sans-serif;
+  font-size:14px; font-weight:700; letter-spacing:0.04em;
+  padding:20px; cursor:pointer; margin-top:1px;
+  transition:background 0.15s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.run-btn:hover { background:var(--ac-d); }
+.run-btn:disabled { opacity:0.25; cursor:not-allowed; }
+.diag-note {
+  font-size:12px; font-weight:400; color:var(--ghost-2);
+  margin-top:16px; text-align:center; line-height:1.6;
+}
+
+/* ── HOW IT WORKS ── */
+.how-section {
+  padding:96px 52px;
+  max-width:1280px; margin:0 auto;
+}
+.how-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.18em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:20px;
+}
+.how-h2 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(28px,3.5vw,44px); font-weight:400;
+  color:var(--ink); letter-spacing:-0.02em; line-height:1.1;
+  margin-bottom:56px; max-width:480px;
+}
+.how-h2 em { font-style:italic; color:var(--muted); }
+.pillars-row {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:0; border:1px solid var(--rule);
+}
+.pillar-block {
+  padding:40px 32px; border-right:1px solid var(--rule);
+  transition:background 0.2s;
+  position:relative;
+}
+.pillar-block::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:var(--ink); transform:scaleX(0); transform-origin:left;
+  transition:transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.pillar-block:hover { background:var(--paper-2); }
+.pillar-block:hover::after { transform:scaleX(1); }
+.pillar-block:last-child { border-right:none; }
+.pillar-idx {
+  font-size:11px; font-weight:700; letter-spacing:0.14em;
+  color:var(--muted); margin-bottom:20px;
+}
+.pillar-title {
+  font-family:'Libre Baskerville', serif;
+  font-size:22px; font-weight:400; color:var(--ink);
+  margin-bottom:12px; letter-spacing:-0.01em;
+}
+.pillar-desc {
+  font-size:14px; font-weight:400; line-height:1.8; color:var(--body);
+}
+
+/* ── ENGINE LOADING ── */
+.engine-loading {
+  display:none;
+  min-height:100vh;
+  flex-direction:column;
+  justify-content:center;
+  padding:120px 52px;
+  background:var(--paper);
+  position:relative;
+}
+.engine-loading.active { display:flex; }
+.engine-loading::before {
+  content:'';
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(var(--rule-2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule-2) 1px, transparent 1px);
+  background-size:72px 72px;
+  pointer-events:none;
+}
+.engine-pulse {
+  width:1px; height:52px; background:var(--ink);
+  margin-bottom:48px; position:relative; z-index:1;
+  animation:pBar 1.4s ease-in-out infinite;
+}
+@keyframes pBar {
+  0%,100%{ height:52px; opacity:1; }
+  50%    { height:80px; opacity:0.4; }
+}
+.engine-headline {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(28px,4vw,48px); font-weight:400;
+  color:var(--ink); margin-bottom:12px; line-height:1.1;
+  letter-spacing:-0.02em; max-width:560px;
+  position:relative; z-index:1;
+}
+.engine-subline {
+  font-size:14px; font-weight:400; color:var(--body);
+  max-width:400px; line-height:1.75; margin-bottom:64px;
+  position:relative; z-index:1;
+}
+.engine-stage {
+  display:flex; flex-direction:column; gap:0;
+  width:100%; max-width:420px;
+  position:relative; z-index:1;
+}
+.stage-row {
+  display:flex; align-items:flex-start; gap:20px;
+  padding:18px 0; border-bottom:1px solid var(--rule-2);
+  opacity:0.18; transition:opacity 0.6s ease;
+}
+.stage-row:last-child { border-bottom:none; }
+.stage-row.active { opacity:1; }
+.stage-row.done { opacity:0.4; }
+.stage-icon {
+  width:14px; height:14px; border-radius:50%;
+  border:1px solid var(--faint);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; margin-top:3px;
+  font-size:11px; color:var(--faint);
+  transition:all 0.3s;
+}
+.stage-row.active .stage-icon { border-color:var(--ink); color:var(--ink); }
+.stage-row.done .stage-icon { border-color:var(--green); color:var(--green); background:var(--grn-bg); }
+.stage-label { font-size:13px; font-weight:500; color:var(--ink); margin-bottom:3px; }
+.stage-row:not(.active):not(.done) .stage-label { color:var(--muted); }
+.stage-support { font-size:12px; font-weight:400; color:var(--body); line-height:1.55; }
+
+/* ── RESULTS ── */
+#dR, #resultsZone {
+  display:none;
+  background:var(--paper);
+  color:var(--ink);
+}
+#dR {
+  padding:72px 52px 96px;
+}
+#dR > * {
+  max-width:720px;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+/* Verdict */
+.verdict-banner {
+  padding:48px 0 36px; border-bottom:2px solid var(--ink); margin-bottom:2px;
+}
+.verdict-biz {
+  font-size:11px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:20px;
+}
+.verdict-tag {
+  display:inline-block; font-size:11px; font-weight:700;
+  letter-spacing:0.1em; text-transform:uppercase;
+  padding:4px 10px; border:1px solid; margin-bottom:18px;
+}
+.verdict-tag.absent { color:var(--red); border-color:rgba(184,50,50,0.25); background:var(--red-bg); }
+.verdict-tag.weak   { color:var(--amber); border-color:rgba(154,106,20,0.25); background:var(--amb-bg); }
+.verdict-tag.present{ color:var(--green); border-color:rgba(42,122,72,0.25); background:var(--grn-bg); }
+.verdict-top {
+  display:grid; grid-template-columns:1fr 120px;
+  gap:20px; align-items:start; margin-bottom:24px;
+}
+.verdict-headline {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(22px,3.5vw,36px); font-weight:400;
+  letter-spacing:-0.02em; color:var(--ink); line-height:1.2;
+  overflow-wrap:break-word;
+}
+.verdict-score-block { text-align:right; }
+.verdict-score-num {
+  font-family:'Libre Baskerville', serif;
+  font-size:80px; font-weight:700;
+  color:var(--ink); line-height:1; display:block;
+  letter-spacing:-0.05em;
+}
+.verdict-score-denom { font-size:11px; color:var(--muted); letter-spacing:0.04em; }
+/* The live score number — actual class rendered by showResults().
+   Scaled as a deliberate typographic moment: the verdict, not a label. */
+.mono-score-num {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(64px, 11vw, 132px);
+  font-weight:700;
+  color:var(--ink); line-height:0.9; display:block;
+  letter-spacing:-0.05em;
+  animation:scoreArrive 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes scoreArrive {
+  from { opacity:0; transform:scale(0.92) translateY(8px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mono-score-num { animation:none; }
+}
+/* One-time glow pulse on the score number when its count-up animation
+   settles — purely visual feedback, applied/removed by a short timeout
+   in showResults(). Never reads or writes scoring data. */
+.mono-score-num.pulse-on-land { animation:barPulse 0.6s ease-out; }
+@keyframes barPulse {
+  0%   { text-shadow:0 0 0 rgba(201,168,106,0); }
+  40%  { text-shadow:0 0 18px rgba(201,168,106,0.45); }
+  100% { text-shadow:0 0 0 rgba(201,168,106,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mono-score-num.pulse-on-land { animation:none; }
+}
+.mono-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:16px;
+}
+.verdict-summary {
+  font-size:16px; font-weight:400; line-height:1.9;
+  color:var(--body); border-top:1px solid var(--rule);
+  padding-top:22px;
+}
+
+/* Score bar */
+.score-bar-track { height:1px; background:var(--rule); margin-bottom:36px; }
+.score-bar-fill  { height:100%; background:var(--ink); width:0; transition:width 1.8s cubic-bezier(0.16,1,0.3,1); }
+
+/* Score labels */
+.score-labels {
+  background:var(--paper-2); padding:24px 28px;
+  margin-bottom:2px; border-bottom:1px solid var(--rule);
+}
+.score-label-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-2); }
+.score-label-row:last-child { border-bottom:none; }
+.score-label-key { font-size:12px; font-weight:400; color:var(--body); }
+.score-label-val { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.score-label-val.high    { color:var(--green); }
+.score-label-val.mid     { color:var(--amber); }
+.score-label-val.low     { color:var(--red); }
+.score-label-val.critical{ color:var(--red); }
+.score-label-val.moderate{ color:var(--amber); }
+.score-label-val.low-gap { color:var(--green); }
+
+/* Section label */
+.section-label {
+  font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:14px; margin-top:44px;
+  display:flex; align-items:center; gap:12px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--rule); }
+
+/* Gap block */
+.gap-block { background:var(--paper-2); padding:28px; margin-bottom:2px; border-bottom:1px solid var(--rule); }
+.gap-rows { display:flex; flex-direction:column; }
+.gap-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-2); }
+.gap-row:last-child { border-bottom:none; }
+.gap-row-label { font-size:12px; font-weight:400; color:var(--body); }
+.gap-row-value { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+.gap-row-value.high      { color:var(--green); }
+.gap-row-value.mid       { color:var(--amber); }
+.gap-row-value.low       { color:var(--muted); }
+.gap-row-value.critical  { color:var(--red); }
+.gap-row-value.meaningful{ color:var(--amber); }
+.gap-row-value.minor     { color:var(--body); }
+.gap-row-value.aligned   { color:var(--green); }
+.gap-delta { padding-top:20px; }
+.gap-delta-pts { font-family:'Libre Baskerville', serif; font-size:15px; font-weight:700; color:var(--ink); margin-bottom:8px; }
+.gap-copy { font-size:14px; font-weight:400; line-height:1.75; color:var(--body); margin-bottom:8px; }
+.gap-copy-sub { font-size:12px; color:var(--muted); padding-top:10px; border-top:1px solid var(--rule-2); line-height:1.6; }
+
+/* Displacement */
+.disp-block { background:var(--red-bg); border-bottom:1px solid rgba(184,50,50,0.1); padding:32px 28px; margin-bottom:2px; }
+.disp-query { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; }
+.disp-query span { color:var(--ink); text-transform:none; letter-spacing:0; font-style:italic; }
+.disp-name { font-family:'Libre Baskerville', serif; font-size:28px; font-weight:700; color:var(--red); letter-spacing:-0.02em; margin-bottom:4px; }
+.disp-label { font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:rgba(184,50,50,0.45); margin-bottom:14px; }
+.disp-why { font-size:13px; font-weight:400; line-height:1.8; color:var(--body); padding-top:16px; border-top:1px solid rgba(184,50,50,0.1); }
+
+/* Pillars */
+.pillars-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--rule); margin-bottom:2px; }
+.pillar-card {
+  background:var(--paper); padding:32px 28px;
+  transition:box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  position:relative; z-index:1;
+}
+.pillar-card:hover {
+  box-shadow:var(--sh-2);
+  transform:translateY(-2px);
+  z-index:2;
+}
+.pillar-num { font-size:11px; font-weight:700; letter-spacing:0.16em; color:var(--muted); margin-bottom:12px; }
+.pillar-name { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ink); margin-bottom:16px; }
+.pillar-score-row { display:flex; align-items:baseline; gap:3px; margin-bottom:10px; }
+.pillar-score-n { font-family:'Libre Baskerville', serif; font-size:44px; font-weight:700; color:var(--ink); letter-spacing:-0.03em; line-height:1; }
+.pillar-score-d { font-size:12px; color:var(--muted); }
+.pillar-bar { height:1px; background:var(--rule); margin-bottom:16px; }
+.pillar-bar-fill { height:100%; background:var(--ink); width:0; transition:width 1.8s cubic-bezier(0.16,1,0.3,1); }
+.pillar-finding { font-size:13px; font-weight:400; line-height:1.8; color:var(--body); }
+
+/* Platform coverage */
+.platform-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--rule); margin-bottom:2px; }
+.platform-cell { background:var(--paper-2); padding:22px 18px; text-align:center; }
+.platform-name { font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.platform-verdict { font-size:12px; font-weight:700; letter-spacing:0.04em; margin-bottom:6px; }
+.platform-verdict.absent  { color:var(--red); }
+.platform-verdict.weak    { color:var(--amber); }
+.platform-verdict.present { color:var(--green); }
+.platform-detail { font-size:11px; color:var(--muted); line-height:1.5; }
+
+/* Evidence */
+.evidence-block { background:var(--paper-2); margin-bottom:2px; border-bottom:1px solid var(--rule); }
+.evidence-header { padding:14px 24px; border-bottom:1px solid var(--rule); font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
+.evidence-body { padding:24px; font-size:14px; font-weight:400; line-height:1.9; color:var(--body); }
+
+/* Actions */
+.actions-block { margin-bottom:2px; }
+.action-row { background:var(--paper); border-bottom:1px solid var(--rule); padding:24px 0; display:flex; gap:20px; align-items:flex-start; }
+.action-badge { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:4px 8px; border:1px solid; white-space:nowrap; flex-shrink:0; margin-top:2px; }
+.action-badge.critical { color:var(--red); border-color:rgba(184,50,50,0.25); }
+.action-badge.high     { color:var(--amber); border-color:rgba(154,106,20,0.25); }
+.action-badge.medium   { color:var(--muted); border-color:var(--rule); }
+.action-title { font-size:14px; font-weight:600; color:var(--ink); margin-bottom:6px; letter-spacing:-0.01em; }
+.action-body  { font-size:14px; font-weight:400; line-height:1.8; color:var(--body); }
+
+/* Share */
+.share-block {
+  background:var(--paper-2); padding:18px 0; margin-top:44px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap; border-top:1px solid var(--rule);
+}
+.share-label { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+.share-url { font-size:11px; color:var(--body); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.share-btn {
+  background:transparent; border:1px solid var(--rule); color:var(--muted);
+  font-family:'Inter', sans-serif; font-size:11px; font-weight:600;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:8px 14px; cursor:pointer; min-height:34px;
+  transition:all 0.15s; white-space:nowrap; flex-shrink:0;
+}
+.share-btn:hover { color:var(--ink); border-color:var(--ink); }
+.share-btn.copied { color:var(--green); border-color:rgba(42,122,72,0.3); }
+
+/* Paywall */
+.paywall-block {
+  background:var(--void); padding:48px; margin:44px 0;
+  position:relative; overflow:hidden;
+}
+.paywall-block::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:var(--ghost); opacity:0.1;
+}
+.paywall-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ghost-3); margin-bottom:12px; }
+.paywall-headline { font-family:'Libre Baskerville', serif; font-size:24px; font-weight:400; font-style:italic; color:var(--ghost); margin-bottom:12px; line-height:1.2; }
+.paywall-body { font-size:14px; font-weight:400; color:var(--ghost-2); line-height:1.75; margin-bottom:24px; }
+.paywall-btn {
+  background:var(--ac); color:var(--void); border:none;
+  font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  letter-spacing:0.04em; padding:16px 28px; cursor:pointer;
+  transition:background 0.15s; min-height:52px; display:inline-block;
+}
+.paywall-btn:hover { background:var(--ac-d); }
+
+/* CTA block */
+.cta-block { background:var(--void); padding:52px 48px; margin-top:2px; position:relative; }
+.cta-block::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:var(--ghost); opacity:0.08; }
+.cta-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ghost-3); margin-bottom:10px; }
+.cta-sub-note { font-size:12px; font-weight:400; color:var(--ghost-3); margin-bottom:8px; }
+.cta-headline { font-family:'Libre Baskerville', serif; font-size:28px; font-weight:400; color:var(--ghost); margin-bottom:12px; line-height:1.15; }
+.cta-body { font-size:14px; font-weight:400; line-height:1.8; color:var(--ghost-2); margin-bottom:32px; max-width:440px; }
+.cta-buttons { display:flex; gap:12px; flex-wrap:wrap; }
+.cta-primary { background:var(--ac); color:var(--void); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; padding:16px 28px; cursor:pointer; text-decoration:none; display:inline-block; transition:background 0.15s; min-height:52px; }
+.cta-primary:hover { background:var(--ac-d); }
+.cta-secondary { background:transparent; color:var(--ghost-3); border:1px solid var(--rd); font-family:'Inter', sans-serif; font-size:11px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; padding:16px 20px; cursor:pointer; text-decoration:none; display:inline-block; transition:all 0.15s; min-height:52px; }
+.cta-secondary:hover { color:var(--ghost); border-color:var(--ghost-3); }
+
+/* Pay/paid classes */
+.pay-section { padding:32px 0; border-bottom:1px solid var(--rule); }
+.pay-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+.paid-narrative { font-size:15px; font-weight:400; color:var(--body); line-height:1.9; border-left:2px solid var(--ink); padding-left:18px; }
+.paid-pillars { display:flex; flex-direction:column; gap:1px; }
+.paid-pillar { padding:22px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); border-left:3px solid transparent; transition:background 0.15s, border-left-color 0.2s, box-shadow 0.2s; }
+.paid-pillar:hover { background:var(--paper-3); border-left-color:var(--ac); box-shadow:var(--sh-1); }
+.paid-pillar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--rule); }
+.paid-pillar-name { font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
+.paid-pillar-score { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ink); }
+.paid-pillar-score span { font-size:11px; font-family:'Inter', sans-serif; color:var(--muted); }
+.paid-pillar-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
+.paid-pillar-evidence { font-size:12px; color:var(--muted); line-height:1.65; font-style:italic; background:var(--paper-3); padding:10px 14px; border-left:2px solid var(--rule); }
+.paid-comp-found { padding:24px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
+.paid-comp-name { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:10px; }
+.paid-comp-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
+.paid-comp-none { font-size:14px; font-weight:400; color:var(--muted); font-style:italic; padding:20px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
+.paid-actions { display:flex; flex-direction:column; }
+.paid-action { padding:22px 0; background:var(--paper); border-bottom:1px solid var(--rule); border-left:3px solid var(--rule); padding-left:16px; }
+.paid-action-critical { border-left-color:var(--red); }
+.paid-action-high     { border-left-color:var(--amber); }
+.paid-action-medium   { border-left-color:var(--muted); }
+.paid-action-priority { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.paid-action-critical .paid-action-priority { color:var(--red); }
+.paid-action-high     .paid-action-priority { color:var(--amber); }
+.paid-action-title { font-size:14px; font-weight:600; color:var(--ink); margin-bottom:6px; }
+.paid-action-body { font-size:13px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:8px; }
+.paid-action-explanation { font-size:12px; color:var(--muted); line-height:1.65; padding-top:8px; border-top:1px solid var(--rule); }
+.paid-section-header { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+.paid-section-header::after { content:''; flex:1; height:1px; background:var(--rule); }
+.pay-lines { display:flex; flex-direction:column; gap:8px; }
+.pay-line { font-size:15px; font-weight:500; color:var(--ink); }
+.pay-line.muted { color:var(--muted); font-weight:300; font-size:13px; }
+.pay-btn-primary { background:var(--ink); color:var(--paper); border:none; font-family:'Inter', sans-serif; font-size:13px; font-weight:600; letter-spacing:0.04em; padding:16px 28px; cursor:pointer; transition:background 0.15s; display:inline-block; min-height:52px; }
+.pay-btn-primary:hover { background:var(--ink-2); }
+.pay-btn-secondary { background:transparent; color:var(--body); border:1px solid var(--rule); font-family:'Inter', sans-serif; font-size:12px; font-weight:500; letter-spacing:0.04em; padding:16px 20px; cursor:pointer; transition:all 0.15s; display:inline-block; min-height:52px; }
+.pay-btn-secondary:hover { border-color:var(--ink); color:var(--ink); }
+.pay-cta-block { padding:20px 0; }
+.pay-cta-headline { font-family:'Libre Baskerville', serif; font-size:22px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:8px; }
+.pay-cta-body { font-size:14px; font-weight:400; color:var(--body); line-height:1.75; margin-bottom:16px; }
+
+/* Deliverables */
+.deliv-section { padding:32px 0; border-bottom:1px solid var(--rule); }
+.deliv-tabs { display:flex; gap:1px; margin-bottom:16px; flex-wrap:wrap; }
+.deliv-tab { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:10px 14px; cursor:pointer; background:var(--paper-2); border:1px solid var(--rule); color:var(--muted); transition:all 0.15s; }
+.deliv-tab.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.deliv-tab:hover:not(.active) { color:var(--ink); }
+.deliv-panel { display:none; }
+.deliv-panel.active { display:block; }
+.deliv-code { font-family:'Courier New', monospace; font-size:12px; line-height:1.7; color:var(--body); background:var(--paper-3); padding:18px; overflow-x:auto; white-space:pre; border:1px solid var(--rule); margin-bottom:10px; }
+.deliv-option { padding:14px 16px; background:var(--paper-2); border:1px solid var(--rule); cursor:pointer; transition:border-color 0.15s; margin-bottom:6px; }
+.deliv-option:hover { border-color:var(--ink); }
+.deliv-option-text { font-size:14px; font-weight:500; color:var(--ink); margin-bottom:4px; }
+.deliv-option-note { font-size:11px; color:var(--muted); }
+.deliv-copy-btn { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:8px 14px; cursor:pointer; background:transparent; border:1px solid var(--rule); color:var(--muted); transition:all 0.15s; }
+.deliv-copy-btn:hover { border-color:var(--ink); color:var(--ink); }
+
+/* Simulation */
+.sim-section { padding:32px 0; border-bottom:1px solid var(--rule); }
+.sim-loading { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:400; color:var(--muted); padding:20px 0; }
+.sim-spinner { width:12px; height:12px; border-radius:50%; border:1px solid var(--rule); border-top-color:var(--ink); animation:spin 0.8s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes heroEnter {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.sim-results { display:flex; flex-direction:column; gap:1px; }
+.sim-query { padding:20px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
+.sim-query-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.sim-query-label { font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+.sim-appeared { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:3px 8px; }
+.sim-appeared.yes { color:var(--green); background:var(--grn-bg); border:1px solid rgba(42,122,72,0.2); }
+.sim-appeared.no  { color:var(--red); background:var(--red-bg); border:1px solid rgba(184,50,50,0.15); }
+.sim-query-text { font-size:13px; font-weight:400; color:var(--ink); margin-bottom:12px; font-style:italic; }
+.sim-response { font-size:13px; font-weight:400; color:var(--body); line-height:1.8; background:var(--paper-3); padding:14px 16px; border-left:2px solid var(--rule); }
+.sim-response.appeared { border-left-color:var(--green); }
+.sim-summary { padding:16px 0; font-size:14px; font-weight:600; color:var(--ink); border-top:1px solid var(--rule); margin-top:14px; }
+.sim-summary.zero { color:var(--red); }
+.sim-summary.some { color:var(--amber); }
+.sim-summary.all  { color:var(--green); }
+
+/* Error */
+.error-frame { background:var(--red-bg); border:1px solid rgba(184,50,50,0.15); padding:40px; }
+.error-title { font-size:11px; font-weight:700; color:var(--red); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:12px; }
+.error-body  { font-size:15px; font-weight:400; color:var(--body); line-height:1.7; margin-bottom:24px; }
+
+/* ── FOOTER ── */
+footer {
+  background:var(--void) radial-gradient(ellipse 600px 300px at 0% 0%, rgba(201,168,106,0.03), transparent 70%);
+  border-top:1px solid var(--rd);
+  padding:44px 52px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.footer-logo {
+  font-size:13px; font-weight:700; letter-spacing:0.12em;
+  color:rgba(245,242,238,0.12); text-decoration:none;
+}
+.footer-logo span { color:rgba(245,242,238,0.05); }
+.footer-right { display:flex; align-items:center; gap:32px; }
+.footer-link {
+  font-size:11px; font-weight:400; color:var(--ghost-3);
+  text-decoration:none; transition:color 0.15s;
+}
+.footer-link:hover { color:var(--ghost); }
+.footer-note { font-size:11px; color:var(--ghost-3); line-height:1.6; max-width:320px; text-align:right; }
+
+/* ── SOCIAL PROOF STRIP ── */
+.proof-strip {
+  background:var(--paper-3);
+  border-bottom:1px solid var(--rule);
+  padding:48px 52px;
+  text-align:center;
+}
+.proof-strip-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:20px;
+}
+.proof-cats {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:28px;
+}
+.proof-cat {
+  font-size:12px; font-weight:500; letter-spacing:0.06em;
+  color:var(--body); background:var(--paper); border:1px solid var(--rule);
+  padding:6px 14px; border-radius:2px;
+}
+.proof-stat {
+  font-family:'Libre Baskerville', serif; font-size:15px; color:var(--muted);
+  max-width:520px; margin:0 auto; line-height:1.7;
+}
+.proof-stat strong { color:var(--ink); font-weight:700; }
+
+/* ── PROCESS STEPS ── */
+.process-section {
+  background:var(--void) radial-gradient(ellipse 900px 600px at 50% 0%, rgba(201,168,106,0.05), transparent 70%);
+  padding:100px 52px;
+  border-top:1px solid rgba(245,242,238,0.06);
+  border-bottom:1px solid rgba(245,242,238,0.06);
+}
+.process-inner { max-width:900px; margin:0 auto; }
+.process-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--ac); margin-bottom:20px;
+  display:flex; align-items:center; gap:12px;
+}
+.process-eyebrow::before { content:''; width:24px; height:1px; background:var(--ac); }
+.process-h2 {
+  font-family:'Libre Baskerville', serif; font-size:clamp(28px,4vw,48px); font-weight:400;
+  color:var(--ghost); line-height:1.15; letter-spacing:-0.02em; margin-bottom:64px;
+}
+.process-h2 em { font-style:italic; color:var(--ghost-3); }
+.process-steps {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:2px;
+}
+.process-step {
+  background:rgba(245,242,238,0.03); border:1px solid rgba(245,242,238,0.07);
+  padding:36px 32px; position:relative; transition:background 0.3s;
+}
+.process-step:hover { background:rgba(245,242,238,0.05); }
+.process-step-num {
+  font-family:'Libre Baskerville', serif; font-size:48px; font-weight:700;
+  color:rgba(201,168,106,0.2); line-height:1; margin-bottom:20px;
+  letter-spacing:-0.03em;
+}
+.process-step-title {
+  font-size:16px; font-weight:600; color:var(--ghost); margin-bottom:12px;
+  letter-spacing:0.01em;
+}
+.process-step-desc {
+  font-size:14px; font-weight:400; color:var(--ghost-3); line-height:1.7;
+}
+.process-step::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--ac), transparent);
+  opacity:0; transition:opacity 0.3s;
+}
+.process-step:hover::before { opacity:0.3; }
+
+/* ── URGENCY STATEMENT ── */
+.urgency-section {
+  background:var(--ink); padding:80px 52px; text-align:center;
+  border-top:1px solid rgba(245,242,238,0.06);
+  border-bottom:1px solid rgba(245,242,238,0.06);
+}
+.urgency-inner { max-width:760px; margin:0 auto; }
+.urgency-stat {
+  font-family:'Libre Baskerville', serif; font-size:clamp(52px,8vw,96px);
+  font-weight:700; color:var(--ac); line-height:1; letter-spacing:-0.03em;
+  margin-bottom:16px;
+}
+.urgency-label {
+  font-size:18px; font-weight:400; color:var(--ghost); margin-bottom:24px;
+  line-height:1.5;
+}
+.urgency-sub {
+  font-size:14px; color:var(--ghost-3); max-width:480px; margin:0 auto;
+  line-height:1.7;
+}
+
+/* ── IMPROVED FOOTER ── */
+.footer-v2 {
+  background:var(--void) radial-gradient(ellipse 600px 300px at 0% 0%, rgba(201,168,106,0.03), transparent 70%);
+  border-top:1px solid rgba(245,242,238,0.06);
+  padding:56px 52px 40px;
+}
+.footer-v2-top {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:48px; margin-bottom:48px;
+  padding-bottom:40px; border-bottom:1px solid rgba(245,242,238,0.06);
+}
+.footer-brand {}
+.footer-brand-logo {
+  font-size:18px; font-weight:700; letter-spacing:0.1em;
+  color:var(--ghost); text-decoration:none; display:block; margin-bottom:12px;
+}
+.footer-brand-logo span { color:var(--ac); }
+.footer-brand-desc {
+  font-size:13px; color:var(--ghost-3); line-height:1.7; max-width:220px;
+}
+.footer-col-title {
+  font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--ghost-3); margin-bottom:16px;
+}
+.footer-col-links { display:flex; flex-direction:column; gap:10px; }
+.footer-col-link {
+  font-size:13px; color:rgba(245,242,238,0.5); text-decoration:none;
+  transition:color 0.15s; width:fit-content;
+}
+.footer-col-link:hover { color:var(--ghost); }
+.footer-v2-bottom {
+  display:flex; align-items:center; justify-content:space-between;
+}
+.footer-v2-copy {
+  font-size:11px; color:rgba(245,242,238,0.25); letter-spacing:0.04em;
+}
+.footer-v2-legal { display:flex; gap:20px; }
+.footer-v2-legal a {
+  font-size:11px; color:rgba(245,242,238,0.25); text-decoration:none;
+  letter-spacing:0.04em; transition:color 0.15s;
+}
+.footer-v2-legal a:hover { color:rgba(245,242,238,0.5); }
+
+/* ── MOBILE ── */
+@media (max-width:960px) {
+  nav { padding:0 24px; }
+  .nav-right .nav-link { display:none; }
+  .hero { grid-template-columns:1fr; padding:100px 24px 64px; gap:52px; min-height:auto; }
+  .hero-h1 { font-size:36px; }
+  .rule-strip { padding:20px 24px; overflow-x:auto; }
+  .rule-item { padding:0 20px; font-size:11px; }
+  .diag-section { padding:72px 24px 48px; }
+  .how-section { padding:72px 24px; }
+  .pillars-row { grid-template-columns:1fr 1fr; }
+  footer { flex-direction:column; gap:20px; padding:36px 24px; align-items:flex-start; }
+  .footer-note { text-align:left; }
+  .footer-right { flex-wrap:wrap; gap:16px; }
+  .proof-strip { padding:36px 24px; }
+  .process-section { padding:72px 24px; }
+  .process-steps { grid-template-columns:1fr; }
+  .urgency-section { padding:64px 24px; }
+  .footer-v2 { padding:48px 24px 32px; }
+  .footer-v2-top { grid-template-columns:1fr; gap:32px; }
+  .footer-v2-bottom { flex-direction:column; gap:16px; align-items:flex-start; }
+  #dR { padding:48px 24px 72px; }
+  .verdict-top { grid-template-columns:1fr; gap:12px; }
+  .verdict-score-block { text-align:left; }
+  .pillars-grid { grid-template-columns:1fr; }
+  .platform-row { grid-template-columns:1fr 1fr; }
+  .field-row { grid-template-columns:1fr; }
+  .engine-loading { padding:100px 24px; }
+  .ex-pillars { grid-template-columns:repeat(2,1fr); }
+  .ex-insight { grid-template-columns:1fr; }
+  .hero-proof { flex-wrap:wrap; }
+}
+@media (max-width:480px) {
+  .hero-h1 { font-size:32px; }
+  .pillars-row { grid-template-columns:1fr; }
+  .cta-block { padding:40px 24px; }
+  .paywall-block { padding:36px 24px; }
+}
+
+/* ── SCROLL REVEAL SYSTEM ── */
+/* Pure presentation layer — observes elements, adds .is-visible. Never touches engine state. */
+.reveal {
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.is-visible { opacity:1; transform:translateY(0); }
+.reveal-stagger > * {
+  opacity:0; transform:translateY(20px);
+  transition:opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay:0.05s; }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay:0.12s; }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay:0.19s; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay:0.26s; }
+.reveal-stagger.is-visible > * { opacity:1; transform:translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal-stagger > * { opacity:1 !important; transform:none !important; transition:none !important; }
+  .hero-left, .hero-right { animation:none !important; opacity:1 !important; }
+  .example-card:hover { transform:none !important; }
+}
+
+/* ── PILLAR CONNECTOR LINE ── */
+/* Visual thread linking the four pillars as one system, not four bullets */
+.pillars-row { position:relative; }
+.pillars-row::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--ac) 0%, var(--ac) 100%);
+  opacity:0.35; transform:scaleX(0); transform-origin:left;
+  transition:transform 1.1s cubic-bezier(0.16,1,0.3,1) 0.2s;
+}
+.pillars-row.is-visible::before { transform:scaleX(1); }
+.pillar-block { position:relative; }
+.pillar-idx::after {
+  content:''; display:inline-block; width:6px; height:6px;
+  border-radius:50%; background:var(--ac); margin-left:8px;
+  vertical-align:middle; opacity:0;
+  transition:opacity 0.4s ease 0.6s;
+}
+.pillars-row.is-visible .pillar-idx::after { opacity:1; }
+
+/* ── REFINED HOVER PERSONALITY ── */
+a, button, input { -webkit-tap-highlight-color:transparent; }
+.nav-link, .footer-link { position:relative; }
+.nav-link::after, .footer-link::after {
+  content:''; position:absolute; left:0; right:100%; bottom:-3px; height:1px;
+  background:currentColor; transition:right 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+.nav-link:hover::after, .footer-link:hover::after { right:0; }
+.run-btn, .nav-cta, .paywall-btn, .cta-primary { position:relative; overflow:hidden; }
+.run-btn::before, .nav-cta::before, .paywall-btn::before, .cta-primary::before {
+  content:''; position:absolute; inset:0;
+  background:rgba(255,255,255,0.15);
+  transform:translateX(-101%);
+  transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.run-btn:hover::before, .nav-cta:hover::before, .paywall-btn:hover::before, .cta-primary:hover::before {
+  transform:translateX(0);
+}
+.field-row input {
+  transition:border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.field-row input:focus { transform:translateY(-1px); }
+
+/* ── FOOTER — DELIBERATE CLOSE ── */
+footer { position:relative; }
+footer::before {
+  content:'';
+  position:absolute; top:0; left:52px; right:52px; height:1px;
+  background:linear-gradient(90deg, var(--ac) 0%, transparent 40%, transparent 60%, var(--ac) 100%);
+  opacity:0.25;
+}
+.footer-tagline {
+  font-family:'Libre Baskerville', serif;
+  font-style:italic; font-size:14px;
+  color:var(--ghost-3); margin-top:6px;
+  max-width:280px;
+}
+
+/* ── EXAMPLE CARD ENTRANCE ── */
+.example-card { transition:transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease; }
+.example-card:hover {
+  transform:translateY(-3px);
+  box-shadow:var(--sh-3);
+}
+
+/* ── PILLAR BLOCK CONNECTOR DOT ANIMATION SUPPORT ── */
+@media (max-width:960px) {
+  .reveal { transform:translateY(16px); }
+  footer::before { left:24px; right:24px; }
+}
+
+/* ── DIFFERENCE SECTION ── */
+.diff-section{background:var(--paper);padding:100px 0;border-top:1px solid var(--rule);}
+.diff-inner{max-width:920px;margin:0 auto;padding:0 40px;}
+.diff-header{text-align:center;margin-bottom:64px;}
+.diff-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-bottom:24px;}
+.diff-eyebrow span{display:block;width:28px;height:1px;background:var(--muted);}
+.diff-h2{font-family:'Libre Baskerville',serif;font-size:clamp(28px,4vw,44px);font-weight:400;color:var(--ink);line-height:1.15;letter-spacing:-0.02em;margin:0 0 24px;}
+.diff-h2 em{color:var(--ac);font-style:italic;}
+.diff-sub{font-size:18px;color:var(--muted);max-width:560px;margin:0 auto;line-height:1.7;}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:2px;}
+.diff-col-old{background:#E8E4DE;padding:40px 44px;}
+.diff-col-new{background:#fff;padding:40px 44px;border:1px solid rgba(0,0,0,0.06);}
+.diff-col-label{font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:28px;padding-bottom:16px;}
+.diff-col-old .diff-col-label{color:#aaa;border-bottom:1px solid rgba(0,0,0,0.1);}
+.diff-col-new .diff-col-label{color:var(--ac);border-bottom:1px solid rgba(201,168,106,0.25);}
+.diff-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;}
+.diff-list li{font-size:15px;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.diff-list li:last-child{border-bottom:none;}
+.diff-list--old li{color:#999;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.2);}
+.diff-list--new li{color:var(--ink);}
+.diff-list--new li.strong{font-weight:500;}
+.diff-check{color:var(--ac);font-weight:700;font-size:16px;flex-shrink:0;}
+.diff-pill{font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:var(--ac);color:var(--void);padding:4px 9px;flex-shrink:0;margin-left:auto;}
+.diff-competitors{background:var(--void);padding:48px 56px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:48px;align-items:start;}
+.diff-comp{border-right:1px solid rgba(255,255,255,0.08);padding-right:48px;}
+.diff-comp:last-child{border-right:none;padding-right:0;}
+.diff-comp-name{font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;}
+.diff-comp-desc{font-size:14px;color:rgba(245,242,238,0.5);line-height:1.6;}
+.diff-comp-desc.highlight{color:rgba(245,242,238,0.9);font-weight:500;}
+@media(max-width:640px){
+  .diff-grid{grid-template-columns:1fr;}
+  .diff-competitors{grid-template-columns:1fr;gap:32px;padding:32px 24px;}
+  .diff-comp{border-right:none;border-bottom:1px solid rgba(255,255,255,0.08);padding-right:0;padding-bottom:28px;}
+  .diff-comp:last-child{border-bottom:none;padding-bottom:0;}
+  .diff-inner{padding:0 20px;}
+  .diff-col-old,.diff-col-new{padding:28px 24px;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">CHOIVE<span class="nav-logo-dot">·</span></a>
+  <div class="nav-right">
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="#diagnostic" class="nav-link">Diagnostic</a>
+    <a href="mailto:hello@choive.com" class="nav-link">Contact</a>
+    <a href="#diagnostic" class="nav-cta">Run diagnostic →</a>
+  </div>
+</nav>
+
+<!-- HERO — light, split layout -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-kicker">AI Selection Diagnostic</div>
+    <h1 class="hero-h1">
+      When someone asks AI<br>
+      to recommend a business<br>
+      in your category —<br>
+      <em>does it say yours?</em>
+    </h1>
+    <p class="hero-sub">
+      AI selects one business per question.
+      Not a list — one answer.
+      CHOIVE shows you exactly where you stand,
+      why you're chosen or overlooked,
+      and what to do about it.
     </p>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:2px;">
-
-    <div style="background:#E8E4DE;padding:40px 44px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#aaa;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid rgba(0,0,0,0.1);">
-        What SEO tools optimise for
+    <div class="hero-proof">
+      <div class="hero-proof-item">
+        <div class="hero-proof-num">4</div>
+        <div class="hero-proof-label">Pillars scored — Clarity, Trust, Difference, Ease</div>
       </div>
-      <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0;">
-        <li style="font-size:15px;color:#999;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.15);">Keyword rankings in search results</li>
-        <li style="font-size:15px;color:#999;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.15);">Backlink volume and domain authority</li>
-        <li style="font-size:15px;color:#999;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.15);">Page load speed and Core Web Vitals</li>
-        <li style="font-size:15px;color:#999;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;gap:12px;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.15);">Click-through rate from search</li>
-        <li style="font-size:15px;color:#999;padding:13px 0;display:flex;align-items:center;gap:12px;text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.15);">Position in a list of ten results</li>
-      </ul>
-    </div>
-
-    <div style="background:#fff;padding:40px 44px;border:1px solid rgba(0,0,0,0.06);">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A86A;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid rgba(201,168,106,0.25);">
-        What CHOIVE diagnoses
+      <div class="hero-proof-item">
+        <div class="hero-proof-num">1</div>
+        <div class="hero-proof-label">Business chosen per AI question</div>
       </div>
-      <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0;">
-        <li style="font-size:15px;color:#1a1a1a;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:12px;"><span style="color:#C9A86A;font-weight:700;font-size:16px;">✓</span>How precisely AI defines your business</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:#C9A86A;color:#0C0C0E;padding:4px 9px;flex-shrink:0;margin-left:12px;">Clarity</span>
-        </li>
-        <li style="font-size:15px;color:#1a1a1a;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:12px;"><span style="color:#C9A86A;font-weight:700;font-size:16px;">✓</span>How many sources independently verify you</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:#C9A86A;color:#0C0C0E;padding:4px 9px;flex-shrink:0;margin-left:12px;">Trust</span>
-        </li>
-        <li style="font-size:15px;color:#1a1a1a;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:12px;"><span style="color:#C9A86A;font-weight:700;font-size:16px;">✓</span>Why AI would choose you over alternatives</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:#C9A86A;color:#0C0C0E;padding:4px 9px;flex-shrink:0;margin-left:12px;">Difference</span>
-        </li>
-        <li style="font-size:15px;color:#1a1a1a;padding:13px 0;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;">
-          <span style="display:flex;align-items:center;gap:12px;"><span style="color:#C9A86A;font-weight:700;font-size:16px;">✓</span>How easily AI can surface and recommend you</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;background:#C9A86A;color:#0C0C0E;padding:4px 9px;flex-shrink:0;margin-left:12px;">Ease</span>
-        </li>
-        <li style="font-size:15px;color:#1a1a1a;padding:13px 0;display:flex;align-items:center;gap:12px;font-weight:500;">
-          <span style="color:#C9A86A;font-weight:700;font-size:16px;">✓</span>Whether AI recommends you at all — right now
-        </li>
-      </ul>
+      <div class="hero-proof-item">
+        <div class="hero-proof-num">37%</div>
+        <div class="hero-proof-label">Of decisions now start on AI</div>
+      </div>
     </div>
   </div>
 
-  <div style="background:#0C0C0E;padding:48px 56px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:48px;align-items:start;">
-    <div style="border-right:1px solid rgba(255,255,255,0.08);padding-right:48px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A86A;margin-bottom:12px;">Artificial Analysis</div>
-      <div style="font-size:14px;color:rgba(245,242,238,0.5);line-height:1.6;">Benchmarks AI model performance — speed, accuracy, cost. Measures the tool, not the business using it.</div>
+  <!-- Real result — Panorama, real data -->
+  <div class="hero-right">
+    <div class="example-label">
+      <span class="example-dot"></span>
+      Real diagnostic result
     </div>
-    <div style="border-right:1px solid rgba(255,255,255,0.08);padding-right:48px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A86A;margin-bottom:12px;">BrightEdge</div>
-      <div style="font-size:14px;color:rgba(245,242,238,0.5);line-height:1.6;">Optimises search engine rankings across thousands of keywords. Built for a world where AI gives a list, not one answer.</div>
+    <div class="example-card">
+      <div class="ex-header">
+        <div class="ex-biz">Panorama · Luxury real estate · Marbella</div>
+        <div class="ex-tag">Considered. Not chosen.</div>
+      </div>
+      <div class="ex-body">
+        <div class="ex-score-row">
+          <div class="ex-score" id="heroExampleScore">0</div>
+          <div class="ex-score-den">/ 100</div>
+        </div>
+        <div class="ex-headline">54 years in business. Not mentioned once by AI.</div>
+        <div class="ex-summary">
+          This agency has been Marbella's longest-established since 1970.
+          No review platform presence. No llms.txt. Positioned at 66 in search.
+          A newer competitor with one award citation appears before them on every AI query.
+        </div>
+        <div class="ex-pillars">
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Clarity</div>
+            <div class="ex-pillar-score">20 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:80%"></div></div>
+          </div>
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Trust</div>
+            <div class="ex-pillar-score">13 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:52%"></div></div>
+          </div>
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Difference</div>
+            <div class="ex-pillar-score">16 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:64%"></div></div>
+          </div>
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Ease</div>
+            <div class="ex-pillar-score">15 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:60%"></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Before/after — the key moment -->
+      <div class="ex-insight">
+        <div class="ex-insight-col">
+          <div class="ex-insight-label">Before CHOIVE</div>
+          <div class="ex-insight-val bad">0 of 3 AI queries</div>
+          <div class="ex-insight-note">Not mentioned once. A newer competitor recommended instead.</div>
+        </div>
+        <div class="ex-insight-col">
+          <div class="ex-insight-label">After top fixes</div>
+          <div class="ex-insight-val good">3 of 3 AI queries</div>
+          <div class="ex-insight-note">Recommended as top pick. 54 years of history finally visible to AI.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RULE STRIP -->
+<div class="rule-strip reveal">
+  <div class="rule-item">Google returned <strong>10 results</strong></div>
+  <div class="rule-item">AI returns <strong>one</strong></div>
+  <div class="rule-item">Either it names <strong>your business</strong></div>
+  <div class="rule-item">Or it names <strong>your competitor</strong></div>
+</div>
+<div class="reveal" style="background:var(--paper-3);border-bottom:1px solid var(--rule);padding:16px 52px;text-align:center;">
+  <span style="font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-right:20px;">Measured across</span>
+  <span style="font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0.04em;">ChatGPT</span>
+  <span style="color:var(--faint);margin:0 12px;">·</span>
+  <span style="font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0.04em;">Perplexity</span>
+  <span style="color:var(--faint);margin:0 12px;">·</span>
+  <span style="font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0.04em;">Gemini</span>
+  <span style="color:var(--faint);margin:0 12px;">·</span>
+  <span style="font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0.04em;">Claude</span>
+</div>
+
+<!-- SOCIAL PROOF STRIP -->
+<div class="proof-strip reveal">
+  <div class="proof-strip-eyebrow">Used across every category, every market</div>
+  <div class="proof-cats">
+    <div class="proof-cat">Real estate</div>
+    <div class="proof-cat">Professional services</div>
+    <div class="proof-cat">SaaS &amp; technology</div>
+    <div class="proof-cat">Hospitality</div>
+    <div class="proof-cat">Healthcare</div>
+    <div class="proof-cat">Retail &amp; e-commerce</div>
+    <div class="proof-cat">Finance &amp; investment</div>
+    <div class="proof-cat">Manufacturing</div>
+    <div class="proof-cat">Education</div>
+    <div class="proof-cat">Media &amp; entertainment</div>
+  </div>
+  <div class="proof-stat">
+    The shift to AI-first discovery is happening in every industry, every country.
+    <strong>If your business can be found, it can be diagnosed.</strong>
+  </div>
+</div>
+
+<!-- ENGINE LOADING -->
+<div class="engine-loading" id="dS">
+  <div class="engine-pulse"></div>
+  <div class="engine-headline" id="engineHeadline">Running your diagnostic</div>
+  <div class="engine-subline" id="engineSubline">Analysing how AI understands, trusts, and selects your business.</div>
+  <div class="engine-stage">
+    <div class="stage-row" id="stageA">
+      <div class="stage-icon" id="stageA-icon">○</div>
+      <div class="stage-text">
+        <div class="stage-label">Collecting market signals</div>
+        <div class="stage-support">Search presence, citations, reviews, competitors.</div>
+      </div>
+    </div>
+    <div class="stage-row" id="stageB">
+      <div class="stage-icon" id="stageB-icon">○</div>
+      <div class="stage-text">
+        <div class="stage-label">Scoring selection position</div>
+        <div class="stage-support">Clarity, Trust, Difference, Ease — each 0–25.</div>
+      </div>
+    </div>
+    <div class="stage-row" id="stageC">
+      <div class="stage-icon" id="stageC-icon">○</div>
+      <div class="stage-text">
+        <div class="stage-label">Preparing your verdict</div>
+        <div class="stage-support">Turning evidence into a clear selection diagnosis.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="dR"></div>
+<div id="resultsZone" style="display:none;position:absolute;visibility:hidden;"></div>
+
+<!-- DIAGNOSTIC FORM -->
+<section class="diag-section" id="diagnostic">
+  <div class="diag-inner reveal">
+    <div class="diag-eyebrow">CHOIVE Index™ — Free diagnostic</div>
+    <h2 class="diag-h2">
+      Find out what AI says<br>
+      about <em>your business.</em>
+    </h2>
+    <p class="diag-sub">
+      Enter your business. The CHOIVE engine runs a real diagnostic —
+      querying live search signals, inspecting your web presence, checking citation evidence,
+      and asking AI the exact questions your customers are asking right now.
+      Results in 30–45 seconds. No account. No credit card.
+    </p>
+    <div id="dI" class="diag-form-panel">
+      <div class="field-row">
+        <input type="text" id="bN" placeholder="Business name" autocomplete="organization" />
+        <input type="text" id="bC" placeholder="What you do  (e.g. luxury real estate agency)" />
+      </div>
+      <div class="field-row">
+        <input type="text" id="bL" placeholder="City / country  (e.g. Marbella, Spain)" autocomplete="country" />
+        <input type="text" id="bW" placeholder="Your website  (optional)" autocomplete="url" />
+      </div>
+      <div class="field-row">
+        <input type="text" id="bD" placeholder="One line about you  (optional)" />
+      </div>
+      <div class="field-row">
+        <input type="text" id="bComp" placeholder="Known competitors  (optional)" />
+      </div>
+      <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
+        Find out what AI says about you →
+      </button>
+      <div class="diag-note">Free · No signup · Real signals · 30–45 seconds</div>
+    </div>
+    <div id="inputZone" style="display:none;"></div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS — PROCESS STEPS -->
+<section class="process-section" id="how">
+  <div class="process-inner">
+    <div class="process-eyebrow reveal">How it works</div>
+    <h2 class="process-h2 reveal">
+      Three minutes.<br>
+      <em>A diagnosis no agency will give you.</em>
+    </h2>
+    <div class="process-steps reveal-stagger reveal">
+      <div class="process-step">
+        <div class="process-step-num">01</div>
+        <div class="process-step-title">Tell us your business</div>
+        <div class="process-step-desc">Enter your business name, category, location, and website. No account needed. No credit card. Takes thirty seconds.</div>
+      </div>
+      <div class="process-step">
+        <div class="process-step-num">02</div>
+        <div class="process-step-title">We run the real diagnostic</div>
+        <div class="process-step-desc">The CHOIVE engine queries live search data, inspects your web presence, checks citation signals, and asks AI the same questions your customers are asking right now.</div>
+      </div>
+      <div class="process-step">
+        <div class="process-step-num">03</div>
+        <div class="process-step-title">You get the verdict</div>
+        <div class="process-step-desc">A scored analysis across Clarity, Trust, Difference, and Ease — with exact evidence, competitor intelligence, and priority actions. Not a report. A decision.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- URGENCY STATEMENT -->
+<section class="urgency-section reveal">
+  <div class="urgency-inner">
+    <div class="urgency-stat">37%</div>
+    <div class="urgency-label">of purchase decisions now begin with an AI query.<br>That number will be 70% within three years.</div>
+    <div class="urgency-sub">Every business that does not understand its AI selection position is already losing customers it will never know it lost.</div>
+  </div>
+</section>
+
+
+<!-- DIFFERENCE SECTION -->
+<section class="diff-section reveal">
+  <div class="diff-inner">
+    <div class="diff-header">
+      <div class="diff-eyebrow"><span></span>The problem with SEO tools<span></span></div>
+      <h2 class="diff-h2">AI doesn't rank.<br><em>It selects.</em></h2>
+      <p class="diff-sub">SEO optimises for a list of ten results. AI gives one answer. The signals that determine which business gets that answer are entirely different.</p>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-col-old">
+        <div class="diff-col-label">What SEO tools optimise for</div>
+        <ul class="diff-list diff-list--old">
+          <li>Keyword rankings in search results</li>
+          <li>Backlink volume and domain authority</li>
+          <li>Page load speed and Core Web Vitals</li>
+          <li>Click-through rate from search</li>
+          <li>Position in a list of ten results</li>
+        </ul>
+      </div>
+      <div class="diff-col-new">
+        <div class="diff-col-label">What CHOIVE diagnoses</div>
+        <ul class="diff-list diff-list--new">
+          <li><span class="diff-check">✓</span><span>How precisely AI defines your business</span><span class="diff-pill">Clarity</span></li>
+          <li><span class="diff-check">✓</span><span>How many sources independently verify you</span><span class="diff-pill">Trust</span></li>
+          <li><span class="diff-check">✓</span><span>Why AI would choose you over alternatives</span><span class="diff-pill">Difference</span></li>
+          <li><span class="diff-check">✓</span><span>How easily AI can surface and recommend you</span><span class="diff-pill">Ease</span></li>
+          <li class="strong"><span class="diff-check">✓</span><span>Whether AI recommends you at all — right now</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="diff-competitors">
+      <div class="diff-comp">
+        <div class="diff-comp-name">Artificial Analysis</div>
+        <div class="diff-comp-desc">Benchmarks AI model performance — speed, accuracy, cost. Measures the tool, not the business using it.</div>
+      </div>
+      <div class="diff-comp">
+        <div class="diff-comp-name">BrightEdge</div>
+        <div class="diff-comp-desc">Optimises search engine rankings. Built for a world where AI gives a list, not one answer.</div>
+      </div>
+      <div class="diff-comp">
+        <div class="diff-comp-name">CHOIVE</div>
+        <div class="diff-comp-desc highlight">The only diagnostic that measures whether AI recommends your specific business — and shows exactly why it doesn't.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- END DIFFERENCE SECTION -->
+
+<!-- FOOTER V2 -->
+<footer class="footer-v2">
+  <div class="footer-v2-top">
+    <div class="footer-brand">
+      <a href="/" class="footer-brand-logo">CHOIVE<span>·</span></a>
+      <div class="footer-brand-desc">The world's first AI selection diagnostic. We measure how AI understands, trusts, and recommends your business — and show you exactly how to become the answer.</div>
     </div>
     <div>
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A86A;margin-bottom:12px;">CHOIVE</div>
-      <div style="font-size:14px;color:rgba(245,242,238,0.9);line-height:1.6;font-weight:500;">The only diagnostic that measures whether AI recommends <em>your specific business</em> — and shows exactly why it doesn't.</div>
+      <div class="footer-col-title">Product</div>
+      <div class="footer-col-links">
+        <a href="#diagnostic" class="footer-col-link">Run free diagnostic</a>
+        <a href="#how" class="footer-col-link">How it works</a>
+        <a href="#how" class="footer-col-link">The CHOIVE framework</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Contact</div>
+      <div class="footer-col-links">
+        <a href="mailto:hello@choive.com" class="footer-col-link">hello@choive.com</a>
+        <a href="https://www.linkedin.com/company/choive" target="_blank" rel="noopener" class="footer-col-link">LinkedIn</a>
+        <a href="mailto:hello@choive.com" class="footer-col-link">Partnerships &amp; investment</a>
+      </div>
     </div>
   </div>
+  <div class="footer-v2-bottom">
+    <div class="footer-v2-copy">© 2025 CHOIVE· — Be the answer. Not the alternative.</div>
+    <div class="footer-v2-legal">
+      <a href="mailto:hello@choive.com">Privacy</a>
+      <a href="mailto:hello@choive.com">Terms</a>
+    </div>
+  </div>
+</footer>
 
-</div>
-</div>
+<script>
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+}
+
+function showError(msg) {
+  var zone = document.getElementById('resultsZone');
+  if (zone) {
+    zone.style.display = 'block';
+    zone.innerHTML = '<div style="padding:32px;max-width:760px;">'
+      + '<div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:10px;">Diagnostic interrupted</div>'
+      + '<div style="font-size:14px;color:var(--tb);margin-bottom:16px;">' + (msg || 'An error occurred.') + '</div>'
+      + '<button onclick="resetDiagnostic()" style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:10px 20px;background:transparent;border:1px solid var(--rule-d);color:var(--tm);cursor:pointer;">Try again</button>'
+      + '</div>';
+  }
+}
+
+
+const START_API = '/.netlify/functions/start-diagnostic';
+const GET_API   = '/.netlify/functions/get-diagnostic';
+let bizData   = {};
+let pollTimer = null;
+
+// ── STAGE UI ──────────────────────────────────────────────────────────────────
+function updateEngineStage(status) {
+  const stageA = document.getElementById('stageA');
+  const stageB = document.getElementById('stageB');
+  const stageC = document.getElementById('stageC');
+  const iconA  = document.getElementById('stageA-icon');
+  const iconB  = document.getElementById('stageB-icon');
+  const iconC  = document.getElementById('stageC-icon');
+
+  if (iconA) iconA.textContent = '○';
+  if (iconB) iconB.textContent = '○';
+  if (iconC) iconC.textContent = '○';
+  [stageA, stageB, stageC].forEach(el => { if (el) el.classList.remove('active','done'); });
+
+  if (status === 'queued' || status === 'collecting_evidence') {
+    if (stageA) stageA.classList.add('active');
+    if (iconA)  iconA.textContent = '◉';
+  } else if (status === 'scoring') {
+    if (stageA) stageA.classList.add('done');
+    if (iconA)  iconA.textContent = '✓';
+    if (stageB) stageB.classList.add('active');
+    if (iconB)  iconB.textContent = '◉';
+  } else if (status === 'complete') {
+    if (stageA) stageA.classList.add('done');
+    if (iconA)  iconA.textContent = '✓';
+    if (stageB) stageB.classList.add('done');
+    if (iconB)  iconB.textContent = '✓';
+    if (stageC) stageC.classList.add('active');
+    if (iconC)  iconC.textContent = '◉';
+  }
+}
+
+// ── RUN DIAGNOSTIC ────────────────────────────────────────────────────────────
+function runDiagnostic() {
+  const name        = document.getElementById('bN').value.trim();
+  const category    = document.getElementById('bC').value.trim();
+  const city        = document.getElementById('bL').value.trim();
+  const website     = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
+  const description      = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
+  const knownCompetitors = document.getElementById('bComp') ? document.getElementById('bComp').value.trim() : '';
+
+  if (!name || !category || !city) {
+    alert('Please fill in your business name, category, and city.');
+    return;
+  }
+
+  bizData = { name, category, city, website, knownCompetitors, description };
+
+  document.getElementById('dI').style.display = 'none';
+  document.getElementById('dS').classList.add('active');
+  document.getElementById('dR').style.display = 'none';
+  document.getElementById('dR').innerHTML = '';
+  document.getElementById('rBtn').disabled = true;
+
+  updateEngineStage('queued');
+  startDiagnostic(bizData);
+}
+
+// ── START JOB ─────────────────────────────────────────────────────────────────
+async function startDiagnostic(biz) {
+  try {
+    const res = await fetch(START_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:             biz.name,
+        category:         biz.category,
+        city:             biz.city,
+        website:          biz.website          || '',
+        description:      biz.description      || '',
+        knownCompetitors: biz.knownCompetitors || ''
+      })
+    });
+
+    if (!res.ok) throw new Error('Could not start diagnostic. Please try again.');
+
+    const data = await res.json();
+    if (!data.jobId) throw new Error('No job ID returned. Please try again.');
+
+    pollDiagnostic(data.jobId);
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+// ── POLL ──────────────────────────────────────────────────────────────────────
+function pollDiagnostic(jobId) {
+  let attempts = 0;
+  const maxAttempts = 120;
+  async function checkStatus() {
+    attempts++;
+    if (attempts > maxAttempts) {
+      if (pollTimer) clearInterval(pollTimer);
+      showError('Diagnostic timed out. Please try again.');
+      return;
+    }
+    try {
+      const res = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
+      const data = await res.json();
+      console.log('[CHOIVE poll response]', data);
+      updateEngineStage(data.status);
+      if (data.status === 'complete') {
+        if (pollTimer) clearInterval(pollTimer);
+        const resultWithPaid = Object.assign({}, data.result, {
+          paid: data.paid === true || (data.result && data.result.paid === true)
+        });
+        try {
+          console.log('[CHOIVE result data]', resultWithPaid);
+          showResults(resultWithPaid, jobId);
+        } catch (e) {
+          console.error('[CHOIVE showResults error]', e);
+          showError('Result loaded but could not be displayed.');
+        }
+      } else if (data.status === 'failed') {
+        if (pollTimer) clearInterval(pollTimer);
+        showError(data.error || 'Diagnostic failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('[CHOIVE poll error]', err);
+      if (pollTimer) clearInterval(pollTimer);
+      showError('Connection error. Please try again.');
+    }
+  }
+  checkStatus();
+  pollTimer = setInterval(checkStatus, 3000);
+}
+
+// ── RESULTS ───────────────────────────────────────────────────────────────────
+// ── SCORE LABELS ─────────────────────────────────────────────────────────────
+function buildScoreLabels(r) {
+  const tier = r.marketPosition?.tier || 'unknown';
+  const score = Number(r.overallScore) || 0;
+
+  // Recommendation strength from market tier
+  const strengthMap = {
+    dominant:  { label: 'HIGH',   cls: 'high' },
+    strong:    { label: 'HIGH',   cls: 'high' },
+    upper_mid: { label: 'MID',    cls: 'mid' },
+    mid:       { label: 'MID',    cls: 'mid' },
+    weak:      { label: 'LOW',    cls: 'low' },
+    absent:    { label: 'LOW',    cls: 'low' },
+    unknown:   { label: 'LOW',    cls: 'low' },
+  };
+
+  // AI readability from overallScore
+  const readabilityLabel = score >= 70 ? 'HIGH'
+    : score >= 45 ? 'MID'
+    : 'LOW';
+  const readabilityCls = score >= 70 ? 'high'
+    : score >= 45 ? 'mid'
+    : 'low';
+
+  const strength = strengthMap[tier] || { label: 'LOW', cls: 'low' };
+
+  // Gap assessment
+  const tierScores = { dominant:100, strong:80, upper_mid:60, mid:45, weak:25, absent:5, unknown:30 };
+  const likelihoodScore = tierScores[tier] || 30;
+  const gap = Math.max(0, likelihoodScore - score);
+  const gapLabel = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MODERATE' : gap > 0 ? 'SMALL' : 'NONE';
+  const gapCls   = gap >= 30 ? 'critical' : gap >= 15 ? 'moderate' : gap > 0 ? 'low-gap' : 'low-gap';
+
+  return `<div class="score-labels">
+    <div class="score-label-row">
+      <div class="score-label-key">Recommendation</div>
+      <div class="score-label-val ${strength.cls}">${strength.label}</div>
+    </div>
+    <div class="score-label-row">
+      <div class="score-label-key">AI Readability</div>
+      <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
+    </div>
+    <div class="score-label-row">
+      <div class="score-label-key">Gap</div>
+      <div class="score-label-val ${gapCls}">${gapLabel}</div>
+    </div>
+  </div>`;
+}
+
+function buildDisplacementBlock(r) {
+  const d = r.displacement;
+  if (!d || !d.competitorName) return '';
+  return [
+    '<div class="disp-block">',
+    '  <div class="disp-query">When someone asks: <span>"' + (d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-name">' + (d.competitorName || '') + '</div>',
+    '  <div class="disp-label">Is being recommended instead</div>',
+    '  <div class="disp-why"><strong>Why:</strong> ' + (d.competitorWhy || '') + '</div>',
+    '</div>'
+  ].join('\n');
+}
+
+
+function getShareUrl() {
+  var jobId = window.__choiveShareJobId || '';
+  if (!jobId) return '';
+  return window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
+}
+
+function buildShareBlock(jobId) {
+  if (!jobId) return '';
+  window.__choiveShareJobId = jobId;
+  return [
+    '<div class="share-block" id="shareBlock">',
+    '  <div class="share-label">Share this result</div>',
+    '  <div class="share-url" id="shareUrl">' + esc(getShareUrl(jobId)) + '</div>',
+    '  <div style="display:flex;gap:8px;flex-shrink:0;">',
+    '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy Diagnostic Link</button>',
+    '    <button class="share-btn" onclick="openShareUrl()">Open Shareable View</button>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+}
+
+
+function copyShareUrl() {
+  var url = getShareUrl();
+  if (!url) return;
+  var el = document.getElementById('shareUrl');
+  if (el) el.textContent = url;
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = document.getElementById('shareBtn');
+    if (btn) {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy Diagnostic Link';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(function() {
+    if (el) {
+      var range = document.createRange();
+      range.selectNode(el);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
+  });
+}
+
+function openShareUrl() {
+  var url = getShareUrl();
+  if (url) window.open(url, '_blank');
+}
+
+
+function buildGapBlock(r) {
+  var tierMap = {
+    dominant:100, strong:85, upper_mid:70,
+    mid:55, weak:35, absent:10, unknown:0
+  };
+  var tier       = (r && r.marketPosition && r.marketPosition.tier) ? r.marketPosition.tier : 'unknown';
+  var likelihood = typeof tierMap[tier] === 'number' ? tierMap[tier] : 0;
+  var readability = Number(r && r.overallScore) || 0;
+  var gap = likelihood - readability;
+
+  var likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 55 ? 'MID'  : 'LOW';
+  var likeClass = likelihood >= 80 ? 'high'  : likelihood >= 55 ? 'mid'  : 'low';
+  var readLabel = readability >= 70 ? 'HIGH' : readability >= 40 ? 'MID' : 'LOW';
+  var readClass = readability >= 70 ? 'high' : readability >= 40 ? 'mid' : 'low';
+  var gapLabel  = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MEANINGFUL' : gap >= 1 ? 'MINOR' : 'ALIGNED';
+  var gapClass  = gap >= 30 ? 'critical' : gap >= 15 ? 'meaningful' : gap >= 1 ? 'minor' : 'aligned';
+
+  var mainCopy = gap >= 30
+    ? 'A better-structured competitor will be selected instead of you.'
+    : gap >= 15
+    ? 'You are being evaluated. You are not being selected.'
+    : gap >= 1
+    ? 'The gap is small. Close it before it widens.'
+    : 'Position is structurally aligned.';
+
+  var pts = Math.abs(gap);
+  var ptLabel = gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
+
+  return [
+    '<div class="gap-block">',
+    '  <div class="gap-rows">',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">Recommendation Strength</div>',
+    '      <div class="gap-row-value ' + likeClass + '">' + likeLabel + '</div>',
+    '    </div>',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">AI Readability Strength</div>',
+    '      <div class="gap-row-value ' + readClass + '">' + readLabel + '</div>',
+    '    </div>',
+    '    <div class="gap-row">',
+    '      <div class="gap-row-label">Structural Gap</div>',
+    '      <div class="gap-row-value ' + gapClass + '">' + gapLabel + '</div>',
+    '    </div>',
+    '  </div>',
+    '  <div class="gap-delta">',
+    '    <div class="gap-delta-pts">' + pts + '-POINT ' + ptLabel + '</div>',
+    '    <div class="gap-copy">' + mainCopy + '</div>',
+    '    <div class="gap-copy-sub">This gap determines whether you are selected — or replaced.</div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+}
+
+
+function buildWhnBlock(r, gap) {
+  const risk = gap >= 30
+    ? 'A better-structured competitor is positioned to take this.'
+    : gap >= 15
+    ? 'You are being evaluated. You are not being selected.'
+    : gap >= 1
+    ? 'The position is close. Structural precision will lock it.'
+    : 'The position is structurally sound.';
+
+  return `
+    <div class="whn-block">
+      <div class="whn-eyebrow">What Happens Next</div>
+
+      <div class="whn-section">
+        <div class="whn-reality">
+          ${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
+            ? 'You are in a strong position. The gap is small.'
+            : 'You are being chosen by habit.<br>Not by structure.<br>That is not a secure position.'}
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-risk">
+          <strong>${risk}</strong>
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-explain">
+          CHOIVE determines exactly where selection breaks down.<br>
+          Then restructures how this business is understood, trusted, and chosen.
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-bullets">
+          <div class="whn-bullet-tier">CHOIVE Analysis™</div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Where selection is being lost</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Exact structural shifts required</div>
+          </div>
+          <div class="whn-bullet-item">
+            <div class="whn-bullet-arrow">→</div>
+            <div class="whn-bullet-text">Sequenced implementation plan</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-tension">${risk === 'The position is structurally sound.' ? 'The position is sound. Keep building on it.' : 'Close this gap before it is exploited.'}</div>
+      </div>
+
+      <div class="whn-section">
+        <div class="whn-cta">
+          <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
+            Unlock Your CHOIVE Analysis™
+          </button>
+          <span class="whn-cta-micro">${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
+            ? 'Strengthen your position before a competitor closes the gap.'
+            : 'Right now, you are being chosen by habit — not by structure.'}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+function buildPillarCards(r) {
+  var pD = {
+    clarity:    { n:'01', name:'Clarity' },
+    trust:      { n:'02', name:'Trust' },
+    difference: { n:'03', name:'Difference' },
+    ease:       { n:'04', name:'Ease' }
+  };
+  var keys = ['clarity','trust','difference','ease'];
+  var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
+  var cards = keys.map(function(key) {
+    var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
+    var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
+    var finding = raw.finding || '';
+    var pct = score / 25 * 100;
+    return '<div class="pillar-card">'
+      + '<div class="pillar-num">' + pD[key].n + '</div>'
+      + '<div class="pillar-name">' + pD[key].name + '</div>'
+      + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
+      + '<div class="pillar-finding">' + esc(finding) + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="pillars-grid">' + cards + '</div>';
+}
+
+function showResults(r, jobId) {
+  document.getElementById('dS').classList.remove('active');
+  const zone = document.getElementById('dR');
+  zone.style.display = 'block';
+
+  window.__choiveShareJobId = jobId || '';
+  window.__choiveLastResult  = r;
+
+  // ── DEFENSIVE FALLBACKS ───────────────────────────────────────────────────
+  if (!r || typeof r !== 'object') r = {};
+  if (!r.verdictLevel || !['absent','weak','present'].includes(r.verdictLevel)) r.verdictLevel = 'weak';
+  if (!r.pillars || typeof r.pillars !== 'object') r.pillars = { clarity:{score:0,finding:''}, trust:{score:0,finding:''}, difference:{score:0,finding:''}, ease:{score:0,finding:''} };
+  ['clarity','trust','difference','ease'].forEach(function(k) {
+    if (!r.pillars[k] || typeof r.pillars[k] !== 'object') r.pillars[k] = {score:0,finding:''};
+    if (typeof r.pillars[k].score !== 'number') r.pillars[k].score = 0;
+    if (!r.pillars[k].finding) r.pillars[k].finding = '';
+  });
+  if (!r.platformCoverage || typeof r.platformCoverage !== 'object') r.platformCoverage = {};
+  ['chatgpt','perplexity','gemini','claude'].forEach(function(k) {
+    if (!r.platformCoverage[k] || typeof r.platformCoverage[k] !== 'object') r.platformCoverage[k] = {status:'absent',detail:'Not found'};
+  });
+  if (!r.marketPosition || typeof r.marketPosition !== 'object') r.marketPosition = {tier:'unknown',label:'',explanation:''};
+  if (!r.displacement || typeof r.displacement !== 'object') r.displacement = {competitorName:'',competitorWhy:'',competitorQuery:''};
+  if (!Array.isArray(r.actions)) r.actions = [];
+  if (!r.summaryParagraph) r.summaryParagraph = '';
+  if (!r.verdictHeadline) r.verdictHeadline = '';
+  if (!r.signatureLine) r.signatureLine = '';
+  if (!r.evidenceNarrative) r.evidenceNarrative = '';
+  // ── END FALLBACKS ─────────────────────────────────────────────────────────
+
+  console.log('[CHOIVE] showResults platformCoverage:', r.platformCoverage ? 'present' : 'MISSING');
+
+  // isPaid sources (in priority order):
+  // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
+  // 2. r.paid === true             → set by Stripe webhook updating Supabase record
+  // 3. URL ?paid=true              → fallback for testing only
+  const isPaid = (window.__choivePaidVerified === true) ||
+                 (r.paid === true) ||
+                 (new URLSearchParams(window.location.search).get('paid') === 'true');
+
+  const score = Number(r.overallScore) || 0;
+  const bName = esc(bizData.name || '');
+  const bCat  = esc(bizData.category || '');
+  const bCity = esc(bizData.city || '');
+  const bWeb = [
+    bizData.website || '',
+    bizData.description || '',
+    r.evidenceNarrative || '',
+    r.summaryParagraph || ''
+  ].join(' ').toLowerCase();
+
+  // Social detection
+  const hasInsta    = bWeb.includes('instagram.com')  || bWeb.includes('instagram');
+  const hasTiktok   = bWeb.includes('tiktok.com')     || bWeb.includes('tiktok');
+  const hasYoutube  = bWeb.includes('youtube.com')    || bWeb.includes('youtube');
+  const hasLinkedin = bWeb.includes('linkedin.com')   || bWeb.includes('linkedin');
+  const hasFacebook = bWeb.includes('facebook.com')   || bWeb.includes('facebook');
+  const hasX        = bWeb.includes('twitter.com')    || bWeb.includes('x.com');
+  // Also check r.socialSignals from the diagnostic result
+  const rSocial   = r.socialSignals || {};
+  const hasSocial = hasInsta || hasTiktok || hasYoutube || hasLinkedin || hasFacebook || hasX
+    || rSocial.instagram || rSocial.tiktok || rSocial.youtube
+    || rSocial.linkedin  || rSocial.facebook || rSocial.twitter || rSocial.reddit;
+
+  // Google signal — deterministic from score
+  // Google signal based on real evidence
+  const hasKg        = !!(r.marketPosition && r.marketPosition.tier && ['dominant','strong'].includes(r.marketPosition.tier));
+  const googleSignal = hasKg ? 'STRONG' : (score >= 50 ? 'PARTIAL' : 'WEAK');
+  const googleIcon   = hasKg ? '\u2714' : '\u26a0';
+
+  // Score label
+  const scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
+    : score >= 56 ? 'Considered. Not consistently chosen.'
+    : score >= 31 ? 'Seen. Not selected.'
+    : 'Not seen. Not chosen.';
+
+  // Stripe payment link — replace with real link
+  // STRIPE SETUP:
+  // 1. In your Stripe Payment Link settings, set the success URL to:
+  //    https://choive.com/?session_id={CHECKOUT_SESSION_ID}&paid=true
+  // 2. The jobId is passed as client_reference_id when user clicks unlock.
+  // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
+  //    which retrieves the Stripe session and reads client_reference_id as jobId.
+  // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
+  const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
+  const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
+  const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
+
+  // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
+  var inferredCat = r.inferredCategory && r.inferredCategory !== bizData.category
+    ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
+    : '';
+
+  var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
+    + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
+    + inferredCat
+    + '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px;">'
+    + '<div class="mono-score-num" id="scoreNum">0</div>'
+    + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
+    + '</div>'
+    + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">' + esc(r.verdictHeadline || '') + '</div>'
+    + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(r.summaryParagraph || r.signatureLine || '') + '</div>'
+    + '</div>';
+
+  zone.innerHTML =
+    scoreHeader
+    + buildScoreLabels(r)
+    + [].concat(buildDisplacementBlock(r)).join('')
+    + [].concat(buildGapBlock(r)).join('')
+    + [].concat(buildPillarCards(r)).join('')
+    + [].concat(buildShareBlock(jobId)).join('')
+    + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
+        + '<div class="paywall-eyebrow">Full analysis</div>'
+        + '<div class="paywall-headline">See exactly why — and what to fix</div>'
+        + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
+        + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock Full Analysis — $99 →</button>'
+        + '</div>');
+
+  // Animate score
+  setTimeout(function() { animateNum('scoreNum', 0, score, 1200); }, 100);
+
+  // Purely visual: brief glow pulse once the count-up settles. Does not
+  // read or alter any scoring data — only toggles a CSS class on the
+  // already-rendered number element for a moment of polish after the wait.
+  setTimeout(function() {
+    var scoreEl = document.getElementById('scoreNum');
+    if (scoreEl) {
+      scoreEl.classList.add('pulse-on-land');
+      setTimeout(function() { scoreEl.classList.remove('pulse-on-land'); }, 700);
+    }
+  }, 1350);
+
+  function pillarDetail(key, label) {
+    var p = r.pillars && r.pillars[key];
+    if (!p) return '';
+    var score = p.score || 0;
+    var pct   = Math.round(score / 25 * 100);
+    return '<div class="paid-pillar">'
+      + '<div class="paid-pillar-head"><span class="paid-pillar-name">' + label + '</span>'
+      + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
+      + '<div style="height:2px;background:rgba(255,255,255,0.06);margin-bottom:14px;">'
+      + '<div style="height:100%;width:' + pct + '%;background:var(--ac);"></div></div>'
+      + (p.finding  ? '<div style="font-size:12px;font-weight:600;color:var(--tm);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
+      + (p.analysis ? '<div class="paid-pillar-analysis">' + esc(p.analysis) + '</div>' : '')
+      + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
+      + '</div>';
+  }
+
+  function actionItem(a) {
+    if (!a) return '';
+    return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
+      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + '</div>'
+      + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
+      + '<div class="paid-action-body">' + esc(a.body || '') + '</div>'
+      + (a.explanation ? '<div class="paid-action-explanation">' + esc(a.explanation) + '</div>' : '')
+      + '</div>';
+  }
+
+  var compList = [];
+  if (Array.isArray(r.competitors) && r.competitors.length > 0) {
+    compList = r.competitors.filter(function(cp) { return cp && cp.name; });
+  } else if (r.competitor && r.competitor.name) {
+    compList = [r.competitor];
+  }
+  if (compList.length === 0 && r.displacement && r.displacement.competitorName) {
+    compList = [{ name: r.displacement.competitorName, analysis: r.displacement.competitorWhy, queryContext: r.displacement.competitorQuery }];
+  }
+  var compName     = compList.length > 0 ? compList[0].name : '';
+  var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
+  var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
+  var compContext  = compList.length > 0 ? (compList[0].queryContext || '') : '';
+  var isCatBased   = compContext === 'category-based analysis';
+
+  var compBlock = compName
+    ? '<div class="paid-comp-found">'
+      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
+      + '<div class="paid-comp-name">' + esc(compName) + '</div>'
+      + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
+      + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
+      + '</div>'
+    : '<div class="paid-comp-none">No dominant comparison pattern detected in available evidence.</div>';
+
+  var extraCompsHtml = compList.slice(1).map(function(cp) {
+    if (!cp || !cp.name) return '';
+    var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+    return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
+      + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
+      + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + esc(an) + '</div>' : '')
+      + '</div>';
+  }).join('');
+
+  var paidSections = isPaid ? (function() {
+    return '<div class="pay-section deliv-section" id="delivSection">'
+      + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
+      + '<div id="delivContent"></div></div>'
+      + '<div class="pay-section sim-section" id="simSection">'
+      + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business appeared.</div>'
+      + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
+      + '<div class="sim-results" id="simResults" style="display:none;"></div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Business Intelligence</div>'
+      + '<div class="paid-narrative">' + esc(r.businessUnderstanding || r.summaryParagraph || '') + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Evidence Narrative</div>'
+      + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
+      + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
+      + pillarDetail('difference','Difference') + pillarDetail('ease','Ease')
+      + '</div></div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Competitor Reality</div>'
+      + compBlock + extraCompsHtml + '</div>'
+      + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
+      + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
+      + '<div class="pay-section" style="border-bottom:none;"><div class="pay-eyebrow">Your Report</div>'
+      + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your results</div>'
+      + '<div class="pay-cta-body">Download a PDF copy of this diagnostic for your records.</div>'
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">'
+      + '<button class="pay-btn-primary" onclick="exportPDF()">Download PDF Report</button>'
+      + '</div></div></div>';
+  })() : '';
+
+  console.log('[CHOIVE] isPaid:', isPaid, '| paidSections length:', paidSections.length);
+  zone.innerHTML += paidSections;
+  zone.innerHTML += '<div class="pay-section" style="border-bottom:none;text-align:center;padding-top:32px;">'
+    + '<button class="pay-btn-secondary" onclick="resetDiagnostic()">Run another diagnostic →</button>'
+    + '</div>';
+
+  try {
+    var delivEl = document.getElementById('delivContent');
+    if (delivEl) delivEl.innerHTML = buildDeliverables(r);
+  } catch(e) {}
+
+  zone.scrollIntoView({ behavior: 'smooth' });
+  window.__choiveLastResult = r;
+  window.__choiveShareJobId = jobId || '';
+  if (isPaid) { runAISimulation(r); }
+}
+
+
+function buildDeliverables(r) {
+  var d = r.deliverables;
+  if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available for this diagnostic.</div>';
+
+  function ownerTag() {
+    return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);background:rgba(194,240,212,0.1);border:1px solid var(--ac);padding:2px 7px;margin-left:8px;">You can do this</span>';
+  }
+  function devTag() {
+    return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span>';
+  }
+
+  var llmsHtml = '<div style="margin-bottom:16px;">'
+    + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Save this file as <strong>llms.txt</strong> and upload it to your website root so it is accessible at <strong>yourdomain.com/llms.txt</strong>. Works in Shopify, Squarespace, WordPress, and any website builder that allows file uploads.</div>'
+    + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
+    + '<div class="deliv-code" id="dLlms">' + esc(d.llmsTxt || '') + '</div>'
+    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dLlms\\")">Copy llms.txt</button>'
+    + '</div>';
+
+  var h1Html = '';
+  if (d.h1Options) {
+    h1Html = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Tell your website designer or update it yourself. Change your homepage headline to one of the options below.</div>';
+    if (d.h1Options.current) {
+      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Your current H1</div>'
+        + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.h1Options.current) + '</div>';
+    }
+    if (d.h1Options.options && d.h1Options.options.length > 0) {
+      h1Html += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Suggested rewrites \u2014 click to copy</div>';
+      h1Html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      d.h1Options.options.forEach(function(opt) {
+        var safe = JSON.stringify(opt);
+        h1Html += '<div class="deliv-option" onclick="copyText(' + safe + ', this)">'
+          + '<div class="deliv-option-text">' + esc(opt) + '</div>'
+          + '<div class="deliv-option-note">Click to copy</div></div>';
+      });
+      h1Html += '</div>';
+    }
+    h1Html += '</div>';
+  }
+
+  var metaHtml = '';
+  if (d.metaDesc) {
+    metaHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy the improved version and paste it into your website SEO settings.</div>';
+    if (d.metaDesc.current) {
+      metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Current</div>'
+        + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.metaDesc.current) + '</div>';
+    }
+    metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
+      + '<div class="deliv-code" id="dMeta">' + esc(d.metaDesc.improved || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dMeta\\")">Copy Meta Description</button>'
+      + '</div>';
+  }
+
+  var reviewHtml = '';
+  if (d.reviewAction) {
+    var ra = d.reviewAction;
+    var urgColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
+    reviewHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Current reviews</div><div style="font-size:28px;font-weight:700;color:var(--tp);">' + (ra.currentCount || 0) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + (ra.targetCount || 50) + '+</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform || 'Trustpilot') + '</div></div>'
+      + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
+      + '</div>';
+  }
+
+  var schemaHtml = '';
+  if (d.schemaBrief) {
+    var sb = d.schemaBrief;
+    schemaHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + devTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(sb.instruction || '') + '</div>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Fields to include</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">'
+      + (sb.fields || []).map(function(f) {
+          return '<div style="font-size:13px;color:var(--tb);padding:8px 12px;background:var(--dk-3);border-left:2px solid var(--rule-d);">' + esc(f) + '</div>';
+        }).join('')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);">Estimated time: ' + esc(sb.timeEstimate || '20 minutes') + '</div>'
+      + '</div>';
+  }
+
+  var planHtml = '';
+  if (d.actionPlan && d.actionPlan.weeks) {
+    var wkColors = { you: 'var(--ac)', developer: 'var(--amber)' };
+    planHtml = d.actionPlan.weeks.map(function(wk) {
+      return '<div style="margin-bottom:20px;padding:20px 24px;background:var(--dk-2);border:1px solid var(--rule-d);">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:4px;">Week ' + wk.week + '</div>'
+        + '<div style="font-size:15px;font-weight:700;color:var(--tp);margin-bottom:14px;">' + esc(wk.title) + '</div>'
+        + wk.tasks.map(function(t) {
+            var tc = wkColors[t.owner] || 'var(--tm)';
+            var tl = t.owner === 'developer' ? 'Forward to developer' : 'You can do this';
+            return '<div style="margin-bottom:12px;padding:12px 14px;background:var(--dk-3);border-left:2px solid ' + tc + ';">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+              + '<span style="font-size:13px;font-weight:700;color:var(--tp);">' + esc(t.task) + '</span>'
+              + '<span style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:' + tc + ';white-space:nowrap;margin-left:12px;">' + tl + '</span>'
+              + '</div>'
+              + '<div style="font-size:13px;color:var(--tb);line-height:1.65;margin-bottom:6px;">' + esc(t.how) + '</div>'
+              + '<div style="font-size:11px;color:var(--tm);font-style:italic;">' + esc(t.impact) + '</div>'
+              + '</div>';
+          }).join('')
+        + '</div>';
+    }).join('');
+  }
+
+  var tabs = [
+    { id: 'dPlan',   label: '30-day plan', content: planHtml   },
+    { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
+    { id: 'dH1',     label: 'H1',         content: h1Html     },
+    { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
+    { id: 'dReview', label: 'Reviews',    content: reviewHtml },
+    { id: 'dSchema', label: 'Schema',     content: schemaHtml }
+  ];
+
+  var html = '<div class="deliv-tabs">';
+  tabs.forEach(function(tab, i) {
+    html += '<button class="deliv-tab' + (i === 0 ? ' active' : '') + '" onclick="switchDelivTab(\'' + tab.id + '\', this)">' + tab.label + '</button>';
+  });
+  html += '</div>';
+  tabs.forEach(function(tab, i) {
+    html += '<div class="deliv-panel' + (i === 0 ? ' active' : '') + '" id="' + tab.id + '">' + tab.content + '</div>';
+  });
+  return html;
+}
+
+function switchDelivTab(id, btn) {
+  var tabs   = document.querySelectorAll('.deliv-tab');
+  var panels = document.querySelectorAll('.deliv-panel');
+  tabs.forEach(function(el) { el.classList.remove('active'); });
+  panels.forEach(function(el) { el.classList.remove('active'); });
+  btn.classList.add('active');
+  var panel = document.getElementById(id);
+  if (panel) panel.classList.add('active');
+}
+
+function copyDeliv(btn, id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  });
+}
+
+function copyText(text, el) {
+  navigator.clipboard.writeText(text).then(function() {
+    var note = el && el.querySelector('.deliv-option-note');
+    if (note) {
+      note.textContent = 'Copied!';
+      setTimeout(function() { note.textContent = 'Click to copy'; }, 1500);
+    }
+  });
+}
+
+function stripMd(text) {
+  if (!text) return '';
+  return text
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^[-*]\s+/gm, '\u2022 ')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+async function runAISimulation(r) {
+  var loading = document.getElementById('simLoading');
+  var results = document.getElementById('simResults');
+  if (!loading || !results) return;
+
+  console.log('[CHOIVE] runAISimulation called for:', bizData.name);
+
+  try {
+    var diffEv  = (r.pillars && r.pillars.difference && r.pillars.difference.evidence) || '';
+    var trustEv = (r.pillars && r.pillars.trust      && r.pillars.trust.evidence)      || '';
+
+    var res = await fetch('/.netlify/functions/ai-simulation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:             bizData.name             || '',
+        category:         bizData.category         || '',
+        city:             bizData.city             || '',
+        inferredCategory: r.inferredCategory       || bizData.category || '',
+        differentiator:   diffEv.slice(0, 200),
+        trustSignal:      trustEv.slice(0, 200)
+      })
+    });
+
+    var data = await res.json();
+    loading.style.display = 'none';
+    results.style.display = 'flex';
+
+    if (!data || (!data.results && !data.before)) {
+      results.innerHTML = '<div class="sim-query"><div class="sim-response">Simulation could not complete. Please try again.</div></div>';
+      return;
+    }
+
+    var hasBefore = data.before && data.before.results;
+    var bc = hasBefore ? (data.before.appearedCount || 0) : 0;
+    var ac = hasBefore && data.after ? (data.after.appearedCount || 0) : 0;
+    var flatResults = data.results || (hasBefore ? data.before.results : []);
+    var summaryText = hasBefore ? data.before.summary : (data.summary || '');
+    var summaryClass = bc === 0 ? 'zero' : bc === 3 ? 'all' : 'some';
+
+    function renderQSet(qResults, label) {
+      if (!qResults || !qResults.length) return '';
+      var html = label ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--rule-d);">' + label + '</div>' : '';
+      return html + qResults.map(function(qr) {
+        return '<div class="sim-query">'
+          + '<div class="sim-query-header">'
+          + '<span class="sim-query-label">' + esc(qr.label) + '</span>'
+          + '<span class="sim-appeared ' + (qr.appeared ? 'yes' : 'no') + '">'
+          + (qr.appeared ? 'You appeared' : 'Not mentioned') + '</span>'
+          + '</div>'
+          + '<div class="sim-query-text">\u201c' + esc(qr.query) + '\u201d</div>'
+          + '<div class="sim-response' + (qr.appeared ? ' appeared' : '') + '">'
+          + esc(stripMd(qr.response)) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    if (hasBefore && data.after) {
+      results.innerHTML = renderQSet(data.before.results, 'Current state')
+        + '<div style="margin:20px 0;padding:16px;background:var(--dk-3);border:1px solid var(--rule-d);">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">After implementing top fixes</div>'
+        + '<div style="font-size:13px;color:var(--tb);line-height:1.65;">'
+        + (ac >= 0
+          ? 'With improved positioning: appeared in <strong style="color:var(--ac);">' + ac + ' of 3</strong> queries'
+          + (ac > bc ? ' \u2014 up from ' + bc + '.' : (ac === bc ? ' \u2014 same as before.' : '.')) : '')
+        + '</div></div>'
+        + renderQSet(data.after.results, 'After optimisation')
+        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
+    } else {
+      results.innerHTML = renderQSet(flatResults, '')
+        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
+    }
+
+  } catch (err) {
+    if (loading) loading.style.display = 'none';
+    if (results) {
+      results.style.display = 'flex';
+      results.innerHTML = '<div class="sim-query"><div class="sim-response">Simulation failed: ' + esc(err.message) + '</div></div>';
+    }
+  }
+}
+
+function exportPDF() {
+  var r = window.__choiveLastResult;
+  if (!r) { alert('No result to export.'); return; }
+  var biz  = bizData.name || 'business';
+  var date = new Date().toLocaleDateString('en-GB');
+  var win  = window.open('', '_blank');
+
+  function pdfPillar(key, label) {
+    var p = r.pillars && r.pillars[key];
+    if (!p) return '';
+    var score = p.score || 0;
+    return '<div style="margin-bottom:18px;padding:16px;background:#F4F2EE;border-left:3px solid #0E0E11;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">'
+      + '<span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#666;">' + label + '</span>'
+      + '<span style="font-size:18px;font-weight:700;">' + score + ' <span style="font-size:11px;font-weight:400;color:#666;">/ 25</span></span>'
+      + '</div>'
+      + (p.finding  ? '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + p.finding + '</div>' : '')
+      + (p.analysis ? '<div style="font-size:13px;color:#333;line-height:1.65;margin-bottom:8px;">' + p.analysis + '</div>' : '')
+      + (p.evidence ? '<div style="font-size:12px;color:#666;font-style:italic;line-height:1.6;">' + p.evidence + '</div>' : '')
+      + '</div>';
+  }
+
+  function pdfAction(a) {
+    if (!a) return '';
+    return '<div style="margin-bottom:14px;padding:14px 16px;background:#fff;border:1px solid #ddd;border-left:3px solid ' + (a.priority === 'critical' ? '#C0392B' : a.priority === 'high' ? '#B8860B' : '#999') + ';">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:4px;">' + (a.priority || '').toUpperCase() + '</div>'
+      + '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + (a.title || '') + '</div>'
+      + '<div style="font-size:13px;color:#444;line-height:1.65;margin-bottom:6px;">' + (a.body || '') + '</div>'
+      + (a.explanation ? '<div style="font-size:12px;color:#777;line-height:1.6;padding-top:6px;border-top:1px solid #eee;">' + a.explanation + '</div>' : '')
+      + '</div>';
+  }
+
+  var compList = [];
+  if (Array.isArray(r.competitors) && r.competitors.length > 0) {
+    compList = r.competitors.filter(function(cp) { return cp && cp.name; });
+  } else if (r.competitor && r.competitor.name) {
+    compList = [r.competitor];
+  }
+  var compHtml = compList.length > 0
+    ? compList.map(function(cp) {
+        var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+        return '<div style="margin-bottom:14px;padding:14px 16px;background:#F4F2EE;">'
+          + '<div style="font-size:16px;font-weight:700;font-style:italic;margin-bottom:6px;">' + cp.name + '</div>'
+          + (an ? '<div style="font-size:13px;color:#444;line-height:1.65;">' + an + '</div>' : '')
+          + '</div>';
+      }).join('')
+    : '<div style="font-size:13px;color:#777;font-style:italic;">No dominant comparison pattern detected in available evidence.</div>';
+
+  var actionsHtml = Array.isArray(r.actions) ? r.actions.map(pdfAction).join('') : '';
+  var pillarsHtml  = pdfPillar('clarity','Clarity') + pdfPillar('trust','Trust') + pdfPillar('difference','Difference') + pdfPillar('ease','Ease');
+
+  function pdfSection(title, html) {
+    if (!html) return '';
+    return '<h2 style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#666;margin:32px 0 14px;padding-bottom:8px;border-bottom:1px solid #ddd;">' + title + '</h2>' + html;
+  }
+
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CHOIVE Analysis - ' + biz + '</title>'
+    + '<style>@import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap);'
+    + 'body{margin:0;padding:40px;font-family:Inter,sans-serif;background:#fff;color:#0E0E11;max-width:800px;}'
+    + '@media print{body{-webkit-print-color-adjust:exact;} button{display:none;}}</style>'
+    + '</head><body>'
+    + '<h1 style="font-size:28px;font-weight:700;margin-bottom:4px;">CHOIVE\u2122 Analysis</h1>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:32px;">' + biz.toUpperCase() + ' \u00b7 ' + date + '</div>'
+    + '<div style="padding:24px;background:#F4F2EE;border-left:4px solid #C2F0D4;margin-bottom:8px;">'
+    + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin-bottom:4px;">CHOIVE INDEX\u2122</div>'
+    + '<div style="font-size:48px;font-weight:700;line-height:1;">' + (r.overallScore || 0) + '</div>'
+    + '<div style="font-size:13px;color:#666;margin-bottom:12px;">/ 100</div>'
+    + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">' + (r.verdictHeadline || '') + '</div>'
+    + '<div style="font-size:14px;color:#444;line-height:1.65;">' + (r.summaryParagraph || '') + '</div>'
+    + '</div>'
+    + pdfSection('Business Intelligence', r.businessUnderstanding ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.businessUnderstanding + '</div>' : '')
+    + pdfSection('Evidence Narrative', r.evidenceNarrative ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.evidenceNarrative + '</div>' : '')
+    + pdfSection('Why You Score This Way', pillarsHtml)
+    + pdfSection('Competitor Reality', compHtml)
+    + pdfSection('Priority Actions', actionsHtml)
+    + '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;">Generated by CHOIVE\u2122 \u00b7 choive.com \u00b7 ' + date + '</div>'
+    + '</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 800);
+}
+
+function animateNum(id, from, to, dur) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var start = performance.now();
+  function tick(now) {
+    var p = Math.min((now - start) / dur, 1);
+    var eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+
+async function initiateCheckout(jobId) {
+  var btn = document.getElementById('checkoutBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing checkout...'; }
+  try {
+    var res = await fetch('/.netlify/functions/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: jobId })
+    });
+    var data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Could not create checkout');
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Analysis — $99 →'; }
+    alert('Could not start checkout. Please try again.');
+    console.error('initiateCheckout error:', err);
+  }
+}
+
+function resetDiagnostic() {
+  var dR = document.getElementById('dR');
+  var dI = document.getElementById('dI');
+  var dS = document.getElementById('dS');
+  if (dR) { dR.style.display = 'none'; dR.innerHTML = ''; }
+  if (dS) dS.classList.remove('active');
+  if (dI) dI.style.display = 'block';
+  var rBtn = document.getElementById('rBtn');
+  if (rBtn) rBtn.disabled = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openForm(product) {
+  var name    = bizData.name    || '';
+  var subject = encodeURIComponent('CHOIVE ' + product + ' \u2014 ' + name);
+  var body    = encodeURIComponent('Hi,\n\nI just ran a CHOIVE diagnostic for ' + name + ' and scored ' + (window.__choiveLastResult && window.__choiveLastResult.overallScore || '?') + '/100.\n\nI am interested in ' + product + '.\n\nBest regards');
+  window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
+}
+
+function getShareUrl(jobId) {
+  return window.location.origin + '/?jobId=' + jobId;
+}
+
+async function fetchSharedResult(jobId) {
+  try {
+    var res  = await fetch('/.netlify/functions/get-result?jobId=' + jobId);
+    var data = await res.json();
+    if (data && data.result) {
+      if (data.input) {
+        bizData.name     = data.input.name     || '';
+        bizData.category = data.input.category || '';
+        bizData.city     = data.input.city     || '';
+        bizData.website  = data.input.website  || '';
+      }
+      showResults(data.result, jobId);
+    }
+  } catch (err) {
+    console.error('fetchSharedResult error:', err);
+  }
+}
+
+async function verifyAndLoad(sessionId) {
+  try {
+    var res  = await fetch('/.netlify/functions/verify-payment?session_id=' + encodeURIComponent(sessionId), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    var data = await res.json();
+    if (data && data.paid && data.jobId) {
+      window.__choivePaidVerified = true;
+      await fetchSharedResult(data.jobId);
+    }
+  } catch (err) {
+    console.error('verifyAndLoad error:', err);
+  }
+}
+
+function initResultRoute() {
+  var params    = new URLSearchParams(window.location.search);
+  var jobId     = params.get('jobId');
+  var sessionId = params.get('session_id');
+  var paid      = params.get('paid');
+  if (sessionId && paid === 'true') {
+    verifyAndLoad(sessionId);
+  } else if (jobId) {
+    fetchSharedResult(jobId);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var inputZone = document.getElementById('inputZone');
+    if (inputZone && inputZone.style.display !== 'none') runDiagnostic();
+  }
+});
+
+initResultRoute();
+</script>
+
+<script>
+// showError compatibility — resultsZone is hidden, mirror to dR
+(function() {
+  var origError = window.showError;
+  window.showError = function(msg) {
+    var dS = document.getElementById('dS');
+    if (dS) dS.classList.remove('active');
+    var rZ = document.getElementById('resultsZone');
+    if (rZ) {
+      rZ.style.position = 'fixed';
+      rZ.style.visibility = 'visible';
+      rZ.style.display = 'block';
+    }
+    origError(msg);
+    var dR = document.getElementById('dR');
+    if (rZ && dR && rZ.innerHTML) {
+      dR.style.display = 'block';
+      dR.innerHTML = '<div style="max-width:720px;margin:0 auto;">' + rZ.innerHTML + '</div>';
+      rZ.style.display = 'none';
+      rZ.innerHTML = '';
+      dR.scrollIntoView({ behavior:'smooth' });
+    }
+  };
+})();
+</script>
+
+<script>
+// Scroll-reveal — purely presentational, observes static marketing sections only.
+// Never touches #dR, #dS, #dI, or any diagnostic state.
+(function() {
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('is-visible'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
+})();
+</script>
+
+<script>
+// Hero example score count-up — purely presentational marketing touch.
+// Makes the hero's example card demonstrate the same count-up behaviour the
+// real diagnostic result uses (animateNum, defined in the main engine script),
+// so the pitch itself behaves like the product instead of sitting static.
+// Reuses the existing animateNum function as-is; does not modify it, does not
+// touch #dR/#dS/#dI or any diagnostic/engine state.
+(function() {
+  var el = document.getElementById('heroExampleScore');
+  if (!el || typeof animateNum !== 'function') return;
+  if (!('IntersectionObserver' in window)) {
+    animateNum('heroExampleScore', 0, 64, 1200);
+    return;
+  }
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        animateNum('heroExampleScore', 0, 64, 1200);
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.4 });
+  io.observe(el);
+})();
+</script>
+
+</body>
+</html>
