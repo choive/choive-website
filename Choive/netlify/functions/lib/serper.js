@@ -30,7 +30,7 @@ const DIRECTORY_DOMAINS = [
   'advanced-television.com', 'digitaltveurope.com',
   // Generic directories
   'bbb.org', 'foursquare.com', 'angieslist.com', 'houzz.com',
-  'clutch.co', 'goodfirms.co', 'crunchbase.com', 'producthunt.com',
+  'clutch.co', 'goodfirms.co',
   'alternativeto.net', 'comparably.com', 'glassdoor.com', 'indeed.com',
   'wikipedia.org', 'wikimedia.org', 'wikidata.org'
 ];
@@ -428,4 +428,3 @@ module.exports = {
   inferOfficialSite: inferOfficialSite,
   normalizeUrl:      normalizeUrl
 };
- 
