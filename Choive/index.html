@@ -1331,7 +1331,7 @@ footer::before {
       </div>
       <div class="field-row">
         <input type="text" id="bL" placeholder="City / country  (e.g. Marbella, Spain)" autocomplete="country" />
-        <input type="text" id="bW" placeholder="Your website  (optional)" autocomplete="url" />
+        <input type="text" id="bW" placeholder="Your website  (e.g. yourcompany.com)" autocomplete="url" />
       </div>
       <div class="field-row">
         <input type="text" id="bD" placeholder="One line about you  (optional)" />
@@ -1342,7 +1342,7 @@ footer::before {
       <button class="run-btn" id="rBtn" onclick="runDiagnostic()">
         Find out what AI says about you →
       </button>
-      <div class="diag-note">Free · No signup · Real signals · 30–45 seconds</div>
+      <div class="diag-note">Free · No signup · Real signals · 30–45 seconds · Website required for full accuracy</div>
     </div>
     <div id="inputZone" style="display:none;"></div>
   </div>
@@ -1539,6 +1539,15 @@ function runDiagnostic() {
     alert('Please fill in your business name, category, and city.');
     return;
   }
+  if (!website) {
+    alert('Please add your website — it powers the most important signals in the diagnostic.');
+    document.getElementById('bW').focus();
+    return;
+  }
+  // Clean up website URL
+  if (website && !website.startsWith('http')) {
+    website = 'https://' + website;
+  }
 
   bizData = { name, category, city, website, knownCompetitors, description };
 
@@ -1547,6 +1556,8 @@ function runDiagnostic() {
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
   document.getElementById('rBtn').disabled = true;
+  // Scroll to engine loading immediately — user stays here until results arrive
+  document.getElementById('dS').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   updateEngineStage('queued');
   startDiagnostic(bizData);
@@ -2120,7 +2131,7 @@ function showResults(r, jobId) {
     if (delivEl) delivEl.innerHTML = buildDeliverables(r);
   } catch(e) {}
 
-  zone.scrollIntoView({ behavior: 'smooth' });
+  // Results appear in place — user is already viewing the diagnostic section
   window.__choiveLastResult = r;
   window.__choiveShareJobId = jobId || '';
   if (isPaid) { runAISimulation(r); }
@@ -2572,8 +2583,12 @@ function initResultRoute() {
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    var inputZone = document.getElementById('inputZone');
-    if (inputZone && inputZone.style.display !== 'none') runDiagnostic();
+    var formPanel = document.getElementById('dI');
+    var rBtn = document.getElementById('rBtn');
+    // Only trigger if form is visible and button is not disabled
+    if (formPanel && formPanel.style.display !== 'none' && rBtn && !rBtn.disabled) {
+      runDiagnostic();
+    }
   }
 });
 
