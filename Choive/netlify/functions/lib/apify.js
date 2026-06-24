@@ -83,7 +83,7 @@ async function fetchTrustpilot(businessName, website) {
   var domain  = (website || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
   var tpQuery = domain || businessName;
 
-  var items = await runActor('easyapify~trustpilot-scraper', {
+  var items = await runActor('novi~trustpilot-scraper', {
     startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }],
     maxReviews: 10,
     reviewsLanguage: 'en'
@@ -178,9 +178,28 @@ function buildApifyText(trustpilot, googleReviews) {
 
 // ── Main: fetch all Apify evidence in parallel ────────────────────────────────
 async function fetchApifyEvidence(name, city, website) {
-  // Apify disabled — actor IDs need verification on apify.com/store
-  // To re-enable: find correct actor IDs, update fetchTrustpilot and fetchGoogleReviews above
-  return { trustpilot: null, googleReviews: null, apifyText: '' };
+  // Skip if no API key configured
+  if (!process.env.APIFY_API_KEY) {
+    console.warn('[apify] APIFY_API_KEY not set — skipping review collection');
+    return { trustpilot: null, googleReviews: null, apifyText: '' };
+  }
+
+  // Run Trustpilot and Google Reviews in parallel
+  // Timeout each independently — one failure should not block the other
+  var settled = await Promise.allSettled([
+    fetchTrustpilot(name, website),
+    fetchGoogleReviews(name, city)
+  ]);
+
+  var trustpilot    = settled[0].status === 'fulfilled' ? settled[0].value : null;
+  var googleReviews = settled[1].status === 'fulfilled' ? settled[1].value : null;
+
+  var apifyText = buildApifyText(trustpilot, googleReviews);
+
+  console.log('[apify] trustpilot:', trustpilot ? trustpilot.reviewCount + ' reviews' : 'not found');
+  console.log('[apify] googleReviews:', googleReviews ? googleReviews.reviewCount + ' reviews' : 'not found');
+
+  return { trustpilot, googleReviews, apifyText };
 }
 
 module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
