@@ -106,7 +106,7 @@ function extractText(html, maxChars) {
 
 // ── Extract schema markup from HTML ──────────────────────────────────────────
 function extractSchema(html) {
-  if (!html) return { found: false, types: [], raw: '' };
+  if (!html) return { found: false, types: [], count: 0, raw: '' };
   var schemas = [];
   var types = [];
 
@@ -116,8 +116,23 @@ function extractSchema(html) {
     try {
       var parsed = JSON.parse(match[1].trim());
       schemas.push(parsed);
-      var type = parsed['@type'] || (Array.isArray(parsed['@type']) ? parsed['@type'].join(',') : '');
-      if (type) types.push(type);
+
+      // Handle both root-level @type and @graph array (recommended schema.org format)
+      // Root-level: { "@type": "Organization", ... }
+      // @graph:     { "@graph": [{ "@type": "Organization" }, { "@type": "WebSite" }] }
+      if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
+        // Extract types from all items in the @graph array
+        parsed['@graph'].forEach(function(item) {
+          if (item && item['@type']) {
+            var t = Array.isArray(item['@type']) ? item['@type'].join(',') : item['@type'];
+            if (t) types.push(t);
+          }
+        });
+      } else if (parsed['@type']) {
+        // Root-level @type (may be string or array)
+        var t = Array.isArray(parsed['@type']) ? parsed['@type'].join(',') : parsed['@type'];
+        if (t) types.push(t);
+      }
     } catch (e) {
       // Invalid JSON-LD — skip
     }
