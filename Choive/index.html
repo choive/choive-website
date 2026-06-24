@@ -2519,7 +2519,11 @@ function resetDiagnostic() {
   if (dI) dI.style.display = 'block';
   var rBtn = document.getElementById('rBtn');
   if (rBtn) rBtn.disabled = false;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Scroll to the form so user can immediately run another diagnostic
+  var diagSection = document.getElementById('diagnostic');
+  if (diagSection) {
+    diagSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function openForm(product) {
