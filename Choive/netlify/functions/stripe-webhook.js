@@ -78,18 +78,19 @@ exports.handler = async function (event) {
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Not configured' }) };
   }
 
-  // Verify signature if webhook secret is configured
-  // If not configured, log a warning but continue (allows testing without webhook secret)
-  if (webhookSecret) {
-    var sigHeader = event.headers['stripe-signature'];
-    var rawBody = event.body || '';
-    var valid = await verifyStripeSignature(rawBody, sigHeader, webhookSecret);
-    if (!valid) {
-      console.error('stripe-webhook: signature verification failed');
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid signature' }) };
-    }
-  } else {
-    console.warn('stripe-webhook: STRIPE_WEBHOOK_SECRET not set — skipping signature verification');
+  // Verify Stripe webhook signature — REQUIRED for security
+  // Without this, anyone who knows the endpoint URL can fake a payment
+  if (!webhookSecret) {
+    console.error('stripe-webhook: STRIPE_WEBHOOK_SECRET not set — rejecting request');
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Webhook not configured' }) };
+  }
+
+  var sigHeader = event.headers['stripe-signature'];
+  var rawBody = event.body || '';
+  var valid = await verifyStripeSignature(rawBody, sigHeader, webhookSecret);
+  if (!valid) {
+    console.error('stripe-webhook: signature verification failed');
+    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid signature' }) };
   }
 
   var stripeEvent;
