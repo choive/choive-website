@@ -1,12 +1,15 @@
 // lib/claude.js
 // CHOIVE™ evidence-first scoring engine
+// Architecture: structured signals confirmed by engine → Claude analyzes → validators normalize
 // ENV: ANTHROPIC_API_KEY
- 
+
+'use strict';
+
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS      = 90000;
 const MAX_TOKENS      = 4500;
- 
+
 function truncate(text, max) {
   max = max || 4000;
   var value = String(text || '');
@@ -14,14 +17,9 @@ function truncate(text, max) {
 }
 
 // ── Sanitize external content against prompt injection ────────────────────────
-// Removes common adversarial instruction patterns from scraped content
-// before it is injected into the scoring prompt.
-// This reduces but cannot eliminate prompt injection risk —
-// the JSON-only output requirement and temperature:0 are the primary defenses.
 function sanitizeExternal(text) {
   if (!text || typeof text !== 'string') return text;
   return text
-    // Remove common injection openers
     .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
     .replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
     .replace(/disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
@@ -31,12 +29,11 @@ function sanitizeExternal(text) {
     .replace(/\[INST\]|\[\/INST\]|<\|im_start\|>|<\|im_end\|>/g, '[removed]')
     .replace(/CHOIVE.*?score.*?must\s+be/gi, '[removed]')
     .replace(/set\s+(the\s+)?(overall|clarity|trust|difference|ease)\s+score\s+to/gi, '[removed]')
-    // Truncate any single line that is suspiciously long (>500 chars) without spaces
     .split('\n').map(function(line) {
       return line.replace(/\S{500,}/g, '[long-token-removed]');
     }).join('\n');
 }
- 
+
 // ── Fast category inference ───────────────────────────────────────────────────
 async function inferCategory(name, category, websiteText, searchText) {
   var controller = new AbortController();
@@ -81,44 +78,313 @@ async function inferCategory(name, category, websiteText, searchText) {
     return category;
   }
 }
- 
-// ── Main scoring ──────────────────────────────────────────────────────────────
-async function scoreWithClaude(evidence) {
-  var prompt = buildPrompt(evidence);
-  var controller = new AbortController();
-  var timeout = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
-  try {
-    var response = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: MAX_TOKENS,
-        temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    var data = await response.json();
-    if (data.stop_reason && data.stop_reason !== 'end_turn') {
-      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason);
-    }
-    if (!response.ok) {
-      throw new Error(data && data.error && data.error.message ? data.error.message : 'Anthropic HTTP ' + response.status);
-    }
-    return safeOutput(parseClaudeResponse(data));
-  } catch (error) {
-    clearTimeout(timeout);
-    if (error.name === 'AbortError') throw new Error('Claude request timed out');
-    throw error;
+
+// ── Build confirmed signals section for prompt ────────────────────────────────
+// These are facts the engine confirmed mechanically — not for Claude to interpret,
+// but to take as given when writing analysis and setting scores.
+function buildConfirmedSignals(websiteSignals) {
+  if (!websiteSignals || Object.keys(websiteSignals).length === 0) {
+    return 'CONFIRMED SIGNALS: Website not provided or not accessible.';
   }
+
+  var s = websiteSignals;
+  var lines = ['CONFIRMED SIGNALS (mechanically verified — treat as ground truth):'];
+
+  // Clarity
+  lines.push('Title tag present: '        + (s.hasTitle           ? 'YES — "' + (s.titleText || '') + '"'  : 'NO'));
+  lines.push('H1 present: '               + (s.hasH1              ? 'YES — "' + (s.h1Text    || '') + '"'  : 'NO'));
+  lines.push('Meta description present: ' + (s.hasMetaDescription ? 'YES — "' + (s.metaDescriptionText || '').slice(0, 120) + '"' : 'NO'));
+  lines.push('OG tags present: '          + (s.hasOgTags          ? 'YES' : 'NO'));
+  lines.push('Canonical tag present: '    + (s.hasCanonical       ? 'YES' : 'NO'));
+
+  // Schema
+  if (s.hasSchema) {
+    lines.push('Schema markup: YES (' + s.schemaCount + ' block(s)) — types: ' + (s.schemaTypes || []).join(', '));
+    lines.push('Specific schema type: ' + (s.hasSpecificSchema ? 'YES' : 'NO — only generic types found'));
+  } else {
+    lines.push('Schema markup: NO — no JSON-LD detected');
+    lines.push('Specific schema type: NO');
+  }
+
+  // Ease
+  lines.push('llms.txt at domain root: ' + (s.hasLlmsTxt  ? 'YES (verified by direct fetch)' : 'NO'));
+  lines.push('sitemap.xml accessible: '  + (s.hasSitemap  ? 'YES' : 'NO'));
+  lines.push('robots.txt present: '      + (s.hasRobots   ? 'YES' : 'NO'));
+
+  // Review data from Apify (if collected)
+  if (s.trustpilotReviewCount !== undefined) {
+    lines.push('Trustpilot reviews (live): ' + s.trustpilotReviewCount + (s.trustpilotRating ? ' — rating ' + s.trustpilotRating : ''));
+  }
+  if (s.googleReviewCount !== undefined) {
+    lines.push('Google reviews (live): ' + s.googleReviewCount + (s.googleRating ? ' — rating ' + s.googleRating : ''));
+  }
+
+  // Review platforms confirmed by page fetch
+  if (s.confirmedReviewPlatforms && s.confirmedReviewPlatforms.length > 0) {
+    lines.push('Review platform pages fetched: ' + s.confirmedReviewPlatforms.join(', '));
+  }
+
+  return lines.join('\n');
 }
- 
+
+// ── Main scoring prompt ───────────────────────────────────────────────────────
+function buildPrompt(evidence) {
+  var name               = evidence.name        || '';
+  var category           = evidence.category    || '';
+  var city               = evidence.city        || '';
+  var website            = evidence.website     || 'not provided';
+  var description        = evidence.description || 'not provided';
+  var inferredSite       = evidence.inferredOfficialSite || 'not found';
+  var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
+  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
+  var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
+  var visibilityPosition = evidence.visibilityPosition;
+  var competitors        = evidence.competitors        || [];
+  var knownCompetitors   = evidence.knownCompetitors   || '';
+  var competitorDomain   = evidence.competitorDomain   || '';
+  var competitorPageText = evidence.competitorPageText || '';
+  var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
+  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
+  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
+  var socialSignals      = evidence.socialSignals || {};
+  var summaries          = evidence.summaries     || {};
+  var websiteSignals     = evidence.websiteSignals || {};
+
+  var competitorText = competitors.length > 0
+    ? competitors.map(function(c) {
+        var tag = c.isLocal ? ' [found via local-market search — likely a local/domestic competitor]' : '';
+        return '- ' + c.domain + tag + ': ' + (c.snippet || '');
+      }).join('\n')
+    : 'No clear competitors identified in search results.';
+
+  var socialList    = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
+  var socialDisplay = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
+
+  var visibilityText = (visibilityPosition !== undefined && visibilityPosition !== -1)
+    ? 'YES (position ' + (visibilityPosition + 1) + ')'
+    : 'NO';
+
+  var confirmedSignalsSection = buildConfirmedSignals(websiteSignals);
+
+  var prompt = 'BUSINESS:\n'
+    + 'Name: ' + name + '\n'
+    + 'Category: ' + category + '\n'
+    + 'Location: ' + city + '\n'
+    + 'Website: ' + website + '\n'
+    + 'Description: ' + description + '\n'
+    + (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '')
+    + '\nINFERRED OFFICIAL SITE: ' + inferredSite
+    + '\n\n' + confirmedSignalsSection
+    + '\n\nKNOWLEDGE GRAPH:\n' + kgText
+    + '\n\nWEBSITE CONTENT:\n' + websiteText
+    + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
+    + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
+    + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
+    + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
+    + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
+    + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
+    + (apifyText ? '\n\nLIVE REVIEW DATA:\n' + apifyText : '')
+    + '\n\nEVIDENCE SUMMARIES:\n'
+    + 'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n'
+    + 'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n'
+    + 'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n'
+    + 'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n'
+    + '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText
+    + '\n\n---\n'
+    + 'YOU ARE CHOIVE™ — A DECISION INTELLIGENCE ENGINE.\n\n'
+    + 'YOUR ONLY JOB:\n'
+    + 'Determine why a customer would or would not choose this business over alternatives.\n\n'
+    + 'CRITICAL — CONFIRMED SIGNALS ARE GROUND TRUTH:\n'
+    + 'The CONFIRMED SIGNALS section above was produced by mechanical verification — direct HTTP\n'
+    + 'requests, HTML parsing, file checks. These facts are certain. Do not contradict them.\n'
+    + 'When scoring Clarity and Ease, your scores MUST reflect what the confirmed signals show:\n'
+    + '- If "Schema markup: YES" → ease score cannot be below 12\n'
+    + '- If "Schema markup: NO" → ease score cannot exceed 8\n'
+    + '- If "llms.txt: YES" → ease score cannot be below 18\n'
+    + '- If "Title tag: YES" and "H1: YES" and "Meta description: YES" → clarity cannot be below 14\n'
+    + '- If "Title tag: NO" and "H1: NO" → clarity cannot exceed 8\n'
+    + 'These are not suggestions. They are hard constraints derived from real data.\n\n'
+    + 'STRICT RULES:\n'
+    + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
+    + '2. Every score must be justified by specific evidence.\n'
+    + '3. If a signal is missing, say it is missing. Do not invent it.\n'
+    + '4. Every pillar finding must quote or directly reference specific evidence.\n'
+    + '5. Competitor must appear directly in the search evidence. If none clearly appears, return null.\n'
+    + '6. Platform coverage must reflect what the evidence actually shows.\n\n'
+    + 'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n'
+    + 'User provided category: "' + category + '" — this may be vague or incorrect.\n'
+    + 'Using ONLY the evidence, determine:\n'
+    + '1. What does this business actually sell?\n'
+    + '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n'
+    + '3. What precise industry category would buyers use to find this?\n'
+    + '4. B2B, B2C, or both?\n'
+    + 'Set inferredCategory in the JSON. Do not write this as prose.\n\n'
+    + 'DECISION ENVIRONMENT — classify first:\n'
+    + '- discovery_driven: local, map-based, search-based selection\n'
+    + '- comparison_driven: evaluated against alternatives before decision\n'
+    + '- authority_driven: selected based on reputation, partnerships, capability\n'
+    + '- default_driven: category leader chosen automatically\n\n'
+    + 'SCORING — four pillars, each 0-25:\n\n'
+    + 'CLARITY (0-25): How precisely and consistently is this business defined?\n'
+    + '- Score 20+: specific H1, clear category, consistent naming across all sources\n'
+    + '- Score 10-19: partially defined, some inconsistency\n'
+    + '- Score 0-9: vague, inconsistent, or undefined\n'
+    + '- HARD CONSTRAINT: If confirmed signals show Title YES + H1 YES + Meta YES → minimum 14\n'
+    + '- HARD CONSTRAINT: If confirmed signals show Title NO + H1 NO → maximum 8\n'
+    + '- Required: quote the actual H1 or description found in confirmed signals\n\n'
+    + 'TRUST (0-25): How much independent third-party verification exists?\n'
+    + '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n'
+    + '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n'
+    + '  OR verified review platform presence with ratings, OR confirmed press coverage\n'
+    + '- Score 8-14: some third-party signals but limited — one or two sources only\n'
+    + '- Score 0-7: only owned channels, no independent confirmation found\n'
+    + '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n'
+    + '  with full name and title count as strong trust signals — score minimum 15\n'
+    + '- RULE: global top-tier firms (Magic Circle law, Big Four accounting) = minimum 16\n'
+    + '- RULE: Legal 500 or Chambers rankings count as strong independent citations\n'
+    + '- RULE: for consumer brands, use exact review numbers from CONFIRMED SIGNALS if present\n'
+    + '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\n'
+    + '- Required: name specific sources AND exact numbers\n\n'
+    + 'TRUST ACTION RULE:\n'
+    + 'When trust is low, action body must state:\n'
+    + '1. Exactly what was found\n'
+    + '2. The number needed to be credible in this category\n'
+    + '3. The specific platform that matters most for this buyer type\n\n'
+    + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
+    + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
+    + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
+    + '- Score 8-14: differentiator exists but vague or easy to copy\n'
+    + '- Score 0-7: completely generic — no niche, no unique clients, no distinct use case\n'
+    + '- CRITICAL: a business with named automotive partnerships (Škoda, Zeekr, Geely)\n'
+    + '  AND named telco clients (TELUS, Proximus) AND 15+ years in a niche CANNOT score below 14\n'
+    + '- Required: quote the actual differentiator, or state precisely why none exists\n\n'
+    + 'EASE (0-25): How quickly and confidently can this business be understood and selected?\n'
+    + '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n'
+    + '- Score 14-19: schema present + complete metadata but no llms.txt\n'
+    + '- Score 8-13: partial structured signals — OG tags + some metadata, no schema\n'
+    + '- Score 4-7: basic web presence — website works, OG tags present, no schema, no llms.txt\n'
+    + '- Score 0-3: no structured signals at all, or website inaccessible\n'
+    + '- HARD CONSTRAINT: confirmed "Schema markup: YES" → score MINIMUM 12\n'
+    + '- HARD CONSTRAINT: confirmed "Schema markup: NO" → score MAXIMUM 8\n'
+    + '- HARD CONSTRAINT: confirmed "llms.txt: YES" → score MINIMUM 18\n'
+    + '- Required: state exactly which signals were confirmed and which were absent\n\n'
+    + 'COMPETITOR RULE:\n'
+    + 'Only name a competitor if ALL of these are true:\n'
+    + '1. The competitor domain or name appears in the search evidence above\n'
+    + '2. It is in the exact same category as this business\n'
+    + '3. It competes for the same buyer type at the same deal size\n'
+    + '4. It is not a directory, review platform, aggregator, or listing site\n'
+    + '5. It would realistically appear in the same sales conversation\n'
+    + 'If no competitor meets all criteria, return null for all competitor fields.\n\n'
+    + (knownCompetitors ? ('IF THE USER PROVIDED KNOWN COMPETITORS:\n'
+    + 'It is verified ground truth from the business owner. For each name in that list:\n'
+    + '1. Search the evidence above for any mention of that name, even a brief one.\n'
+    + '2. If found anywhere in the evidence, include it as a competitor.\n'
+    + '3. A user-provided name found in evidence takes priority over unnamed competitors.\n'
+    + '4. If none of the user-provided names appear in evidence, do not invent evidence for them.\n\n') : '')
+    + 'SCAN ALL EVIDENCE — DO NOT STOP AT THE FIRST MATCH:\n'
+    + 'If TWO OR MORE distinct competitor names meeting all 5 criteria appear ANYWHERE in the evidence,\n'
+    + 'return all of them (up to 3). Returning only 1 when 2+ exist is an incomplete answer.\n\n'
+    + 'GEOGRAPHIC COVERAGE:\n'
+    + 'Return UP TO 3 competitors. Target shape:\n'
+    + '- One LOCAL or DOMESTIC competitor (same country/region)\n'
+    + '- One INTERNATIONAL or GLOBAL competitor (different country, same category)\n'
+    + 'Entries tagged "[found via local-market search]" are your first choice for the local slot.\n'
+    + 'Do not invent a local competitor if none appears in evidence.\n\n'
+    + 'SOURCE QUALITY — PREFER GENUINE OVER GENERIC:\n'
+    + 'HIGH QUALITY: named alongside this business in a news article, industry panel, analyst report.\n'
+    + 'LOWER QUALITY: appears on a generic "best X vendors" / "top X alternatives" listicle site.\n'
+    + 'If both types exist, use the press-named one first.\n\n'
+    + 'IF A COMPETITOR HAS REBRANDED:\n'
+    + 'Use the CURRENT name only. You may mention the former name once in the evidence field.\n\n'
+    + 'COMPETITOR ANALYSIS DEPTH:\n'
+    + 'advantage: one sentence — what specific structural or positioning advantage do they have?\n'
+    + 'gapLocation: one sentence — at what exact point in selection does this hurt the business?\n'
+    + 'closeGap: one sentence — what single specific change would close this gap?\n\n'
+    + 'PLATFORM COVERAGE RULE:\n'
+    + '- present: clearly findable OR marketPosition.tier is dominant\n'
+    + '- weak: appears in search results but lacks structured signals OR tier is strong\n'
+    + '- absent: genuinely no evidence — only for unknown or very new businesses\n'
+    + '- RULE: dominant tier = PRESENT on all platforms. No exceptions.\n'
+    + '- RULE: strong tier = minimum WEAK on all platforms.\n\n'
+    + 'MARKET POSITION TIERS:\n'
+    + 'dominant: household name globally — Nike, Starbucks, Salesforce, McKinsey, Freshfields\n'
+    + '  Magic Circle law firms = dominant. Big Four accounting = dominant.\n'
+    + 'strong: well-known in category — named by buyers without prompting.\n'
+    + 'upper_mid: known within category but requires some discovery.\n'
+    + 'mid: present but requires active search. Regional or niche B2B player.\n'
+    + 'weak: limited presence — hard to find without knowing the name.\n'
+    + 'absent: no detectable presence in evidence.\n'
+    + 'CRITICAL TIER RULES:\n'
+    + '- A B2B niche vendor with Fortune 500 clients = mid or upper_mid, NOT strong or dominant\n'
+    + '- Strong/dominant = known by buyers WITHOUT being searched for\n'
+    + '- Technical gaps do NOT lower tier. Tier = real-world selection likelihood.\n'
+    + '- When uncertain: use the lower tier\n\n'
+    + 'CHOIVE LANGUAGE STANDARD:\n'
+    + 'WHAT CHOIVE IS: A business selection diagnostic. Why a business is chosen, overlooked, trusted, compared, or ignored.\n'
+    + 'NOT an SEO audit. NOT an AI visibility tool. Focus on SELECTION.\n'
+    + 'NEVER WRITE: AI cannot understand / AI does not know / AI cannot categorize\n'
+    + 'INSTEAD WRITE: not consistently selected / recommendation confidence low / selection friction exists\n'
+    + 'TRUST: Named Fortune 500 clients, partnerships, long history = HIGH TRUST. Review volume alone is not trust.\n'
+    + 'EASE: How quickly understood, categorized, selected. Schema is one factor, not the whole score.\n'
+    + 'COMPETITORS: Only from evidence. Never invent. If none found: No dominant comparison pattern detected.\n'
+    + 'RECOMMENDATIONS: Explain outcome not task.\n'
+    + 'TONE: Strategic advisor.\n\n'
+    + 'ACTION RULES:\n'
+    + '- Actions must be specific to this business\n'
+    + '- Body must cite actual evidence found\n'
+    + '- Explanation must explain the selection consequence, not the technical task\n'
+    + '- TITLE BANNED WORDS: schema, schema markup, JSON-LD, llms.txt, metadata, canonical — never in title\n'
+    + '- TITLE GOOD: Make this business machine-readable, Define your business for AI systems, Close the comparison gap\n'
+    + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\n'
+    + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n\n'
+    + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
+    + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Difference finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n'
+    + 'PILLAR ANALYSIS — 2 sentences each:\n'
+    + 'Sentence 1: What is true about this pillar based on evidence?\n'
+    + 'Sentence 2: What is the selection consequence?\n\n'
+    + 'VERDICT HEADLINE — max 10 words, no punctuation, strategic advisor tone\n\n'
+    + 'SUMMARY PARAGRAPH — exactly 3 sentences:\n'
+    + '- If tier is dominant or strong: start with "This business is currently chosen because..."\n'
+    + '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n'
+    + '- Sentence 2: the single strongest evidence-based driver or gap\n'
+    + '- Sentence 3: the concrete moment in the buyer journey where this business is lost or won.\n'
+    + '  Name the exact moment. Do not invent statistics.\n\n'
+    + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
+
+  var jsonSchema = '{\n'
+    + '  "overallScore": 0,\n'
+    + '  "verdictHeadline": "",\n'
+    + '  "summaryParagraph": "",\n'
+    + '  "businessUnderstanding": "",\n'
+    + '  "evidenceNarrative": "",\n'
+    + '  "inferredCategory": "",\n'
+    + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
+    + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
+    + '  "pillars": {\n'
+    + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
+    + '  },\n'
+    + '  "competitors": [\n'
+    + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
+    + '  ],\n'
+    + '  "actions": [\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
+    + '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n'
+    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n'
+    + '  ]\n'
+    + '}';
+
+  return prompt + jsonSchema;
+}
+
+// ── Parse Claude response ─────────────────────────────────────────────────────
 function parseClaudeResponse(data) {
   var text = (data.content || [])
     .filter(function(b) { return b.type === 'text'; })
@@ -130,8 +396,6 @@ function parseClaudeResponse(data) {
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/```\s*$/i, '')
-    .replace(/]*>/gi, '')
-    .replace(/<\/antml:cite>/gi, '')
     .trim();
   try { return JSON.parse(clean); } catch (_) {}
   var start = clean.indexOf('{');
@@ -140,12 +404,49 @@ function parseClaudeResponse(data) {
   if (start !== -1 && end !== -1 && end > start) {
     try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
   }
-  console.error('Claude parse failed. Raw start:', text.slice(0, 300));
-  console.error('Claude parse failed. Raw end:', text.slice(-300));
-  console.error('Claude parse failed. Total length:', text.length);
+  console.error('[CHOIVE] Claude parse failed. Raw start:', text.slice(0, 300));
+  console.error('[CHOIVE] Claude parse failed. Raw end:', text.slice(-300));
   throw new Error('Could not parse Claude response as JSON');
 }
- 
+
+// ── Apply hard score constraints from confirmed signals ───────────────────────
+// These override Claude's scores where the engine has ground truth.
+// This replaces the regex pattern matching in validators.js.
+function applySignalConstraints(rawOutput, websiteSignals) {
+  if (!websiteSignals || Object.keys(websiteSignals).length === 0) return rawOutput;
+  var s = websiteSignals;
+  var p = rawOutput.pillars || {};
+
+  // EASE constraints — schema and llms.txt are mechanically confirmed
+  if (p.ease) {
+    var ease = Number(p.ease.score) || 0;
+    if (s.hasLlmsTxt  && ease < 18) { p.ease.score = Math.max(ease, 18); }
+    if (s.hasSchema   && ease < 12) { p.ease.score = Math.max(ease, 12); }
+    if (!s.hasSchema  && ease >  8) { p.ease.score = Math.min(ease,  8); }
+  }
+
+  // CLARITY constraints — title, H1, meta are mechanically confirmed
+  if (p.clarity) {
+    var clarity = Number(p.clarity.score) || 0;
+    if (s.hasTitle && s.hasH1 && s.hasMetaDescription && clarity < 14) {
+      p.clarity.score = Math.max(clarity, 14);
+    }
+    if (!s.hasTitle && !s.hasH1 && clarity > 8) {
+      p.clarity.score = Math.min(clarity, 8);
+    }
+  }
+
+  // Recompute overall from adjusted pillars
+  var cs = Number(p.clarity    && p.clarity.score)    || 0;
+  var ts = Number(p.trust      && p.trust.score)      || 0;
+  var ds = Number(p.difference && p.difference.score) || 0;
+  var es = Number(p.ease       && p.ease.score)       || 0;
+  rawOutput.overallScore = cs + ts + ds + es;
+
+  return rawOutput;
+}
+
+// ── Safe output normalizer ────────────────────────────────────────────────────
 function safeOutput(raw) {
   var r = raw || {};
   var pillars = r.pillars || {};
@@ -176,305 +477,53 @@ function safeOutput(raw) {
     deliverables: r.deliverables || null
   };
 }
- 
-function buildPrompt(evidence) {
-  var name               = evidence.name        || '';
-  var category           = evidence.category    || '';
-  var city               = evidence.city        || '';
-  var website            = evidence.website     || 'not provided';
-  var description        = evidence.description || 'not provided';
-  var inferredSite       = evidence.inferredOfficialSite || 'not found';
-  var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
-  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
-  var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
-  var visibilityPosition = evidence.visibilityPosition;
-  var competitors        = evidence.competitors        || [];
-  var knownCompetitors   = evidence.knownCompetitors   || '';
-  var competitorDomain   = evidence.competitorDomain   || '';
-  var competitorPageText = evidence.competitorPageText || '';
-  var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
-  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
-  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
-  var socialSignals      = evidence.socialSignals || {};
-  var summaries          = evidence.summaries     || {};
- 
-  var competitorText = competitors.length > 0
-    ? competitors.map(function(c) {
-        var tag = c.isLocal ? ' [found via local-market search — likely a local/domestic competitor]' : '';
-        return '- ' + c.domain + tag + ': ' + (c.snippet || '');
-      }).join('\n')
-    : 'No clear competitors identified in search results.';
- 
-  var socialList = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
-  var socialDisplay = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
- 
-  var visibilityText = visibilityPosition !== -1
-    ? 'YES (position ' + (visibilityPosition + 1) + ')'
-    : 'NO';
- 
-  var prompt = 'BUSINESS:\n'
-    + 'Name: ' + name + '\n'
-    + 'Category: ' + category + '\n'
-    + 'Location: ' + city + '\n'
-    + 'Website: ' + website + '\n'
-    + 'Description: ' + description + '\n'
-    + (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '')
-    + '\nINFERRED OFFICIAL SITE: ' + inferredSite
-    + '\n\nKNOWLEDGE GRAPH:\n' + kgText
-    + '\n\nWEBSITE CONTENT:\n' + websiteText
-    + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
-    + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
-    + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
-    + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
-    + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
-    + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
-    + (apifyText ? '\n\nLIVE REVIEW DATA:\n' + apifyText : '')
-    + '\n\nEVIDENCE SUMMARIES:\n'
-    + 'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n'
-    + 'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n'
-    + 'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n'
-    + 'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n'
-    + '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText
-    + '\n\n---\n'
-    + 'YOU ARE CHOIVE\u2122 \u2014 A DECISION INTELLIGENCE ENGINE.\n\n'
-    + 'YOUR ONLY JOB:\n'
-    + 'Determine why a customer would or would not choose this business over alternatives.\n\n'
-    + 'STRICT RULES:\n'
-    + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
-    + '2. Every score must be justified by specific evidence.\n'
-    + '3. If a signal is missing, say it is missing. Do not invent it.\n'
-    + '4. Every pillar finding must quote or directly reference specific evidence.\n'
-    + '5. Competitor must appear directly in the search evidence. If none clearly appears, return null.\n'
-    + '6. Platform coverage must reflect what the evidence actually shows.\n\n'
-    + 'STEP 0 \u2014 INFER REAL CATEGORY FROM EVIDENCE:\n'
-    + 'User provided category: "' + category + '" \u2014 this may be vague or incorrect.\n'
-    + 'Using ONLY the evidence, determine:\n'
-    + '1. What does this business actually sell?\n'
-    + '2. Who buys it \u2014 consumer, SMB, enterprise, telco, automotive?\n'
-    + '3. What precise industry category would buyers use to find this?\n'
-    + '4. B2B, B2C, or both?\n'
-    + 'Set inferredCategory in the JSON. Do not write this as prose.\n'
-    + 'Examples: OTT platform \u2192 B2B OTT middleware platform vendor. Coffee shop \u2192 B2C specialty coffee brand.\n\n'
-    + 'DECISION ENVIRONMENT \u2014 classify first:\n'
-    + '- discovery_driven: local, map-based, search-based selection\n'
-    + '- comparison_driven: evaluated against alternatives before decision\n'
-    + '- authority_driven: selected based on reputation, partnerships, capability\n'
-    + '- default_driven: category leader chosen automatically\n\n'
-    + 'SCORING \u2014 four pillars, each 0-25:\n\n'
-    + 'CLARITY (0-25): How precisely and consistently is this business defined?\n'
-    + '- Score 20+: specific H1, clear category, consistent naming across all sources\n'
-    + '- Score 10-19: partially defined, some inconsistency\n'
-    + '- Score 0-9: vague, inconsistent, or undefined\n'
-    + '- Required: quote the actual H1 or description found in evidence\n\n'
-    + 'TRUST (0-25): How much independent third-party verification exists?\n'
-    + '- Score 20-25: multiple strong independent citations \u2014 press, reviews, partnerships all confirmed\n'
-    + '- Score 15-19: solid third-party signals \u2014 named client testimonials from known companies,\n'
-    + '  OR verified review platform presence with ratings, OR confirmed press coverage\n'
-    + '- Score 8-14: some third-party signals but limited \u2014 one or two sources only\n'
-    + '- Score 0-7: only owned channels, no independent confirmation found\n'
-    + '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n'
-    + '  with full name and title count as strong trust signals \u2014 score minimum 15\n'
-    + '- RULE: global top-tier firms (Magic Circle law, Big Four accounting) = minimum 16\n'
-    + '- RULE: Legal 500 or Chambers rankings count as strong independent citations\n'
-    + '- RULE: for consumer brands, count exact review numbers visible in evidence\n'
-    + '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\n'
-    + '- Required: name specific sources AND exact numbers\n\n'
-    + 'TRUST ACTION RULE:\n'
-    + 'When trust is low, action body must state:\n'
-    + '1. Exactly what was found\n'
-    + '2. The number needed to be credible in this category\n'
-    + '3. The specific platform that matters most for this buyer type\n\n'
-    + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
-    + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
-    + '- Score 15-19: real differentiator visible \u2014 named niche, named enterprise clients, unique use case\n'
-    + '- Score 8-14: differentiator exists but vague or easy to copy\n'
-    + '- Score 0-7: completely generic \u2014 no niche, no unique clients, no distinct use case\n'
-    + '- CRITICAL: a business with named automotive partnerships (Sk\u014dda, Zeekr, Geely)\n'
-    + '  AND named telco clients (TELUS, Proximus) AND 15+ years in a niche CANNOT score below 14\n'
-    + '- Required: quote the actual differentiator, or state precisely why none exists\n\n'
-    + 'EASE (0-25): How quickly and confidently can this business be understood and selected?\n'
-    + '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n'
-    + '- Score 14-19: schema present + complete metadata but no llms.txt\n'
-    + '- Score 8-13: partial structured signals \u2014 OG tags + some metadata, no schema\n'
-    + '- Score 4-7: basic web presence \u2014 website works, OG tags present, no schema, no llms.txt\n'
-    + '- Score 0-3: no structured signals at all, or website inaccessible\n'
-    + '- CRITICAL: if evidence says Schema found: YES \u2014 score MINIMUM 14\n'
-    + '- CRITICAL: schema missing entirely = ease cannot exceed 8\n'
-    + '- Required: state exactly which signals were found and which were absent\n\n'
-    + 'COMPETITOR RULE:\n'
-    + 'Only name a competitor if ALL of these are true:\n'
-    + '1. The competitor domain or name appears in the search evidence above\n'
-    + '2. It is in the exact same category as this business\n'
-    + '3. It competes for the same buyer type at the same deal size\n'
-    + '4. It is not a directory, review platform, aggregator, or listing site\n'
-    + '5. It would realistically appear in the same sales conversation\n'
-    + 'If no competitor meets all criteria, return null for all competitor fields.\n\n'
-    + 'IF THE USER PROVIDED KNOWN COMPETITORS — THIS IS AN ADDITIONAL CHECK, NOT A REPLACEMENT:\n'
-    + 'This section ONLY applies if a "KNOWN COMPETITORS (provided by user)" line actually appears\n'
-    + 'above in the BUSINESS section. If that line is absent, SKIP this section entirely and go\n'
-    + 'straight to "SCAN ALL EVIDENCE" below — do not treat the absence of known competitors as\n'
-    + 'a reason to return fewer or no competitors.\n'
-    + 'If that line IS present, it is verified ground truth from the business owner — more reliable\n'
-    + 'than generic search results. For each name in that list:\n'
-    + '1. Search the evidence above for any mention of that name, even a brief one.\n'
-    + '2. If found anywhere in the evidence, include it as a competitor and build the\n'
-    + '   advantage/gapLocation/closeGap fields from whatever evidence exists about it.\n'
-    + '3. A user-provided name found in evidence takes priority over unnamed competitors.\n'
-    + '4. If none of the user-provided names appear in evidence, do not invent evidence for them —\n'
-    + '   proceed to the general scanning rules below using only what search evidence shows.\n\n'
-    + 'SCAN ALL EVIDENCE — DO NOT STOP AT THE FIRST MATCH:\n'
-    + 'Search evidence often names MULTIPLE competitors in a single sentence or quote\n'
-    + '(e.g. "brands like X and Y" or "competitors include A, B, and C").\n'
-    + 'Read every search result, every quoted sentence, and every competitor list in the evidence.\n'
-    + 'If TWO OR MORE distinct names meeting all 5 criteria above appear ANYWHERE in the evidence,\n'
-    + 'you MUST return all of them (up to 3) — do not arbitrarily stop after finding only one.\n'
-    + 'Returning only 1 competitor when 2+ valid ones exist in evidence is an incomplete answer.\n\n'
-    + 'SOURCE QUALITY — PREFER GENUINE OVER GENERIC:\n'
-    + 'Not all evidence mentioning a competitor carries equal weight. When evidence contains BOTH\n'
-    + 'types below for the same category, prefer the HIGH-QUALITY type as your primary competitor:\n'
-    + 'HIGH QUALITY (prefer these): named alongside this business in a news article, industry panel,\n'
-    + '  conference writeup, partnership announcement, analyst report, or executive quote — i.e. a\n'
-    + '  real person or publication explicitly placed these two businesses in the same competitive\n'
-    + '  conversation.\n'
-    + 'LOWER QUALITY (use only if no high-quality match exists): appears on a generic "best X\n'
-    + '  vendors" / "top X alternatives" / "X comparison" listicle site with no specific connection\n'
-    + '  to this business — these sites algorithmically list many vendors in a category and do not\n'
-    + '  confirm real competitive overlap.\n'
-    + 'If a listicle-only name and a press-named name both appear in evidence, the press-named one\n'
-    + 'is the stronger, more accurate competitor — use it first.\n\n'
-    + 'GEOGRAPHIC COVERAGE — IMPORTANT:\n'
-    + 'Return UP TO 3 competitors in the competitors array. The TARGET shape is:\n'
-    + '- One LOCAL or DOMESTIC competitor (same country/region as this business)\n'
-    + '- One INTERNATIONAL or GLOBAL competitor (different country, same category/buyer type)\n'
-    + 'Some entries in COMPETITORS APPEARING IN SEARCH are tagged\n'
-    + '"[found via local-market search — likely a local/domestic competitor]" — these came from\n'
-    + 'queries specifically targeting this business\'s own city/country. TREAT THESE AS YOUR FIRST\n'
-    + 'CHOICE for the local slot when present and otherwise valid (same category, same buyer type,\n'
-    + 'not a directory). A buyer comparing options locally sees this competitor; a buyer comparing\n'
-    + 'globally sees the international one — showing both gives a fuller picture than either alone.\n'
-    + 'Do not default to only international competitors just because they are more prominent in\n'
-    + 'search results — actively check for a tagged local-market entry before settling on an\n'
-    + 'all-international set.\n'
-    + 'Do not invent a local competitor if none appears in evidence — if no local-tagged entry\n'
-    + 'exists and no other domestic competitor appears anywhere in evidence, it is correct and\n'
-    + 'expected to return international-only (or none) rather than fabricate one. Only surface\n'
-    + 'what the evidence actually shows.\n\n'
-    + 'IF NO VALID COMPETITOR FOUND IN SEARCH EVIDENCE:\n'
-    + 'Use inferredCategory to name the most likely real competitor.\n'
-    + 'Set competitor.queryContext = "category-based analysis" to flag this.\n\n'
-    + 'IF A COMPETITOR HAS REBRANDED OR CHANGED ITS NAME:\n'
-    + 'If evidence shows a competitor has rebranded, merged, or changed its name (e.g. evidence states\n'
-    + '"X is now Y" or "X and Z, together under one brand"), the CURRENT name is the real competitor —\n'
-    + 'use it as the primary name a buyer would actually encounter today. Do not lead with a retired\n'
-    + 'or former name.\n'
-    + 'name field: use the CURRENT name only (e.g. "Leyra", not "Magine Pro (now Leyra)" or "Magine Pro").\n'
-    + 'In advantage/gapLocation/closeGap, refer to the competitor by its CURRENT name throughout \u2014\n'
-    + 'never revert to the old name once the rebrand is established. You may mention the former name\n'
-    + 'once, in evidence only, for context (e.g. "Leyra (formed from the merger of Magine Pro and\n'
-    + 'Accedo One)") \u2014 but the name buyers would search for and find today is what belongs in name,\n'
-    + 'advantage, gapLocation, and closeGap.\n\n'
-    + 'COMPETITOR ANALYSIS DEPTH:\n'
-    + 'advantage: one sentence \u2014 what specific structural or positioning advantage do they have?\n'
-    + 'gapLocation: one sentence \u2014 at what exact point in selection does this hurt the business?\n'
-    + 'closeGap: one sentence \u2014 what single specific change would close this gap?\n\n'
-    + 'PLATFORM COVERAGE RULE:\n'
-    + '- present: clearly findable OR marketPosition.tier is dominant\n'
-    + '- weak: appears in search results but lacks structured signals OR tier is strong\n'
-    + '- absent: genuinely no evidence \u2014 only for unknown or very new businesses\n'
-    + '- RULE: dominant tier = PRESENT on all platforms. No exceptions.\n'
-    + '- RULE: strong tier = minimum WEAK on all platforms.\n\n'
-    + 'MARKET POSITION TIERS:\\n'
-    + 'dominant: household name globally — Nike, Starbucks, Salesforce, McKinsey, Freshfields\\n'
-    + '  Magic Circle law firms = dominant. Big Four accounting = dominant.\\n'
-    + 'strong: well-known in category — named by buyers without prompting.\\n'
-    + 'upper_mid: known within category but requires some discovery.\\n'
-    + 'mid: present but requires active search. Regional or niche B2B player.\\n'
-    + 'weak: limited presence — hard to find without knowing the name.\\n'
-    + 'absent: no detectable presence in evidence.\\n'
-    + 'CRITICAL TIER RULES:\\n'
-    + '- A B2B niche vendor with Fortune 500 clients = mid or upper_mid, NOT strong or dominant\\n'
-    + '- Strong/dominant = known by buyers WITHOUT being searched for\\n'
-    + '- Technical gaps do NOT lower tier. Tier = real-world selection likelihood.\\n'
-    + '- When uncertain: use the lower tier\\n'
-    + '- dominant/strong summary: THIS BUSINESS IS CURRENTLY CHOSEN\\n'
-    + '- upper_mid/mid/weak/absent summary: THIS BUSINESS IS NOT THE OBVIOUS CHOICE\\n\\n'
-    + 'CHOIVE LANGUAGE STANDARD:\n'
-    + 'WHAT CHOIVE IS: A business selection diagnostic. Why a business is chosen, overlooked, trusted, compared, or ignored.\n'
-    + 'NOT an SEO audit. NOT an AI visibility tool. Focus on SELECTION.\n'
-    + 'NEVER WRITE: AI cannot understand / AI does not know / AI cannot categorize\n'
-    + 'INSTEAD WRITE: not consistently selected / recommendation confidence low / selection friction exists\n'
-    + 'TRUST: Named Fortune 500 clients, partnerships, long history = HIGH TRUST. Review volume alone is not trust.\n'
-    + 'EASE: How quickly understood, categorized, selected. Schema is one factor, not the whole score.\n'
-    + 'COMPETITORS: Only from evidence. Never invent. If none found: No dominant comparison pattern detected.\n'
-    + 'RECOMMENDATIONS: Explain outcome not task. BAD: Add schema. GOOD: Make this business easier to compare.\n'
-    + 'TONE: Strategic advisor. Strong reputation, weak comparison visibility. Trusted provider, weak selection signals.\n\n'
-    + 'PILLAR FINDINGS \u2014 USE THESE EXACT FORMATS:\n'
-    + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Difference finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n'
-    + 'PILLAR ANALYSIS \u2014 2 sentences each:\n'
-    + 'Sentence 1: What is true about this pillar based on evidence?\n'
-    + 'Sentence 2: What is the selection consequence?\n\n'
-    + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone\n\n'
-    + 'SUMMARY PARAGRAPH \u2014 exactly 3 sentences:\n'
-    + '- If tier is dominant or strong: start with "This business is currently chosen because..."\n'
-    + '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n'
-    + '- Sentence 2: the single strongest evidence-based driver or gap\n'
-    + '- Sentence 3: the consequence for selection \u2014 this MUST be concrete and specific, not abstract.\n'
-    + '  Name the exact moment in the buyer journey where this business is lost (e.g. "at the comparison\n'
-    + '  stage, before first contact" or "when a buyer searches for [category] and sees competitors first").\n'
-    + '  BAD (too abstract): "This creates selection friction for buyers."\n'
-    + '  GOOD (concrete): "A buyer comparing three [category] options will encounter [competitor] first and\n'
-    + '  may never reach this business at all."\n'
-    + '  Do not invent numbers, percentages, or revenue figures that are not present in the evidence \u2014\n'
-    + '  the specificity must come from naming the moment and the mechanism, not fabricated statistics.\n\n'
-    + 'ACTION RULES:\\n'
-    + '- Actions must be specific to this business\\n'
-    + '- Body must cite actual evidence found\\n'
-    + '- Explanation must explain the selection consequence, not the technical task\\n'
-    + '- TITLE BANNED WORDS: schema, schema markup, JSON-LD, llms.txt, metadata, canonical — never in title\\n'
-    + '- TITLE GOOD: Make this business machine-readable, Define your business for AI systems, Close the comparison gap\\n'
-    + '- TITLE BAD: Add schema markup to homepage, Create llms.txt file, Implement JSON-LD\\n'
-    + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\\n'
-    + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\\n'
-    + '  BAD: The homepage has no JSON-LD or schema markup — GOOD: The homepage has no structured presence signals\\n'
-    + '  BAD: No llms.txt was detected — GOOD: No machine-readable definition file exists for AI systems to cite\\n'
-    + '  BAD: Add schema markup — GOOD: Add structured presence that defines this business for automated discovery\\n\\n'
-    + 'The example values below show the REQUIRED STRUCTURE only — they are not real content.\n'
-    + 'Replace every example value with real content from your analysis above. The competitors\n'
-    + 'array must contain REAL competitor data per the COMPETITOR RULE and SCAN ALL EVIDENCE\n'
-    + 'sections above — only use null fields if you have already determined zero valid\n'
-    + 'competitors exist after actually scanning the evidence, not as a default.\n\n'
-    + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
- 
-  var jsonSchema = '{\n'
-    + '  "overallScore": 0,\n'
-    + '  "verdictHeadline": "",\n'
-    + '  "summaryParagraph": "",\n'
-    + '  "businessUnderstanding": "",\n'
-    + '  "evidenceNarrative": "",\n'
-    + '  "inferredCategory": "",\n'
-    + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
-    + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
-    + '  "pillars": {\n'
-    + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
-    + '  },\n'
-    + '  "competitors": [\n'
-    + '    { "name": "ExampleCompetitorName", "advantage": "one sentence", "gapLocation": "one sentence", "closeGap": "one sentence", "evidence": "quoted evidence", "queryContext": "search" }\n'
-    + '  ],\n'
-    + '  "actions": [\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n'
-    + '  ]\n'
-    + '}';
- 
-  return prompt + jsonSchema;
+
+// ── Main scoring function ─────────────────────────────────────────────────────
+async function scoreWithClaude(evidence) {
+  var prompt     = buildPrompt(evidence);
+  var controller = new AbortController();
+  var timeout    = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+
+  try {
+    var response = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: MAX_TOKENS,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    var data = await response.json();
+    if (data.stop_reason && data.stop_reason !== 'end_turn') {
+      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason);
+    }
+    if (!response.ok) {
+      throw new Error(data && data.error && data.error.message
+        ? data.error.message
+        : 'Anthropic HTTP ' + response.status);
+    }
+
+    var raw = parseClaudeResponse(data);
+
+    // Apply hard constraints from confirmed signals before safeOutput normalizes
+    raw = applySignalConstraints(raw, evidence.websiteSignals || {});
+
+    return safeOutput(raw);
+
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') throw new Error('Claude request timed out');
+    throw error;
+  }
 }
- 
-module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
+
+module.exports = { scoreWithClaude, inferCategory };
