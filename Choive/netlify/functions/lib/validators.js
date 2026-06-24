@@ -1,5 +1,12 @@
 // lib/validators.js
 // Input validation, result shape validation, score clamping
+//
+// CHANGE FROM PREVIOUS VERSION:
+// The regex-based ease score floor (scanning Claude's evidence text for
+// "schema found: yes") has been removed. Schema presence is now confirmed
+// mechanically in fetchWebsite.js and applied as hard constraints in
+// claude.js (applySignalConstraints) before this function runs.
+// Everything else is identical.
 
 function validateInput(body) {
   const { name, category, city } = body || {};
@@ -119,26 +126,12 @@ function buildSafeOutput(output) {
   }
 
   // ── Clamp pillar scores ───────────────────────────────────────────────────
-  const cs = clampScore(safe.pillars.clarity.score);
-  const ts = clampScore(safe.pillars.trust.score);
-  const ds = clampScore(safe.pillars.difference.score);
-  var esRaw = clampScore(safe.pillars.ease.score);
-  // If evidence confirms schema present, ease cannot be below 10
-  // Claude sometimes under-scores when schema is confirmed in evidence
-  var easeEvidence   = safe.pillars.ease.evidence || '';
-  var easeFinding    = safe.pillars.ease.finding  || '';
-  var schemaConfirmed = (
-    /schema found: yes/i.test(easeEvidence) ||
-    /schema.*yes/i.test(easeEvidence) ||
-    /schema found: yes/i.test(easeFinding) ||
-    /YES.*schema/i.test(easeEvidence) ||
-    /json-ld.*detected/i.test(easeEvidence) ||
-    /\(3 block/i.test(easeEvidence) ||
-    /\(2 block/i.test(easeEvidence) ||
-    /\(1 block/i.test(easeEvidence)
-  );
-  var esFloor = schemaConfirmed ? Math.max(esRaw, 10) : esRaw;
-  const es = esFloor;
+  // Signal-based floors and ceilings are applied in claude.js before this runs.
+  // This function only clamps to valid range (0-25) and applies tier-based floors.
+  const cs    = clampScore(safe.pillars.clarity.score);
+  const ts    = clampScore(safe.pillars.trust.score);
+  const ds    = clampScore(safe.pillars.difference.score);
+  const es    = clampScore(safe.pillars.ease.score);
 
   safe.pillars.clarity.score    = cs;
   safe.pillars.trust.score      = ts;
@@ -146,18 +139,15 @@ function buildSafeOutput(output) {
   safe.pillars.ease.score       = es;
 
   // ── Market tier ───────────────────────────────────────────────────────────
-  const marketTier  = safe.marketPosition.tier;
-  const isDominant  = DOMINANT_TIERS.includes(marketTier);
-  const isStrong    = marketTier === 'strong';
+  const marketTier = safe.marketPosition.tier;
+  const isDominant = DOMINANT_TIERS.includes(marketTier);
+  const isStrong   = marketTier === 'strong';
 
   // ── Difference floor: dominant/strong brands ──────────────────────────────
-  // A globally recognized brand cannot score below 13 on Difference
   const dsAdjusted = (isDominant && ds < 13) ? 13 : ds;
   safe.pillars.difference.score = dsAdjusted;
 
   // ── Trust floor: dominant brands ──────────────────────────────────────────
-  // Magic Circle, Big Four, global institutions don't collect public reviews
-  // Their trust comes from institutional recognition
   const tsAdjusted = (isDominant && ts < 16) ? 16 : ts;
   safe.pillars.trust.score = tsAdjusted;
 
