@@ -2615,6 +2615,12 @@ function resetDiagnostic() {
   if (dI) dI.style.display = 'block';
   var rBtn = document.getElementById('rBtn');
   if (rBtn) rBtn.disabled = false;
+  // Clear paid state so next diagnostic starts fresh — not inherited from previous payment
+  window.__choivePaidVerified = false;
+  // Clear URL params so paid=1 doesn't bleed into the next result
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
   // Scroll to the form so user can immediately run another diagnostic
   var diagSection = document.getElementById('diagnostic');
   if (diagSection) {
