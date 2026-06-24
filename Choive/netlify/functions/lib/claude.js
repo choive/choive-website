@@ -74,7 +74,7 @@ async function scoreWithClaude(evidence) {
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
         max_tokens: MAX_TOKENS,
-        temperature: 0.1,
+        temperature: 0,
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -454,4 +454,3 @@ function buildPrompt(evidence) {
 }
  
 module.exports = { scoreWithClaude: scoreWithClaude, inferCategory: inferCategory };
- 
