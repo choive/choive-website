@@ -2,11 +2,17 @@
 // CHOIVE website evidence extractor
 // Fetches homepage + about page, extracts schema, meta, H1/H2, OG tags
 // Also fetches competitor homepage for comparison
+//
+// CHANGE FROM PREVIOUS VERSION:
+// fetchWebsiteText() now returns { text, signals } instead of just a string.
+// `signals` contains every structured fact already extracted — boolean/string,
+// not prose — so the engine can use them directly without Claude re-interpreting.
+// All other exports are unchanged.
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS      = 8000;
 const LLMS_TIMEOUT_MS = 5000;
-const MAX_CHARS_PAGE = 3000;
-const MAX_CHARS_COMP = 2000;
+const MAX_CHARS_PAGE  = 3000;
+const MAX_CHARS_COMP  = 2000;
 
 // ── Safe fetch with timeout ───────────────────────────────────────────────────
 async function safeFetch(url, maxChars) {
@@ -58,13 +64,6 @@ async function fetchHtml(url) {
 }
 
 // ── Check whether {domain}/llms.txt actually exists ──────────────────────────
-// This is the real, authoritative check — fetches the file directly and
-// verifies a 200 response with plausible text content. The previous approach
-// only checked whether the homepage HTML happened to contain the literal
-// string "llms.txt" somewhere, which misses every business that has deployed
-// a real llms.txt file but never linked to it from their homepage (the
-// overwhelmingly common case, since llms.txt is meant to be discovered by
-// convention at a fixed path, not linked).
 async function checkLlmsTxtExists(baseUrl) {
   if (!baseUrl) return false;
   var url = baseUrl.replace(/\/$/, '') + '/llms.txt';
@@ -79,11 +78,48 @@ async function checkLlmsTxtExists(baseUrl) {
     clearTimeout(timer);
     if (!res.ok) return false;
     var text = await res.text();
-    // Guard against catch-all routes that return 200 with a generic HTML
-    // error/404 page instead of a real 404 status — require it to look like
-    // plain text content, not an HTML document.
     var looksLikeHtml = /<html[\s>]|<!doctype html/i.test(text.slice(0, 200));
     return text.trim().length > 0 && !looksLikeHtml;
+  } catch (err) {
+    clearTimeout(timer);
+    return false;
+  }
+}
+
+// ── Check whether sitemap.xml exists ─────────────────────────────────────────
+async function checkSitemapExists(baseUrl) {
+  if (!baseUrl) return false;
+  var url = baseUrl.replace(/\/$/, '') + '/sitemap.xml';
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 5000);
+  try {
+    var res = await fetch(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    return res.ok;
+  } catch (err) {
+    clearTimeout(timer);
+    return false;
+  }
+}
+
+// ── Check whether robots.txt exists ──────────────────────────────────────────
+async function checkRobotsExists(baseUrl) {
+  if (!baseUrl) return false;
+  var url = baseUrl.replace(/\/$/, '') + '/robots.txt';
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 5000);
+  try {
+    var res = await fetch(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    return res.ok;
   } catch (err) {
     clearTimeout(timer);
     return false;
@@ -108,7 +144,7 @@ function extractText(html, maxChars) {
 function extractSchema(html) {
   if (!html) return { found: false, types: [], count: 0, raw: '' };
   var schemas = [];
-  var types = [];
+  var types   = [];
 
   var regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   var match;
@@ -117,11 +153,7 @@ function extractSchema(html) {
       var parsed = JSON.parse(match[1].trim());
       schemas.push(parsed);
 
-      // Handle both root-level @type and @graph array (recommended schema.org format)
-      // Root-level: { "@type": "Organization", ... }
-      // @graph:     { "@graph": [{ "@type": "Organization" }, { "@type": "WebSite" }] }
       if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
-        // Extract types from all items in the @graph array
         parsed['@graph'].forEach(function(item) {
           if (item && item['@type']) {
             var t = Array.isArray(item['@type']) ? item['@type'].join(',') : item['@type'];
@@ -129,7 +161,6 @@ function extractSchema(html) {
           }
         });
       } else if (parsed['@type']) {
-        // Root-level @type (may be string or array)
         var t = Array.isArray(parsed['@type']) ? parsed['@type'].join(',') : parsed['@type'];
         if (t) types.push(t);
       }
@@ -139,10 +170,10 @@ function extractSchema(html) {
   }
 
   return {
-    found: schemas.length > 0,
-    types: types,
-    count: schemas.length,
-    raw: schemas.length > 0 ? JSON.stringify(schemas[0]).slice(0, 500) : ''
+    found:  schemas.length > 0,
+    types:  types,
+    count:  schemas.length,
+    raw:    schemas.length > 0 ? JSON.stringify(schemas[0]).slice(0, 500) : ''
   };
 }
 
@@ -184,39 +215,36 @@ function extractMeta(html) {
     h2s.push(h2Match[1].trim());
   }
 
-  // Kept as a weak secondary signal (a homepage *linking* to llms.txt is
-  // still informative even though the authoritative check is now the direct
-  // fetch in checkLlmsTxtExists).
   var mentionsLlmsTxt = html.toLowerCase().includes('llms.txt');
 
   var canonicalMatch = html.match(/<link[^>]+rel=["\']canonical["\'][^>]+href=["\']([^"\']+)["\']>/i);
   var canonical = canonicalMatch ? canonicalMatch[1].trim() : '';
 
   return {
-    title: getMeta('title') || (html.match(/<title>([^<]+)<\/title>/i) || [])[1] || '',
-    description: getMeta('description'),
-    keywords: getMeta('keywords'),
-    ogTitle: getOg('title'),
-    ogDescription: getOg('description'),
-    ogType: getOg('type'),
-    h1: h1,
-    h2s: h2s,
-    canonical: canonical,
+    title:           getMeta('title') || (html.match(/<title>([^<]+)<\/title>/i) || [])[1] || '',
+    description:     getMeta('description'),
+    keywords:        getMeta('keywords'),
+    ogTitle:         getOg('title'),
+    ogDescription:   getOg('description'),
+    ogType:          getOg('type'),
+    h1:              h1,
+    h2s:             h2s,
+    canonical:       canonical,
     mentionsLlmsTxt: mentionsLlmsTxt
   };
 }
 
-// ── Build structured website summary for Claude ───────────────────────────────
+// ── Build website text summary for Claude ─────────────────────────────────────
 function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists) {
   var parts = [];
 
-  if (meta.h1) parts.push('H1: ' + meta.h1);
-  if (meta.title) parts.push('Title: ' + meta.title);
+  if (meta.h1)          parts.push('H1: ' + meta.h1);
+  if (meta.title)       parts.push('Title: ' + meta.title);
   if (meta.description) parts.push('Meta description: ' + meta.description);
   if (meta.h2s && meta.h2s.length > 0) parts.push('H2s: ' + meta.h2s.join(' | '));
-  if (meta.ogTitle) parts.push('OG Title: ' + meta.ogTitle);
-  if (meta.canonical) parts.push('Canonical: ' + meta.canonical);
-  // Authoritative check: did we actually fetch {domain}/llms.txt successfully?
+  if (meta.ogTitle)     parts.push('OG Title: ' + meta.ogTitle);
+  if (meta.canonical)   parts.push('Canonical: ' + meta.canonical);
+
   parts.push('llms.txt detected: ' + (llmsTxtExists ? 'YES (verified by direct fetch)' : 'NO'));
 
   parts.push('\nSCHEMA MARKUP:');
@@ -228,42 +256,85 @@ function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExist
     parts.push('Schema found: NO — no JSON-LD detected');
   }
 
-  if (homepageText) {
-    parts.push('\nHOMEPAGE CONTENT:\n' + homepageText);
-  }
-
-  if (aboutText) {
-    parts.push('\nABOUT PAGE CONTENT:\n' + aboutText);
-  }
+  if (homepageText) parts.push('\nHOMEPAGE CONTENT:\n' + homepageText);
+  if (aboutText)    parts.push('\nABOUT PAGE CONTENT:\n' + aboutText);
 
   return parts.join('\n');
 }
 
 // ── Main: fetch website evidence ──────────────────────────────────────────────
+// Returns { text, signals } where:
+//   text    — prose summary for Claude (unchanged from previous version)
+//   signals — structured facts, certain ground truth, used directly by the
+//             scoring engine without Claude re-interpreting them
 async function fetchWebsiteText(url) {
-  if (!url) return '';
+  if (!url) return { text: '', signals: {} };
   var safeUrl = url.startsWith('http') ? url : 'https://' + url;
-  var base = safeUrl.replace(/\/$/, '');
+  var base    = safeUrl.replace(/\/$/, '');
 
-  // Fetch homepage HTML, about page, and llms.txt existence check in parallel
+  // Fetch everything in parallel
   var settled = await Promise.allSettled([
-    fetchHtml(base),
-    safeFetch(base + '/about', MAX_CHARS_PAGE),
-    safeFetch(base + '/about-us', MAX_CHARS_PAGE),
-    checkLlmsTxtExists(base)
+    fetchHtml(base),                          // [0] homepage HTML
+    safeFetch(base + '/about',    MAX_CHARS_PAGE),  // [1] about page
+    safeFetch(base + '/about-us', MAX_CHARS_PAGE),  // [2] about-us page
+    checkLlmsTxtExists(base),                 // [3] llms.txt
+    checkSitemapExists(base),                 // [4] sitemap.xml
+    checkRobotsExists(base),                  // [5] robots.txt
   ]);
 
-  var homepageHtml = settled[0].status === 'fulfilled' ? settled[0].value : '';
-  var aboutText1 = settled[1].status === 'fulfilled' ? settled[1].value : '';
-  var aboutText2 = settled[2].status === 'fulfilled' ? settled[2].value : '';
-  var aboutText = aboutText1 || aboutText2;
+  var homepageHtml  = settled[0].status === 'fulfilled' ? settled[0].value : '';
+  var aboutText1    = settled[1].status === 'fulfilled' ? settled[1].value : '';
+  var aboutText2    = settled[2].status === 'fulfilled' ? settled[2].value : '';
+  var aboutText     = aboutText1 || aboutText2;
   var llmsTxtExists = settled[3].status === 'fulfilled' ? settled[3].value : false;
+  var sitemapExists = settled[4].status === 'fulfilled' ? settled[4].value : false;
+  var robotsExists  = settled[5].status === 'fulfilled' ? settled[5].value : false;
 
-  var meta = extractMeta(homepageHtml);
-  var schema = extractSchema(homepageHtml);
-  var homepageText = extractText(homepageHtml, MAX_CHARS_PAGE);
+  var meta          = extractMeta(homepageHtml);
+  var schema        = extractSchema(homepageHtml);
+  var homepageText  = extractText(homepageHtml, MAX_CHARS_PAGE);
 
-  return buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists);
+  // Specific schema types that are meaningful for AI selection
+  var SPECIFIC_SCHEMA_TYPES = [
+    'LocalBusiness', 'Service', 'Product', 'Organization',
+    'SoftwareApplication', 'ProfessionalService', 'Store',
+    'Restaurant', 'Hotel', 'MedicalOrganization', 'LegalService',
+    'FinancialService', 'FoodEstablishment', 'EducationalOrganization'
+  ];
+  var hasSpecificSchema = schema.found && schema.types.some(function(t) {
+    return SPECIFIC_SCHEMA_TYPES.some(function(s) { return t.includes(s); });
+  });
+
+  // ── Structured signals — certain ground truth ─────────────────────────────
+  // These are facts extracted mechanically from the HTML and HTTP responses.
+  // They are NOT interpretations. They are used directly by the scoring engine.
+  var signals = {
+    // Clarity signals
+    hasTitle:           !!(meta.title && meta.title.length > 3),
+    titleText:          meta.title || '',
+    hasH1:              !!(meta.h1 && meta.h1.length > 3),
+    h1Text:             meta.h1 || '',
+    hasMetaDescription: !!(meta.description && meta.description.length > 10),
+    metaDescriptionText: meta.description || '',
+    hasOgTags:          !!(meta.ogTitle || meta.ogDescription),
+    hasCanonical:       !!(meta.canonical),
+    // Schema signals
+    hasSchema:          schema.found,
+    hasSpecificSchema:  hasSpecificSchema,
+    schemaTypes:        schema.types,
+    schemaCount:        schema.count,
+    // Ease signals
+    hasLlmsTxt:         llmsTxtExists,
+    hasSitemap:         sitemapExists,
+    hasRobots:          robotsExists,
+    // Raw for Claude's use
+    h2s:                meta.h2s || [],
+    ogTitle:            meta.ogTitle || '',
+  };
+
+  var text = buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists);
+
+  return { text, signals };
 }
 
 // ── Fetch competitor homepage for comparison ──────────────────────────────────
@@ -271,22 +342,19 @@ async function fetchCompetitorText(domain) {
   if (!domain) return '';
   var url = 'https://' + domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
 
-  var settled = await Promise.allSettled([
-    fetchHtml(url)
-  ]);
-
+  var settled = await Promise.allSettled([ fetchHtml(url) ]);
   var html = settled[0].status === 'fulfilled' ? settled[0].value : '';
   if (!html) return '';
 
-  var meta = extractMeta(html);
+  var meta   = extractMeta(html);
   var schema = extractSchema(html);
-  var text = extractText(html, MAX_CHARS_COMP);
+  var text   = extractText(html, MAX_CHARS_COMP);
 
   var parts = [];
-  if (meta.h1) parts.push('Competitor H1: ' + meta.h1);
+  if (meta.h1)        parts.push('Competitor H1: ' + meta.h1);
   if (meta.description) parts.push('Competitor description: ' + meta.description);
-  if (schema.found) parts.push('Competitor schema: ' + schema.types.join(', '));
-  if (text) parts.push('Competitor content: ' + text);
+  if (schema.found)   parts.push('Competitor schema: ' + schema.types.join(', '));
+  if (text)           parts.push('Competitor content: ' + text);
 
   return parts.join('\n');
 }
@@ -297,10 +365,10 @@ async function fetchReviewPages(serperResults) {
 
   var REVIEW_PLATFORMS = {
     trustpilot: /trustpilot\.com\/review\//i,
-    g2: /g2\.com\/products\//i,
-    glassdoor: /glassdoor\.com\/(Overview|Reviews)\//i,
-    capterra: /capterra\.com\/p\//i,
-    clutch: /clutch\.co\/profile\//i
+    g2:         /g2\.com\/products\//i,
+    glassdoor:  /glassdoor\.com\/(Overview|Reviews)\//i,
+    capterra:   /capterra\.com\/p\//i,
+    clutch:     /clutch\.co\/profile\//i
   };
 
   var found = {};
@@ -317,15 +385,15 @@ async function fetchReviewPages(serperResults) {
   if (Object.keys(found).length === 0) return {};
 
   var platforms = Object.keys(found);
-  var tasks = platforms.map(function(p) { return safeFetch(found[p], 2000); });
-  var settled = await Promise.allSettled(tasks);
+  var tasks     = platforms.map(function(p) { return safeFetch(found[p], 2000); });
+  var settled   = await Promise.allSettled(tasks);
 
   var results = {};
   for (var s = 0; s < settled.length; s++) {
     if (settled[s].status === 'fulfilled' && settled[s].value) {
       results[platforms[s]] = {
-        url: found[platforms[s]],
-        text: settled[s].value,
+        url:      found[platforms[s]],
+        text:     settled[s].value,
         platform: platforms[s]
       };
     }
@@ -339,7 +407,7 @@ function buildReviewText(reviewPages) {
     return 'No review platform pages found or accessible.';
   }
   var lines = [];
-  var keys = Object.keys(reviewPages);
+  var keys  = Object.keys(reviewPages);
   for (var i = 0; i < keys.length; i++) {
     var p = reviewPages[keys[i]];
     if (!p || !p.text) continue;
@@ -350,10 +418,10 @@ function buildReviewText(reviewPages) {
 }
 
 module.exports = {
-  fetchWebsiteText: fetchWebsiteText,
+  fetchWebsiteText:    fetchWebsiteText,
   fetchCompetitorText: fetchCompetitorText,
-  fetchReviewPages: fetchReviewPages,
-  buildReviewText: buildReviewText,
-  extractSchema: extractSchema,
-  extractMeta: extractMeta
+  fetchReviewPages:    fetchReviewPages,
+  buildReviewText:     buildReviewText,
+  extractSchema:       extractSchema,
+  extractMeta:         extractMeta
 };
