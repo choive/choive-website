@@ -1531,7 +1531,7 @@ function runDiagnostic() {
   const name        = document.getElementById('bN').value.trim();
   const category    = document.getElementById('bC').value.trim();
   const city        = document.getElementById('bL').value.trim();
-  const website     = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
+  let website        = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
   const description      = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
   const knownCompetitors = document.getElementById('bComp') ? document.getElementById('bComp').value.trim() : '';
 
