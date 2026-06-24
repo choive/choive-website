@@ -8,64 +8,90 @@ const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText
 const { scoreWithClaude, inferCategory } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
-const { fetchApifyEvidence }      = require('./lib/apify');
-const { generateDeliverables }    = require('./lib/deliverables');
+const { fetchApifyEvidence }   = require('./lib/apify');
+const { generateDeliverables } = require('./lib/deliverables');
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
 function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
+
   let jobId;
   try {
     const body  = JSON.parse(event.body || '{}');
     jobId       = safeStr(body.jobId);
     const input = body.input && typeof body.input === 'object' ? body.input : {};
-    const name        = safeStr(input.name);
-    const category    = safeStr(input.category);
-    const city        = safeStr(input.city);
-    const website     = safeStr(input.website);
-    const description = safeStr(input.description);
+
+    const name             = safeStr(input.name);
+    const category         = safeStr(input.category);
+    const city             = safeStr(input.city);
+    const website          = safeStr(input.website);
+    const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
-    if (!jobId)                   throw new Error('Missing jobId');
+
+    if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
+
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
-    let serperPayload = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
-    let websiteText   = '';
-    let inferredSite  = '';
-    let visibilityPos = -1;
+
+    // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
+    let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
+    let websiteText    = '';
+    let websiteSignals = {};   // ← structured ground truth from fetchWebsite
+    let inferredSite   = '';
+    let visibilityPos  = -1;
+
     const [serperSettled, webSettled] = await Promise.allSettled([
       searchSerper(name, category, city),
-      website ? fetchWebsiteText(website) : Promise.resolve('')
+      website ? fetchWebsiteText(website) : Promise.resolve({ text: '', signals: {} })
     ]);
+
     if (serperSettled.status === 'fulfilled') {
       serperPayload = serperSettled.value;
     } else {
       console.warn('[' + jobId + '] Serper failed:', serperSettled.reason?.message);
     }
+
     if (webSettled.status === 'fulfilled') {
-      websiteText = webSettled.value || '';
+      // fetchWebsiteText now returns { text, signals }
+      var webResult   = webSettled.value || {};
+      websiteText     = webResult.text    || '';
+      websiteSignals  = webResult.signals || {};
     } else {
       console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
     }
+
     inferredSite = inferOfficialSite(website, serperPayload, name);
+
+    // If the primary website fetch failed, try the inferred site
     if (!websiteText && inferredSite && inferredSite !== website) {
-      websiteText = await fetchWebsiteText(inferredSite).catch(() => '');
+      var fallbackResult = await fetchWebsiteText(inferredSite).catch(function() {
+        return { text: '', signals: {} };
+      });
+      websiteText    = fallbackResult.text    || '';
+      websiteSignals = fallbackResult.signals || {};
     }
+
     const targetDomain = normalizeUrl(website || '');
     if (targetDomain) {
       visibilityPos = (serperPayload.results || []).findIndex(
         r => normalizeUrl(r.link || '') === targetDomain
       );
     }
+
     const evidence = {
       name, category, city, website, description, knownCompetitors,
-      inferredOfficialSite: inferredSite || '',
-      websiteText:          websiteText  || '',
+      inferredOfficialSite: inferredSite   || '',
+      websiteText:          websiteText    || '',
+      websiteSignals:       websiteSignals,   // ← structured signals attached here
       searchText:           serperPayload.searchText   || 'No search results returned.',
       kgText:               serperPayload.kgText       || 'None',
       visibilityPosition:   visibilityPos,
@@ -74,10 +100,12 @@ exports.handler = async function (event) {
       summaries:            serperPayload.summaries     || {},
       collectedAt:          new Date().toISOString(),
     };
+
     await saveEvidence(jobId, evidence).catch(err =>
       console.warn('[' + jobId + '] saveEvidence failed:', err.message)
     );
-    // Fetch social media pages detected in search results
+
+    // ── Social media pages ────────────────────────────────────────────────────
     var socialEvidence = {};
     var socialText     = 'No social media pages found.';
     try {
@@ -90,7 +118,7 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Social fetch failed:', err.message);
     }
 
-    // Fetch review platform pages found in search results
+    // ── Review platform pages ─────────────────────────────────────────────────
     var reviewPages = {};
     var reviewText  = 'No review platform pages found.';
     try {
@@ -101,26 +129,41 @@ exports.handler = async function (event) {
       var reviewKeys = Object.keys(reviewPages);
       if (reviewKeys.length > 0) {
         console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
+        // Signal: review platform presence confirmed by actual page fetch
+        if (!websiteSignals.confirmedReviewPlatforms) {
+          websiteSignals.confirmedReviewPlatforms = reviewKeys;
+          evidence.websiteSignals = websiteSignals;
+        }
       }
     } catch (err) {
       console.warn('[' + jobId + '] Review fetch failed:', err.message);
     }
 
-    // Fetch Apify review evidence (Trustpilot + Google Reviews)
-    var apifyResult = { apifyText: '' };
+    // ── Apify review evidence ─────────────────────────────────────────────────
+    var apifyResult = { apifyText: '', trustpilot: null, googleReviews: null };
     try {
       apifyResult = await fetchApifyEvidence(name, city, website);
       if (apifyResult.apifyText) {
         evidence['apifyText']     = apifyResult.apifyText;
         evidence['trustpilot']    = apifyResult.trustpilot;
         evidence['googleReviews'] = apifyResult.googleReviews;
+        // Attach confirmed review data to signals for deterministic use
+        if (apifyResult.trustpilot) {
+          websiteSignals.trustpilotRating      = apifyResult.trustpilot.rating      || null;
+          websiteSignals.trustpilotReviewCount = apifyResult.trustpilot.reviewCount || 0;
+        }
+        if (apifyResult.googleReviews) {
+          websiteSignals.googleRating      = apifyResult.googleReviews.rating      || null;
+          websiteSignals.googleReviewCount = apifyResult.googleReviews.reviewCount || 0;
+        }
+        evidence.websiteSignals = websiteSignals;
         console.log('[' + jobId + '] Apify evidence collected');
       }
     } catch (err) {
       console.warn('[' + jobId + '] Apify failed:', err.message);
     }
 
-    // Fetch competitor homepage if one was identified
+    // ── Competitor homepage fetch ─────────────────────────────────────────────
     var competitorPageText = '';
     if (serperPayload.competitors && serperPayload.competitors.length > 0) {
       var topComp = serperPayload.competitors[0];
@@ -134,7 +177,7 @@ exports.handler = async function (event) {
       }
     }
 
-    // ── STAGE 1b: INFER CATEGORY + SECOND-PASS COMPETITOR SEARCH ─────────
+    // ── STAGE 1b: CATEGORY INFERENCE + SECOND-PASS COMPETITOR SEARCH ─────────
     var inferredCat = category;
     try {
       var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
@@ -149,10 +192,6 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Category inference failed:', err.message);
     }
 
-    // Second-pass competitor search ALWAYS runs (independent of whether the
-    // inferred category differs from the user-provided one) — this is what
-    // actually searches for user-provided knownCompetitors names, and it must
-    // not be skipped just because category inference returned the same text.
     try {
       var compSearch = await searchCompetitors(name, inferredCat, city, knownCompetitors);
       if (compSearch.competitors && compSearch.competitors.length > 0) {
@@ -168,7 +207,9 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Second-pass competitor search failed:', err.message);
     }
 
+    // ── STAGE 2: SCORING ──────────────────────────────────────────────────────
     await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
+
     let rawOutput;
     try {
       rawOutput = await scoreWithClaude(evidence);
@@ -177,10 +218,13 @@ exports.handler = async function (event) {
       await saveError(jobId, 'Scoring failed: ' + err.message).catch(() => {});
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
     }
+
     if (!hasValidShape(rawOutput)) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
+
     const finalResult = buildSafeOutput(rawOutput);
+
     // Merge evidence-level fields not returned by Claude into final result
     if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
       finalResult['socialSignals'] = evidence['socialSignals'];
@@ -188,17 +232,13 @@ exports.handler = async function (event) {
     if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
       finalResult['summaries'] = evidence['summaries'];
     }
-    if (evidence['reviewText']) {
-      finalResult['reviewText'] = evidence['reviewText'];
-    }
-    if (evidence['apifyText']) {
-      finalResult['apifyText'] = evidence['apifyText'];
-    }
-    if (evidence['inferredCategory']) {
-      finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
-    }
+    if (evidence['reviewText'])       finalResult['reviewText']       = evidence['reviewText'];
+    if (evidence['apifyText'])        finalResult['apifyText']        = evidence['apifyText'];
+    if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
+
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
-    // Generate ready-to-use deliverables
+
+    // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
     try {
       var deliverables = generateDeliverables(evidence, finalResult);
       finalResult['deliverables'] = deliverables;
@@ -209,6 +249,7 @@ exports.handler = async function (event) {
     await saveResult(jobId, finalResult);
     console.log('[' + jobId + '] Diagnostic complete.');
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
+
   } catch (err) {
     console.error('run-diagnostic-background error:', err.message);
     if (jobId) await saveError(jobId, err.message).catch(() => {});
