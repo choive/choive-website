@@ -1233,7 +1233,7 @@ footer::before {
     </div>
   </div>
 
-  <!-- Real result — Panorama, real data -->
+  <!-- Real result — McKinsey &amp; Company · Management consulting · Global, real data -->
   <div class="hero-right">
     <div class="example-label">
       <span class="example-dot"></span>
@@ -1241,7 +1241,7 @@ footer::before {
     </div>
     <div class="example-card">
       <div class="ex-header">
-        <div class="ex-biz">Panorama · Luxury real estate · Marbella</div>
+        <div class="ex-biz">McKinsey &amp; Company · Management consulting · Global · Luxury real estate · Marbella</div>
         <div class="ex-tag">Considered. Not chosen.</div>
       </div>
       <div class="ex-body">
@@ -1249,7 +1249,7 @@ footer::before {
           <div class="ex-score" id="heroExampleScore">0</div>
           <div class="ex-score-den">/ 100</div>
         </div>
-        <div class="ex-headline">54 years in business. Not mentioned once by AI.</div>
+        <div class="ex-headline">The world’s most trusted consulting firm. AI readability score: 2 of 25.</div>
         <div class="ex-summary">
           This agency has been Marbella's longest-established since 1970.
           No review platform presence. No llms.txt. Positioned at 66 in search.
@@ -2784,13 +2784,13 @@ initResultRoute();
   var el = document.getElementById('heroExampleScore');
   if (!el || typeof animateNum !== 'function') return;
   if (!('IntersectionObserver' in window)) {
-    animateNum('heroExampleScore', 0, 64, 1200);
+    animateNum('heroExampleScore', 0, 52, 1200);
     return;
   }
   var io = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) {
       if (entry.isIntersecting) {
-        animateNum('heroExampleScore', 0, 64, 1200);
+        animateNum('heroExampleScore', 0, 52, 1200);
         io.unobserve(entry.target);
       }
     });
