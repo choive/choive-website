@@ -1,3 +1,17 @@
+✓ 1. Biz line fixed
+✓ 2. ex-headline colour fixed
+✓ 3. ex-pillar-score colour fixed
+✓ 4. ex-summary colours fixed
+✓ 5. ex-bar-fill fixed
+✓ 6. Observer threshold fixed
+✓ 7a. Clarity score fixed (20→6)
+✓ 7b. Trust score fixed (13→24)
+✓ 7c. Difference score fixed (16→20)
+✓ 7d. Ease score fixed (15→2)
+✓ 8. Breakpoint fixed (960→768)
+✓ 9. showResults animateNum fixed
+
+Total changes: 12
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -227,12 +241,12 @@ nav {
 }
 .ex-score-den { font-size:13px; color:var(--muted); padding-bottom:10px; }
 .ex-headline {
-  font-size:14px; font-weight:500; color:var(--ink);
+  font-size:14px; font-weight:500; color:var(--ghost);
   margin-bottom:14px; line-height:1.4;
 }
 .ex-summary {
-  font-size:13px; font-weight:400; line-height:1.85; color:var(--body);
-  padding-top:16px; border-top:1px solid var(--rule); margin-bottom:20px;
+  font-size:13px; font-weight:400; line-height:1.85; color:rgba(245,242,238,0.45);
+  padding-top:16px; border-top:1px solid rgba(245,242,238,0.06); margin-bottom:20px;
 }
 .ex-pillars {
   display:grid; grid-template-columns:repeat(4,1fr);
@@ -251,11 +265,11 @@ nav {
 }
 .ex-pillar-score {
   font-family:'Libre Baskerville', serif;
-  font-size:20px; font-weight:400; color:var(--ink); line-height:1;
+  font-size:20px; font-weight:400; color:var(--ghost); line-height:1;
 }
 .ex-pillar-den { font-size:11px; color:var(--muted); }
 .ex-bar { height:1px; background:var(--rule); margin-top:8px; }
-.ex-bar-fill { height:100%; background:var(--ink); opacity:0.4; }
+.ex-bar-fill { height:100%; background:var(--ac); opacity:0.55; }
 
 /* The key insight — before/after */
 .ex-insight {
@@ -1014,7 +1028,7 @@ footer {
 .footer-v2-legal a:hover { color:rgba(245,242,238,0.5); }
 
 /* ── MOBILE ── */
-@media (max-width:960px) {
+@media (max-width:768px) {
   nav { padding:0 24px; }
   .nav-right .nav-link { display:none; }
   .hero { grid-template-columns:1fr; padding:100px 24px 64px; gap:52px; min-height:auto; }
@@ -1241,7 +1255,7 @@ footer::before {
     </div>
     <div class="example-card">
       <div class="ex-header">
-        <div class="ex-biz">McKinsey &amp; Company · Management consulting · Global · </div>
+        <div class="ex-biz">McKinsey &amp; Company · Management consulting · Global</div>
         <div class="ex-tag">Chosen by default — infrastructure exposed</div>
       </div>
       <div class="ex-body">
@@ -1258,23 +1272,23 @@ footer::before {
         <div class="ex-pillars">
           <div class="ex-pillar">
             <div class="ex-pillar-name">Clarity</div>
+            <div class="ex-pillar-score">6 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:24%"></div></div>
+          </div>
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Trust</div>
+            <div class="ex-pillar-score">24 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:96%"></div></div>
+          </div>
+          <div class="ex-pillar">
+            <div class="ex-pillar-name">Difference</div>
             <div class="ex-pillar-score">20 <span class="ex-pillar-den">/ 25</span></div>
             <div class="ex-bar"><div class="ex-bar-fill" style="width:80%"></div></div>
           </div>
           <div class="ex-pillar">
-            <div class="ex-pillar-name">Trust</div>
-            <div class="ex-pillar-score">13 <span class="ex-pillar-den">/ 25</span></div>
-            <div class="ex-bar"><div class="ex-bar-fill" style="width:52%"></div></div>
-          </div>
-          <div class="ex-pillar">
-            <div class="ex-pillar-name">Difference</div>
-            <div class="ex-pillar-score">16 <span class="ex-pillar-den">/ 25</span></div>
-            <div class="ex-bar"><div class="ex-bar-fill" style="width:64%"></div></div>
-          </div>
-          <div class="ex-pillar">
             <div class="ex-pillar-name">Ease</div>
-            <div class="ex-pillar-score">15 <span class="ex-pillar-den">/ 25</span></div>
-            <div class="ex-bar"><div class="ex-bar-fill" style="width:60%"></div></div>
+            <div class="ex-pillar-score">2 <span class="ex-pillar-den">/ 25</span></div>
+            <div class="ex-bar"><div class="ex-bar-fill" style="width:8%"></div></div>
           </div>
         </div>
       </div>
@@ -2090,11 +2104,14 @@ function showResults(r, jobId) {
         + '</div>');
 
   // Animate score
-  setTimeout(function() { animateNum('heroExampleScore', 0, 52, 1200);
-
-  // Purely visual: brief glow pulse once the count-up settles. Does not
-  // read or alter any scoring data — only toggles a CSS class on the
-  // already-rendered number element for a moment of polish after the wait.
+  setTimeout(function() {
+    animateNum('scoreNum', 0, score, 1200);
+    // Pillar bars
+    document.querySelectorAll('.pillar-bar-fill').forEach(function(el) {
+      el.style.width = (el.dataset.pct || 0) + '%';
+    });
+  }, 120);
+  // Purely visual: brief glow pulse once the count-up settles.
   setTimeout(function() {
     var scoreEl = document.getElementById('scoreNum');
     if (scoreEl) {
@@ -2794,7 +2811,7 @@ initResultRoute();
         io.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.4 });
+  }, { threshold: 0.05 });
   io.observe(el);
 })();
 </script>
