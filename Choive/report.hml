@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOIVE· Report — The complete AI selection brief for your business</title>
+<meta name="description" content="A premium branded PDF report showing exactly where your business stands in AI selection — and precisely what to fix. Delivered within 24 hours.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230C0C0E'/%3E%3Ccircle cx='62' cy='62' r='12' fill='%23C9A86A'/%3E%3Ctext x='38' y='62' font-family='Georgia,serif' font-size='52' fill='%23F5F2EE' text-anchor='middle' dominant-baseline='central'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="canonical" href="https://choive.com/report">
+<style>
+:root {
+  --paper:   #F5F2EE;
+  --paper-2: #EDEAE5;
+  --paper-3: #E4E0D9;
+  --ink:     #0C0C0E;
+  --ink-2:   #1A1A1E;
+  --body:    #48484F;
+  --muted:   #67676E;
+  --faint:   #BBBBC2;
+  --rule:    rgba(12,12,14,0.08);
+  --rule-2:  rgba(12,12,14,0.04);
+  --ac:      #C9A86A;
+  --ac-d:    #B8935A;
+  --void:    #0C0C0E;
+  --void-2:  #111116;
+  --void-3:  #18181E;
+  --ghost:   #F5F2EE;
+  --ghost-2: #BBBBC2;
+  --ghost-3: #6E6E76;
+  --rd:      rgba(245,242,238,0.07);
+  --green:   #2A7A48;
+  --grn-bg:  rgba(42,122,72,0.06);
+  --sh-2: 0 2px 6px rgba(40,32,20,0.06), 0 8px 24px rgba(40,32,20,0.07);
+  --sh-dark: 0 4px 16px rgba(0,0,0,0.28), 0 24px 48px -12px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { background:var(--paper); scroll-behavior:smooth; }
+body {
+  font-family:'Inter', sans-serif;
+  font-weight:400;
+  background:var(--paper);
+  color:var(--ink);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* NAV */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  height:56px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 52px;
+  background:rgba(245,242,238,0.94);
+  border-bottom:1px solid var(--rule);
+  backdrop-filter:blur(20px);
+}
+.nav-logo { font-size:15px; font-weight:700; letter-spacing:0.12em; color:var(--ink); text-decoration:none; }
+.nav-logo-dot { color:var(--muted); }
+.nav-right { display:flex; align-items:center; gap:32px; }
+.nav-link { font-size:11px; font-weight:500; color:var(--muted); text-decoration:none; letter-spacing:0.04em; transition:color 0.15s; }
+.nav-link:hover { color:var(--ink); }
+.nav-cta { font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--void); background:var(--ac); padding:10px 18px; text-decoration:none; transition:background 0.15s; }
+.nav-cta:hover { background:var(--ac-d); }
+
+/* HERO — DARK */
+.hero {
+  background:var(--void);
+  padding:140px 52px 96px;
+  position:relative;
+  overflow:hidden;
+  border-bottom:1px solid rgba(245,242,238,0.06);
+}
+.hero::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  background:radial-gradient(ellipse 800px 500px at 30% 0%, rgba(201,168,106,0.06), transparent 70%);
+  pointer-events:none;
+}
+.hero-inner {
+  max-width:1200px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:96px;
+  align-items:center;
+  position:relative;
+  z-index:1;
+}
+.hero-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:0.22em;
+  text-transform:uppercase; color:var(--ac);
+  margin-bottom:28px;
+  display:flex; align-items:center; gap:12px;
+}
+.hero-eyebrow::before { content:''; width:24px; height:1px; background:var(--ac); }
+.hero-h1 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(36px, 5vw, 60px);
+  font-weight:400;
+  letter-spacing:-0.02em;
+  line-height:1.1;
+  color:var(--ghost);
+  margin-bottom:24px;
+}
+.hero-h1 em { font-style:italic; color:var(--ghost-3); }
+.hero-sub {
+  font-size:17px; font-weight:400; line-height:1.85;
+  color:var(--ghost-2); margin-bottom:36px; max-width:460px;
+}
+.hero-price-block {
+  display:flex; align-items:baseline; gap:8px; margin-bottom:32px;
+  padding-bottom:32px; border-bottom:1px solid rgba(245,242,238,0.08);
+}
+.hero-price {
+  font-family:'Libre Baskerville', serif;
+  font-size:52px; font-weight:700; color:var(--ghost);
+  letter-spacing:-0.03em; line-height:1;
+}
+.hero-price-label { font-size:14px; color:var(--ghost-3); }
+.hero-cta {
+  display:inline-block;
+  background:var(--ac); color:var(--void);
+  font-family:'Inter', sans-serif;
+  font-size:14px; font-weight:700; letter-spacing:0.04em;
+  padding:18px 36px; text-decoration:none;
+  transition:background 0.15s;
+  margin-bottom:16px;
+}
+.hero-cta:hover { background:var(--ac-d); }
+.hero-cta-note {
+  font-size:12px; color:var(--ghost-3); line-height:1.6;
+}
+.hero-cta-note strong { color:var(--ghost-2); font-weight:500; }
+
+/* REPORT PREVIEW */
+.report-preview {
+  background:var(--void-2);
+  border:1px solid rgba(245,242,238,0.08);
+  box-shadow:var(--sh-dark);
+  position:relative;
+  overflow:hidden;
+}
+.report-preview::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--ac) 30%, var(--ac) 70%, transparent);
+}
+.rp-header {
+  padding:20px 24px;
+  border-bottom:1px solid rgba(245,242,238,0.06);
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(245,242,238,0.02);
+}
+.rp-logo { font-size:13px; font-weight:700; letter-spacing:0.12em; color:var(--ghost); }
+.rp-logo span { color:var(--ac); }
+.rp-label { font-size:10px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--ghost-3); }
+.rp-body { padding:28px 24px; }
+.rp-biz { font-size:11px; font-weight:600; letter-spacing:0.08em; color:rgba(245,242,238,0.3); margin-bottom:16px; }
+.rp-score-row { display:flex; align-items:baseline; gap:6px; margin-bottom:6px; }
+.rp-score {
+  font-family:'Libre Baskerville', serif;
+  font-size:64px; font-weight:400; color:var(--ghost);
+  line-height:1; letter-spacing:-0.04em;
+}
+.rp-score-den { font-size:14px; color:var(--ghost-3); }
+.rp-verdict { font-size:13px; font-weight:500; color:var(--ghost-2); margin-bottom:20px; }
+.rp-pillars { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:rgba(245,242,238,0.05); margin:0 -24px; }
+.rp-pillar { background:var(--void-3); padding:14px 16px; }
+.rp-pillar-name { font-size:9px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--ghost-3); margin-bottom:6px; }
+.rp-pillar-score { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ghost); line-height:1; }
+.rp-pillar-den { font-size:10px; color:var(--ghost-3); }
+.rp-bar { height:1px; background:rgba(245,242,238,0.07); margin-top:8px; }
+.rp-bar-fill { height:100%; background:var(--ac); opacity:0.6; }
+.rp-contents { padding:20px 24px; border-top:1px solid rgba(245,242,238,0.06); }
+.rp-contents-label { font-size:9px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--ghost-3); margin-bottom:12px; }
+.rp-contents-list { display:flex; flex-direction:column; gap:6px; }
+.rp-contents-item { font-size:12px; color:rgba(245,242,238,0.45); display:flex; align-items:center; gap:8px; }
+.rp-contents-item::before { content:''; width:4px; height:4px; border-radius:50%; background:var(--ac); flex-shrink:0; opacity:0.6; }
+
+/* WHAT'S INSIDE */
+.inside-section { padding:96px 52px; max-width:1200px; margin:0 auto; }
+.inside-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+.inside-h2 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(28px,4vw,44px); font-weight:400;
+  color:var(--ink); letter-spacing:-0.02em; line-height:1.1;
+  margin-bottom:56px; max-width:560px;
+}
+.inside-h2 em { font-style:italic; color:var(--muted); }
+.inside-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--rule); }
+.inside-item {
+  background:var(--paper);
+  padding:36px 32px;
+  border-bottom:2px solid transparent;
+  transition:background 0.2s, border-color 0.2s;
+}
+.inside-item:hover { background:var(--paper-2); border-bottom-color:var(--ac); }
+.inside-num { font-size:11px; font-weight:700; letter-spacing:0.16em; color:var(--ac); margin-bottom:16px; }
+.inside-title { font-family:'Libre Baskerville', serif; font-size:18px; font-weight:400; color:var(--ink); margin-bottom:10px; }
+.inside-desc { font-size:13px; font-weight:400; color:var(--body); line-height:1.75; }
+
+/* VS SECTION */
+.vs-section {
+  background:var(--paper-2);
+  border-top:1px solid var(--rule);
+  border-bottom:1px solid var(--rule);
+  padding:96px 52px;
+}
+.vs-inner { max-width:900px; margin:0 auto; }
+.vs-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; text-align:center; }
+.vs-h2 {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(24px,3.5vw,40px); font-weight:400;
+  color:var(--ink); letter-spacing:-0.02em; line-height:1.1;
+  margin-bottom:48px; text-align:center;
+}
+.vs-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+.vs-col { padding:40px 44px; }
+.vs-col-analysis { background:var(--paper-3); }
+.vs-col-report { background:var(--void); position:relative; overflow:hidden; }
+.vs-col-report::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--ac) 30%, var(--ac) 70%, transparent);
+}
+.vs-col-label { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:8px; padding-bottom:16px; }
+.vs-col-analysis .vs-col-label { color:var(--muted); border-bottom:1px solid var(--rule); }
+.vs-col-report .vs-col-label { color:var(--ac); border-bottom:1px solid rgba(245,242,238,0.1); }
+.vs-col-price { font-family:'Libre Baskerville', serif; font-size:40px; font-weight:700; letter-spacing:-0.03em; margin-bottom:24px; }
+.vs-col-analysis .vs-col-price { color:var(--ink); }
+.vs-col-report .vs-col-price { color:var(--ghost); }
+.vs-list { list-style:none; display:flex; flex-direction:column; gap:10px; }
+.vs-list li { font-size:13px; line-height:1.6; display:flex; align-items:flex-start; gap:10px; }
+.vs-col-analysis .vs-list li { color:var(--body); }
+.vs-col-report .vs-list li { color:rgba(245,242,238,0.6); }
+.vs-check { color:var(--ac); font-weight:700; flex-shrink:0; margin-top:1px; }
+.vs-col-report .vs-cta {
+  display:inline-block; margin-top:28px;
+  background:var(--ac); color:var(--void);
+  font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  letter-spacing:0.04em; padding:14px 28px; text-decoration:none;
+  transition:background 0.15s;
+}
+.vs-col-report .vs-cta:hover { background:var(--ac-d); }
+
+/* PROCESS */
+.process-section {
+  background:var(--void);
+  padding:96px 52px;
+  border-top:1px solid rgba(245,242,238,0.06);
+}
+.process-inner { max-width:900px; margin:0 auto; }
+.process-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ac); margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+.process-eyebrow::before { content:''; width:24px; height:1px; background:var(--ac); }
+.process-h2 { font-family:'Libre Baskerville', serif; font-size:clamp(24px,3.5vw,40px); font-weight:400; color:var(--ghost); letter-spacing:-0.02em; line-height:1.1; margin-bottom:56px; }
+.process-h2 em { font-style:italic; color:var(--ghost-3); }
+.process-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; }
+.process-step { background:rgba(245,242,238,0.03); border:1px solid rgba(245,242,238,0.07); padding:36px 32px; }
+.process-step-num { font-family:'Libre Baskerville', serif; font-size:48px; font-weight:700; color:rgba(201,168,106,0.2); line-height:1; margin-bottom:20px; letter-spacing:-0.03em; }
+.process-step-title { font-size:15px; font-weight:600; color:var(--ghost); margin-bottom:10px; }
+.process-step-desc { font-size:13px; color:var(--ghost-3); line-height:1.75; }
+
+/* TRUTH STRIP */
+.truth-strip {
+  background:var(--ac);
+  padding:52px;
+  text-align:center;
+}
+.truth-text {
+  font-family:'Libre Baskerville', serif;
+  font-size:clamp(18px,3vw,28px);
+  font-weight:400;
+  font-style:italic;
+  color:var(--void);
+  max-width:700px;
+  margin:0 auto;
+  line-height:1.5;
+}
+
+/* FAQ */
+.faq-section { padding:96px 52px; max-width:760px; margin:0 auto; }
+.faq-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+.faq-h2 { font-family:'Libre Baskerville', serif; font-size:32px; font-weight:400; color:var(--ink); letter-spacing:-0.02em; margin-bottom:48px; }
+.faq-item { border-bottom:1px solid var(--rule); padding:24px 0; }
+.faq-q { font-size:15px; font-weight:600; color:var(--ink); margin-bottom:10px; }
+.faq-a { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; }
+
+/* FINAL CTA */
+.final-cta {
+  background:var(--void);
+  padding:96px 52px;
+  text-align:center;
+  border-top:1px solid rgba(245,242,238,0.06);
+  position:relative;
+  overflow:hidden;
+}
+.final-cta::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--ac), transparent);
+  opacity:0.4;
+}
+.final-cta-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase; color:var(--ac); margin-bottom:20px; }
+.final-cta-h2 { font-family:'Libre Baskerville', serif; font-size:clamp(28px,4vw,48px); font-weight:400; color:var(--ghost); letter-spacing:-0.02em; line-height:1.1; margin-bottom:16px; }
+.final-cta-h2 em { font-style:italic; color:var(--ghost-3); }
+.final-cta-sub { font-size:16px; color:var(--ghost-2); margin-bottom:40px; max-width:480px; margin-left:auto; margin-right:auto; line-height:1.7; }
+.final-cta-btn {
+  display:inline-block;
+  background:var(--ac); color:var(--void);
+  font-family:'Inter', sans-serif;
+  font-size:14px; font-weight:700; letter-spacing:0.04em;
+  padding:20px 44px; text-decoration:none;
+  transition:background 0.15s; margin-bottom:16px;
+}
+.final-cta-btn:hover { background:var(--ac-d); }
+.final-cta-note { font-size:12px; color:var(--ghost-3); }
+
+/* FOOTER */
+footer {
+  background:var(--void);
+  border-top:1px solid rgba(245,242,238,0.06);
+  padding:40px 52px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.footer-logo { font-size:13px; font-weight:700; letter-spacing:0.12em; color:rgba(245,242,238,0.2); text-decoration:none; }
+.footer-logo span { color:rgba(245,242,238,0.06); }
+.footer-links { display:flex; gap:24px; }
+.footer-link { font-size:11px; color:var(--ghost-3); text-decoration:none; transition:color 0.15s; }
+.footer-link:hover { color:var(--ghost); }
+
+/* MOBILE */
+@media (max-width:768px) {
+  nav { padding:0 24px; }
+  .nav-right .nav-link { display:none; }
+  .hero { padding:100px 24px 64px; }
+  .hero-inner { grid-template-columns:1fr; gap:48px; }
+  .inside-section { padding:64px 24px; }
+  .inside-grid { grid-template-columns:1fr; }
+  .vs-section { padding:64px 24px; }
+  .vs-grid { grid-template-columns:1fr; }
+  .process-section { padding:64px 24px; }
+  .process-steps { grid-template-columns:1fr; }
+  .faq-section { padding:64px 24px; }
+  .final-cta { padding:64px 24px; }
+  footer { flex-direction:column; gap:20px; padding:32px 24px; align-items:flex-start; }
+  .rp-pillars { grid-template-columns:1fr 1fr; }
+  .truth-strip { padding:40px 24px; }
+}
+
+/* REVEAL */
+.reveal { opacity:0; transform:translateY(24px); transition:opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1); }
+.reveal.is-visible { opacity:1; transform:translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">CHOIVE<span class="nav-logo-dot">·</span></a>
+  <div class="nav-right">
+    <a href="/#how" class="nav-link">How it works</a>
+    <a href="/#diagnostic" class="nav-link">Free diagnostic</a>
+    <a href="mailto:hello@choive.com" class="nav-link">Contact</a>
+    <a href="#get-report" class="nav-cta">Get the Report →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">CHOIVE· Report</div>
+      <h1 class="hero-h1">
+        Your complete AI selection brief.<br>
+        <em>Delivered in 24 hours.</em>
+      </h1>
+      <p class="hero-sub">
+        Not a screen you read once and forget. A premium branded document — precise, evidence-based, shareable — showing exactly where your business stands in AI selection and what to do about it.
+      </p>
+      <div class="hero-price-block">
+        <div class="hero-price">$499</div>
+        <div class="hero-price-label">one-time · delivered within 24 hours</div>
+      </div>
+      <a href="https://buy.stripe.com/test_3cI6oG8XXb0R2ks7BpbMQ02" class="hero-cta" id="get-report">Get the CHOIVE· Report →</a>
+      <div class="hero-cta-note">
+        <strong>One AI-recommended customer pays back this report on their first visit.</strong><br>
+        Includes free diagnostic run if you haven't already.
+      </div>
+    </div>
+
+    <div class="report-preview">
+      <div class="rp-header">
+        <div class="rp-logo">CHOIVE<span>·</span></div>
+        <div class="rp-label">AI Selection Report</div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-biz">Your Business · Your Category · Your Market</div>
+        <div class="rp-score-row">
+          <div class="rp-score">62</div>
+          <div class="rp-score-den">/ 100</div>
+        </div>
+        <div class="rp-verdict">Considered. Not consistently chosen.</div>
+        <div class="rp-pillars">
+          <div class="rp-pillar">
+            <div class="rp-pillar-name">Clarity</div>
+            <div class="rp-pillar-score">18 <span class="rp-pillar-den">/ 25</span></div>
+            <div class="rp-bar"><div class="rp-bar-fill" style="width:72%"></div></div>
+          </div>
+          <div class="rp-pillar">
+            <div class="rp-pillar-name">Trust</div>
+            <div class="rp-pillar-score">5 <span class="rp-pillar-den">/ 25</span></div>
+            <div class="rp-bar"><div class="rp-bar-fill" style="width:20%"></div></div>
+          </div>
+          <div class="rp-pillar">
+            <div class="rp-pillar-name">Difference</div>
+            <div class="rp-pillar-score">17 <span class="rp-pillar-den">/ 25</span></div>
+            <div class="rp-bar"><div class="rp-bar-fill" style="width:68%"></div></div>
+          </div>
+          <div class="rp-pillar">
+            <div class="rp-pillar-name">Ease</div>
+            <div class="rp-pillar-score">22 <span class="rp-pillar-den">/ 25</span></div>
+            <div class="rp-bar"><div class="rp-bar-fill" style="width:88%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="rp-contents">
+        <div class="rp-contents-label">Report contents</div>
+        <div class="rp-contents-list">
+          <div class="rp-contents-item">Executive summary & verdict</div>
+          <div class="rp-contents-item">Four pillar breakdown with evidence</div>
+          <div class="rp-contents-item">Competitor intelligence</div>
+          <div class="rp-contents-item">Platform coverage — ChatGPT, Perplexity, Gemini, Claude</div>
+          <div class="rp-contents-item">AI simulation — real queries, real responses</div>
+          <div class="rp-contents-item">30-day action plan</div>
+          <div class="rp-contents-item">Ready-to-use assets — llms.txt, H1, meta, schema</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT'S INSIDE -->
+<section class="inside-section reveal">
+  <div class="inside-eyebrow">What's inside</div>
+  <h2 class="inside-h2">Every section built to move you from <em>invisible to chosen.</em></h2>
+  <div class="inside-grid">
+    <div class="inside-item">
+      <div class="inside-num">01</div>
+      <div class="inside-title">Executive Summary</div>
+      <div class="inside-desc">Your overall score, verdict, and a plain-English summary of exactly where you stand in AI selection — written for a business owner, not a developer.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">02</div>
+      <div class="inside-title">Four Pillar Breakdown</div>
+      <div class="inside-desc">Clarity, Trust, Difference, and Ease — each scored out of 25 with specific findings, analysis, and evidence from real signals. Not estimates. Confirmed data.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">03</div>
+      <div class="inside-title">Competitor Intelligence</div>
+      <div class="inside-desc">The business AI is recommending instead of you — and exactly why. What they have that you don't. What you can close and how fast.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">04</div>
+      <div class="inside-title">Platform Coverage</div>
+      <div class="inside-desc">Your status on ChatGPT, Perplexity, Gemini, and Claude — present, weak, or absent — with the specific reason for each platform's verdict.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">05</div>
+      <div class="inside-title">AI Simulation</div>
+      <div class="inside-desc">Three real queries your customers are asking AI right now — and exactly what AI says in response. Whether you appear. Whether your competitor does.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">06</div>
+      <div class="inside-title">30-Day Action Plan</div>
+      <div class="inside-desc">Week-by-week implementation — what you do yourself, what you forward to a developer. Sequenced by impact. No guesswork about what to do first.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">07</div>
+      <div class="inside-title">Ready-to-Use Assets</div>
+      <div class="inside-desc">Your llms.txt file, rewritten H1 options, improved meta description, and schema brief — generated specifically for your business. Copy and implement directly.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">08</div>
+      <div class="inside-title">CHOIVE· Branding</div>
+      <div class="inside-desc">A professionally designed document you can share with your team, your agency, or your board. Not a screenshot. A presentation-ready report.</div>
+    </div>
+    <div class="inside-item">
+      <div class="inside-num">09</div>
+      <div class="inside-title">Delivered in 24 Hours</div>
+      <div class="inside-desc">Pay, run the diagnostic, and receive your complete branded PDF report by email within 24 hours. No wait list. No intake call. Just the truth about your business.</div>
+    </div>
+  </div>
+</section>
+
+<!-- VS SECTION -->
+<section class="vs-section reveal">
+  <div class="vs-inner">
+    <div class="vs-eyebrow">Compare</div>
+    <h2 class="vs-h2">The Analysis tells you where you stand.<br>The Report tells your whole team.</h2>
+    <div class="vs-grid">
+      <div class="vs-col vs-col-analysis">
+        <div class="vs-col-label">CHOIVE· Analysis</div>
+        <div class="vs-col-price">$99</div>
+        <ul class="vs-list">
+          <li><span class="vs-check">✓</span> Full diagnostic result on screen</li>
+          <li><span class="vs-check">✓</span> Four pillar scores with findings</li>
+          <li><span class="vs-check">✓</span> Competitor intelligence</li>
+          <li><span class="vs-check">✓</span> Priority actions</li>
+          <li><span class="vs-check">✓</span> Ready-to-use assets</li>
+          <li><span class="vs-check">✓</span> Shareable result link</li>
+        </ul>
+      </div>
+      <div class="vs-col vs-col-report">
+        <div class="vs-col-label">CHOIVE· Report</div>
+        <div class="vs-col-price">$499</div>
+        <ul class="vs-list">
+          <li><span class="vs-check">✓</span> Everything in the Analysis</li>
+          <li><span class="vs-check">✓</span> Premium branded PDF document</li>
+          <li><span class="vs-check">✓</span> AI simulation — real queries & responses</li>
+          <li><span class="vs-check">✓</span> 30-day week-by-week action plan</li>
+          <li><span class="vs-check">✓</span> Presentation-ready for boards & agencies</li>
+          <li><span class="vs-check">✓</span> Delivered to your inbox in 24 hours</li>
+        </ul>
+        <a href="https://buy.stripe.com/test_3cI6oG8XXb0R2ks7BpbMQ02" class="vs-cta">Get the Report →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="process-section reveal">
+  <div class="process-inner">
+    <div class="process-eyebrow">How it works</div>
+    <h2 class="process-h2">Three steps.<br><em>One document that changes everything.</em></h2>
+    <div class="process-steps">
+      <div class="process-step">
+        <div class="process-step-num">01</div>
+        <div class="process-step-title">Pay and run your diagnostic</div>
+        <div class="process-step-desc">Complete payment and run the free diagnostic at choive.com. Enter your business name, category, location, and website. Takes 45 seconds.</div>
+      </div>
+      <div class="process-step">
+        <div class="process-step-num">02</div>
+        <div class="process-step-title">We build your Report</div>
+        <div class="process-step-desc">Our engine runs deep analysis on your business — real AI queries, real signals, real evidence. We compile and brand your complete report within 24 hours.</div>
+      </div>
+      <div class="process-step">
+        <div class="process-step-num">03</div>
+        <div class="process-step-title">You receive it by email</div>
+        <div class="process-step-desc">A premium PDF lands in your inbox. Share it with your team, your agency, or your board. Implement the 30-day plan. Watch your score move.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUTH STRIP -->
+<div class="truth-strip reveal">
+  <div class="truth-text">"One AI-recommended customer pays back this report on their first visit."</div>
+</div>
+
+<!-- FAQ -->
+<section class="faq-section reveal">
+  <div class="faq-eyebrow">Questions</div>
+  <h2 class="faq-h2">Everything you need to know</h2>
+
+  <div class="faq-item">
+    <div class="faq-q">Do I need to run the free diagnostic first?</div>
+    <div class="faq-a">No — the Report includes the diagnostic. If you've already run it, we use your existing result. If not, we run it as part of the process.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">How long does delivery take?</div>
+    <div class="faq-a">Within 24 hours of payment. In most cases significantly faster. You'll receive the PDF directly to the email you pay with.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What format is the Report?</div>
+    <div class="faq-a">A professionally designed PDF — branded with CHOIVE, specific to your business, printable and shareable. Not a generic template.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Is this different from the $99 Analysis?</div>
+    <div class="faq-a">Yes. The $99 Analysis gives you the full result on screen with a shareable link. The $499 Report is a premium branded PDF document — deeper, designed, and built to be shared with a team or presented to a board.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What if my business isn't in the report correctly?</div>
+    <div class="faq-a">Email hello@choive.com and we'll fix it. We stand behind the accuracy of every report we produce.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Can I get a report for multiple businesses?</div>
+    <div class="faq-a">Yes — each report is $499 per business. Email hello@choive.com for agency or multi-business pricing.</div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="final-cta-eyebrow">CHOIVE· Report</div>
+  <h2 class="final-cta-h2">
+    Find out where you stand.<br>
+    <em>Then do something about it.</em>
+  </h2>
+  <p class="final-cta-sub">Your complete AI selection brief — scored, evidenced, and delivered within 24 hours. One document. Everything you need.</p>
+  <a href="https://buy.stripe.com/test_3cI6oG8XXb0R2ks7BpbMQ02" class="final-cta-btn">Get the CHOIVE· Report — $499 →</a>
+  <div class="final-cta-note">One-time payment · Delivered within 24 hours · Email hello@choive.com with any questions</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <a href="/" class="footer-logo">CHOIVE<span>·</span></a>
+  <div class="footer-links">
+    <a href="/" class="footer-link">Free diagnostic</a>
+    <a href="/report" class="footer-link">Report</a>
+    <a href="mailto:hello@choive.com" class="footer-link">Contact</a>
+  </div>
+</footer>
+
+<script>
+(function() {
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('is-visible'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
+})();
+</script>
+
+</body>
+</html>
