@@ -2108,7 +2108,15 @@ function showResults(r, jobId) {
         + '<div class="paywall-headline">See exactly why — and what to fix</div>'
         + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock Full Analysis — $99 →</button>'
-        + '</div>');
+        + '</div>')
+  + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
+    + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
+    + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE· Report</div>'
+    + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--ghost);margin-bottom:10px;line-height:1.2;">Get the complete branded PDF report.</div>'
+    + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Delivered to your inbox within 24 hours.</div>'
+    + '<button onclick=\"initiateReportCheckout(\'' + (jobId||'') + '\')\" id=\"reportCheckoutBtn\" style=\"background:var(--ac);color:var(--void);border:none;font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;padding:16px 28px;cursor:pointer;min-height:52px;\">Get Full Report — $499 →</button>'
+    + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF delivered within 24 hours</div>'
+    + '</div>' : '');
 
   // Animate score
   setTimeout(function() {
@@ -2617,6 +2625,25 @@ async function initiateCheckout(jobId) {
     if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Analysis — $99 →'; }
     alert('Could not start checkout. Please try again.');
     console.error('initiateCheckout error:', err);
+  }
+}
+
+async function initiateReportCheckout(jobId) {
+  var btn = document.getElementById('reportCheckoutBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing...'; }
+  try {
+    var res = await fetch('/.netlify/functions/create-report-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: jobId })
+    });
+    var data = await res.json();
+    if (data.url) { window.location.href = data.url; }
+    else throw new Error(data.error || 'Could not create report checkout');
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Get Full Report — $499 →'; }
+    alert('Could not start checkout. Please try again.');
+    console.error('initiateReportCheckout error:', err);
   }
 }
 
