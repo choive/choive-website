@@ -172,6 +172,32 @@ exports.handler = async function (event) {
     }
   }
 
+  // Check if this is a Report payment ($499) — trigger report generation
+  var productType = (session.metadata && session.metadata.product_type) || '';
+  var amountTotal = session.amount_total || 0;
+  var isReportPayment = productType === 'report' || amountTotal >= 49900;
+
+  if (isReportPayment && customerEmail) {
+    console.log('stripe-webhook: Report payment detected — triggering generate-report');
+    try {
+      var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
+      var generateUrl = siteUrl + '/.netlify/functions/generate-report';
+      fetch(generateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: jobId, email: customerEmail })
+      }).then(function(gr) {
+        return gr.json().then(function(gd) {
+          console.log('stripe-webhook: generate-report response:', JSON.stringify(gd));
+        });
+      }).catch(function(ge) {
+        console.error('stripe-webhook: generate-report trigger failed:', ge.message);
+      });
+    } catch (err) {
+      console.warn('stripe-webhook: could not trigger report generation:', err.message);
+    }
+  }
+
   // Send confirmation email (best-effort, does not block response)
   if (customerEmail && process.env.RESEND_API_KEY) {
     try {
