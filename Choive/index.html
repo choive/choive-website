@@ -1636,7 +1636,12 @@ function runDiagnostic() {
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
   document.getElementById('rBtn').disabled = true;
-  document.getElementById('dS').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Scroll to scanning zone accounting for fixed nav (56px)
+  var dSel = document.getElementById('dS');
+  if (dSel) {
+    var top = dSel.getBoundingClientRect().top + window.pageYOffset - 72;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
 
   updateEngineStage('queued');
   startDiagnostic(bizData);
@@ -2840,7 +2845,9 @@ initResultRoute();
       dR.innerHTML = '<div style="max-width:720px;margin:0 auto;">' + rZ.innerHTML + '</div>';
       rZ.style.display = 'none';
       rZ.innerHTML = '';
-      dR.scrollIntoView({ behavior:'smooth' });
+      // Scroll to result zone accounting for fixed nav
+      var top2 = dR.getBoundingClientRect().top + window.pageYOffset - 72;
+      window.scrollTo({ top: Math.max(0, top2), behavior: 'smooth' });
     }
   };
 })();
