@@ -47,7 +47,7 @@ exports.handler = async function(event) {
 
   var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
   // After payment — redirect back to result with report=pending flag
-  var successUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId) + '&report=pending&session_id={CHECKOUT_SESSION_ID}';
+  var successUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId) + '&paid=1&report=1&session_id={CHECKOUT_SESSION_ID}';
   var cancelUrl  = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
 
   try {
@@ -69,7 +69,7 @@ exports.handler = async function(event) {
         'payment_intent_data[metadata][product_type]': 'report',
         'line_items[0][price_data][currency]':              'usd',
         'line_items[0][price_data][product_data][name]':    'CHOIVE· Report',
-        'line_items[0][price_data][product_data][description]': 'Complete AI selection report — scored across Clarity, Trust, Difference, and Ease. Competitor intelligence, AI simulation, 30-day action plan, and ready-to-use assets. Delivered as a branded PDF within 24 hours.',
+        'line_items[0][price_data][product_data][description]': 'Complete AI selection report — scored across Clarity, Trust, Difference, and Ease. Competitor intelligence, AI simulation, 30-day action plan, and ready-to-use assets. Delivered as a branded PDF instantly after payment.',
         'line_items[0][price_data][unit_amount]':           '49900',
         'line_items[0][quantity]':                          '1',
       }).toString()
