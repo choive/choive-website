@@ -2755,7 +2755,23 @@ async function fetchSharedResult(jobId) {
         bizData.city     = data.input.city     || '';
         bizData.website  = data.input.website  || '';
       }
+      // Hide homepage sections so paid result shows cleanly
+      var dI = document.getElementById('dI');
+      var dS = document.getElementById('dS');
+      if (dI) dI.style.display = 'none';
+      if (dS) dS.style.display = 'none';
+      // Hide all homepage content sections above the result
+      var heroEl = document.querySelector('.hero-section, .hero, [data-section="hero"]');
+      if (heroEl) heroEl.style.display = 'none';
       showResults(data.result, jobId);
+      // Scroll to result after render
+      setTimeout(function() {
+        var dR = document.getElementById('dR');
+        if (dR) {
+          var top = dR.getBoundingClientRect().top + window.pageYOffset - 72;
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        }
+      }, 300);
     }
   } catch (err) {
     console.error('fetchSharedResult error:', err);
