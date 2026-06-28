@@ -25,6 +25,25 @@
   to = "/report.html"
   status = 200
 
+# Allow static assets to be served directly
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat.png"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*.svg"
+  to = "/:splat.svg"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/:splat.jpg"
+  status = 200
+  force = false
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
