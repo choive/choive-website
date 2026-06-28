@@ -2020,7 +2020,8 @@ function showResults(r, jobId) {
   // 3. URL ?paid=true              → fallback for testing only
   const isPaid = (window.__choivePaidVerified === true) ||
                  (r.paid === true) ||
-                 (new URLSearchParams(window.location.search).get('paid') === 'true');
+                 (new URLSearchParams(window.location.search).get('paid') === 'true') ||
+                 (new URLSearchParams(window.location.search).get('paid') === '1');
 
   const score = Number(r.overallScore) || 0;
   const bName = esc(bizData.name || '');
