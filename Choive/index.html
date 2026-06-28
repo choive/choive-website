@@ -1218,7 +1218,7 @@ footer::before {
     <a href="#diagnostic" class="nav-link">Diagnostic</a>
     <a href="/report" class="nav-link">Report</a>
     <a href="mailto:hello@choive.com" class="nav-link">Contact</a>
-    <a href="#diagnostic" class="nav-cta">Run diagnostic →</a>
+    <a href="#diagnostic" class="nav-cta">Run free diagnostic →</a>
   </div>
 </nav>
 
@@ -1269,7 +1269,7 @@ footer::before {
       </div>
       <div class="ex-body">
         <div class="ex-score-row">
-          <div class="ex-score" id="heroExampleScore">0</div>
+          <div class="ex-score" id="heroExampleScore">52</div>
           <div class="ex-score-den">/ 100</div>
         </div>
         <div class="ex-headline">The world’s most trusted consulting firm. AI readability score: 2 of 25.</div>
@@ -2061,7 +2061,6 @@ function showResults(r, jobId) {
   // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
   //    which retrieves the Stripe session and reads client_reference_id as jobId.
   // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
-  // TODO: Replace test link with live Stripe link before launch
   const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
   const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
   const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
@@ -2222,9 +2221,9 @@ function showResults(r, jobId) {
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--ghost);margin-bottom:10px;line-height:1.2;">Get the complete branded PDF report.</div>'
-      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Delivered to your inbox within 24 hours.</div>'
+      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Emailed to your inbox seconds after payment.</div>'
       + '<button onclick=\"initiateReportCheckout(\'' + (jobId||'') + '\')\" id=\"reportCheckoutBtn\" style=\"background:var(--ac);color:var(--void);border:none;font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;padding:16px 28px;cursor:pointer;min-height:52px;\">Get Full Report — $499 →</button>'
-      + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF delivered within 24 hours</div>'
+      + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF delivered instantly after payment</div>'
       + '</div>' : '')
     + '<div class="pay-section" style="border-bottom:none;text-align:center;padding-top:32px;">'
     + '<button class="pay-btn-secondary" onclick="resetDiagnostic()">Run another diagnostic →</button>'
@@ -2247,7 +2246,7 @@ function showResults(r, jobId) {
     confirmBanner.innerHTML = '<div style="font-size:16px;color:var(--ac);flex-shrink:0;">✓</div>'
       + '<div>'
       + '<div style="font-size:13px;font-weight:700;color:var(--ghost);margin-bottom:4px;">Your CHOIVE· Report is being prepared.</div>'
-      + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;">Your branded PDF report will be delivered to your email within 24 hours. Check your inbox — including spam. Questions? <a href="mailto:hello@choive.com" style="color:var(--ac);text-decoration:none;">hello@choive.com</a></div>'
+      + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;">Your branded PDF report will be emailed to you seconds after payment. Check your inbox — including spam. Questions? <a href="mailto:hello@choive.com" style="color:var(--ac);text-decoration:none;">hello@choive.com</a></div>'
       + '</div>';
     var rZone = document.getElementById('dR');
     if (rZone && rZone.firstChild) {
@@ -2874,23 +2873,7 @@ initResultRoute();
 // so the pitch itself behaves like the product instead of sitting static.
 // Reuses the existing animateNum function as-is; does not modify it, does not
 // touch #dR/#dS/#dI or any diagnostic/engine state.
-(function() {
-  var el = document.getElementById('heroExampleScore');
-  if (!el || typeof animateNum !== 'function') return;
-  if (!('IntersectionObserver' in window)) {
-    animateNum('heroExampleScore', 0, 52, 1200);
-    return;
-  }
-  var io = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        animateNum('heroExampleScore', 0, 52, 1200);
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.05 });
-  io.observe(el);
-})();
+// Hero example score is static — no animation needed
 </script>
 
 </body>
