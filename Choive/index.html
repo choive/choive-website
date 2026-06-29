@@ -414,16 +414,10 @@ nav {
 }
 
 /* ── ENGINE LOADING ── */
-.engine-loading {
-  display:none;
-  min-height:100vh;
-  flex-direction:column;
-  justify-content:center;
-  padding:120px 52px;
-  background:var(--paper);
-  position:relative;
+.engine-loading-OLD {
+  /* old rule disabled — superseded by new design */
 }
-.engine-loading.active { display:flex; }
+.engine-loading-OLD.active { display:flex; }
 .engine-loading::before {
   content:'';
   position:absolute; inset:0;
@@ -1471,6 +1465,7 @@ footer::before {
 .diag-section {
   background: var(--void);
   padding: 100px 48px;
+  border-top: none;
 }
 .diag-inner { max-width: 860px; margin: 0 auto; }
 .diag-eyebrow {
@@ -2003,7 +1998,7 @@ footer::before {
         <input id="bD" type="text" class="diag-input" placeholder="One line about you  (optional)" autocomplete="off"/>
         <input id="bComp" type="text" class="diag-input" placeholder="Known competitors  (optional)" autocomplete="off"/>
       </div>
-      <button class="diag-btn" id="diagBtn" onclick="startDiagnostic()">
+      <button class="diag-btn" id="diagBtn" onclick="runDiagnostic()">
         Find out what AI says about you →
       </button>
       <div class="diag-note">Free · No signup · Real signals · 30–45 seconds</div>
