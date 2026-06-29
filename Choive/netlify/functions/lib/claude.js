@@ -1,552 +1,268 @@
-// lib/claude.js
-// CHOIVE™ evidence-first scoring engine
-// Architecture: structured signals confirmed by engine → Claude analyzes → validators normalize
-// ENV: ANTHROPIC_API_KEY
+// run-diagnostic-background.js
+// CHOIVE™ background diagnostic engine
+// Stage 1: collect evidence — Stage 2: score — Stage 3: save
+// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
+const { updateStatus, saveEvidence, saveResult, saveError } = require('./lib/supabase');
+const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
+const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
+const { scoreWithClaude, inferCategory } = require('./lib/claude');
+const { hasValidShape, buildSafeOutput } = require('./lib/validators');
+const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
+const { fetchApifyEvidence }   = require('./lib/apify');
+const { generateDeliverables } = require('./lib/deliverables');
 
-'use strict';
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
 
-const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const TIMEOUT_MS      = 90000;
-const MAX_TOKENS      = 4500;
+function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
 
-function truncate(text, max) {
-  max = max || 4000;
-  var value = String(text || '');
-  return value.length > max ? value.slice(0, max) : value;
-}
+exports.handler = async function (event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
 
-// ── Sanitize external content against prompt injection ────────────────────────
-function sanitizeExternal(text) {
-  if (!text || typeof text !== 'string') return text;
-  return text
-    .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
-    .replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
-    .replace(/disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
-    .replace(/you\s+are\s+now\s+(a\s+)?(different|new|another)/gi, '[removed]')
-    .replace(/new\s+instructions?:/gi, '[removed]')
-    .replace(/system\s*:\s*you\s+are/gi, '[removed]')
-    .replace(/\[INST\]|\[\/INST\]|<\|im_start\|>|<\|im_end\|>/g, '[removed]')
-    .replace(/CHOIVE.*?score.*?must\s+be/gi, '[removed]')
-    .replace(/set\s+(the\s+)?(overall|clarity|trust|difference|ease)\s+score\s+to/gi, '[removed]')
-    .split('\n').map(function(line) {
-      return line.replace(/\S{500,}/g, '[long-token-removed]');
-    }).join('\n');
-}
-
-// ── Fast category inference ───────────────────────────────────────────────────
-async function inferCategory(name, category, websiteText, searchText) {
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 15000);
-  var prompt = 'Business name: ' + name + '\n'
-    + 'User-provided category: ' + category + '\n'
-    + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 800) + '\n'
-    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 800) + '\n\n'
-    + 'Based only on the evidence above, determine the precise real-world category this business operates in.\n'
-    + 'Return ONLY a JSON object with one field:\n'
-    + '{ "inferredCategory": "precise category name" }\n'
-    + 'Be specific. Examples:\n'
-    + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
-    + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
-    + 'Return only raw JSON. No markdown. No explanation.';
+  let jobId;
   try {
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 100,
-        temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    if (!response.ok) return category;
-    var data = await response.json();
-    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
-      .map(function(b) { return b.text || ''; }).join('').trim();
-    var clean = text.replace(/```json|```/g, '').trim();
-    var parsed = JSON.parse(clean);
-    return parsed.inferredCategory || category;
+    const body  = JSON.parse(event.body || '{}');
+    jobId       = safeStr(body.jobId);
+    const input = body.input && typeof body.input === 'object' ? body.input : {};
+
+    const name             = safeStr(input.name);
+    const category         = safeStr(input.category);
+    const city             = safeStr(input.city);
+    const website          = safeStr(input.website);
+    const description      = safeStr(input.description);
+    const knownCompetitors = safeStr(input.knownCompetitors);
+
+    if (!jobId)                      throw new Error('Missing jobId');
+    if (!name || !category || !city) throw new Error('Missing required input fields');
+
+    await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
+
+    // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
+    let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
+    let websiteText    = '';
+    let websiteSignals = {};   // ← structured ground truth from fetchWebsite
+    let inferredSite   = '';
+    let visibilityPos  = -1;
+
+    const [serperSettled, webSettled] = await Promise.allSettled([
+      searchSerper(name, category, city),
+      website ? fetchWebsiteText(website) : Promise.resolve({ text: '', signals: {} })
+    ]);
+
+    if (serperSettled.status === 'fulfilled') {
+      serperPayload = serperSettled.value;
+    } else {
+      console.warn('[' + jobId + '] Serper failed:', serperSettled.reason?.message);
+    }
+
+    if (webSettled.status === 'fulfilled') {
+      // fetchWebsiteText now returns { text, signals }
+      var webResult   = webSettled.value || {};
+      websiteText     = webResult.text    || '';
+      websiteSignals  = webResult.signals || {};
+    } else {
+      console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
+    }
+
+    inferredSite = inferOfficialSite(website, serperPayload, name);
+
+    // If the primary website fetch failed, try the inferred site
+    if (!websiteText && inferredSite && inferredSite !== website) {
+      var fallbackResult = await fetchWebsiteText(inferredSite).catch(function() {
+        return { text: '', signals: {} };
+      });
+      websiteText    = fallbackResult.text    || '';
+      websiteSignals = fallbackResult.signals || {};
+    }
+
+    const targetDomain = normalizeUrl(website || '');
+    if (targetDomain) {
+      visibilityPos = (serperPayload.results || []).findIndex(
+        r => normalizeUrl(r.link || '') === targetDomain
+      );
+    }
+
+    const evidence = {
+      name, category, city, website, description, knownCompetitors,
+      inferredOfficialSite: inferredSite   || '',
+      websiteText:          websiteText    || '',
+      websiteSignals:       websiteSignals,   // ← structured signals attached here
+      searchText:           serperPayload.searchText   || 'No search results returned.',
+      kgText:               serperPayload.kgText       || 'None',
+      visibilityPosition:   visibilityPos,
+      competitors:          serperPayload.competitors   || [],
+      socialSignals:        serperPayload.socialSignals || {},
+      summaries:            serperPayload.summaries     || {},
+      collectedAt:          new Date().toISOString(),
+    };
+
+    await saveEvidence(jobId, evidence).catch(err =>
+      console.warn('[' + jobId + '] saveEvidence failed:', err.message)
+    );
+
+    // ── Social media pages ────────────────────────────────────────────────────
+    var socialEvidence = {};
+    var socialText     = 'No social media pages found.';
+    try {
+      socialEvidence = await fetchSocialEvidence(serperPayload.results || [], name);
+      socialText     = buildSocialText(socialEvidence);
+      evidence['socialEvidence'] = socialEvidence;
+      evidence['socialText']     = socialText;
+      console.log('[' + jobId + '] Social platforms fetched:', Object.keys(socialEvidence).join(', ') || 'none');
+    } catch (err) {
+      console.warn('[' + jobId + '] Social fetch failed:', err.message);
+    }
+
+    // ── Review platform pages ─────────────────────────────────────────────────
+    var reviewPages = {};
+    var reviewText  = 'No review platform pages found.';
+    try {
+      reviewPages = await fetchReviewPages(serperPayload.results || []);
+      reviewText  = buildReviewText(reviewPages);
+      evidence['reviewPages'] = reviewPages;
+      evidence['reviewText']  = reviewText;
+      var reviewKeys = Object.keys(reviewPages);
+      if (reviewKeys.length > 0) {
+        console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
+        // Signal: review platform presence confirmed by actual page fetch
+        if (!websiteSignals.confirmedReviewPlatforms) {
+          websiteSignals.confirmedReviewPlatforms = reviewKeys;
+          evidence.websiteSignals = websiteSignals;
+        }
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Review fetch failed:', err.message);
+    }
+
+    // ── Apify review evidence ─────────────────────────────────────────────────
+    var apifyResult = { apifyText: '', trustpilot: null, googleReviews: null };
+    try {
+      apifyResult = await fetchApifyEvidence(name, city, website);
+      if (apifyResult.apifyText) {
+        evidence['apifyText']     = apifyResult.apifyText;
+        evidence['trustpilot']    = apifyResult.trustpilot;
+        evidence['googleReviews'] = apifyResult.googleReviews;
+        // Attach confirmed review data to signals for deterministic use
+        if (apifyResult.trustpilot) {
+          websiteSignals.trustpilotRating      = apifyResult.trustpilot.rating      || null;
+          websiteSignals.trustpilotReviewCount = apifyResult.trustpilot.reviewCount || 0;
+        }
+        if (apifyResult.googleReviews) {
+          websiteSignals.googleRating      = apifyResult.googleReviews.rating      || null;
+          websiteSignals.googleReviewCount = apifyResult.googleReviews.reviewCount || 0;
+        }
+        evidence.websiteSignals = websiteSignals;
+        console.log('[' + jobId + '] Apify evidence collected');
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Apify failed:', err.message);
+    }
+
+    // ── Competitor homepage fetch ─────────────────────────────────────────────
+    var competitorPageText = '';
+    if (serperPayload.competitors && serperPayload.competitors.length > 0) {
+      var topComp = serperPayload.competitors[0];
+      if (topComp && topComp['domain']) {
+        competitorPageText = await fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
+        if (competitorPageText) {
+          evidence['competitorPageText'] = competitorPageText;
+          evidence['competitorDomain']   = topComp['domain'];
+          console.log('[' + jobId + '] Fetched competitor: ' + topComp['domain']);
+        }
+      }
+    }
+
+    // ── STAGE 1b: CATEGORY INFERENCE + SECOND-PASS COMPETITOR SEARCH ─────────
+    var inferredCat = category;
+    try {
+      var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
+      if (catResult) {
+        inferredCat = catResult;
+        if (catResult !== category) {
+          console.log('[' + jobId + '] Inferred category: ' + inferredCat);
+        }
+        evidence['inferredCategory'] = inferredCat;
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Category inference failed:', err.message);
+    }
+
+    try {
+      var compSearch = await searchCompetitors(name, inferredCat, city, knownCompetitors);
+      if (compSearch.competitors && compSearch.competitors.length > 0) {
+        // Second-pass uses the REAL inferred category — these competitors are more accurate.
+        // Replace first-pass competitors entirely so the correct ones are not crowded out.
+        var firstPassComps = (evidence['competitors'] || []);
+        var newComps = compSearch.competitors.filter(function(c) {
+          return !firstPassComps.some(function(fp) { return fp['domain'] === c['domain']; });
+        });
+        // Second-pass competitors go first (they used the real category)
+        // Keep first-pass ones only if second-pass found fewer than 3
+        if (newComps.length >= 3) {
+          evidence['competitors'] = newComps.slice(0, 5);
+        } else {
+          evidence['competitors'] = newComps.concat(firstPassComps).slice(0, 5);
+        }
+        console.log('[' + jobId + '] Second-pass competitors:', evidence['competitors'].map(function(c) { return c['domain']; }).join(', '));
+      }
+      if (compSearch.searchText) {
+        evidence['searchText'] = evidence['searchText'] + '\n\nSECOND-PASS COMPETITOR SEARCH (inferred category: ' + inferredCat + '):\n' + compSearch.searchText;
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Second-pass competitor search failed:', err.message);
+    }
+
+    // ── STAGE 2: SCORING ──────────────────────────────────────────────────────
+    await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
+
+    let rawOutput;
+    try {
+      rawOutput = await scoreWithClaude(evidence);
+    } catch (err) {
+      console.error('[' + jobId + '] Claude scoring failed:', err.message);
+      await saveError(jobId, 'Scoring failed: ' + err.message).catch(() => {});
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
+    }
+
+    if (!hasValidShape(rawOutput)) {
+      console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
+    }
+
+    const finalResult = buildSafeOutput(rawOutput);
+
+    // Merge evidence-level fields not returned by Claude into final result
+    if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
+      finalResult['socialSignals'] = evidence['socialSignals'];
+    }
+    if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
+      finalResult['summaries'] = evidence['summaries'];
+    }
+    if (evidence['reviewText'])       finalResult['reviewText']       = evidence['reviewText'];
+    if (evidence['apifyText'])        finalResult['apifyText']        = evidence['apifyText'];
+    if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
+
+    console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
+
+    // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
+    try {
+      var deliverables = generateDeliverables(evidence, finalResult);
+      finalResult['deliverables'] = deliverables;
+    } catch (err) {
+      console.warn('[' + jobId + '] Deliverables failed:', err.message);
+    }
+
+    await saveResult(jobId, finalResult);
+    console.log('[' + jobId + '] Diagnostic complete.');
+    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
+
   } catch (err) {
-    clearTimeout(timer);
-    return category;
+    console.error('run-diagnostic-background error:', err.message);
+    if (jobId) await saveError(jobId, err.message).catch(() => {});
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: err.message }) };
   }
-}
-
-// ── Build confirmed signals section for prompt ────────────────────────────────
-// These are facts the engine confirmed mechanically — not for Claude to interpret,
-// but to take as given when writing analysis and setting scores.
-function buildConfirmedSignals(websiteSignals) {
-  if (!websiteSignals || Object.keys(websiteSignals).length === 0) {
-    return 'CONFIRMED SIGNALS: Website not provided or not accessible.';
-  }
-
-  var s = websiteSignals;
-  var lines = ['CONFIRMED SIGNALS (mechanically verified — treat as ground truth):'];
-
-  // Clarity
-  lines.push('Title tag present: '        + (s.hasTitle           ? 'YES — "' + (s.titleText || '') + '"'  : 'NO'));
-  lines.push('H1 present: '               + (s.hasH1              ? 'YES — "' + (s.h1Text    || '') + '"'  : 'NO'));
-  lines.push('Meta description present: ' + (s.hasMetaDescription ? 'YES — "' + (s.metaDescriptionText || '').slice(0, 120) + '"' : 'NO'));
-  lines.push('OG tags present: '          + (s.hasOgTags          ? 'YES' : 'NO'));
-  lines.push('Canonical tag present: '    + (s.hasCanonical       ? 'YES' : 'NO'));
-
-  // Schema
-  if (s.hasSchema) {
-    lines.push('Schema markup: YES (' + s.schemaCount + ' block(s)) — types: ' + (s.schemaTypes || []).join(', '));
-    lines.push('Specific schema type: ' + (s.hasSpecificSchema ? 'YES' : 'NO — only generic types found'));
-  } else {
-    lines.push('Schema markup: NO — no JSON-LD detected');
-    lines.push('Specific schema type: NO');
-  }
-
-  // Ease
-  lines.push('llms.txt at domain root: ' + (s.hasLlmsTxt  ? 'YES (verified by direct fetch)' : 'NO'));
-  lines.push('sitemap.xml accessible: '  + (s.hasSitemap  ? 'YES' : 'NO'));
-  lines.push('robots.txt present: '      + (s.hasRobots   ? 'YES' : 'NO'));
-
-  // Review data from Apify (if collected)
-  if (s.trustpilotReviewCount !== undefined) {
-    lines.push('Trustpilot reviews (live): ' + s.trustpilotReviewCount + (s.trustpilotRating ? ' — rating ' + s.trustpilotRating : ''));
-  }
-  if (s.googleReviewCount !== undefined) {
-    lines.push('Google reviews (live): ' + s.googleReviewCount + (s.googleRating ? ' — rating ' + s.googleRating : ''));
-  }
-
-  // Review platforms confirmed by page fetch
-  if (s.confirmedReviewPlatforms && s.confirmedReviewPlatforms.length > 0) {
-    lines.push('Review platform pages fetched: ' + s.confirmedReviewPlatforms.join(', '));
-  }
-
-  return lines.join('\n');
-}
-
-// ── Main scoring prompt ───────────────────────────────────────────────────────
-function buildPrompt(evidence) {
-  var name               = evidence.name        || '';
-  var category           = evidence.category    || '';
-  var city               = evidence.city        || '';
-  var website            = evidence.website     || 'not provided';
-  var description        = evidence.description || 'not provided';
-  var inferredSite       = evidence.inferredOfficialSite || 'not found';
-  var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
-  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
-  var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
-  var visibilityPosition = evidence.visibilityPosition;
-  var competitors        = evidence.competitors        || [];
-  var knownCompetitors   = evidence.knownCompetitors   || '';
-  var competitorDomain   = evidence.competitorDomain   || '';
-  var competitorPageText = evidence.competitorPageText || '';
-  var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
-  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
-  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
-  var socialSignals      = evidence.socialSignals || {};
-  var summaries          = evidence.summaries     || {};
-  var websiteSignals     = evidence.websiteSignals || {};
-
-  var competitorText = competitors.length > 0
-    ? competitors.map(function(c) {
-        var tag = c.isLocal ? ' [found via local-market search — likely a local/domestic competitor]' : '';
-        return '- ' + c.domain + tag + ': ' + (c.snippet || '');
-      }).join('\n')
-    : 'No clear competitors identified in search results.';
-
-  var socialList    = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
-  var socialDisplay = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
-
-  var visibilityText = (visibilityPosition !== undefined && visibilityPosition !== -1)
-    ? 'YES (position ' + (visibilityPosition + 1) + ')'
-    : 'NO';
-
-  var confirmedSignalsSection = buildConfirmedSignals(websiteSignals);
-
-  var prompt = 'BUSINESS:\n'
-    + 'Name: ' + name + '\n'
-    + 'Category: ' + category + '\n'
-    + 'Location: ' + city + '\n'
-    + 'Website: ' + website + '\n'
-    + 'Description: ' + description + '\n'
-    + (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '')
-    + '\nINFERRED OFFICIAL SITE: ' + inferredSite
-    + '\n\n' + confirmedSignalsSection
-    + '\n\nKNOWLEDGE GRAPH:\n' + kgText
-    + '\n\nWEBSITE CONTENT:\n' + websiteText
-    + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
-    + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
-    + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
-    + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
-    + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
-    + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
-    + (apifyText ? '\n\nLIVE REVIEW DATA:\n' + apifyText : '')
-    + '\n\nEVIDENCE SUMMARIES:\n'
-    + 'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n'
-    + 'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n'
-    + 'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n'
-    + 'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n'
-    + '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText
-    + '\n\n---\n'
-    + 'YOU ARE CHOIVE™ — A DECISION INTELLIGENCE ENGINE.\n\n'
-    + 'YOUR ONLY JOB:\n'
-    + 'Determine why a customer would or would not choose this business over alternatives.\n\n'
-    + 'CRITICAL — CONFIRMED SIGNALS ARE GROUND TRUTH:\n'
-    + 'The CONFIRMED SIGNALS section above was produced by mechanical verification — direct HTTP\n'
-    + 'requests, HTML parsing, file checks. These facts are certain. Do not contradict them.\n'
-    + 'When scoring Clarity and Ease, your scores MUST reflect what the confirmed signals show:\n'
-    + '- If "Schema markup: YES" → ease score cannot be below 12\n'
-    + '- If "Schema markup: NO" → ease score cannot exceed 8\n'
-    + '- If "llms.txt: YES" → ease score cannot be below 18\n'
-    + '- If "Title tag: YES" and "H1: YES" and "Meta description: YES" → clarity cannot be below 14\n'
-    + '- If "Title tag: NO" and "H1: NO" → clarity cannot exceed 8\n'
-    + 'These are not suggestions. They are hard constraints derived from real data.\n\n'
-    + 'STRICT RULES:\n'
-    + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
-    + '2. Every score must be justified by specific evidence.\n'
-    + '3. If a signal is missing, say it is missing. Do not invent it.\n'
-    + '4. Every pillar finding must quote or directly reference specific evidence.\n'
-    + '5. Competitor must appear directly in the search evidence. If none clearly appears, return null.\n'
-    + '6. Platform coverage must reflect what the evidence actually shows.\n\n'
-    + 'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n'
-    + 'User provided category: "' + category + '" — this may be vague or incorrect.\n'
-    + 'Using ONLY the evidence, determine:\n'
-    + '1. What does this business actually sell?\n'
-    + '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n'
-    + '3. What precise industry category would buyers use to find this?\n'
-    + '4. B2B, B2C, or both?\n'
-    + 'Set inferredCategory in the JSON. Do not write this as prose.\n\n'
-    + 'DECISION ENVIRONMENT — classify first:\n'
-    + '- discovery_driven: local, map-based, search-based selection\n'
-    + '- comparison_driven: evaluated against alternatives before decision\n'
-    + '- authority_driven: selected based on reputation, partnerships, capability\n'
-    + '- default_driven: category leader chosen automatically\n\n'
-    + 'SCORING — four pillars, each 0-25:\n\n'
-    + 'CLARITY (0-25): How precisely and consistently is this business defined?\n'
-    + '- Score 20+: specific H1, clear category, consistent naming across all sources\n'
-    + '- Score 10-19: partially defined, some inconsistency\n'
-    + '- Score 0-9: vague, inconsistent, or undefined\n'
-    + '- HARD CONSTRAINT: If confirmed signals show Title YES + H1 YES + Meta YES → minimum 14\n'
-    + '- HARD CONSTRAINT: If confirmed signals show Title NO + H1 NO → maximum 8\n'
-    + '- Required: quote the actual H1 or description found in confirmed signals\n\n'
-    + 'TRUST (0-25): How much independent third-party verification exists?\n'
-    + '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n'
-    + '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n'
-    + '  OR verified review platform presence with ratings, OR confirmed press coverage\n'
-    + '- Score 8-14: some third-party signals but limited — one or two sources only\n'
-    + '- Score 0-7: only owned channels, no independent confirmation found\n'
-    + '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n'
-    + '  with full name and title count as strong trust signals — score minimum 15\n'
-    + '- RULE: global top-tier firms (Magic Circle law, Big Four accounting) = minimum 16\n'
-    + '- RULE: Legal 500 or Chambers rankings count as strong independent citations\n'
-    + '- RULE: for consumer brands, use exact review numbers from CONFIRMED SIGNALS if present\n'
-    + '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\n'
-    + '- Required: name specific sources AND exact numbers\n\n'
-    + 'TRUST ACTION RULE:\n'
-    + 'When trust is low, action body must state:\n'
-    + '1. Exactly what was found\n'
-    + '2. The number needed to be credible in this category\n'
-    + '3. The specific platform that matters most for this buyer type\n\n'
-    + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
-    + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
-    + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
-    + '- Score 8-14: differentiator exists but vague or easy to copy\n'
-    + '- Score 0-7: completely generic — no niche, no unique clients, no distinct use case\n'
-    + '- CRITICAL: a business with named automotive partnerships (Škoda, Zeekr, Geely)\n'
-    + '  AND named telco clients (TELUS, Proximus) AND 15+ years in a niche CANNOT score below 14\n'
-    + '- Required: quote the actual differentiator, or state precisely why none exists\n'
-    + '- DIFFERENCE FINDING FORMAT: complete this sentence — "[Business] is the [specific thing] for [specific buyer]"\n'
-    + '  If no differentiator exists, complete: "[Business] looks like every other [category] to a buyer"\n'
-    + '- Analysis sentence 1: Quote the exact phrase or evidence that shows the differentiator (or its absence)\n'
-    + '- Analysis sentence 2: Name the exact sales conversation moment where this difference is won or lost\n\n'
-    + 'EASE (0-25): How quickly and confidently can this business be understood and selected?\n'
-    + '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n'
-    + '- Score 14-19: schema present + complete metadata but no llms.txt\n'
-    + '- Score 8-13: partial structured signals — OG tags + some metadata, no schema\n'
-    + '- Score 4-7: basic web presence — website works, OG tags present, no schema, no llms.txt\n'
-    + '- Score 0-3: no structured signals at all, or website inaccessible\n'
-    + '- HARD CONSTRAINT: confirmed "Schema markup: YES" → score MINIMUM 12\n'
-    + '- HARD CONSTRAINT: confirmed "Schema markup: NO" → score MAXIMUM 8\n'
-    + '- HARD CONSTRAINT: confirmed "llms.txt: YES" → score MINIMUM 18\n'
-    + '- Required: state exactly which signals were confirmed and which were absent\n\n'
-    + 'COMPETITOR RULE:\n'
-    + 'Only name a competitor if ALL of these are true:\n'
-    + '1. The competitor domain or name appears in the search evidence above\n'
-    + '2. It is in the exact same category as this business\n'
-    + '3. It competes for the same buyer type at the same deal size\n'
-    + '4. It is not a directory, review platform, aggregator, or listing site\n'
-    + '5. It would realistically appear in the same sales conversation\n'
-    + '6. CRITICAL: It is NOT the same business being diagnosed — never name the subject business or any variation of its name as a competitor\n'
-    + 'If no competitor meets all criteria, return null for all competitor fields.\n\n'
-    + (knownCompetitors ? ('IF THE USER PROVIDED KNOWN COMPETITORS:\n'
-    + 'It is verified ground truth from the business owner. For each name in that list:\n'
-    + '1. Search the evidence above for any mention of that name, even a brief one.\n'
-    + '2. If found anywhere in the evidence, include it as a competitor.\n'
-    + '3. A user-provided name found in evidence takes priority over unnamed competitors.\n'
-    + '4. If none of the user-provided names appear in evidence, do not invent evidence for them.\n\n') : '')
-    + 'SCAN ALL EVIDENCE — DO NOT STOP AT THE FIRST MATCH:\n'
-    + 'If TWO OR MORE distinct competitor names meeting all 5 criteria appear ANYWHERE in the evidence,\n'
-    + 'return all of them (up to 3). Returning only 1 when 2+ exist is an incomplete answer.\n\n'
-    + 'GEOGRAPHIC COVERAGE:\n'
-    + 'Return UP TO 3 competitors. Target shape:\n'
-    + '- One LOCAL or DOMESTIC competitor (same country/region)\n'
-    + '- One INTERNATIONAL or GLOBAL competitor (different country, same category)\n'
-    + 'Entries tagged "[found via local-market search]" are your first choice for the local slot.\n'
-    + 'Do not invent a local competitor if none appears in evidence.\n\n'
-    + 'CATEGORY PRIORITY:\n'
-    + 'The evidence contains two passes of search results.\n'
-    + 'The SECOND-PASS results (labelled "SECOND-PASS COMPETITOR SEARCH") used the REAL inferred category — these are more accurate than first-pass results.\n'
-    + 'If a competitor appears in second-pass results, ALWAYS prefer them over first-pass results.\n'
-    + 'First-pass competitors should only be used if no second-pass competitors exist.\n\n'
-    + 'SOURCE QUALITY — PREFER GENUINE OVER GENERIC:\n'
-    + 'HIGH QUALITY: named alongside this business in a news article, industry panel, analyst report.\n'
-    + 'LOWER QUALITY: appears on a generic "best X vendors" / "top X alternatives" listicle site.\n'
-    + 'If both types exist, use the press-named one first.\n\n'
-    + 'IF A COMPETITOR HAS REBRANDED:\n'
-    + 'Use the CURRENT name only. You may mention the former name once in the evidence field.\n\n'
-    + 'COMPETITOR ANALYSIS DEPTH:\n'
-    + 'advantage: one sentence — what specific structural or positioning advantage do they have?\n'
-    + 'gapLocation: one sentence — at what exact point in selection does this hurt the business?\n'
-    + 'closeGap: one sentence — what single specific change would close this gap?\n\n'
-    + 'PLATFORM COVERAGE RULE:\n'
-    + '- present: clearly findable OR marketPosition.tier is dominant\n'
-    + '- weak: appears in search results but lacks structured signals OR tier is strong\n'
-    + '- absent: genuinely no evidence — only for unknown or very new businesses\n'
-    + '- RULE: dominant tier = PRESENT on all platforms. No exceptions.\n'
-    + '- RULE: strong tier = minimum WEAK on all platforms.\n\n'
-    + 'MARKET POSITION TIERS:\n'
-    + 'dominant: household name globally — Nike, Starbucks, Salesforce, McKinsey, Freshfields\n'
-    + '  Magic Circle law firms = dominant. Big Four accounting = dominant.\n'
-    + 'strong: well-known in category — named by buyers without prompting.\n'
-    + 'upper_mid: known within category but requires some discovery.\n'
-    + 'mid: present but requires active search. Regional or niche B2B player.\n'
-    + 'weak: limited presence — hard to find without knowing the name.\n'
-    + 'absent: no detectable presence in evidence.\n'
-    + 'CRITICAL TIER RULES:\n'
-    + '- A B2B niche vendor with Fortune 500 clients = mid or upper_mid, NOT strong or dominant\n'
-    + '- Strong/dominant = known by buyers WITHOUT being searched for\n'
-    + '- Technical gaps do NOT lower tier. Tier = real-world selection likelihood.\n'
-    + '- When uncertain: use the lower tier\n\n'
-    + 'CHOIVE LANGUAGE STANDARD:\n'
-    + 'WHAT CHOIVE IS: A business selection diagnostic. Why a business is chosen, overlooked, trusted, compared, or ignored.\n'
-    + 'NOT an SEO audit. NOT an AI visibility tool. Focus on SELECTION.\n'
-    + 'NEVER WRITE: AI cannot understand / AI does not know / AI cannot categorize\n'
-    + 'INSTEAD WRITE: not consistently selected / recommendation confidence low / selection friction exists\n'
-    + 'TRUST: Named Fortune 500 clients, partnerships, long history = HIGH TRUST. Review volume alone is not trust.\n'
-    + 'EASE: How quickly understood, categorized, selected. Schema is one factor, not the whole score.\n'
-    + 'COMPETITORS: Only from evidence. Never invent. If none found: No dominant comparison pattern detected.\n'
-    + 'RECOMMENDATIONS: Explain outcome not task.\n'
-    + 'TONE: Strategic advisor.\n\n'
-    + 'ACTION RULES:\n'
-    + '- Actions must be specific to this business — name the business, name the platform, name the exact gap\n'
-    + '- Body sentence 1: what is missing right now, with specific evidence cited\n'
-    + '- Body sentence 2: exactly what to do — one action, one platform, one outcome\n'
-    + '- Explanation: the selection consequence — what changes for the buyer when this is fixed\n'
-    + '  Do NOT explain the technical task. Explain what the buyer experiences differently.\n'
-    + '  Format: "When [this is done], [buyer] will [specific outcome] instead of [current problem]."\n'
-    + '- TITLE BANNED WORDS: schema, schema markup, JSON-LD, llms.txt, metadata, canonical — never in title\n'
-    + '- TITLE GOOD: Make this business machine-readable, Define your business for AI systems, Close the comparison gap\n'
-    + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\n'
-    + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
-    + '- closeGap in competitor block: one sentence — the single specific action that closes the gap.\n'
-    + '  Format: "[Business] should [exact action] so that [buyer outcome]."\n\n'
-    + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
-    + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Difference finding: [one short phrase, max 6 words, no punctuation]\n'
-    + 'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n'
-    + 'PILLAR ANALYSIS — 2 sentences each:\n'
-    + 'Sentence 1: What is true about this pillar based on evidence?\n'
-    + 'Sentence 2: What is the selection consequence?\n\n'
-    + 'VERDICT HEADLINE — max 10 words, no punctuation, strategic advisor tone\n\n'
-    + 'SUMMARY PARAGRAPH — exactly 3 sentences:\n'
-    + '- If tier is dominant or strong: start with "This business is currently chosen because..."\n'
-    + '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n'
-    + '- Sentence 2: the single strongest evidence-based driver or gap\n'
-    + '- Sentence 3: the concrete moment in the buyer journey where this business is lost or won.\n'
-    + '  Name the exact moment. Do not invent statistics.\n\n'
-    + 'BUSINESS UNDERSTANDING — what AI currently thinks this business is:\n'
-    + 'Write exactly two paragraphs separated by a blank line.\n'
-    + 'Paragraph 1 — BEFORE: Write the exact paragraph an AI would generate TODAY if asked to describe this business.\n'
-    + '  Use only signals visible in the evidence. Start with the business name.\n'
-    + '  Be honest — if signals are weak, the paragraph will be vague. If strong, it will be specific.\n'
-    + 'Paragraph 2 — AFTER: Write what that same AI paragraph would say after the top fixes are implemented.\n'
-    + '  Name the specific improvements. Start with the business name.\n'
-    + '  The contrast between the two paragraphs is the core value of this field.\n\n'
-    + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
-
-  var jsonSchema = '{\n'
-    + '  "overallScore": 0,\n'
-    + '  "verdictHeadline": "",\n'
-    + '  "summaryParagraph": "",\n'
-    + '  "businessUnderstanding": "",\n'
-    + '  "evidenceNarrative": "",\n'
-    + '  "inferredCategory": "",\n'
-    + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
-    + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
-    + '  "pillars": {\n'
-    + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
-    + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
-    + '  },\n'
-    + '  "competitors": [\n'
-    + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
-    + '  ],\n'
-    + '  "actions": [\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "high",     "title": "", "body": "", "explanation": "" },\n'
-    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "" }\n'
-    + '  ]\n'
-    + '}';
-
-  return prompt + jsonSchema;
-}
-
-// ── Parse Claude response ─────────────────────────────────────────────────────
-function parseClaudeResponse(data) {
-  var text = (data.content || [])
-    .filter(function(b) { return b.type === 'text'; })
-    .map(function(b) { return b.text || ''; })
-    .join('')
-    .trim();
-  if (!text) throw new Error('Claude returned empty response');
-  var clean = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-  try { return JSON.parse(clean); } catch (_) {}
-  var start = clean.indexOf('{');
-  var end   = clean.lastIndexOf('}');
-  if (start > 0) { console.log('[CHOIVE] Non-JSON prefix:', JSON.stringify(clean.slice(0, Math.min(start, 100)))); }
-  if (start !== -1 && end !== -1 && end > start) {
-    try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
-  }
-  console.error('[CHOIVE] Claude parse failed. Raw start:', text.slice(0, 300));
-  console.error('[CHOIVE] Claude parse failed. Raw end:', text.slice(-300));
-  throw new Error('Could not parse Claude response as JSON');
-}
-
-// ── Apply hard score constraints from confirmed signals ───────────────────────
-// These override Claude's scores where the engine has ground truth.
-// This replaces the regex pattern matching in validators.js.
-function applySignalConstraints(rawOutput, websiteSignals) {
-  if (!websiteSignals || Object.keys(websiteSignals).length === 0) return rawOutput;
-  var s = websiteSignals;
-  var p = rawOutput.pillars || {};
-
-  // EASE constraints — schema and llms.txt are mechanically confirmed
-  if (p.ease) {
-    var ease = Number(p.ease.score) || 0;
-    if (s.hasLlmsTxt  && ease < 18) { p.ease.score = Math.max(ease, 18); }
-    if (s.hasSchema   && ease < 12) { p.ease.score = Math.max(ease, 12); }
-    if (!s.hasSchema  && ease >  8) { p.ease.score = Math.min(ease,  8); }
-  }
-
-  // CLARITY constraints — title, H1, meta are mechanically confirmed
-  if (p.clarity) {
-    var clarity = Number(p.clarity.score) || 0;
-    if (s.hasTitle && s.hasH1 && s.hasMetaDescription && clarity < 14) {
-      p.clarity.score = Math.max(clarity, 14);
-    }
-    if (!s.hasTitle && !s.hasH1 && clarity > 8) {
-      p.clarity.score = Math.min(clarity, 8);
-    }
-  }
-
-  // Recompute overall from adjusted pillars
-  var cs = Number(p.clarity    && p.clarity.score)    || 0;
-  var ts = Number(p.trust      && p.trust.score)      || 0;
-  var ds = Number(p.difference && p.difference.score) || 0;
-  var es = Number(p.ease       && p.ease.score)       || 0;
-  rawOutput.overallScore = cs + ts + ds + es;
-
-  return rawOutput;
-}
-
-// ── Safe output normalizer ────────────────────────────────────────────────────
-function safeOutput(raw) {
-  var r = raw || {};
-  var pillars = r.pillars || {};
-  function safePillar(p) {
-    p = p || {};
-    return { score: Number(p.score) || 0, finding: p.finding || '', analysis: p.analysis || '', evidence: p.evidence || '' };
-  }
-  return {
-    overallScore:          Number(r.overallScore) || 0,
-    verdictHeadline:       r.verdictHeadline      || '',
-    summaryParagraph:      r.summaryParagraph     || '',
-    businessUnderstanding: r.businessUnderstanding || r.summaryParagraph || '',
-    evidenceNarrative:     r.evidenceNarrative    || '',
-    inferredCategory:      r.inferredCategory     || '',
-    signatureLine:         r.signatureLine        || '',
-    marketPosition:        r.marketPosition       || { tier: 'unknown', reasoning: '' },
-    platformCoverage:      r.platformCoverage     || { chatgpt: 'weak', perplexity: 'weak', gemini: 'weak', claude: 'weak' },
-    selectionGap:          r.selectionGap         || 0,
-    pillars: {
-      clarity:    safePillar(pillars.clarity),
-      trust:      safePillar(pillars.trust),
-      difference: safePillar(pillars.difference),
-      ease:       safePillar(pillars.ease)
-    },
-    competitors:  Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
-    competitor:   r.competitor  || null,
-    actions:      Array.isArray(r.actions) ? r.actions : [],
-    deliverables: r.deliverables || null
-  };
-}
-
-// ── Main scoring function ─────────────────────────────────────────────────────
-async function scoreWithClaude(evidence) {
-  var prompt     = buildPrompt(evidence);
-  var controller = new AbortController();
-  var timeout    = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
-
-  try {
-    var response = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: MAX_TOKENS,
-        temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-
-    var data = await response.json();
-    if (data.stop_reason && data.stop_reason !== 'end_turn') {
-      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason);
-    }
-    if (!response.ok) {
-      throw new Error(data && data.error && data.error.message
-        ? data.error.message
-        : 'Anthropic HTTP ' + response.status);
-    }
-
-    var raw = parseClaudeResponse(data);
-
-    // Apply hard constraints from confirmed signals before safeOutput normalizes
-    raw = applySignalConstraints(raw, evidence.websiteSignals || {});
-
-    return safeOutput(raw);
-
-  } catch (error) {
-    clearTimeout(timeout);
-    if (error.name === 'AbortError') throw new Error('Claude request timed out');
-    throw error;
-  }
-}
-
-module.exports = { scoreWithClaude, inferCategory };
+};
