@@ -1437,6 +1437,7 @@ footer::before {
   background: var(--paper);
   padding: 80px 48px;
 }
+.engine-loading.active { display: block; }
 .engine-inner { max-width: 640px; margin: 0 auto; }
 .engine-header {
   display: flex; align-items: center; gap: 14px;
@@ -2163,7 +2164,8 @@ function runDiagnostic() {
   document.getElementById('dS').classList.add('active');
   document.getElementById('dR').style.display = 'none';
   document.getElementById('dR').innerHTML = '';
-  document.getElementById('rBtn').disabled = true;
+  var rBtn = document.getElementById('rBtn') || document.getElementById('diagBtn');
+  if (rBtn) rBtn.disabled = true;
   // Scroll to scanning zone accounting for fixed nav (56px)
   var dSel = document.getElementById('dS');
   if (dSel) {
