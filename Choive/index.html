@@ -1734,6 +1734,84 @@ footer::before {
 }
 
 
+
+/* ── PRODUCT PREVIEW ──────────────────────────────────────────── */
+.process-preview {
+  margin-top: 64px;
+  border-top: 1px solid var(--rule);
+  padding-top: 48px;
+}
+.process-preview-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ac); margin-bottom: 24px;
+}
+.process-preview-card {
+  background: var(--void);
+  border: 1px solid rgba(201,168,106,0.2);
+  border-radius: 4px;
+  padding: 36px;
+  box-shadow: 0 24px 64px rgba(12,12,14,0.15);
+}
+.ppc-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.ppc-name {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 18px; font-weight: 700; color: var(--ghost);
+  margin-bottom: 4px;
+}
+.ppc-meta { font-size: 12px; color: var(--ghost-3); letter-spacing: 0.06em; }
+.ppc-score-wrap { display: flex; align-items: baseline; gap: 4px; }
+.ppc-score {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 52px; font-weight: 700; color: var(--ghost); line-height: 1;
+}
+.ppc-denom { font-size: 16px; color: var(--ghost-3); }
+.ppc-verdict {
+  font-size: 13px; color: var(--ac); letter-spacing: 0.06em;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 16px; margin-bottom: 24px;
+  font-weight: 600;
+}
+.ppc-pillars { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.ppc-pillar { display: grid; grid-template-columns: 80px 1fr 48px; gap: 12px; align-items: center; }
+.ppc-pillar-label { font-size: 11px; color: var(--ghost-3); letter-spacing: 0.08em; }
+.ppc-pillar-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+.ppc-pillar-fill { height: 100%; background: var(--ac); border-radius: 2px; }
+.ppc-pillar-num { font-size: 11px; color: var(--ghost-2); text-align: right; }
+.ppc-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.ppc-action {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  border-radius: 2px;
+}
+.ppc-action--critical { background: rgba(255,68,68,0.06); border: 1px solid rgba(255,68,68,0.15); }
+.ppc-action--high { background: rgba(255,170,51,0.06); border: 1px solid rgba(255,170,51,0.15); }
+.ppc-action-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 2px; white-space: nowrap; flex-shrink: 0;
+}
+.ppc-action--critical .ppc-action-badge { color: #ff4444; border: 1px solid rgba(255,68,68,0.4); }
+.ppc-action--high .ppc-action-badge { color: #ffaa33; border: 1px solid rgba(255,170,51,0.4); }
+.ppc-action-text { font-size: 12px; color: var(--ghost-2); line-height: 1.5; }
+.ppc-unlock {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 12px; color: var(--ghost-3);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 20px;
+}
+.ppc-unlock-icon { font-size: 14px; }
+.ppc-unlock-cta {
+  margin-left: auto; font-size: 12px; font-weight: 600;
+  color: var(--ac); letter-spacing: 0.04em; cursor: pointer;
+}
+@media (max-width: 768px) {
+  .ppc-header { flex-direction: column; gap: 12px; }
+  .ppc-pillar { grid-template-columns: 70px 1fr 40px; }
+  .process-preview-card { padding: 20px; }
+}
+
 </style>
 </head>
 <body>
@@ -3171,85 +3249,7 @@ function exportPDF() {
     + '<style>'
     + 'body{margin:0;padding:40px;font-family:Inter,sans-serif;background:#fff;color:#0E0E11;max-width:800px;}'
     + '@media print{body{-webkit-print-color-adjust:exact;} button{display:none;}}'
-    + '
-/* ── PRODUCT PREVIEW ──────────────────────────────────────────── */
-.process-preview {
-  margin-top: 64px;
-  border-top: 1px solid var(--rule);
-  padding-top: 48px;
-}
-.process-preview-label {
-  font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--ac); margin-bottom: 24px;
-}
-.process-preview-card {
-  background: var(--void);
-  border: 1px solid rgba(201,168,106,0.2);
-  border-radius: 4px;
-  padding: 36px;
-  box-shadow: 0 24px 64px rgba(12,12,14,0.15);
-}
-.ppc-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  margin-bottom: 20px;
-}
-.ppc-name {
-  font-family: 'Libre Baskerville', serif;
-  font-size: 18px; font-weight: 700; color: var(--ghost);
-  margin-bottom: 4px;
-}
-.ppc-meta { font-size: 12px; color: var(--ghost-3); letter-spacing: 0.06em; }
-.ppc-score-wrap { display: flex; align-items: baseline; gap: 4px; }
-.ppc-score {
-  font-family: 'Libre Baskerville', serif;
-  font-size: 52px; font-weight: 700; color: var(--ghost); line-height: 1;
-}
-.ppc-denom { font-size: 16px; color: var(--ghost-3); }
-.ppc-verdict {
-  font-size: 13px; color: var(--ac); letter-spacing: 0.06em;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  padding-top: 16px; margin-bottom: 24px;
-  font-weight: 600;
-}
-.ppc-pillars { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
-.ppc-pillar { display: grid; grid-template-columns: 80px 1fr 48px; gap: 12px; align-items: center; }
-.ppc-pillar-label { font-size: 11px; color: var(--ghost-3); letter-spacing: 0.08em; }
-.ppc-pillar-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
-.ppc-pillar-fill { height: 100%; background: var(--ac); border-radius: 2px; }
-.ppc-pillar-num { font-size: 11px; color: var(--ghost-2); text-align: right; }
-.ppc-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-.ppc-action {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 14px 16px;
-  border-radius: 2px;
-}
-.ppc-action--critical { background: rgba(255,68,68,0.06); border: 1px solid rgba(255,68,68,0.15); }
-.ppc-action--high { background: rgba(255,170,51,0.06); border: 1px solid rgba(255,170,51,0.15); }
-.ppc-action-badge {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 2px; white-space: nowrap; flex-shrink: 0;
-}
-.ppc-action--critical .ppc-action-badge { color: #ff4444; border: 1px solid rgba(255,68,68,0.4); }
-.ppc-action--high .ppc-action-badge { color: #ffaa33; border: 1px solid rgba(255,170,51,0.4); }
-.ppc-action-text { font-size: 12px; color: var(--ghost-2); line-height: 1.5; }
-.ppc-unlock {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  font-size: 12px; color: var(--ghost-3);
-  border-top: 1px solid rgba(255,255,255,0.06);
-  padding-top: 20px;
-}
-.ppc-unlock-icon { font-size: 14px; }
-.ppc-unlock-cta {
-  margin-left: auto; font-size: 12px; font-weight: 600;
-  color: var(--ac); letter-spacing: 0.04em; cursor: pointer;
-}
-@media (max-width: 768px) {
-  .ppc-header { flex-direction: column; gap: 12px; }
-  .ppc-pillar { grid-template-columns: 70px 1fr 40px; }
-  .process-preview-card { padding: 20px; }
-}
-
-</style>'
+    + '</style>'
     + '</head><body>'
     + '<div style="position:fixed;top:20px;right:20px;z-index:999;">'
     + '<button onclick="window.print()" style="background:#0C0C0E;color:#fff;border:none;font-family:Inter,sans-serif;font-size:12px;font-weight:700;padding:10px 18px;cursor:pointer;letter-spacing:0.04em;">Print / Save PDF</button>'
