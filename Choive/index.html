@@ -117,19 +117,8 @@ nav {
 
 /* ── HERO ── */
 /* Light. Open. The question arrives before the form. */
-.hero {
-  min-height:100vh;
-  padding:140px 52px 80px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:80px;
-  align-items:center;
-  max-width:1280px;
-  margin:0 auto;
-}
-.hero-left {
-  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) both;
-}
+.hero-OLD-DISABLED { /* disabled */ }
+/* .hero-left disabled */
 .hero-kicker {
   font-size:11px; font-weight:700; letter-spacing:0.2em;
   text-transform:uppercase; color:var(--muted);
@@ -179,9 +168,7 @@ nav {
 }
 
 /* Hero right — the real example */
-.hero-right {
-  animation:heroEnter 0.9s cubic-bezier(0.16,1,0.3,1) 0.18s both;
-}
+/* .hero-right disabled */
 .example-label {
   font-size:11px; font-weight:700; letter-spacing:0.16em;
   text-transform:uppercase; color:var(--muted);
@@ -1245,15 +1232,19 @@ footer::before {
   padding-top: 100px;
   padding-bottom: 0;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 .hero-inner {
-  max-width: 1080px;
+  width: 100%;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 0 48px 0;
+  padding: 0 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  box-sizing: border-box;
 }
 
 /* Kicker */
@@ -1324,6 +1315,7 @@ footer::before {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 .hero-card-eyebrow {
   display: flex; align-items: center; gap: 8px;
@@ -1577,11 +1569,13 @@ footer::before {
 
 /* ── THE NUMBER ───────────────────────────────────────────────── */
 .number-section {
-  background: var(--void);
+  background: #0C0C0E;
   padding: 120px 48px;
   text-align: center;
   border-top: 1px solid rgba(201,168,106,0.15);
   border-bottom: 1px solid rgba(201,168,106,0.15);
+  width: 100%;
+  box-sizing: border-box;
 }
 .number-inner { max-width: 720px; margin: 0 auto; }
 .number-big {
