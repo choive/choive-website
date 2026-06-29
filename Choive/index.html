@@ -1695,13 +1695,16 @@ function pollDiagnostic(jobId) {
         const resultWithPaid = Object.assign({}, data.result, {
           paid: data.paid === true || (data.result && data.result.paid === true)
         });
-        try {
-          console.log('[CHOIVE result data]', resultWithPaid);
-          showResults(resultWithPaid, jobId);
-        } catch (e) {
-          console.error('[CHOIVE showResults error]', e);
-          showError('Result loaded but could not be displayed.');
-        }
+        // Show step 3 "Preparing your verdict" for 1.5s before revealing results
+        setTimeout(function() {
+          try {
+            console.log('[CHOIVE result data]', resultWithPaid);
+            showResults(resultWithPaid, jobId);
+          } catch (e) {
+            console.error('[CHOIVE showResults error]', e);
+            showError('Result loaded but could not be displayed.');
+          }
+        }, 1500);
       } else if (data.status === 'failed') {
         if (pollTimer) clearInterval(pollTimer);
         showError(data.error || 'Diagnostic failed. Please try again.');
@@ -2180,7 +2183,7 @@ function showResults(r, jobId) {
       + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
       + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
       + '</div>'
-    : '<div class="paid-comp-none">No dominant comparison pattern detected in available evidence.</div>';
+    : '<div class="paid-comp-none">No established competitor dominates this category in AI — a significant opportunity to be the first business AI consistently recommends.</div>';
 
   var extraCompsHtml = compList.slice(1).map(function(cp) {
     if (!cp || !cp.name) return '';
@@ -2565,7 +2568,7 @@ function exportPDF() {
           + (an ? '<div style="font-size:13px;color:#444;line-height:1.65;">' + an + '</div>' : '')
           + '</div>';
       }).join('')
-    : '<div style="font-size:13px;color:#777;font-style:italic;">No dominant comparison pattern detected in available evidence.</div>';
+    : '<div style="font-size:13px;color:#777;font-style:italic;">No established competitor dominates this category in AI — a significant opportunity.</div>';
 
   var actionsHtml = Array.isArray(r.actions) ? r.actions.map(pdfAction).join('') : '';
   var pillarsHtml  = pdfPillar('clarity','Clarity') + pdfPillar('trust','Trust') + pdfPillar('difference','Difference') + pdfPillar('ease','Ease');
