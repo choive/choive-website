@@ -190,35 +190,43 @@ function buildPillarRing(score, label) {
 // ── PERSONALISED LETTER ───────────────────────────────────────────────────────
 function buildLetter(bizName, score, trustScore, compName, input) {
   var tier = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
-  var gapDesc = score >= 76
-    ? 'Your position is strong. This report shows how to make it unassailable.'
+
+  var opening = score >= 76
+    ? 'Your business is in a strong position. Not because of luck \u2014 because of real structural signals that AI platforms recognise and reward. This report shows you exactly what is working, what is still exposed, and how to make your position genuinely unassailable before a competitor closes the gap.'
     : score >= 56
-    ? 'You are being considered but not consistently chosen. The gap is specific and fixable.'
+    ? 'You are in the room, but not yet getting the call. AI platforms know your business exists \u2014 they are just not choosing you consistently. That gap is not mysterious. It is structural, it is specific, and every part of it is fixable. That is what this report is for.'
     : score >= 31
-    ? 'AI platforms can find you, but they are not selecting you. The structural gap is significant but closeable.'
-    : 'AI platforms are not selecting you in your category. The gap is wide, but it is fully addressable.';
+    ? 'Your business is visible but not being selected. When someone asks AI for your category, the answer comes back without your name in it \u2014 even though you have built something real. That is not a verdict on your business. It is a signal problem. And signal problems have solutions.'
+    : 'Right now, AI platforms are not finding ' + esc(bizName) + ' when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and the path from here to being the obvious recommendation is shorter than you might think.';
+
   var trustNote = trustScore <= 8
-    ? 'Your Trust score is ' + trustScore + ' out of 25. That is the primary driver of your current position — and the first thing to fix. Every other pillar improves once Trust moves.'
+    ? 'The biggest issue we found is Trust \u2014 you scored ' + trustScore + ' out of 25. This is the signal AI uses to decide whether a business is real, verified, and worth recommending. Right now, there is not enough independent evidence. No reviews it can cite. No press it can reference. No third-party confirmation. That is what makes closing this pillar the highest-leverage move you can make \u2014 everything else in your score improves when Trust moves.'
     : trustScore <= 15
-    ? 'Your Trust score of ' + trustScore + ' out of 25 is the biggest gap. Closing it will move your overall score significantly within 30 days.'
-    : 'Your Trust score of ' + trustScore + ' out of 25 is solid. The improvements needed are more nuanced — see the pillar breakdown for specifics.';
+    ? 'Your Trust score of ' + trustScore + ' out of 25 is where the biggest improvement lives. You have some signals \u2014 but not enough for AI to confidently cite you over a better-verified alternative. Three or four specific trust actions, done in the right order, will shift this materially within 30 days.'
+    : 'Your Trust score of ' + trustScore + ' out of 25 is a genuine strength. The work needed is more nuanced \u2014 see Section 4 for the specific findings. Your path forward is about precision, not a complete rebuild.';
+
   var compNote = compName
-    ? 'When AI is asked for your category, it is recommending ' + esc(compName) + ' instead. This report explains exactly why — and exactly what to do to reverse it.'
-    : 'This report identifies the specific signals preventing your selection — and gives you the exact actions to close them.';
+    ? 'When a buyer asks AI for your category right now, the name it returns is <strong>' + esc(compName) + '</strong>. Not because they are better at what you do \u2014 but because they are better verified in the signals AI uses to decide. Section 7 shows you exactly where the gap is, signal by signal. Close it and the selection reverses. That is not hope \u2014 that is what the evidence says.'
+    : 'No single dominant competitor is entrenched in your category yet. That is a significant opportunity. The businesses that establish strong AI selection signals now will be the ones automatically recommended when the market matures. You have a window. Section 8 tells you exactly how to use it.';
+
   var projScore = Math.min(95, score + 14);
+
+  var closing = 'Run the free diagnostic again in 30 days. Based on what we found, I expect your score to reach <strong>' + projScore + ' or above</strong> if you implement the priority actions. That is not an optimistic estimate \u2014 it is what the evidence says is achievable in the timeframe, for a business at your starting position.';
+
   return '<div class="letter">'
-    + '<div class="letter-eyebrow">Personal note from the founder</div>'
+    + '<div class="letter-eyebrow">A personal note from the founder</div>'
     + '<div class="letter-salutation">Dear ' + esc(bizName) + ',</div>'
-    + '<p class="letter-p">I want to be direct with you about what we found.</p>'
-    + '<p class="letter-p">Your score is <strong>' + score + ' out of 100</strong>. That places you in the <em>' + tier + '</em> tier. ' + gapDesc + '</p>'
+    + '<p class="letter-p">Thank you for trusting CHOIVE with this diagnostic. I want to make sure you get full value from what is in front of you \u2014 so let me be direct about what we found, and what it means.</p>'
+    + '<p class="letter-p">' + opening + '</p>'
     + '<p class="letter-p">' + trustNote + '</p>'
     + '<p class="letter-p">' + compNote + '</p>'
-    + '<p class="letter-p">This report tells you exactly where the gap is, exactly what AI said when your customers asked for your category, and exactly what to do in the next 30 days. The actions are sequenced by impact. The assets are ready to use. Everything in this report is specific to <strong>' + esc(bizName) + '</strong> — not generic advice.</p>'
-    + '<p class="letter-p">Run the free diagnostic again after 30 days. Based on what we found, I expect your score to reach <strong>' + projScore + '</strong> or above if you implement what is in front of you. That is not optimism — it is what the evidence says is achievable.</p>'
+    + '<p class="letter-p">What you are holding is not a generic AI report. Every finding in here is specific to <strong>' + esc(bizName) + '</strong> \u2014 pulled from live search signals, real AI queries run against your category right now, and a four-pillar diagnostic built around how AI actually makes selection decisions. The assets in Section 9 are ready to implement. The plan in Section 10 is sequenced by impact. Start with Section 8 and work forward.</p>'
+    + '<p class="letter-p">' + closing + '</p>'
+    + '<p class="letter-p">If you have questions at any point \u2014 about the findings, the actions, or anything in this report \u2014 write to us at <strong>hello@choive.com</strong>. We read every message.</p>'
     + '<div class="letter-sign">'
     + '<div class="letter-name">Blessing Ashionye Ebogu</div>'
-    + '<div class="letter-title">Founder &amp; CEO</div>'
-    + '<div class="letter-brand">CHOIVE·</div>'
+    + '<div class="letter-title">Founder &amp; CEO, CHOIVE\u00b7</div>'
+    + '<div class="letter-tagline">The world\'s first AI selection diagnostic.</div>'
     + '</div>'
     + '</div>';
 }
@@ -237,13 +245,14 @@ var CSS = [
   '.pf-biz{font-size:10px;color:#BBBBC2;}',
   '.pf-pg{font-size:10px;color:#BBBBC2;font-family:Georgia,serif;}',
   /* COVER */
-  '.cover{background:#0C0C0E;min-height:94vh;padding:52px 56px 44px;position:relative;display:flex;flex-direction:column;page-break-after:always;}',
+  '.cover{background:#0C0C0E;padding:52px 56px 52px;position:relative;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;min-height:auto;}',
   '.cover-accent{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}',
-  '.cover-logo-block{margin-bottom:auto;padding-bottom:52px;}',
-  '.cover-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:rgba(201,168,106,0.65);margin-bottom:18px;}',
-  '.cover-h1{font-family:Georgia,serif;font-size:52px;font-weight:400;color:#F5F2EE;line-height:1.06;letter-spacing:-0.02em;margin-bottom:18px;}',
-  '.cover-h1 em{font-style:italic;color:rgba(245,242,238,0.22);}',
-  '.cover-intro{font-size:14px;color:rgba(245,242,238,0.36);line-height:1.8;max-width:500px;margin-bottom:52px;}',
+  '.cover-logo-block{margin-bottom:0;padding-bottom:0;}',
+  '.cover-body{padding:48px 0 40px;}',
+  '.cover-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:rgba(201,168,106,0.65);margin-bottom:20px;}',
+  '.cover-h1{font-family:Georgia,serif;font-size:58px;font-weight:400;color:#F5F2EE;line-height:1.05;letter-spacing:-0.025em;margin-bottom:20px;}',
+  '.cover-h1 em{font-style:italic;color:#C9A86A;}',
+  '.cover-intro{font-size:14px;color:rgba(245,242,238,0.4);line-height:1.85;max-width:520px;margin-bottom:0;}',
   '.cover-footer{border-top:1px solid rgba(245,242,238,0.07);padding-top:24px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end;}',
   '.cover-biz-name{font-family:Georgia,serif;font-size:22px;font-weight:400;color:rgba(245,242,238,0.88);margin-bottom:5px;}',
   '.cover-biz-meta{font-size:12px;color:rgba(245,242,238,0.28);line-height:1.75;}',
@@ -252,16 +261,17 @@ var CSS = [
   '.cover-score-num{font-family:Georgia,serif;font-size:80px;font-weight:700;color:#F5F2EE;line-height:1;letter-spacing:-0.04em;}',
   '.cover-score-den{font-size:14px;color:rgba(245,242,238,0.18);}',
   /* LETTER */
-  '.letter{padding:60px 56px;page-break-after:always;border-bottom:1px solid rgba(12,12,14,0.05);}',
-  '.letter-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#BBBBC2;margin-bottom:32px;}',
-  '.letter-salutation{font-family:Georgia,serif;font-size:20px;font-weight:400;color:#0C0C0E;margin-bottom:24px;}',
-  '.letter-p{font-size:14px;color:#48484F;line-height:1.95;margin-bottom:20px;max-width:620px;}',
+  '.letter{padding:60px 56px 60px 64px;page-break-after:always;border-left:4px solid #C9A86A;margin:0;position:relative;}',
+  '.letter::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;background:linear-gradient(180deg,transparent,#C9A86A 8%,#C9A86A 92%,transparent);}',
+  '.letter-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#C9A86A;margin-bottom:32px;opacity:0.7;}',
+  '.letter-salutation{font-family:Georgia,serif;font-size:22px;font-weight:400;color:#0C0C0E;margin-bottom:28px;letter-spacing:-0.01em;}',
+  '.letter-p{font-size:14px;color:#3A3A42;line-height:2.0;margin-bottom:22px;max-width:620px;}',
   '.letter-p strong{color:#0C0C0E;font-weight:600;}',
   '.letter-p em{font-style:italic;}',
-  '.letter-sign{margin-top:36px;padding-top:28px;border-top:1px solid rgba(12,12,14,0.06);}',
-  '.letter-name{font-family:Georgia,serif;font-size:19px;font-weight:400;font-style:italic;color:#0C0C0E;margin-bottom:3px;}',
-  '.letter-title{font-size:12px;color:#67676E;}',
-  '.letter-brand{font-size:11px;font-weight:700;letter-spacing:0.16em;color:#C9A86A;margin-top:3px;}',
+  '.letter-sign{margin-top:44px;padding-top:32px;border-top:1px solid rgba(12,12,14,0.07);}',
+  '.letter-name{font-family:Georgia,serif;font-size:22px;font-weight:400;font-style:italic;color:#0C0C0E;margin-bottom:4px;}',
+  '.letter-title{font-size:12px;color:#67676E;margin-bottom:2px;}',
+  '.letter-tagline{font-size:10px;font-weight:600;letter-spacing:0.14em;color:#C9A86A;margin-top:6px;text-transform:uppercase;opacity:0.8;}',
   /* TOC */
   '.toc{padding:60px 56px;page-break-after:always;}',
   '.toc-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#BBBBC2;margin-bottom:28px;}',
@@ -274,11 +284,11 @@ var CSS = [
   '.toc-dots{border-bottom:1px dotted rgba(12,12,14,0.12);flex:1;margin:0 14px;position:relative;top:10px;min-width:20px;}',
   '.toc-pg{font-size:12px;color:#BBBBC2;font-family:Georgia,serif;flex-shrink:0;padding-top:2px;}',
   /* SECTION DIVIDER PAGE */
-  '.sdp{background:#0C0C0E;padding:56px;position:relative;page-break-before:always;page-break-after:always;}',
+  '.sdp{background:#0C0C0E;padding:44px 56px 36px;position:relative;page-break-before:always;}',
   '.sdp::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 15%,#C9A86A 85%,transparent);}',
-  '.sdp-num{font-family:Georgia,serif;font-size:108px;font-weight:700;color:rgba(201,168,106,0.06);line-height:1;letter-spacing:-0.04em;}',
-  '.sdp-title{font-family:Georgia,serif;font-size:36px;font-weight:400;color:#F5F2EE;line-height:1.12;letter-spacing:-0.01em;margin-bottom:12px;}',
-  '.sdp-sub{font-size:13px;color:rgba(245,242,238,0.3);line-height:1.8;max-width:480px;}',
+  '.sdp-num{font-family:Georgia,serif;font-size:100px;font-weight:700;color:rgba(201,168,106,0.07);line-height:1;letter-spacing:-0.04em;position:absolute;top:16px;right:48px;}',
+  '.sdp-title{font-family:Georgia,serif;font-size:36px;font-weight:400;color:#F5F2EE;line-height:1.1;letter-spacing:-0.02em;margin-bottom:10px;}',
+  '.sdp-sub{font-size:12px;color:rgba(245,242,238,0.35);line-height:1.8;max-width:520px;}',
   /* SECTION */
   '.section{padding:56px;page-break-inside:avoid;}',
   '.eyebrow{font-size:9px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#BBBBC2;margin-bottom:24px;display:flex;align-items:center;gap:12px;}',
@@ -286,7 +296,7 @@ var CSS = [
   /* SCORE LAYOUT */
   '.score-layout{display:grid;grid-template-columns:290px 1fr;gap:44px;align-items:start;margin-bottom:36px;}',
   '.score-verdict-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:6px 14px;border:1px solid rgba(12,12,14,0.15);color:#48484F;margin-bottom:14px;}',
-  '.score-verdict-h{font-family:Georgia,serif;font-size:24px;font-weight:400;color:#0C0C0E;line-height:1.2;margin-bottom:14px;letter-spacing:-0.01em;}',
+  '.score-verdict-h{font-family:Georgia,serif;font-size:26px;font-weight:400;color:#0C0C0E;line-height:1.18;margin-bottom:16px;letter-spacing:-0.02em;}',
   '.score-summary{font-size:14px;color:#48484F;line-height:1.88;}',
   '.score-bar{height:4px;background:rgba(12,12,14,0.06);margin:32px 0 8px;position:relative;}',
   '.score-bar-fill{height:100%;background:linear-gradient(90deg,#B83232 0%,#9A6A14 30%,#C9A86A 55%,#2A7A48 100%);}',
@@ -341,7 +351,7 @@ var CSS = [
   '.comp-dark{background:#0C0C0E;padding:40px 46px;margin-bottom:28px;position:relative;}',
   '.comp-dark::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#C9A86A;}',
   '.comp-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:rgba(201,168,106,0.5);margin-bottom:7px;}',
-  '.comp-name{font-family:Georgia,serif;font-size:38px;font-weight:400;font-style:italic;color:#F5F2EE;margin-bottom:5px;}',
+  '.comp-name{font-family:Georgia,serif;font-size:44px;font-weight:400;font-style:italic;color:#F5F2EE;margin-bottom:8px;letter-spacing:-0.02em;}',
   '.comp-query{font-size:12px;color:rgba(245,242,238,0.22);margin-bottom:15px;}',
   '.comp-why{font-size:14px;color:rgba(245,242,238,0.52);line-height:1.88;}',
   '.comp-table{width:100%;border-collapse:collapse;margin-bottom:28px;}',
@@ -381,7 +391,7 @@ var CSS = [
   '.action-diff{display:flex;align-items:center;gap:5px;font-size:10px;color:#67676E;}',
   '.action-time{font-size:10px;color:#BBBBC2;}',
   '.action-right{flex:1;padding:26px 0 26px 22px;border-left:1px solid rgba(12,12,14,0.06);}',
-  '.action-title{font-size:15px;font-weight:700;color:#0C0C0E;margin-bottom:7px;letter-spacing:-0.01em;}',
+  '.action-title{font-family:Georgia,serif;font-size:17px;font-weight:700;color:#0C0C0E;margin-bottom:9px;letter-spacing:-0.01em;}',
   '.action-body{font-size:13px;color:#48484F;line-height:1.85;margin-bottom:9px;}',
   '.action-impact-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#2A7A48;background:rgba(42,122,72,0.06);border:1px solid rgba(42,122,72,0.2);padding:3px 9px;margin-bottom:10px;}',
   '.action-exp{font-size:12px;color:#67676E;line-height:1.7;padding:11px 15px;background:#F5F2EE;border-left:2px solid rgba(12,12,14,0.08);margin-bottom:9px;font-style:italic;}',
@@ -427,7 +437,7 @@ var CSS = [
   '.final{background:#0C0C0E;padding:60px 56px 46px;position:relative;page-break-before:always;}',
   '.final::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}',
   '.final-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(201,168,106,0.45);margin-bottom:14px;}',
-  '.final-score{font-family:Georgia,serif;font-size:116px;font-weight:700;color:#F5F2EE;line-height:0.9;letter-spacing:-0.04em;margin-bottom:9px;}',
+  '.final-score{font-family:Georgia,serif;font-size:140px;font-weight:700;color:#F5F2EE;line-height:0.88;letter-spacing:-0.04em;margin-bottom:12px;}',
   '.final-score span{font-size:26px;color:rgba(245,242,238,0.15);}',
   '.final-verdict{font-family:Georgia,serif;font-size:21px;font-weight:400;font-style:italic;color:rgba(245,242,238,0.4);margin-bottom:52px;line-height:1.3;}',
   '.final-one-label{font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(245,242,238,0.24);margin-bottom:11px;}',
@@ -438,7 +448,7 @@ var CSS = [
   '.final-qr-box{width:76px;height:76px;border:1px solid rgba(245,242,238,0.07);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(245,242,238,0.02);padding:4px;}',
   '.final-qr-label{font-size:8px;color:rgba(245,242,238,0.15);letter-spacing:0.1em;text-transform:uppercase;text-align:center;line-height:1.4;}',
   '.final-meta{font-size:11px;color:rgba(245,242,238,0.13);text-align:right;line-height:1.8;}',
-  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;} .print-btn{display:none;} .cover,.letter,.toc,.sdp{page-break-after:always;} .section{page-break-inside:avoid;} .final{page-break-before:always;}}'
+  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;} .print-btn{display:none;} .cover,.letter,.toc{page-break-after:always;} .section{page-break-inside:avoid;} .final{page-break-before:always;} .sdp{page-break-before:always;}}'
 ].join('');
 
 // ── BUILD FULL GOLD REPORT HTML ───────────────────────────────────────────────
@@ -459,9 +469,9 @@ function buildReportHTML(diagnostic, jobId) {
   var tr     = pillarScore(r, 'trust');
   var di     = pillarScore(r, 'difference');
   var ea     = pillarScore(r, 'ease');
-  var total  = cl + tr + di + ea;
 
   // Score tier
+  var tier = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
   var scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
     : score >= 56 ? 'Considered. Not consistently chosen.'
     : score >= 31 ? 'Seen. Not selected.'
@@ -555,9 +565,11 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div class="cover">');
   H.push('<div class="cover-accent"></div>');
   H.push('<div class="cover-logo-block"><img src="' + LOGO_URL + '" style="height:40px;width:auto;" alt="CHOIVE"></div>');
-  H.push('<div class="cover-eyebrow">AI Selection Report</div>');
-  H.push('<h1 class="cover-h1">Your business.<br><em>Seen by AI.</em></h1>');
-  H.push('<p class="cover-intro">A complete diagnostic of your AI selection position — scored, evidenced, and precisely actioned. Ten sections. Everything AI sees when someone asks for your category.</p>');
+  H.push('<div class="cover-body">');
+  H.push('<div class="cover-eyebrow">AI Selection Report · ' + esc(bizName) + '</div>');
+  H.push('<h1 class="cover-h1">Your business.<br><em>Chosen by AI.</em></h1>');
+  H.push('<p class="cover-intro">A complete diagnostic of your AI selection position. Scored, evidenced, and precisely actioned. Ten sections. Real queries. Exact findings. Everything you need to become the business AI recommends when your customers ask.</p>');
+  H.push('</div>');
   H.push('<div class="cover-footer">');
   H.push('<div><div class="cover-biz-name">' + esc(bizName) + '</div>');
   H.push('<div class="cover-biz-meta">' + esc(category) + (city ? ' · ' + esc(city) : '') + (website ? ' · ' + esc(website) : '') + '<br>Prepared ' + date + ' · Confidential</div></div>');
@@ -582,7 +594,7 @@ function buildReportHTML(diagnostic, jobId) {
     ['AI Platform Coverage',        'Your status across ChatGPT, Perplexity, Gemini, Claude',            '7'],
     ['AI Simulation',               'Three real queries. What AI said. Word for word.',                  '8'],
     ['Competitor Intelligence',     'Who AI chose instead — and the exact structural gap',          '9'],
-    ['Priority Actions',            'What to do, in what order, and what happens if you don’t',    '10'],
+    ['Priority Actions',            'What to do, in what order, and what happens if you do nothing.',    '10'],
     ['Ready-to-Use Assets',         'Copy-paste files generated for your business',                      '11'],
     ['30-Day Implementation Plan',  'Week-by-week plan with dates, owners, and impact',                  '12'],
   ];
@@ -604,7 +616,7 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div class="section">');
   H.push('<div class="eyebrow">CHOIVE Index™ — Overall Score</div>');
   H.push('<div class="score-layout"><div>' + buildScoreGauge(score) + '</div>');
-  H.push('<div><div class="score-verdict-pill">Verdict</div>');
+  H.push('<div><div class="score-verdict-pill">' + tier + '</div>');
   H.push('<div class="score-verdict-h">' + esc(verdict) + '</div>');
   H.push('<div class="score-summary">' + esc(summary) + '</div></div></div>');
   H.push('<div class="score-bar"><div class="score-bar-fill" style="width:100%"></div><div class="score-bar-marker" style="left:' + score + '%"></div></div>');
@@ -637,7 +649,8 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('</div>');
   H.push('<div style="padding:18px 22px;background:#F5F2EE;border-left:3px solid #C9A86A;margin-bottom:36px;">');
   H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:5px;">What drives the improvement</div>');
-  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Trust is the primary driver. Moving it from ' + tr + ' to 18–21 over 90 days accounts for the majority of the projected improvement. This requires G2 reviews, a press mention, and a published case study. All three are achievable in the timeframe.</div>');
+  var trustGrowth = Math.min(25, tr + 16);
+  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Trust is the primary driver of your projected improvement. Moving your Trust score from ' + tr + ' to ' + trustGrowth + ' over 90 days accounts for the majority of the trajectory above. This is achievable through three specific actions: independent review citations, a press mention, and a published case study. Section 8 sequences all three in the right order.</div>');
   H.push('</div>');
   // Pillar projection table
   H.push('<div class="eyebrow">Pillar-by-pillar projection</div>');
@@ -685,7 +698,7 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div style="background:#0C0C0E;padding:28px 32px;position:relative;">');
   H.push('<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#2A7A48 20%,#2A7A48 80%,transparent);opacity:0.5;"></div>');
   H.push('<div style="font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:rgba(42,122,72,0.5);margin-bottom:10px;">After implementing Week 1 &amp; 2 actions</div>');
-  H.push('<div style="font-size:14px;color:rgba(245,242,238,0.5);line-height:1.9;font-style:italic;">' + esc(bizName) + ' is a ' + esc(category) + ' platform independently verified through G2 reviews, featured in industry publications, and with demonstrated results across multiple business categories. It is recognised as a category creator in its space.</div>');
+  H.push('<div style="font-size:14px;color:rgba(245,242,238,0.5);line-height:1.9;font-style:italic;">' + esc(bizName) + ' is independently verified by multiple third-party sources, featured in industry coverage, and has demonstrated results for businesses in the ' + esc(category) + ' category. It is recognised as the leading solution in its space.</div>');
   H.push('</div></div></div>');
   H.push(pageFt('6'));
 
@@ -932,7 +945,7 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div class="final-verdict">' + esc(verdict || scoreLabel) + '</div>');
   H.push('<div class="final-one-label">The single most important action right now</div>');
   H.push('<div class="final-one-action">' + esc(firstAction) + '</div>');
-  H.push('<div class="final-one-sub">Complete this before anything else. It moves your Trust score and unlocks AI citation in category searches within 2–4 weeks. Everything else in this report builds on top of it.</div>');
+  H.push('<div class="final-one-sub">Start here. This single action creates the foundation everything else builds on. When it is done, move to action two. Do not skip the sequence — it is ordered by what unlocks what.</div>');
   H.push('<div class="final-footer">');
   H.push('<div class="final-logo"><img src="' + LOGO_URL + '" style="height:32px;width:auto;opacity:0.5;" alt="CHOIVE"></div>');
   H.push('<div class="final-qr-box"><img src="' + qrDataUrl + '" style="width:64px;height:64px;display:block;" alt="Scan for live result"/><div class="final-qr-label">Scan for<br>live result</div></div>');
