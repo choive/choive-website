@@ -2,18 +2,15 @@
 // CHOIVE™ Supabase client + all database helpers
 // Includes: longitudinal tracking via business_fingerprint + parent_job_id
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
 const crypto = require('crypto');
-
 function getClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   return createClient(url, key, { realtime: { transport: ws } });
 }
-
 // Creates a fingerprint from business name + category + city
 // Used to link diagnostics for the same business over time
 function buildFingerprint(input) {
@@ -23,7 +20,6 @@ function buildFingerprint(input) {
   var raw      = name + '|' + category + '|' + city;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
-
 async function createDiagnostic(jobId, input) {
   const supabase = getClient();
   const fingerprint = buildFingerprint(input);
@@ -43,12 +39,10 @@ async function createDiagnostic(jobId, input) {
     });
   if (error) throw new Error('Supabase insert failed: ' + error.message);
 }
-
 // Used by rerun-diagnostic.js — links new diagnostic to original
 async function createDiagnosticWithParent(jobId, input, parentJobId) {
   const supabase = getClient();
   const fingerprint = buildFingerprint(input);
-
   // Find the version number — count existing diagnostics with same fingerprint
   const { data: existing } = await supabase
     .from('diagnostics')
@@ -56,10 +50,8 @@ async function createDiagnosticWithParent(jobId, input, parentJobId) {
     .eq('business_fingerprint', fingerprint)
     .order('version', { ascending: false })
     .limit(1);
-
   var nextVersion = (existing && existing.length > 0)
     ? ((existing[0].version || 1) + 1) : 2;
-
   const { error } = await supabase
     .from('diagnostics')
     .insert({
@@ -76,7 +68,6 @@ async function createDiagnosticWithParent(jobId, input, parentJobId) {
     });
   if (error) throw new Error('Supabase insert (with parent) failed: ' + error.message);
 }
-
 // Returns all diagnostics for the same business fingerprint — score history
 async function getDiagnosticHistory(fingerprint) {
   const supabase = getClient();
@@ -89,6 +80,29 @@ async function getDiagnosticHistory(fingerprint) {
   if (error) throw new Error('Supabase history fetch failed: ' + error.message);
   return data || [];
 }
+// Looks up the most recent COMPLETE diagnostic for this business fingerprint,
+// if it was created within the cache window. Used to avoid re-fetching live
+// evidence (Serper/website/Apify) on every run for the same business — this
+// is what makes repeated runs of the same business return a stable score.
+async function getCachedEvidence(fingerprint, maxAgeHours) {
+  const supabase = getClient();
+  const cutoff = new Date(Date.now() - (maxAgeHours || 24) * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .select('job_id, evidence, created_at')
+    .eq('business_fingerprint', fingerprint)
+    .eq('status', 'complete')
+    .not('evidence', 'is', null)
+    .gte('created_at', cutoff)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn('getCachedEvidence failed:', error.message);
+    return null;
+  }
+  return data;
+}
 
 async function updateStatus(jobId, status, stage) {
   const supabase = getClient();
@@ -98,7 +112,6 @@ async function updateStatus(jobId, status, stage) {
     .eq('job_id', jobId);
   if (error) throw new Error('Supabase update failed: ' + error.message);
 }
-
 async function saveEvidence(jobId, evidence) {
   const supabase = getClient();
   const { error } = await supabase
@@ -107,7 +120,6 @@ async function saveEvidence(jobId, evidence) {
     .eq('job_id', jobId);
   if (error) throw new Error('Supabase evidence save failed: ' + error.message);
 }
-
 async function saveResult(jobId, result) {
   const supabase = getClient();
   const { error } = await supabase
@@ -116,7 +128,6 @@ async function saveResult(jobId, result) {
     .eq('job_id', jobId);
   if (error) throw new Error('Supabase result save failed: ' + error.message);
 }
-
 async function saveError(jobId, errorMessage) {
   const supabase = getClient();
   const { error } = await supabase
@@ -128,7 +139,6 @@ async function saveError(jobId, errorMessage) {
     .eq('job_id', jobId);
   if (error) console.error('Supabase error save failed:', error.message);
 }
-
 async function getDiagnostic(jobId) {
   const supabase = getClient();
   const { data, error } = await supabase
@@ -139,7 +149,6 @@ async function getDiagnostic(jobId) {
   if (error) throw new Error('Supabase fetch failed: ' + error.message);
   return data;
 }
-
 async function markDiagnosticPaid(jobId) {
   if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
     throw new Error('markDiagnosticPaid: jobId is missing or malformed');
@@ -159,7 +168,6 @@ async function markDiagnosticPaid(jobId) {
   }
   return data;
 }
-
 async function saveLead(opts) {
   var email = (opts.email || '').trim().toLowerCase();
   if (!email || !email.includes('@')) throw new Error('saveLead: invalid email');
@@ -177,7 +185,6 @@ async function saveLead(opts) {
     }, { onConflict: 'email' });
   if (error) throw new Error('Supabase saveLead failed: ' + error.message);
 }
-
 module.exports = {
   createDiagnostic,
   createDiagnosticWithParent,
@@ -189,5 +196,6 @@ module.exports = {
   getDiagnostic,
   markDiagnosticPaid,
   saveLead,
-  buildFingerprint
+  buildFingerprint,
+  getCachedEvidence
 };
