@@ -163,7 +163,7 @@ function buildScoreGauge(score) {
     + '<circle cx="' + nx + '" cy="' + ny + '" r="3.5" fill="#0C0C0E"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="rgba(12,12,14,0.15)"/>'
     + '<text x="' + cx + '" y="' + (cy - 18) + '" font-family="Georgia,serif" font-size="54" font-weight="700" fill="#0C0C0E" text-anchor="middle">' + s + '</text>'
-    + '<text x="' + cx + '" y="' + (cy + 14) + '" font-family="Inter,sans-serif" font-size="12" fill="#BBBBC2" text-anchor="middle">/ 100</text>'
+    + '<text x="' + cx + '" y="' + (cy + 14) + '" font-family="Inter,sans-serif" font-size="12" fill="#BBBBC2" text-anchor="middle">/ 100</text>'
     + '<text x="' + cx + '" y="' + (cy + 32) + '" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#C9A86A" text-anchor="middle" letter-spacing="0.1em">CHOIVE INDEX™</text>'
     + '<text x="18" y="' + (cy + 4) + '" font-family="Inter,sans-serif" font-size="9" fill="#BBBBC2">0</text>'
     + '<text x="' + (cx - 4) + '" y="38" font-family="Inter,sans-serif" font-size="9" fill="#BBBBC2">50</text>'
