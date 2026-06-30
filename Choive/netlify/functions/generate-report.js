@@ -507,8 +507,15 @@ function buildReportHTML(diagnostic, jobId) {
   var platformNames = { chatgpt:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini', claude:'Claude' };
 
   // AI simulation
-  var simResults = safeArr(r.simulationResults || r.aiSimulation || []);
-
+  var simBefore = safeObj(safeObj(r.aiSimulation).before);
+  var simAfter  = safeObj(safeObj(r.aiSimulation).after);
+  var simBeforeResults = safeArr(simBefore.results);
+  var simAfterResults  = safeArr(simAfter.results);
+  // Fallback for any older diagnostics that only ever stored a flat array —
+  // treat the whole thing as "before" so nothing breaks for existing records.
+  if (simBeforeResults.length === 0 && simAfterResults.length === 0) {
+    simBeforeResults = safeArr(r.simulationResults || r.aiSimulation || []);
+  }
   // Actions
   var actions = safeArr(r.actions);
 
@@ -748,23 +755,39 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Simulation</div><div class="sdp-sub">Real queries your customers are asking right now. This is exactly what AI said — word for word.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Real queries · Real AI responses · Unedited</div>');
-  var appearedSim = 0;
-  if (simResults.length > 0) {
-    simResults.forEach(function(sim, i) {
-      var appeared = !!(safeObj(sim).appeared);
-      if (appeared) appearedSim++;
+  function renderSimSet(label, results) {
+    var appeared = 0;
+    results.forEach(function(sim, i) {
+      var didAppear = !!(safeObj(sim).appeared);
+      if (didAppear) appeared++;
       H.push('<div class="sim-q"><div class="sim-inner">');
-      H.push('<div class="sim-head"><div class="sim-qlabel">Query ' + (i+1) + ' of ' + simResults.length + '</div>');
-      H.push('<div class="' + (appeared ? 'sim-yes' : 'sim-no') + '">' + (appeared ? 'You appeared' : 'Not mentioned') + '</div></div>');
-      H.push('<div class="sim-query">“' + esc(safeStr(sim.query, '')) + '”</div>');
+      H.push('<div class="sim-head"><div class="sim-qlabel">' + esc(label) + ' \u2014 Query ' + (i+1) + ' of ' + results.length + '</div>');
+      H.push('<div class="' + (didAppear ? 'sim-yes' : 'sim-no') + '">' + (didAppear ? 'You appeared' : 'Not mentioned') + '</div></div>');
+      H.push('<div class="sim-query">"' + esc(safeStr(sim.query, '')) + '"</div>');
       H.push('<div class="sim-resp-label">What AI said</div>');
-      H.push('<div class="sim-resp' + (appeared ? ' yes' : '') + '">' + esc(safeStr(sim.response || sim.aiResponse, '')) + '</div>');
+      H.push('<div class="sim-resp' + (didAppear ? ' yes' : '') + '">' + esc(safeStr(sim.response || sim.aiResponse, '')) + '</div>');
       H.push('</div></div>');
     });
-    H.push('<div class="sim-verdict"><div class="sv-num">' + appearedSim + '/' + simResults.length + '</div>');
-    H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + '.</span>');
-    H.push('<p class="sv-text-p">' + (appearedSim === 0 ? 'Every query your customers ask is answered without mentioning you. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.' : 'Partial visibility. Priority actions will close remaining gaps.') + '</p></div></div>');
-  } else {
+    return appeared;
+  }
+
+  if (simBeforeResults.length > 0) {
+    H.push('<div class="eyebrow">Current state \u2014 before any fixes</div>');
+    var appearedBefore = renderSimSet('Current state', simBeforeResults);
+    H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
+    H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
+    H.push('<p class="sv-text-p">' + (appearedBefore === 0 ? 'Every query your customers ask is answered without mentioning you. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.' : 'Partial visibility. Priority actions will close remaining gaps.') + '</p></div></div>');
+  }
+
+  if (simAfterResults.length > 0) {
+    H.push('<div class="eyebrow" style="margin-top:36px;">After implementing top fixes</div>');
+    var appearedAfter = renderSimSet('After optimisation', simAfterResults);
+    H.push('<div class="sim-verdict"><div class="sv-num">' + appearedAfter + '/' + simAfterResults.length + '</div>');
+    H.push('<div><span class="sv-text-h">queries would mention ' + esc(bizName) + ' after the fixes in Section 8.</span>');
+    H.push('<p class="sv-text-p">' + (appearedAfter === simAfterResults.length ? 'Implementing the priority actions in Section 8 closes the gap completely \u2014 every query your customers ask would surface ' + esc(bizName) + ' by name.' : 'Implementing the priority actions in Section 8 closes most of the gap.') + '</p></div></div>');
+  }
+
+  if (simBeforeResults.length === 0 && simAfterResults.length === 0) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">AI simulation data not available for this diagnostic. Re-run the diagnostic to generate simulation results.</div>');
   }
   H.push('</div>');
