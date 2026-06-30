@@ -3166,7 +3166,7 @@ async function runAISimulation(r) {
           + (ac > bc ? ' \u2014 up from ' + bc + '.' : (ac === bc ? ' \u2014 same as before.' : '.')) : '')
         + '</div></div>'
         + renderQSet(data.after.results, 'After optimisation')
-        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
+        
     } else {
       results.innerHTML = renderQSet(flatResults, '')
         + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
