@@ -56,7 +56,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:900;height:56px;display:flex;ali
 .hero-meta-item a{color:var(--ac);text-decoration:none;}
 
 /* COMMITMENTS STRIP */
-.commitments{background:var(--void-2);border-top:1px solid var(--rd);border-bottom:1px solid var(--rd);}
+/* COMMITMENTS STRIP */
+.commitments{background:var(--void-2);border-top:2px solid var(--ac);border-bottom:1px solid var(--rd);position:relative;}
+.commitments::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,106,0.4),transparent);pointer-events:none;}
 .commitments-inner{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);}
 .commitment{padding:48px 40px;border-right:1px solid var(--rd);position:relative;}
 .commitment:last-child{border-right:none;}
@@ -67,27 +69,30 @@ nav{position:fixed;top:0;left:0;right:0;z-index:900;height:56px;display:flex;ali
 .commitment-detail{font-size:13px;font-weight:400;line-height:1.8;color:var(--ghost-3);}
 .commitment-detail strong{color:var(--ghost-2);font-weight:600;}
 
-/* PRICING STRIP */
-.pricing-strip{background:var(--paper);padding:64px 52px;border-bottom:1px solid var(--rule);}
-.pricing-inner{max-width:1080px;margin:0 auto;}
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--rule);margin-top:36px;}
-.pricing-tier{background:var(--paper);padding:36px 32px;position:relative;}
-.pricing-tier--paid{background:var(--void);border:1px solid rgba(201,168,106,0.15);}
+/* PRICING STRIP — dark, so paid tiers feel native not jarring */
+.pricing-strip{background:var(--void);padding:80px 52px;border-top:1px solid var(--rd);border-bottom:1px solid var(--rd);position:relative;overflow:hidden;scroll-margin-top:100px;}
+.pricing-strip::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 700px 500px at 50% 100%,rgba(201,168,106,0.05),transparent 65%);pointer-events:none;}
+.pricing-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;}
+.pricing-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:var(--ghost-3);margin-bottom:14px;}
+.pricing-h{font-family:'Libre Baskerville',serif;font-size:clamp(26px,3.5vw,40px);font-weight:700;letter-spacing:-0.02em;line-height:1.1;color:var(--ghost);margin-bottom:8px;}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rd);margin-top:44px;}
+.pricing-tier{background:var(--void-2);padding:40px 32px;position:relative;}
+.pricing-tier--paid{background:var(--void-3);border:1px solid rgba(201,168,106,0.15);}
 .pricing-tier--paid::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac);}
-.pricing-label{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.pricing-label{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ghost-3);margin-bottom:16px;}
 .pricing-tier--paid .pricing-label{color:var(--ac);}
-.pricing-name{font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:8px;}
-.pricing-tier--paid .pricing-name{color:var(--ghost);}
-.pricing-amount{font-family:'Libre Baskerville',serif;font-size:44px;font-weight:700;color:var(--ac);line-height:1;letter-spacing:-0.03em;margin-bottom:6px;}
-.pricing-amount span{font-size:16px;font-weight:400;color:var(--muted);margin-left:4px;font-family:'Inter',sans-serif;}
-.pricing-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);}
-.pricing-tier--paid .pricing-desc{color:var(--ghost-3);border-top-color:var(--rd);}
+.pricing-name{font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:var(--ghost);margin-bottom:8px;}
+.pricing-amount{font-family:'Libre Baskerville',serif;font-size:52px;font-weight:700;color:var(--ac);line-height:1;letter-spacing:-0.03em;margin-bottom:6px;}
+.pricing-amount span{font-size:15px;font-weight:400;color:var(--ghost-3);margin-left:4px;font-family:'Inter',sans-serif;}
+.pricing-desc{font-size:13px;color:var(--ghost-3);line-height:1.75;margin-top:16px;padding-top:16px;border-top:1px solid var(--rd);}
 
 /* SECTIONS */
-.section-dark{background:var(--void);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;}
-.section-light{background:var(--paper);padding:80px 52px;border-top:1px solid var(--rule);scroll-margin-top:100px;}
-.section-void{background:var(--void-2);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;}
-.section-inner{max-width:1080px;margin:0 auto;}
+.section-dark{background:var(--void);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;position:relative;overflow:hidden;}
+.section-dark::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 400px at 85% 50%,rgba(201,168,106,0.04),transparent 70%);pointer-events:none;z-index:0;}
+.section-light{background:var(--paper);padding:80px 52px;border-top:2px solid var(--rule);scroll-margin-top:100px;}
+.section-void{background:var(--void-2);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;position:relative;overflow:hidden;}
+.section-void::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 500px 350px at 15% 50%,rgba(201,168,106,0.035),transparent 70%);pointer-events:none;z-index:0;}
+.section-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;}
 .section-cols{display:grid;grid-template-columns:320px 1fr;gap:80px;align-items:start;}
 .section-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;margin-bottom:14px;}
 .light .section-eyebrow{color:var(--muted);}
@@ -125,12 +130,12 @@ a:hover{opacity:0.75;}
 .refund-outcome strong{color:var(--ghost);}
 
 /* WHAT WE ARE / WHAT WE ARE NOT */
-.duality{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--rd);margin:28px 0;}
+.duality{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rd);margin:28px 0;border:1px solid var(--rd);}
 .duality-col{padding:32px 28px;}
 .duality-col--no{background:var(--void-3);}
 .duality-col--yes{background:var(--void-2);}
 .duality-label{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--rd);}
-.duality-col--no .duality-label{color:rgba(184,50,50,0.5);}
+.duality-col--no .duality-label{color:rgba(184,50,50,0.45);}
 .duality-col--yes .duality-label{color:var(--ac);}
 .duality-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
 .duality-list li{font-size:13px;line-height:1.7;color:var(--ghost-2);display:flex;align-items:flex-start;gap:9px;}
@@ -139,9 +144,10 @@ a:hover{opacity:0.75;}
 .duality-col--yes .duality-list li::before{content:'✓';color:var(--ac);}
 
 /* CLOSING */
-.close{background:var(--void);padding:100px 52px;position:relative;overflow:hidden;}
-.close::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 500px at 50% 0%,rgba(201,168,106,0.06),transparent 65%);pointer-events:none;}
-.close-inner{max-width:680px;margin:0 auto;text-align:center;position:relative;}
+.close{background:var(--void);padding:100px 52px;position:relative;overflow:hidden;border-top:1px solid var(--rd);}
+.close::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 700px 600px at 50% 100%,rgba(201,168,106,0.08),transparent 65%);pointer-events:none;}
+.close::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ac) 30%,var(--ac) 70%,transparent);opacity:0.35;}
+.close-inner{max-width:680px;margin:0 auto;text-align:center;position:relative;z-index:1;}
 .close-kicker{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:var(--ac);margin-bottom:20px;}
 .close-h{font-family:'Libre Baskerville',serif;font-size:clamp(30px,5vw,52px);font-weight:700;line-height:1.08;letter-spacing:-0.025em;color:var(--ghost);margin-bottom:16px;}
 .close-h em{font-style:italic;color:rgba(245,242,238,0.3);}
@@ -279,10 +285,10 @@ footer{background:var(--void-2);border-top:1px solid var(--rd);padding:32px 52px
 </div>
 
 <!-- PRICING -->
-<div class="pricing-strip light" id="pricing">
+<div class="pricing-strip dark" id="pricing">
   <div class="pricing-inner">
-    <div class="section-eyebrow light">Pricing</div>
-    <h2 class="section-h light">Three tiers. No hidden fees. No subscriptions.</h2>
+    <div class="pricing-eyebrow">Pricing</div>
+    <h2 class="pricing-h">Three tiers. No hidden fees. No subscriptions.</h2>
     <div class="pricing-grid">
       <div class="pricing-tier">
         <div class="pricing-label">Free</div>
