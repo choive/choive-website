@@ -115,7 +115,7 @@ function detectSocialSignals(allResults) {
 function extractCompetitors(queryResults, businessName) {
   var nameLower = (businessName || '').toLowerCase().replace(/\s+/g, '');
   var found = {};
- 
+
   for (var i = 0; i < queryResults.length; i++) {
     var qr = queryResults[i];
     if (qr.signalType !== 'comparison' && qr.signalType !== 'named_competitor') continue;
@@ -123,19 +123,48 @@ function extractCompetitors(queryResults, businessName) {
       var item   = qr.items[j];
       var domain = normalizeUrl(item.link || '');
       if (!domain) continue;
+
+      // Never include the business itself
       if (nameLower.length > 2 && domain.includes(nameLower)) continue;
+
+      // Never include directories or review aggregators
       var isDir = false;
       for (var d = 0; d < DIRECTORY_DOMAINS.length; d++) {
         if (domain.includes(DIRECTORY_DOMAINS[d])) { isDir = true; break; }
       }
       if (isDir) continue;
-      if (!found[domain]) found[domain] = { domain: domain, title: item.title || '', snippet: item.snippet || '', count: 0 };
-      found[domain].count++;
-      if (qr.signalType === 'named_competitor') found[domain].count += 10; // boost user-verified names to the top
+
+      if (!found[domain]) {
+        found[domain] = {
+          domain:  domain,
+          title:   item.title   || '',
+          snippet: item.snippet || '',
+          count:   0,
+          isLocal: qr.isLocal   || false
+        };
+      }
+
+      // Weight by source quality so noise from generic listicles
+      // does not beat a real competitor named in press or by the owner
+      var weight = 1;
+      if (qr.signalType === 'named_competitor') {
+        // Owner-verified — highest possible trust
+        weight = 20;
+      } else if (/techcrunch|forbes|venturebeat|wired|ft\.com|bloomberg|reuters|wsj\.com|theverge/.test(domain)) {
+        // Press source — real industry naming
+        weight = 8;
+      } else if (/best|top|alternative|vs/.test((item.title || '').toLowerCase())) {
+        // Generic listicle — low signal
+        weight = 2;
+      }
+
+      found[domain].count += weight;
     }
   }
- 
-  return Object.values(found).sort(function(a, b) { return b.count - a.count; }).slice(0, 3);
+
+  return Object.values(found)
+    .sort(function(a, b) { return b.count - a.count; })
+    .slice(0, 5);
 }
  
 // ── Build simple summaries for Claude ────────────────────────────────────────
@@ -349,25 +378,19 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
   var catShort = catWords.split(' ').slice(0, 5).join(' ');
  
   var queries = [
-    { q: 'best ' + catShort + ' vendors',               type: 'comparison'  },
-    { q: 'top ' + catShort + ' providers',              type: 'comparison'  },
-    { q: catShort + ' software comparison',             type: 'comparison'  },
-    { q: catShort + ' alternatives',                    type: 'competition' },
-    { q: name + ' competitors ' + catShort,             type: 'competition' },
-    { q: catShort + ' market leaders',                  type: 'comparison'  },
-    // Industry press tends to name real, relevant competitors in context
-    // (panel discussions, partnership announcements, analyst commentary) —
-    // this surfaces genuine industry relationships that generic "best/top/
-    // alternatives" listicle queries often miss in favour of SEO-optimised
-    // comparison sites. Avoid forcing exact-phrase category matches (e.g.
-    // "OTT middleware platform" in quotes) since journalists rarely use
-    // category-taxonomy wording verbatim — broader OR terms find real
-    // coverage that strict phrase-matching misses.
-    { q: name + ' industry panel OR conference OR webinar', type: 'comparison' },
-    { q: name + ' partnership OR announcement OR news',     type: 'comparison' },
-    { q: name + ' ' + catShort.split(' ').slice(0, 2).join(' '), type: 'comparison' }
+    // Direct competitor intent — most reliable signal
+    { q: 'who competes with ' + name,                                type: 'competition' },
+    { q: name + ' vs',                                               type: 'competition' },
+    { q: name + ' alternative',                                      type: 'competition' },
+    { q: name + ' competitors',                                      type: 'competition' },
+    // Category-level — real businesses not platforms
+    { q: catShort + ' companies',                                    type: 'comparison'  },
+    { q: catShort + ' startups',                                     type: 'comparison'  },
+    { q: 'best ' + catShort + ' tools 2025',                         type: 'comparison'  },
+    // Press and industry — surfaces real named players
+    { q: name + ' news OR press OR announcement',                    type: 'comparison'  },
+    { q: catShort + ' industry players',                             type: 'comparison'  }
   ];
- 
   // If the user named specific competitors, search each one directly — this is
   // verified ground truth from the business owner, not a guess, so it deserves
   // real targeted searches rather than hoping generic category queries surface
