@@ -3426,7 +3426,7 @@ function resetDiagnostic() {
   if (dR) { dR.style.display = 'none'; dR.innerHTML = ''; }
   if (dS) dS.classList.remove('active');
   if (dI) dI.style.display = 'block';
-  var rBtn = document.getElementById('rBtn');
+  var rBtn = document.getElementById('rBtn') || document.getElementById('diagBtn');
   if (rBtn) rBtn.disabled = false;
   // Clear paid state so next diagnostic starts fresh — not inherited from previous payment
   window.__choivePaidVerified = false;
@@ -3540,13 +3540,13 @@ function initResultRoute() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     var formPanel = document.getElementById('dI');
-    var rBtn = document.getElementById('rBtn');
+    var rBtn = document.getElementById('rBtn') || document.getElementById('diagBtn');
     if (formPanel && formPanel.style.display !== 'none' && rBtn && !rBtn.disabled) {
       runDiagnostic();
     }
   }
 });
-
+  
 initResultRoute();
 </script>
 
