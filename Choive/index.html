@@ -2811,7 +2811,7 @@ function showResults(r, jobId) {
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">Full analysis</div>'
-        '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You are losing selection events you cannot see.') + '</div>'
+        + '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You are losing selection events you cannot see.') + '</div>'
         + '<div class="paywall-body">' + (topComp ? 'Find out exactly what ' + esc(topComp) + ' has built that AI rewards — and the precise fixes that close the gap.' : 'Unlock the complete analysis: what is costing you AI recommendations, who is winning instead, and exactly what to fix first.') + '</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock Full Analysis — $99 →</button>'
         + '</div>');
