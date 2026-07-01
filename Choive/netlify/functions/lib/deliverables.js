@@ -57,16 +57,17 @@ function generateLlmsTxt(evidence, result) {
     lines.push('');
   }
   // Clean trust signal — skip if it looks like raw scraping noise
-  var trustClean = trustSignal
+  // Only include trust signal if it looks like real trust content
+  // not raw search evidence or scraping noise
+  var trustIsNoise = /search query|site:trustpilot|site:g2\.com|site:glassdoor|returned Choice|returned Right|Zero results|WEBSITE VISIBLE|knowledge graph/i.test(trustSignal);
+  var trustClean = trustIsNoise ? '' : trustSignal
     .replace(/["']/g, '')
     .replace(/Write a review\./gi, '')
     .replace(/Based on \d+ reviews\./gi, '')
     .replace(/\d+%\.\s*\(\d+\)/g, '')
-    .replace(/Butcher Shop\./gi, '')
     .replace(/\d+ likes\./g, '')
     .replace(/\d+ Review\./g, '')
     .trim();
-  // Only include if it has meaningful content (more than just numbers/punctuation)
   if (trustClean && trustClean.replace(/[^a-zA-Z]/g, '').length > 20) {
     lines.push('## Why customers trust us');
     lines.push(trustClean);
@@ -144,18 +145,19 @@ function generateMetaDescription(evidence, result) {
   var metaMatch = clarityEvidence.match(/[Mm]eta description[:\s]+([^\n"]+)/);
   var current   = metaMatch ? metaMatch[1].trim().replace(/['"]/g, '') : '';
 
-  // Build improved version
-  var diff  = diffEvidence.replace(/["']/g, '').split('.')[0].trim();
-  var trust = trustEvidence.replace(/["']/g, '').split('.')[0].trim();
+  // Filter raw evidence noise before using in meta
+  var diffIsNoise   = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(diffEvidence);
+  var trustIsNoise  = /search query|site:trustpilot|site:g2|site:glassdoor|returned Choice|Zero results|WEBSITE VISIBLE/i.test(trustEvidence);
+
+  var diff  = diffIsNoise  ? '' : diffEvidence.replace(/["']/g, '').split('.')[0].trim();
+  var trust = trustIsNoise ? '' : trustEvidence.replace(/["']/g, '').split('.')[0].trim();
 
   var improved = name + ' is ';
   improved += (diff || 'a ' + category);
-  if (city) improved += ' based in ' + city;
+  if (city) improved += ' based in ' + cityDisplay;
   improved += '.';
-  if (trust) improved += ' ' + trust + '.';
-  if (improved.length < 80 && diff && trust) {
-    improved += ' Discover what makes us different.';
-  }
+  if (trust && trust.length < 100) improved += ' ' + trust + '.';
+  if (improved.length < 100) improved += ' Find out if AI recommends your business.';
   if (improved.length > 155) improved = improved.slice(0, 152) + '...';
 
   return { current: current, improved: improved };
