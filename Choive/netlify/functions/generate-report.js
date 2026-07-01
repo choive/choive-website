@@ -174,16 +174,16 @@ function buildScoreGauge(score) {
 // ── PILLAR RING SVG ───────────────────────────────────────────────────────────
 function buildPillarRing(score, label) {
   var s = Math.min(25, Math.max(0, Number(score) || 0));
-  var r = 44, cx = 56, cy = 56, circ = 2 * Math.PI * r;
+  var r = 44, cx = 56, cy = 58, circ = 2 * Math.PI * r;
   var dash = (s / 25) * circ, gap = circ - dash;
   var col = s >= 20 ? '#2A7A48' : s >= 12 ? '#C9A86A' : s >= 6 ? '#9A6A14' : '#B83232';
-  return '<svg viewBox="0 0 112 112" xmlns="http://www.w3.org/2000/svg" style="width:110px;height:110px;">'
+  return '<svg viewBox="0 0 112 130" xmlns="http://www.w3.org/2000/svg" style="width:110px;height:128px;">'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(12,12,14,0.06)" stroke-width="9"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round"'
     + ' stroke-dasharray="' + dash.toFixed(1) + ' ' + gap.toFixed(1) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>'
-    + '<text x="' + cx + '" y="' + (cy - 6) + '" font-family="Georgia,serif" font-size="24" font-weight="700" fill="#0C0C0E" text-anchor="middle">' + s + '</text>'
-    + '<text x="' + cx + '" y="' + (cy + 12) + '" font-family="Inter,sans-serif" font-size="10" fill="#BBBBC2" text-anchor="middle">/25</text>'
-    + '<text x="' + cx + '" y="104" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#67676E" text-anchor="middle" letter-spacing="0.12em">' + label.toUpperCase() + '</text>'
+    + '<text x="' + cx + '" y="' + (cy - 4) + '" font-family="Georgia,serif" font-size="24" font-weight="700" fill="#0C0C0E" text-anchor="middle">' + s + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 14) + '" font-family="Inter,sans-serif" font-size="10" fill="#BBBBC2" text-anchor="middle">/25</text>'
+    + '<text x="' + cx + '" y="120" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#67676E" text-anchor="middle" letter-spacing="0.12em">' + label.toUpperCase() + '</text>'
     + '</svg>';
 }
 
@@ -245,20 +245,20 @@ var CSS = [
   '.pf-biz{font-size:10px;color:#BBBBC2;}',
   '.pf-pg{font-size:10px;color:#BBBBC2;font-family:Georgia,serif;}',
   /* COVER */
-  '.cover{background:#F5F2EE;padding:52px 56px 52px;position:relative;display:flex;flex-direction:column;justify-content:space-between;min-height:auto;border:1px solid rgba(12,12,14,0.06);}',
+  '.cover{background:#F5F2EE;padding:36px 56px 32px;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}',
   '.cover-accent{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}',
   '.cover-logo-block{margin-bottom:0;padding-bottom:0;}',
-  '.cover-body{padding:48px 0 40px;}',
+  '.cover-body{padding:28px 0 24px;}',
   '.cover-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:rgba(201,168,106,0.65);margin-bottom:20px;}',
-  '.cover-h1{font-family:Georgia,serif;font-size:58px;font-weight:400;color:#0C0C0E;line-height:1.05;letter-spacing:-0.025em;margin-bottom:20px;}',
+  '.cover-h1{font-family:Georgia,serif;font-size:48px;font-weight:400;color:#0C0C0E;line-height:1.05;letter-spacing:-0.025em;margin-bottom:16px;}',
   '.cover-h1 em{font-style:italic;color:#C9A86A;}',
-  '.cover-intro{font-size:14px;color:rgba(12,12,14,0.55);line-height:1.85;max-width:520px;margin-bottom:0;}',
+  '.cover-intro{font-size:13px;color:rgba(12,12,14,0.55);line-height:1.75;max-width:520px;margin-bottom:0;}',
   '.cover-footer{border-top:1px solid rgba(12,12,14,0.08);padding-top:24px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end;}',
   '.cover-biz-name{font-family:Georgia,serif;font-size:22px;font-weight:400;color:#0C0C0E;margin-bottom:5px;}',
   '.cover-biz-meta{font-size:12px;color:rgba(12,12,14,0.45);line-height:1.75;}',
   '.cover-score-col{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}',
   '.cover-score-tag{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(201,168,106,0.45);}',
-  '.cover-score-num{font-family:Georgia,serif;font-size:80px;font-weight:700;color:#0C0C0E;line-height:1;letter-spacing:-0.04em;}',
+  '.cover-score-num{font-family:Georgia,serif;font-size:64px;font-weight:700;color:#0C0C0E;line-height:1;letter-spacing:-0.04em;}',
   '.cover-score-den{font-size:14px;color:rgba(12,12,14,0.3);}',
   /* LETTER */
   '.letter{padding:60px 56px 60px 64px;border-left:4px solid #C9A86A;margin:0;position:relative;}',
