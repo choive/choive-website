@@ -2817,6 +2817,7 @@ function showResults(r, jobId) {
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
       + '<div class="paid-action-body">' + esc(a.body || '') + '</div>'
       + (a.explanation ? '<div class="paid-action-explanation">' + esc(a.explanation) + '</div>' : '')
+      + (a.if_nothing ? '<div class="paid-action-if">' + esc(a.if_nothing) + '</div>' : '')
       + '</div>';
   }
 
