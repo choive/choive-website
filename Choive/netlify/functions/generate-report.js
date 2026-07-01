@@ -459,7 +459,11 @@ function buildReportHTML(diagnostic, jobId) {
   var date  = new Date().toLocaleDateString('en-GB', { year:'numeric', month:'long', day:'numeric' });
 
   // Input fields
-  var bizName  = safeStr(input.name,     'Your Business');
+  var bizName  = safeStr(input.name, 'Your Business');
+  // Preserve original casing but ensure first letter is capitalised
+  if (bizName && bizName === bizName.toLowerCase()) {
+    bizName = bizName.charAt(0).toUpperCase() + bizName.slice(1);
+  }
   var category = safeStr(input.category, '');
   var city     = safeStr(input.city,     '');
   var website  = safeStr(input.website,  '');
@@ -530,8 +534,12 @@ function buildReportHTML(diagnostic, jobId) {
   var metaImproved = safeStr(metaDesc.improved, '');
 
   // 30-day plan
-  var actionPlan = safeArr(r.actionPlan || deliverables.actionPlan || []);
-
+  var actionPlan = safeArr(
+    r.actionPlan ||
+    (deliverables.actionPlan && deliverables.actionPlan.weeks) ||
+    []
+  );
+  
   // AI perception
   var aiPerception = safeStr(r.aiPerception || r.businessUnderstanding, '');
 
