@@ -226,7 +226,7 @@ function buildLetter(bizName, score, trustScore, compName, input) {
     + '<div class="letter-sign">'
     + '<div class="letter-name">Blessing Ashionye Ebogu</div>'
     + '<div class="letter-title">Founder &amp; CEO, CHOIVE\u00b7</div>'
-    + '<div class="letter-tagline">The world\'s first AI selection diagnostic.</div>'
+     + '<div class="letter-tagline">AI Selection Intelligence.</div>'
     + '</div>'
     + '</div>';
 }
@@ -1015,6 +1015,7 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
     '<div style="margin-bottom:36px;"><img src="' + 'https://choive.com/choive-logo.png' + '" style="height:36px;width:auto;" alt="CHOIVE"/></div>',
     '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 14px;line-height:1.2;color:#0C0C0E;">Your AI Selection Report is ready.</h1>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">Your complete CHOIVE Report for <strong>' + esc(bizName) + '</strong> is attached to this email.</p>',
+    '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">This is your confidential analysis. Do not share it publicly — it contains your exact competitive gaps.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 28px;">Your score: <strong style="font-size:18px;font-family:Georgia,serif;color:#0C0C0E;">' + score + '/100</strong></p>',
     '<div style="background:#F5F2EE;padding:22px 26px;margin-bottom:28px;border-left:3px solid #C9A86A;">',
     '<div style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#BBBBC2;margin-bottom:8px;">What\'s inside</div>',
