@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy — CHOIVE·</title>
+<meta name="description" content="CHOIVE runs on honest intelligence. This page tells you exactly what happens to your data. No softening. No hiding.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230C0C0E'/%3E%3Ccircle cx='62' cy='62' r='12' fill='%23C9A86A'/%3E%3Ctext x='38' y='62' font-family='Georgia,serif' font-size='52' fill='%23F5F2EE' text-anchor='middle' dominant-baseline='central'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="canonical" href="https://choive.com/privacy">
+<style>
+:root{
+  --paper:#F5F2EE;--paper-2:#EDEAE5;--paper-3:#E4E0D9;
+  --ink:#0C0C0E;--body:#48484F;--muted:#67676E;
+  --rule:rgba(12,12,14,0.08);--rule-2:rgba(12,12,14,0.04);
+  --ac:#C9A86A;--ac-d:#B8935A;
+  --void:#0C0C0E;--void-2:#111116;--void-3:#18181E;
+  --ghost:#F5F2EE;--ghost-2:#BBBBC2;--ghost-3:#6E6E76;
+  --rd:rgba(245,242,238,0.06);--rd2:rgba(245,242,238,0.03);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{background:var(--void);scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;font-weight:400;background:var(--void);color:var(--ghost);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 52px;background:rgba(12,12,14,0.97);border-bottom:1px solid var(--rd);backdrop-filter:blur(20px);}
+.nav-logo{font-size:15px;font-weight:700;letter-spacing:0.12em;color:var(--ghost);text-decoration:none;}
+.nav-logo span{color:rgba(245,242,238,0.2);}
+.nav-right{display:flex;align-items:center;gap:28px;}
+.nav-link{font-size:11px;font-weight:500;color:var(--ghost-3);text-decoration:none;letter-spacing:0.04em;transition:color 0.15s;}
+.nav-link:hover{color:var(--ghost);}
+.nav-cta{font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--void);background:var(--ac);padding:10px 18px;text-decoration:none;transition:background 0.15s;}
+.nav-cta:hover{background:var(--ac-d);}
+
+/* STICKY ANCHOR NAV */
+.anchor-nav{position:sticky;top:56px;z-index:800;background:rgba(12,12,14,0.97);border-bottom:1px solid var(--rd);backdrop-filter:blur(20px);overflow-x:auto;scrollbar-width:none;}
+.anchor-nav::-webkit-scrollbar{display:none;}
+.anchor-nav-inner{display:flex;gap:0;min-width:max-content;padding:0 52px;}
+.anchor-link{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ghost-3);text-decoration:none;padding:14px 16px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;display:block;}
+.anchor-link:hover{color:var(--ac);border-bottom-color:var(--ac);opacity:1;}
+.anchor-link.active{color:var(--ac);border-bottom-color:var(--ac);}
+@media(max-width:768px){.anchor-nav-inner{padding:0 20px;}}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:0 52px 80px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 700px 600px at 20% 60%,rgba(201,168,106,0.06),transparent 65%);pointer-events:none;}
+.hero-kicker{font-size:10px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--ac);margin-bottom:24px;display:flex;align-items:center;gap:12px;}
+.hero-kicker::before{content:'';width:24px;height:1px;background:var(--ac);}
+.hero-h1{font-family:'Libre Baskerville',serif;font-size:clamp(44px,7vw,88px);font-weight:700;line-height:1.02;letter-spacing:-0.03em;color:var(--ghost);margin-bottom:32px;max-width:820px;}
+.hero-h1 em{font-style:italic;color:rgba(245,242,238,0.28);}
+.hero-statement{font-size:18px;font-weight:400;line-height:1.75;color:var(--ghost-2);max-width:580px;margin-bottom:48px;border-left:2px solid var(--ac);padding-left:20px;}
+.hero-meta{display:flex;align-items:center;gap:0;padding-top:28px;border-top:1px solid var(--rd);}
+.hero-meta-item{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ghost-3);padding-right:28px;margin-right:28px;border-right:1px solid var(--rd);}
+.hero-meta-item:last-child{border-right:none;}
+.hero-meta-item a{color:var(--ac);text-decoration:none;}
+
+/* VERDICTS — the three non-negotiables */
+.verdicts{background:var(--void-2);border-top:1px solid var(--rd);border-bottom:1px solid var(--rd);}
+.verdicts-inner{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);}
+.verdict-item{padding:52px 44px;border-right:1px solid var(--rd);position:relative;}
+.verdict-item:last-child{border-right:none;}
+.verdict-item::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--ac);transform:scaleX(0);transform-origin:left;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);}
+.verdict-item:hover::before{transform:scaleX(1);}
+.verdict-num{font-family:'Libre Baskerville',serif;font-size:11px;font-weight:700;color:rgba(201,168,106,0.3);letter-spacing:0.14em;margin-bottom:20px;}
+.verdict-claim{font-family:'Libre Baskerville',serif;font-size:clamp(18px,2vw,22px);font-weight:700;color:var(--ghost);line-height:1.25;margin-bottom:14px;}
+.verdict-support{font-size:13px;font-weight:400;line-height:1.8;color:var(--ghost-3);}
+.verdict-support strong{color:var(--ghost-2);font-weight:600;}
+
+/* DATA JOURNEY */
+.journey{background:var(--paper);padding:88px 52px;}
+.journey-inner{max-width:1080px;margin:0 auto;}
+.journey-header{margin-bottom:52px;}
+.section-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;margin-bottom:14px;}
+.light .section-eyebrow{color:var(--muted);}
+.dark .section-eyebrow{color:var(--ghost-3);}
+.section-h{font-family:'Libre Baskerville',serif;font-size:clamp(26px,3.5vw,40px);font-weight:700;letter-spacing:-0.02em;line-height:1.1;margin-bottom:14px;}
+.light .section-h{color:var(--ink);}
+.dark .section-h{color:var(--ghost);}
+.section-intro{font-size:15px;line-height:1.8;max-width:560px;}
+.light .section-intro{color:var(--body);}
+.dark .section-intro{color:var(--ghost-2);}
+.journey-steps{display:flex;flex-direction:column;gap:0;}
+.journey-step{display:grid;grid-template-columns:64px 1fr;border-top:1px solid var(--rule);}
+.journey-step:last-child{border-bottom:1px solid var(--rule);}
+.journey-n{padding:24px 0;font-family:'Libre Baskerville',serif;font-size:28px;font-weight:700;color:rgba(201,168,106,0.18);line-height:1;align-self:start;padding-top:26px;}
+.journey-body{padding:24px 28px;border-left:1px solid var(--rule);}
+.journey-title{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.journey-tag{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:rgba(201,168,106,0.1);color:var(--ac-d);padding:3px 9px;border-radius:1px;flex-shrink:0;}
+.journey-desc{font-size:13px;color:var(--body);line-height:1.8;}
+.journey-desc strong{color:var(--ink);font-weight:600;}
+
+/* SECTION SCROLL OFFSET */
+.section-light,.section-dark,.section-void,.journey{scroll-margin-top:100px;}
+
+/* GENERAL SECTIONS */
+.section-light{background:var(--paper);padding:80px 52px;border-top:1px solid var(--rule);}
+.section-dark{background:var(--void);padding:80px 52px;border-top:1px solid var(--rd);}
+.section-void{background:var(--void-2);padding:80px 52px;border-top:1px solid var(--rd);}
+.section-inner{max-width:1080px;margin:0 auto;}
+.section-cols{display:grid;grid-template-columns:340px 1fr;gap:80px;align-items:start;}
+.section-col-label{}
+.section-col-body{}
+.light p,.light li{font-size:14px;line-height:1.9;color:var(--body);}
+.dark p,.dark li{font-size:14px;line-height:1.9;color:var(--ghost-2);}
+p{margin-bottom:14px;}
+p:last-child{margin-bottom:0;}
+ul,ol{margin:14px 0 16px 18px;}
+li{margin-bottom:7px;}
+strong{font-weight:600;}
+.light strong{color:var(--ink);}
+.dark strong{color:var(--ghost);}
+a{text-decoration:none;transition:opacity 0.15s;}
+a:hover{opacity:0.75;}
+.light a{color:var(--ac-d);}
+.dark a{color:var(--ac);}
+
+/* CALLOUT */
+.callout{padding:22px 26px;margin:22px 0;}
+.light .callout{background:rgba(201,168,106,0.07);border-left:3px solid var(--ac);}
+.dark .callout{background:rgba(201,168,106,0.06);border-left:3px solid var(--ac);}
+.callout p{margin:0!important;font-size:13px!important;}
+
+/* TABLES */
+.t{width:100%;border-collapse:collapse;font-size:13px;margin:24px 0;}
+.t thead tr{}
+.light .t thead tr{background:var(--paper-3);}
+.dark .t thead tr{background:var(--void-3);}
+.t th{padding:12px 16px;text-align:left;font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;border-bottom:2px solid;}
+.light .t th{color:var(--muted);border-color:var(--rule);}
+.dark .t th{color:var(--ghost-3);border-color:var(--rd);}
+.t td{padding:14px 16px;vertical-align:top;line-height:1.7;border-bottom:1px solid;}
+.light .t td{border-color:var(--rule-2);color:var(--body);}
+.dark .t td{border-color:var(--rd2);color:var(--ghost-2);}
+.t td:first-child{font-weight:600;}
+.light .t td:first-child{color:var(--ink);}
+.dark .t td:first-child{color:var(--ghost);}
+.t tr:last-child td{border-bottom:none;}
+.light .t tr:hover td{background:var(--paper-2);}
+.dark .t tr:hover td{background:rgba(245,242,238,0.02);}
+
+/* AI BLOCK */
+.ai-reveal{background:var(--void-3);border:1px solid var(--rd);margin:28px 0;}
+.ai-reveal-label{padding:16px 24px;border-bottom:1px solid var(--rd);font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--ac);}
+.ai-step{display:flex;gap:20px;padding:18px 24px;border-bottom:1px solid var(--rd2);}
+.ai-step:last-child{border-bottom:none;}
+.ai-arrow{color:var(--ac);font-size:14px;flex-shrink:0;margin-top:1px;font-weight:700;}
+.ai-text{font-size:13px;color:var(--ghost-2);line-height:1.75;}
+.ai-text strong{color:var(--ghost);font-weight:600;}
+
+/* RIGHTS */
+.rights{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin:24px 0;}
+.light .rights{background:var(--rule);}
+.dark .rights{background:var(--rd);}
+.right{padding:22px 22px;}
+.light .right{background:var(--paper);}
+.dark .right{background:var(--void-2);}
+.right-name{font-size:12px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
+.right-name::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--ac);flex-shrink:0;}
+.light .right-name{color:var(--ink);}
+.dark .right-name{color:var(--ghost);}
+.right-action{font-size:12px;line-height:1.65;}
+.light .right-action{color:var(--muted);}
+.dark .right-action{color:var(--ghost-3);}
+
+/* CLOSING CTA */
+.close{background:var(--void);padding:100px 52px;position:relative;overflow:hidden;}
+.close::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 500px at 50% 100%,rgba(201,168,106,0.07),transparent 65%);pointer-events:none;}
+.close-inner{max-width:680px;margin:0 auto;text-align:center;position:relative;}
+.close-kicker{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:var(--ac);margin-bottom:20px;}
+.close-h{font-family:'Libre Baskerville',serif;font-size:clamp(30px,5vw,52px);font-weight:700;line-height:1.08;letter-spacing:-0.025em;color:var(--ghost);margin-bottom:16px;}
+.close-h em{font-style:italic;color:rgba(245,242,238,0.3);}
+.close-body{font-size:15px;color:var(--ghost-3);line-height:1.8;margin-bottom:36px;max-width:480px;margin-left:auto;margin-right:auto;}
+.close-email{font-size:20px;font-weight:700;color:var(--ac);letter-spacing:0.01em;}
+.close-note{font-size:12px;color:var(--ghost-3);margin-top:10px;font-style:italic;}
+
+/* FOOTER */
+footer{background:var(--void-2);border-top:1px solid var(--rd);padding:32px 52px;display:flex;align-items:center;justify-content:space-between;}
+.foot-links{display:flex;gap:24px;}
+.foot-link{font-size:11px;color:var(--ghost-3);text-decoration:none;transition:color 0.15s;}
+.foot-link:hover{color:var(--ghost);}
+.foot-copy{font-size:11px;color:rgba(245,242,238,0.18);}
+
+/* MOBILE */
+@media(max-width:900px){
+  .section-cols{grid-template-columns:1fr;gap:36px;}
+}
+@media(max-width:768px){
+  nav{padding:0 20px;}.nav-right .nav-link{display:none;}
+  .hero,.journey,.section-light,.section-dark,.section-void,.close{padding-left:20px;padding-right:20px;}
+  .hero{padding-bottom:56px;}
+  .verdicts-inner{grid-template-columns:1fr;}
+  .verdict-item{border-right:none;border-bottom:1px solid var(--rd);padding:36px 24px;}
+  .verdict-item:last-child{border-bottom:none;}
+  .rights{grid-template-columns:1fr 1fr;}
+  footer{flex-direction:column;gap:14px;padding:24px 20px;align-items:flex-start;}
+  .hero-meta{flex-direction:column;align-items:flex-start;gap:12px;}
+  .hero-meta-item{border-right:none;padding-right:0;margin-right:0;}
+}
+@media(max-width:480px){
+  .rights{grid-template-columns:1fr;}
+  .hero-h1{font-size:clamp(36px,10vw,52px);}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">CHOIVE<span>·</span></a>
+  <div class="nav-right">
+    <a href="/#how" class="nav-link">How it works</a>
+    <a href="/report" class="nav-link">Report</a>
+    <a href="/#diagnostic" class="nav-cta">Run free diagnostic →</a>
+  </div>
+</nav>
+
+<!-- ANCHOR NAV -->
+<div class="anchor-nav" id="anchorNav">
+  <div class="anchor-nav-inner">
+    <a href="#verdicts" class="anchor-link">Our commitments</a>
+    <a href="#journey" class="anchor-link">Data journey</a>
+    <a href="#legal-basis" class="anchor-link">Legal basis</a>
+    <a href="#ai" class="anchor-link">AI processing</a>
+    <a href="#subprocessors" class="anchor-link">Sub-processors</a>
+    <a href="#transfers" class="anchor-link">Transfers</a>
+    <a href="#retention" class="anchor-link">Retention</a>
+    <a href="#rights" class="anchor-link">Your rights</a>
+    <a href="#ccpa" class="anchor-link">California</a>
+    <a href="#security" class="anchor-link">Security</a>
+    <a href="#cookies" class="anchor-link">Cookies</a>
+    <a href="#children" class="anchor-link">Children</a>
+    <a href="#changes" class="anchor-link">Changes</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-kicker">Privacy</div>
+  <h1 class="hero-h1">Honest intelligence<br>starts <em>here.</em></h1>
+  <p class="hero-statement">CHOIVE tells businesses the truth about where they stand — even when the answer is uncomfortable. This page applies the same standard to your data. Every sentence on this page is written to inform you, not protect us.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">Last updated: 1 July 2026</div>
+    <div class="hero-meta-item">Version 1.0 — initial policy</div>
+    <div class="hero-meta-item">Data questions: <a href="mailto:hello@choive.com">hello@choive.com</a></div>
+  </div>
+</section>
+
+<!-- THE THREE VERDICTS -->
+<div class="verdicts" id="verdicts">
+  <div class="verdicts-inner">
+    <div class="verdict-item">
+      <div class="verdict-num">VERDICT 01</div>
+      <div class="verdict-claim">We do not sell your data. Not to anyone. Not ever.</div>
+      <div class="verdict-support">Your business information enters CHOIVE for one reason — to run your diagnostic. It exits CHOIVE for nothing else. <strong>This is not a policy. It is how the product is built.</strong></div>
+    </div>
+    <div class="verdict-item">
+      <div class="verdict-num">VERDICT 02</div>
+      <div class="verdict-claim">We do not track you across the internet.</div>
+      <div class="verdict-support">No advertising pixels. No cross-site cookies. No behavioural profiles. No Google Analytics building a shadow record of your browsing. <strong>When you leave choive.com, we lose track of you. That is the design.</strong></div>
+    </div>
+    <div class="verdict-item">
+      <div class="verdict-num">VERDICT 03</div>
+      <div class="verdict-claim">Your data is not how we make money.</div>
+      <div class="verdict-support">CHOIVE's revenue comes from businesses paying for diagnostics and reports. The moment we monetise your data another way, this product loses its integrity. <strong>We will not do that.</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- DATA JOURNEY -->
+<div class="journey light" id="journey">
+  <div class="journey-inner">
+    <div class="journey-header">
+      <div class="section-eyebrow light">What actually happens</div>
+      <h2 class="section-h light">Every step your data takes<br>when you run a diagnostic.</h2>
+      <p class="section-intro light">From the moment you hit the button to the moment your result appears. Nothing omitted. Nothing softened.</p>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step">
+        <div class="journey-n">1</div>
+        <div class="journey-body">
+          <div class="journey-title">You submit your business information <span class="journey-tag">Enters CHOIVE</span></div>
+          <div class="journey-desc">Business name, category, city, and website URL. Optionally: a one-line description and known competitors. This hits CHOIVE's serverless function running on Netlify's infrastructure. Nothing is stored at this point — the diagnostic begins immediately.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">2</div>
+        <div class="journey-body">
+          <div class="journey-title">Live search signals are pulled <span class="journey-tag">Serper receives query terms</span></div>
+          <div class="journey-desc">Your business name, category, and city are used to run search queries via Serper's API. This tells us what currently exists in search about your category — what competitors appear, what signals they carry. Serper receives query strings only, not your full form submission.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">3</div>
+        <div class="journey-body">
+          <div class="journey-title">Your website is inspected <span class="journey-tag">Apify receives your URL</span></div>
+          <div class="journey-desc">Your website URL is fetched to check technical AI selection signals: schema markup, llms.txt, H1, meta description, title tag. Review and citation data is also checked. Only your website URL and business name are shared with Apify — nothing else.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">4</div>
+        <div class="journey-body">
+          <div class="journey-title">Claude analyses everything <span class="journey-tag">Anthropic receives your data + evidence</span></div>
+          <div class="journey-desc"><strong>This is the most important step to understand.</strong> All collected evidence — your business information, the search results, the website inspection findings, the citation data — is sent to Anthropic's Claude API. Claude generates your score, identifies the competitor AI recommends instead of you, writes your findings, and produces your priority actions. This is entirely automated. No human at CHOIVE reviews your individual result. Per Anthropic's API terms, your data is not used to train their models.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">5</div>
+        <div class="journey-body">
+          <div class="journey-title">Your result is stored so you can return to it <span class="journey-tag">Supabase</span></div>
+          <div class="journey-desc">The complete diagnostic result is written to our Supabase database, tied to a unique job ID. This is what makes your shareable link permanent. Your business name, category, city, and result are stored. No account or login required.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">6</div>
+        <div class="journey-body">
+          <div class="journey-title">If you give us your email, we send your link <span class="journey-tag">Resend — only if you choose</span></div>
+          <div class="journey-desc">Entirely optional. If you enter your email to save your result, that address and your result link are sent via Resend's email API. Your email is stored alongside your result in Supabase. You are not added to any marketing list — the only email you receive is the one you asked for.</div>
+        </div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-n">7</div>
+        <div class="journey-body">
+          <div class="journey-title">If you pay, Stripe handles everything <span class="journey-tag">CHOIVE never sees your card</span></div>
+          <div class="journey-desc">All payment processing runs through Stripe. CHOIVE does not receive, store, or have access to your card details at any point. Stripe sends us a payment confirmation and the associated job ID. That is all we receive from a transaction.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEGAL BASIS -->
+<div class="section-light light" id="legal-basis">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow light">Legal basis</div>
+        <h2 class="section-h light">Why we are permitted to process your data.</h2>
+        <p class="section-intro light">Data protection law requires a specific legal basis for each type of processing. Here is ours — one line per activity, no padding.</p>
+      </div>
+      <div class="section-col-body">
+        <table class="t light">
+          <thead>
+            <tr>
+              <th>What we do</th>
+              <th>Legal basis</th>
+              <th>Why this applies</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Running your free diagnostic</td>
+              <td>Legitimate interest</td>
+              <td>You submitted business information to receive a result. We have a proportionate interest in processing it to deliver what you asked for.</td>
+            </tr>
+            <tr>
+              <td>Delivering a paid Analysis or Report</td>
+              <td>Contract performance</td>
+              <td>Processing is necessary to fulfil your purchase. No purchase, no processing.</td>
+            </tr>
+            <tr>
+              <td>Sending your result link by email</td>
+              <td>Consent</td>
+              <td>You typed your email and clicked send. No automatic enrolment anywhere. To withdraw consent at any time, email <a href="mailto:hello@choive.com">hello@choive.com</a> with "Unsubscribe" in the subject — we action it within 24 hours.</td>
+            </tr>
+            <tr>
+              <td>Storing your result for retrieval</td>
+              <td>Legitimate interest</td>
+              <td>The shareable link is a core feature. Storing the result to power it is proportionate and expected.</td>
+            </tr>
+            <tr>
+              <td>Security and abuse prevention</td>
+              <td>Legitimate interest</td>
+              <td>Protecting the integrity of the service is a necessary operational function.</td>
+            </tr>
+            <tr>
+              <td>Retaining payment records</td>
+              <td>Legal obligation</td>
+              <td>Tax law requires financial records for seven years. This is not discretionary.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTOMATED DECISION-MAKING -->
+<div class="section-void dark" id="ai">
+  <div class="section-inner">
+    <div class="section-eyebrow dark">AI and automated processing</div>
+    <h2 class="section-h dark">Your score is generated by AI.<br>Here is exactly what that means.</h2>
+    <p>Most companies bury this. We lead with it because it is the most important thing to disclose. CHOIVE's entire product is automated AI assessment. You have a right to understand it completely.</p>
+
+    <div class="ai-reveal">
+      <div class="ai-reveal-label">What Claude does with your data — step by step</div>
+      <div class="ai-step">
+        <div class="ai-arrow">→</div>
+        <div class="ai-text"><strong>Receives your business data and all collected evidence.</strong> Search results, website signals, citation data, and your form inputs are assembled into a single structured brief and sent to Claude via Anthropic's API.</div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-arrow">→</div>
+        <div class="ai-text"><strong>Scores your business across four pillars.</strong> Clarity, Trust, Difference, and Ease — each scored out of 25. The total becomes your CHOIVE Index. This is automated. No human reviews or adjusts your individual score.</div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-arrow">→</div>
+        <div class="ai-text"><strong>Identifies who AI recommends instead of you.</strong> Claude simulates the queries your potential customers ask AI platforms and observes which competitor appears in the responses. This is the displacement signal at the top of your result.</div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-arrow">→</div>
+        <div class="ai-text"><strong>Writes your findings, verdict, and priority actions.</strong> Every sentence in your result — the summary, the pillar findings, the recommended fixes — is written by Claude. Entirely automated.</div>
+      </div>
+      <div class="ai-step">
+        <div class="ai-arrow">→</div>
+        <div class="ai-text"><strong>If you purchase a Report, Claude generates the complete PDF.</strong> The personalised letter, the score projection, the competitor signal table, and the 30-day implementation plan are all produced by Claude from your diagnostic data.</div>
+      </div>
+    </div>
+
+    <p><strong>What your score is not.</strong> It is not a human judgement. Not a legal assessment. Not a commercial guarantee. It is an AI-generated analysis of publicly observable signals at the time of the diagnostic. Signals shift. Scores can be re-run. The product is designed to reflect reality — not to flatter.</p>
+
+    <div class="callout">
+      <p><strong>A note on profiling.</strong> Under GDPR Article 4(4), what CHOIVE does constitutes profiling — automated processing of data to evaluate aspects of a business. Specifically: its market position, AI recommendation likelihood, competitive standing, and structural gaps. We name this directly because the law requires it and because you deserve to know. The result of that profiling is your CHOIVE Index and everything that flows from it. Your right to object to this profiling is described in the Your Rights section.</p>
+    </div>
+
+    <p><strong>Your right to challenge an automated result.</strong> If you believe your score is based on inaccurate data, or if the result has affected you in a way you consider unjust, email <a href="mailto:hello@choive.com">hello@choive.com</a> with "Automated decision review" in the subject. We examine the specific data and methodology behind your diagnostic and respond within 14 days. This right exists regardless of where you are in the world.</p>
+    <p><strong>On Anthropic's use of your data.</strong> When your information is sent to Anthropic's API, it is processed under Anthropic's API terms. Per those terms, Anthropic does not use API inputs to train its models. Your business data is used for your diagnostic session only.</p>
+  </div>
+</div>
+
+<!-- SUB-PROCESSORS -->
+<div class="section-light light" id="subprocessors">
+  <div class="section-inner">
+    <div class="section-eyebrow light">Sub-processors</div>
+    <h2 class="section-h light">Every company that touches your data.<br>No omissions.</h2>
+    <p style="max-width:560px;margin-bottom:28px;">If a service receives any part of your data as part of delivering CHOIVE, it is in this table. We will update it before adding any new processor.</p>
+    <table class="t light">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>What they receive</th>
+          <th>Why</th>
+          <th>Where</th>
+          <th>Transfer safeguard</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anthropic</td>
+          <td>Business name, category, city, website, optional description, competitors, and all collected evidence</td>
+          <td>Core AI diagnostic engine — generates your score, findings, competitor identification, and report</td>
+          <td>United States</td>
+          <td>Standard Contractual Clauses (SCCs)</td>
+        </tr>
+        <tr>
+          <td>Serper</td>
+          <td>Business name, category, and city as search query terms</td>
+          <td>Retrieves live search signals for your category</td>
+          <td>United States</td>
+          <td>SCCs</td>
+        </tr>
+        <tr>
+          <td>Apify</td>
+          <td>Website URL and business name</td>
+          <td>Website inspection and independent citation data retrieval</td>
+          <td>EU — Czech Republic</td>
+          <td>No transfer — EU-based</td>
+        </tr>
+        <tr>
+          <td>Supabase</td>
+          <td>Diagnostic results, business name, category, city, job IDs, email addresses if provided</td>
+          <td>Database — stores results to power the shareable link</td>
+          <td>United States</td>
+          <td>SCCs</td>
+        </tr>
+        <tr>
+          <td>Resend</td>
+          <td>Email address and result link or Report PDF</td>
+          <td>Delivers result emails and Report PDFs</td>
+          <td>United States</td>
+          <td>SCCs</td>
+        </tr>
+        <tr>
+          <td>Stripe</td>
+          <td>Payment card details — handled entirely by Stripe. CHOIVE receives only a confirmation and job ID.</td>
+          <td>Payment processing</td>
+          <td>United States</td>
+          <td>SCCs + EU-US Data Privacy Framework</td>
+        </tr>
+        <tr>
+          <td>Netlify</td>
+          <td>IP address and standard request logs</td>
+          <td>Hosting and serverless function execution</td>
+          <td>United States</td>
+          <td>SCCs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INTERNATIONAL TRANSFERS -->
+<div class="section-dark dark" id="transfers">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow dark">International transfers</div>
+        <h2 class="section-h dark">If you are in the EU or UK — read this.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>Most of CHOIVE's infrastructure runs on US-based services. If you are in the European Economic Area or the United Kingdom, your data crosses borders when you use CHOIVE. That is not something we hide — it is how the internet works for a global product built on best-in-class tools.</p>
+        <p>The legal safeguards that govern those transfers:</p>
+        <ul>
+          <li><strong>Anthropic, Supabase, Resend, Netlify, Serper:</strong> Standard Contractual Clauses (SCCs) — the EU-approved legal mechanism for US data transfers.</li>
+          <li><strong>Stripe:</strong> SCCs plus certification under the EU-US Data Privacy Framework.</li>
+          <li><strong>Apify:</strong> EU-based. No international transfer.</li>
+        </ul>
+        <p>Using CHOIVE means accepting that the delivery of the diagnostic requires your business information to be processed in the United States under these safeguards. If that is not acceptable, do not run a diagnostic.</p>
+        <p><strong>EU representative.</strong> As CHOIVE grows its European user base, we are in the process of appointing an EU representative under GDPR Article 27. Until that appointment is confirmed and published here, data queries from EEA residents are handled directly by the team at <a href="mailto:hello@choive.com">hello@choive.com</a> with the same 48-hour response commitment.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RETENTION -->
+<div class="section-void dark" id="retention">
+  <div class="section-inner">
+    <div class="section-eyebrow dark">Retention</div>
+    <h2 class="section-h dark">Exactly how long we keep each type of data.<br>Not "a reasonable period." Specific dates.</h2>
+    <table class="t dark" style="margin-top:28px;">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>How long</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Free diagnostic results</td>
+          <td>90 days from creation</td>
+          <td>Powers the shareable link during a reasonable retrieval window</td>
+        </tr>
+        <tr>
+          <td>Paid Analysis results</td>
+          <td>24 months from purchase</td>
+          <td>Supports retrieval, re-access, and dispute resolution</td>
+        </tr>
+        <tr>
+          <td>Report PDF content</td>
+          <td>24 months from purchase</td>
+          <td>Enables redelivery if the original email was not received</td>
+        </tr>
+        <tr>
+          <td>Email addresses</td>
+          <td>24 months from collection</td>
+          <td>Supports result redelivery on request</td>
+        </tr>
+        <tr>
+          <td>Payment records</td>
+          <td>7 years</td>
+          <td>Tax law. Non-negotiable. Cannot be deleted earlier regardless of request.</td>
+        </tr>
+        <tr>
+          <td>Server and request logs</td>
+          <td>90 days, rolling</td>
+          <td>Security monitoring — overwritten automatically</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:20px;">After a retention period ends, data is deleted from active systems. Any residual copies in automated backups are overwritten within 30 days. To request early deletion of anything except payment records, email <a href="mailto:hello@choive.com">hello@choive.com</a> — subject: "Data deletion." We confirm within 30 days.</p>
+  </div>
+</div>
+
+<!-- YOUR RIGHTS -->
+<div class="section-light light" id="rights">
+  <div class="section-inner">
+    <div class="section-eyebrow light">Your rights</div>
+    <h2 class="section-h light">Seven things you can ask us to do.<br>With exactly how to ask.</h2>
+    <div class="rights light" style="margin-top:28px;">
+      <div class="right light">
+        <div class="right-name">Access</div>
+        <div class="right-action">Want to know everything we hold about you? Ask. We send it within 30 days. No charge.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Correction</div>
+        <div class="right-action">Something we hold is wrong? Tell us. We correct it within 14 days.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Deletion</div>
+        <div class="right-action">Want it gone? We delete everything except legally-mandated payment records within 30 days.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Challenge automated processing</div>
+        <div class="right-action">Dispute your AI-generated score. We review the data and methodology and respond within 14 days.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Portability</div>
+        <div class="right-action">Want your data in a portable format? We provide it as JSON or CSV within 30 days.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Restriction</div>
+        <div class="right-action">Want us to pause processing while a complaint is active? We apply a hold within 48 hours of your request.</div>
+      </div>
+      <div class="right light">
+        <div class="right-name">Withdraw consent</div>
+        <div class="right-action">Gave us your email and now want out? Email "Unsubscribe" to hello@choive.com. Done within 24 hours. No friction.</div>
+      </div>
+    </div>
+    <p style="margin-top:20px;">One email does it: <a href="mailto:hello@choive.com"><strong>hello@choive.com</strong></a> — subject: "Data rights request." No forms, no ticket systems, no waiting rooms. If you are in the EEA or UK and our response does not satisfy you, you have the right to escalate to your local supervisory authority.</p>
+  </div>
+</div>
+
+<!-- CCPA — CALIFORNIA -->
+<div class="section-void dark" id="ccpa">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow dark">California residents</div>
+        <h2 class="section-h dark">If you are in California, you have additional rights under the CCPA.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>California has the strongest consumer data rights in the United States. If you are a California resident using CHOIVE, those rights apply to you. Here is what they mean in practice — not in legal abstractions.</p>
+        <p><strong>Right to know.</strong> You can ask us what personal information we collect about you, why we collect it, and who we share it with. The data journey section above answers this for everyone. California residents can also request a formal disclosure — email <a href="mailto:hello@choive.com">hello@choive.com</a> with "CCPA — right to know" in the subject.</p>
+        <p><strong>Right to delete.</strong> You can ask us to delete personal information we have collected about you. We will do so within 30 days, subject to legal retention requirements. Email us with "CCPA — deletion request."</p>
+        <p><strong>Right to opt out of sale.</strong> CHOIVE does not sell personal information. There is nothing to opt out of. This is not a policy position — it is how the product works. We have no advertising revenue, no data broker relationships, and no mechanism through which your data is transferred in exchange for value.</p>
+        <p><strong>Right to non-discrimination.</strong> Exercising any CCPA right will not result in you receiving a different level of service, a higher price, or any other penalty. The diagnostic works the same regardless of whether you have exercised data rights.</p>
+        <p><strong>How to submit a CCPA request.</strong> Email <a href="mailto:hello@choive.com">hello@choive.com</a> — include "CCPA request" in the subject and specify which right you are exercising. We respond within 45 days. No fee. No verification process beyond confirming you are the person whose data is at issue.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECURITY -->
+<div class="section-dark dark" id="security">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow dark">Security</div>
+        <h2 class="section-h dark">What we do to protect your data. And what we commit to if something goes wrong.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>HTTPS everywhere. Encrypted storage at rest. Role-based database access — the number of people who can touch production data is deliberately small. We do not log sensitive form inputs beyond what the diagnostic requires.</p>
+        <p>Something will eventually go wrong somewhere. If a breach puts your data at risk:</p>
+        <ul>
+          <li>We notify the relevant supervisory authority <strong>within 72 hours</strong> of discovering it — as required by law.</li>
+          <li>We notify you <strong>immediately</strong> if the breach creates a high risk to your rights. Not when it is convenient. Immediately.</li>
+          <li>We document every incident internally, regardless of whether notification is legally required.</li>
+        </ul>
+        <p>If you think your data has been compromised, email <a href="mailto:hello@choive.com">hello@choive.com</a> now. Security reports go to the top of the queue.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COOKIES -->
+<div class="section-light light" id="cookies">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow light">Cookies</div>
+        <h2 class="section-h light">Minimal. Functional. Nothing that follows you.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>CHOIVE uses only the cookies required for the service to function. There is no advertising infrastructure, no behavioural analytics platform, and no third-party tracking script embedded anywhere on this site.</p>
+        <ul>
+          <li><strong>Session cookies</strong> — maintain your active diagnostic. Expire when you close your browser. Disabling them breaks the diagnostic.</li>
+          <li><strong>Nothing else.</strong></li>
+        </ul>
+        <p>Because we use only strictly necessary cookies, no consent banner is required. If this changes, we update this section and add the right controls before touching anything.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHILDREN -->
+<div class="section-light light" id="children">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow light">Children</div>
+        <h2 class="section-h light">CHOIVE is not for anyone under 18.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>CHOIVE is a professional business intelligence tool. It is built for adults who own, operate, or manage businesses. We do not knowingly collect personal data from anyone under 18. We do not market to minors. The service has no features designed for or directed at children.</p>
+        <p>If you believe a minor has submitted data through CHOIVE — whether by running a diagnostic or making a purchase — email <a href="mailto:hello@choive.com">hello@choive.com</a> immediately. We will delete all associated data without delay and, where a purchase was made, issue a full refund.</p>
+        <p>Parents and guardians who discover that a minor in their care has used CHOIVE should contact us. We take these cases seriously and resolve them the same day.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGES -->
+<div class="section-dark dark" id="changes">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div class="section-col-label">
+        <div class="section-eyebrow dark">Changes</div>
+        <h2 class="section-h dark">If this policy changes, here is how you will know.</h2>
+      </div>
+      <div class="section-col-body">
+        <p>The date at the top of this page changes whenever this policy changes. For material changes — anything that meaningfully affects how we collect, use, or share your data — we post a notice on the CHOIVE homepage for at least 14 days before the change takes effect.</p>
+        <p>Previous versions are available on request. If a material change is not acceptable to you, email us to delete your data before the new version kicks in. Using CHOIVE after that date means you accept the updated policy.</p>
+        <p>We do not apply policy changes retroactively to data already collected under a prior version.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSE -->
+<div class="close dark">
+  <div class="close-inner">
+    <div class="close-kicker">Questions about this policy</div>
+    <h2 class="close-h">We are a small team.<br><em>Reach us directly.</em></h2>
+    <p class="close-body">No ticket system. No privacy form that routes to nobody. If something on this page is unclear, or if how we handled your data does not feel right — send an email. We read everything and respond within 48 hours.</p>
+    <a href="mailto:hello@choive.com" class="close-email">hello@choive.com</a>
+    <div class="close-note">For data rights requests, include "Data rights request" in the subject line.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-links">
+    <a href="/" class="foot-link">Home</a>
+    <a href="/terms" class="foot-link">Terms of Service</a>
+    <a href="/#diagnostic" class="foot-link">Run a diagnostic</a>
+  </div>
+  <div class="foot-copy">© 2026 CHOIVE· — AI Selection Intelligence</div>
+</footer>
+
+<script>
+// Anchor nav — highlight active section on scroll
+(function(){
+  var links = document.querySelectorAll('.anchor-link');
+  var sections = [];
+  links.forEach(function(l){
+    var id = l.getAttribute('href').replace('#','');
+    var el = document.getElementById(id);
+    if(el) sections.push({el:el, link:l});
+  });
+  if(!sections.length) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active');});
+        var match = sections.find(function(s){return s.el===e.target;});
+        if(match) match.link.classList.add('active');
+      }
+    });
+  },{rootMargin:'-56px 0px -60% 0px',threshold:0});
+  sections.forEach(function(s){io.observe(s.el);});
+})();
+</script>
+
+</body>
+</html>
