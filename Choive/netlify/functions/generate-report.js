@@ -513,8 +513,10 @@ function buildReportHTML(diagnostic, jobId) {
   var simAfterResults  = safeArr(simAfter.results);
   // Fallback for any older diagnostics that only ever stored a flat array —
   // treat the whole thing as "before" so nothing breaks for existing records.
+  var isFlat = false;
   if (simBeforeResults.length === 0 && simAfterResults.length === 0) {
     simBeforeResults = safeArr(r.simulationResults || r.aiSimulation || []);
+    isFlat = true;
   }
   // Actions
   var actions = safeArr(r.actions);
@@ -772,19 +774,38 @@ function buildReportHTML(diagnostic, jobId) {
   }
 
   if (simBeforeResults.length > 0) {
-    H.push('<div class="eyebrow">Current state \u2014 before any fixes</div>');
-    var appearedBefore = renderSimSet('Current state', simBeforeResults);
-    H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
-    H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
-    H.push('<p class="sv-text-p">' + (appearedBefore === 0 ? 'Every query your customers ask is answered without mentioning you. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.' : 'Partial visibility. Priority actions will close remaining gaps.') + '</p></div></div>');
+    if (isFlat) {
+      H.push('<div class="eyebrow">AI query simulation</div>');
+      var appearedFlat = renderSimSet('Query', simBeforeResults);
+      var flatVerdict = appearedFlat === 0
+        ? 'None of these queries returned ' + esc(bizName) + ' in the AI response. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.'
+        : appearedFlat === simBeforeResults.length
+        ? esc(bizName) + ' appeared in all ' + simBeforeResults.length + ' queries. The priority actions in Section 8 will consolidate this position.'
+        : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' queries. Priority actions in Section 8 will close the remaining gaps.';
+      H.push('<div class="sim-verdict"><div class="sv-num">' + appearedFlat + '/' + simBeforeResults.length + '</div>');
+      H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + '.</span>');
+      H.push('<p class="sv-text-p">' + flatVerdict + '</p></div></div>');
+    } else {
+      H.push('<div class="eyebrow">Current state \u2014 before any fixes</div>');
+      var appearedBefore = renderSimSet('Current state', simBeforeResults);
+      var beforeVerdict = appearedBefore === 0
+        ? 'Every query your customers ask is answered without mentioning you. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.'
+        : 'Partial visibility. Priority actions will close remaining gaps.';
+      H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
+      H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
+      H.push('<p class="sv-text-p">' + beforeVerdict + '</p></div></div>');
+    }
   }
 
-  if (simAfterResults.length > 0) {
+  if (!isFlat && simAfterResults.length > 0) {
     H.push('<div class="eyebrow" style="margin-top:36px;">After implementing top fixes</div>');
     var appearedAfter = renderSimSet('After optimisation', simAfterResults);
+    var afterVerdict = appearedAfter === simAfterResults.length
+      ? 'Implementing the priority actions in Section 8 closes the gap completely \u2014 every query your customers ask would surface ' + esc(bizName) + ' by name.'
+      : 'Implementing the priority actions in Section 8 closes most of the gap.';
     H.push('<div class="sim-verdict"><div class="sv-num">' + appearedAfter + '/' + simAfterResults.length + '</div>');
     H.push('<div><span class="sv-text-h">queries would mention ' + esc(bizName) + ' after the fixes in Section 8.</span>');
-    H.push('<p class="sv-text-p">' + (appearedAfter === simAfterResults.length ? 'Implementing the priority actions in Section 8 closes the gap completely \u2014 every query your customers ask would surface ' + esc(bizName) + ' by name.' : 'Implementing the priority actions in Section 8 closes most of the gap.') + '</p></div></div>');
+    H.push('<p class="sv-text-p">' + afterVerdict + '</p></div></div>');
   }
 
   if (simBeforeResults.length === 0 && simAfterResults.length === 0) {
