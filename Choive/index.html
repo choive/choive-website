@@ -1837,10 +1837,10 @@ footer::before {
 
     <!-- Headline — the confrontation -->
     <h1 class="hero-h1">
-      When someone asks AI<br>
-      to recommend a business<br>
-      in your category —<br>
-      <em>does it say yours?</em>
+      AI doesn't recommend<br>
+      every business.<br>
+      It recommends one.<br>
+      <em>Right now, it isn't yours.</em>
     </h1>
 
     <!-- Sub — the consequence -->
@@ -2165,7 +2165,10 @@ footer::before {
 <!-- BOTTOM CTA -->
 <section class="bottom-cta-section reveal">
   <div class="bottom-cta-inner">
-    <div class="bottom-cta-line">AI is answering your customers right now.<br><em>Does it say yours?</em></div>
+  <div class="bottom-cta-line">
+    One business gets recommended.<br>
+    <em>Make it yours.</em>
+  </div>
     <a href="/#diagnostic" class="bottom-cta-btn">Run my diagnostic →</a>
   </div>
 </section>
@@ -2451,41 +2454,54 @@ function getShareUrl() {
 function buildShareBlock(jobId) {
   if (!jobId) return '';
   window.__choiveShareJobId = jobId;
+  var comp = window.__choiveTopComp ? ' — ' + window.__choiveTopComp + ' is winning instead' : '';
+  var score = (window.__choiveLastResult && window.__choiveLastResult.overallScore) || '?';
+  var name = (bizData && bizData.name) ? bizData.name : 'my business';
+  var shareText = 'I just ran a CHOIVE diagnostic for ' + name + '. Score: ' + score + '/100' + comp + '. Find out yours:';
+  var shareUrl = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
+  var linkedInUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
   return [
     '<div class="share-block" id="shareBlock">',
-    '  <div class="share-label">Share this result</div>',
-    '  <div class="share-url" id="shareUrl">' + esc(getShareUrl(jobId)) + '</div>',
-    '  <div style="display:flex;gap:8px;flex-shrink:0;">',
-    '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy Diagnostic Link</button>',
-    '    <button class="share-btn" onclick="openShareUrl()">Open Shareable View</button>',
+    '  <div class="share-label">Share your result</div>',
+    '  <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">',
+    '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy link</button>',
+    '    <button class="share-btn" onclick="window.open(\'' + linkedInUrl + '\', \'_blank\')">Share on LinkedIn</button>',
+    '    <button class="share-btn" onclick="copyShareText(\'' + shareText.replace(/'/g, "\\'").replace(/\n/g, ' ') + '\', \'' + shareUrl + '\')">Copy post text</button>',
     '  </div>',
     '</div>'
   ].join('\n');
 }
 
-
 function copyShareUrl() {
-  var url = getShareUrl();
+  var jobId = window.__choiveShareJobId || '';
+  var url = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
   if (!url) return;
-  var el = document.getElementById('shareUrl');
-  if (el) el.textContent = url;
   navigator.clipboard.writeText(url).then(function() {
     var btn = document.getElementById('shareBtn');
     if (btn) {
       btn.textContent = 'Copied';
       btn.classList.add('copied');
       setTimeout(function() {
-        btn.textContent = 'Copy Diagnostic Link';
+        btn.textContent = 'Copy link';
         btn.classList.remove('copied');
       }, 2000);
     }
-  }).catch(function() {
-    if (el) {
-      var range = document.createRange();
-      range.selectNode(el);
-      window.getSelection().removeAllRanges();
-      window.getSelection().addRange(range);
-    }
+  });
+}
+
+function copyShareText(text, url) {
+  var full = text + ' ' + url;
+  navigator.clipboard.writeText(full).then(function() {
+    document.querySelectorAll('.share-btn').forEach(function(b) {
+      if (b.textContent === 'Copy post text') {
+        b.textContent = 'Copied';
+        b.classList.add('copied');
+        setTimeout(function() {
+          b.textContent = 'Copy post text';
+          b.classList.remove('copied');
+        }, 2000);
+      }
+    });
   });
 }
 
@@ -2744,6 +2760,8 @@ function showResults(r, jobId) {
     : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].name)
       ? r.competitors[0].name
       : '';
+  window.__choiveTopComp = topComp;
+  
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
     ? r.displacement.competitorQuery
     : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].queryContext)
@@ -2793,8 +2811,8 @@ function showResults(r, jobId) {
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">Full analysis</div>'
-        + '<div class="paywall-headline">See exactly why — and what to fix</div>'
-        + '<div class="paywall-body">Unlock the complete CHOIVE™ Analysis: competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets.</div>'
+        '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You are losing selection events you cannot see.') + '</div>'
+        + '<div class="paywall-body">' + (topComp ? 'Find out exactly what ' + esc(topComp) + ' has built that AI rewards — and the precise fixes that close the gap.' : 'Unlock the complete analysis: what is costing you AI recommendations, who is winning instead, and exactly what to fix first.') + '</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock Full Analysis — $99 →</button>'
         + '</div>');
 
