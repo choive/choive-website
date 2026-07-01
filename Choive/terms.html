@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — CHOIVE·</title>
+<meta name="description" content="The terms that govern CHOIVE. Written plainly. No buried exceptions. No legal fog.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230C0C0E'/%3E%3Ccircle cx='62' cy='62' r='12' fill='%23C9A86A'/%3E%3Ctext x='38' y='62' font-family='Georgia,serif' font-size='52' fill='%23F5F2EE' text-anchor='middle' dominant-baseline='central'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="canonical" href="https://choive.com/terms">
+<style>
+:root{
+  --paper:#F5F2EE;--paper-2:#EDEAE5;--paper-3:#E4E0D9;
+  --ink:#0C0C0E;--body:#48484F;--muted:#67676E;
+  --rule:rgba(12,12,14,0.08);--rule-2:rgba(12,12,14,0.04);
+  --ac:#C9A86A;--ac-d:#B8935A;
+  --void:#0C0C0E;--void-2:#111116;--void-3:#18181E;
+  --ghost:#F5F2EE;--ghost-2:#BBBBC2;--ghost-3:#6E6E76;
+  --rd:rgba(245,242,238,0.06);--rd2:rgba(245,242,238,0.03);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{background:var(--void);scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;font-weight:400;background:var(--void);color:var(--ghost);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 52px;background:rgba(12,12,14,0.97);border-bottom:1px solid var(--rd);backdrop-filter:blur(20px);}
+.nav-logo{font-size:15px;font-weight:700;letter-spacing:0.12em;color:var(--ghost);text-decoration:none;}
+.nav-logo span{color:rgba(245,242,238,0.2);}
+.nav-right{display:flex;align-items:center;gap:28px;}
+.nav-link{font-size:11px;font-weight:500;color:var(--ghost-3);text-decoration:none;letter-spacing:0.04em;transition:color 0.15s;}
+.nav-link:hover{color:var(--ghost);}
+.nav-cta{font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--void);background:var(--ac);padding:10px 18px;text-decoration:none;transition:background 0.15s;}
+.nav-cta:hover{background:var(--ac-d);}
+
+/* ANCHOR NAV */
+.anchor-nav{position:sticky;top:56px;z-index:800;background:rgba(12,12,14,0.97);border-bottom:1px solid var(--rd);backdrop-filter:blur(20px);overflow-x:auto;scrollbar-width:none;}
+.anchor-nav::-webkit-scrollbar{display:none;}
+.anchor-nav-inner{display:flex;gap:0;min-width:max-content;padding:0 52px;}
+.anchor-link{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ghost-3);text-decoration:none;padding:14px 16px;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.15s,border-color 0.15s;display:block;}
+.anchor-link:hover,.anchor-link.active{color:var(--ac);border-bottom-color:var(--ac);}
+@media(max-width:768px){.anchor-nav-inner{padding:0 20px;}}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:0 52px 80px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 700px 600px at 80% 40%,rgba(201,168,106,0.05),transparent 65%);pointer-events:none;}
+.hero-kicker{font-size:10px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--ac);margin-bottom:24px;display:flex;align-items:center;gap:12px;}
+.hero-kicker::before{content:'';width:24px;height:1px;background:var(--ac);}
+.hero-h1{font-family:'Libre Baskerville',serif;font-size:clamp(44px,7vw,88px);font-weight:700;line-height:1.02;letter-spacing:-0.03em;color:var(--ghost);margin-bottom:32px;max-width:760px;}
+.hero-h1 em{font-style:italic;color:rgba(245,242,238,0.28);}
+.hero-statement{font-size:17px;font-weight:400;line-height:1.8;color:var(--ghost-2);max-width:580px;margin-bottom:48px;border-left:2px solid var(--ac);padding-left:20px;}
+.hero-meta{display:flex;align-items:center;gap:0;padding-top:28px;border-top:1px solid var(--rd);flex-wrap:wrap;}
+.hero-meta-item{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--ghost-3);padding-right:28px;margin-right:28px;border-right:1px solid var(--rd);}
+.hero-meta-item:last-child{border-right:none;}
+.hero-meta-item a{color:var(--ac);text-decoration:none;}
+
+/* COMMITMENTS STRIP */
+.commitments{background:var(--void-2);border-top:1px solid var(--rd);border-bottom:1px solid var(--rd);}
+.commitments-inner{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);}
+.commitment{padding:48px 40px;border-right:1px solid var(--rd);position:relative;}
+.commitment:last-child{border-right:none;}
+.commitment::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--ac);transform:scaleX(0);transform-origin:left;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);}
+.commitment:hover::before{transform:scaleX(1);}
+.commitment-num{font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(201,168,106,0.35);margin-bottom:16px;}
+.commitment-claim{font-family:'Libre Baskerville',serif;font-size:clamp(17px,2vw,21px);font-weight:700;color:var(--ghost);line-height:1.3;margin-bottom:12px;}
+.commitment-detail{font-size:13px;font-weight:400;line-height:1.8;color:var(--ghost-3);}
+.commitment-detail strong{color:var(--ghost-2);font-weight:600;}
+
+/* PRICING STRIP */
+.pricing-strip{background:var(--paper);padding:64px 52px;border-bottom:1px solid var(--rule);}
+.pricing-inner{max-width:1080px;margin:0 auto;}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--rule);margin-top:36px;}
+.pricing-tier{background:var(--paper);padding:36px 32px;position:relative;}
+.pricing-tier--paid{background:var(--void);border:1px solid rgba(201,168,106,0.15);}
+.pricing-tier--paid::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac);}
+.pricing-label{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.pricing-tier--paid .pricing-label{color:var(--ac);}
+.pricing-name{font-family:'Libre Baskerville',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.pricing-tier--paid .pricing-name{color:var(--ghost);}
+.pricing-amount{font-family:'Libre Baskerville',serif;font-size:44px;font-weight:700;color:var(--ac);line-height:1;letter-spacing:-0.03em;margin-bottom:6px;}
+.pricing-amount span{font-size:16px;font-weight:400;color:var(--muted);margin-left:4px;font-family:'Inter',sans-serif;}
+.pricing-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);}
+.pricing-tier--paid .pricing-desc{color:var(--ghost-3);border-top-color:var(--rd);}
+
+/* SECTIONS */
+.section-dark{background:var(--void);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;}
+.section-light{background:var(--paper);padding:80px 52px;border-top:1px solid var(--rule);scroll-margin-top:100px;}
+.section-void{background:var(--void-2);padding:80px 52px;border-top:1px solid var(--rd);scroll-margin-top:100px;}
+.section-inner{max-width:1080px;margin:0 auto;}
+.section-cols{display:grid;grid-template-columns:320px 1fr;gap:80px;align-items:start;}
+.section-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;margin-bottom:14px;}
+.light .section-eyebrow{color:var(--muted);}
+.dark .section-eyebrow{color:var(--ghost-3);}
+.section-h{font-family:'Libre Baskerville',serif;font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-0.02em;line-height:1.1;margin-bottom:16px;}
+.light .section-h{color:var(--ink);}
+.dark .section-h{color:var(--ghost);}
+.section-h em{font-style:italic;opacity:0.35;}
+p{font-size:14px;line-height:1.9;margin-bottom:14px;}
+p:last-child{margin-bottom:0;}
+ul,ol{margin:14px 0 16px 18px;}
+li{font-size:14px;line-height:1.85;margin-bottom:7px;}
+strong{font-weight:600;}
+.light p,.light li{color:var(--body);}
+.dark p,.dark li{color:var(--ghost-2);}
+.light strong{color:var(--ink);}
+.dark strong{color:var(--ghost);}
+a{text-decoration:none;transition:opacity 0.15s;}
+a:hover{opacity:0.75;}
+.light a{color:var(--ac-d);}
+.dark a{color:var(--ac);}
+
+/* CALLOUT */
+.callout{padding:22px 26px;margin:22px 0;}
+.light .callout{background:rgba(201,168,106,0.07);border-left:3px solid var(--ac);}
+.dark .callout{background:rgba(201,168,106,0.06);border-left:3px solid var(--ac);}
+.callout p{margin:0!important;font-size:13px!important;}
+
+/* REFUND BLOCK */
+.refund-block{margin:28px 0;}
+.refund-row{display:grid;grid-template-columns:140px 1fr;gap:0;border-top:1px solid var(--rd);}
+.refund-row:last-child{border-bottom:1px solid var(--rd);}
+.refund-situation{padding:18px 20px 18px 0;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--ac);line-height:1.5;border-right:1px solid var(--rd);}
+.refund-outcome{padding:18px 0 18px 20px;font-size:13px;color:var(--ghost-2);line-height:1.75;}
+.refund-outcome strong{color:var(--ghost);}
+
+/* WHAT WE ARE / WHAT WE ARE NOT */
+.duality{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--rd);margin:28px 0;}
+.duality-col{padding:32px 28px;}
+.duality-col--no{background:var(--void-3);}
+.duality-col--yes{background:var(--void-2);}
+.duality-label{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--rd);}
+.duality-col--no .duality-label{color:rgba(184,50,50,0.5);}
+.duality-col--yes .duality-label{color:var(--ac);}
+.duality-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.duality-list li{font-size:13px;line-height:1.7;color:var(--ghost-2);display:flex;align-items:flex-start;gap:9px;}
+.duality-list li::before{flex-shrink:0;font-size:11px;margin-top:2px;}
+.duality-col--no .duality-list li::before{content:'✕';color:rgba(184,50,50,0.4);}
+.duality-col--yes .duality-list li::before{content:'✓';color:var(--ac);}
+
+/* CLOSING */
+.close{background:var(--void);padding:100px 52px;position:relative;overflow:hidden;}
+.close::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 600px 500px at 50% 0%,rgba(201,168,106,0.06),transparent 65%);pointer-events:none;}
+.close-inner{max-width:680px;margin:0 auto;text-align:center;position:relative;}
+.close-kicker{font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:var(--ac);margin-bottom:20px;}
+.close-h{font-family:'Libre Baskerville',serif;font-size:clamp(30px,5vw,52px);font-weight:700;line-height:1.08;letter-spacing:-0.025em;color:var(--ghost);margin-bottom:16px;}
+.close-h em{font-style:italic;color:rgba(245,242,238,0.3);}
+.close-body{font-size:15px;color:var(--ghost-3);line-height:1.8;margin-bottom:36px;max-width:480px;margin-left:auto;margin-right:auto;}
+.close-email{font-size:20px;font-weight:700;color:var(--ac);}
+.close-note{font-size:12px;color:var(--ghost-3);margin-top:10px;font-style:italic;}
+
+/* FOOTER */
+footer{background:var(--void-2);border-top:1px solid var(--rd);padding:32px 52px;display:flex;align-items:center;justify-content:space-between;}
+.foot-links{display:flex;gap:24px;}
+.foot-link{font-size:11px;color:var(--ghost-3);text-decoration:none;transition:color 0.15s;}
+.foot-link:hover{color:var(--ghost);}
+.foot-copy{font-size:11px;color:rgba(245,242,238,0.18);}
+
+/* MOBILE */
+@media(max-width:900px){.section-cols{grid-template-columns:1fr;gap:32px;}}
+@media(max-width:768px){
+  nav{padding:0 20px;}.nav-right .nav-link{display:none;}
+  .hero,.pricing-strip,.section-dark,.section-light,.section-void,.close{padding-left:20px;padding-right:20px;}
+  .hero{padding-bottom:56px;}
+  .commitments-inner{grid-template-columns:1fr;}
+  .commitment{border-right:none;border-bottom:1px solid var(--rd);padding:36px 24px;}
+  .commitment:last-child{border-bottom:none;}
+  .pricing-grid{grid-template-columns:1fr;}
+  .duality{grid-template-columns:1fr;}
+  .refund-row{grid-template-columns:1fr;}
+  .refund-situation{border-right:none;padding-bottom:0;}
+  .refund-outcome{padding-left:0;}
+  footer{flex-direction:column;gap:14px;padding:24px 20px;align-items:flex-start;}
+  .hero-meta{gap:12px;}
+  .hero-meta-item{border-right:none;padding-right:0;margin-right:0;}
+}
+@media(max-width:480px){
+  .hero-h1{font-size:clamp(36px,10vw,52px);}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">CHOIVE<span>·</span></a>
+  <div class="nav-right">
+    <a href="/#how" class="nav-link">How it works</a>
+    <a href="/report" class="nav-link">Report</a>
+    <a href="/#diagnostic" class="nav-cta">Run free diagnostic →</a>
+  </div>
+</nav>
+
+<!-- ANCHOR NAV -->
+<div class="anchor-nav">
+  <div class="anchor-nav-inner">
+    <a href="#what" class="anchor-link">What CHOIVE is</a>
+    <a href="#pricing" class="anchor-link">Pricing</a>
+    <a href="#payment" class="anchor-link">Payment</a>
+    <a href="#refunds" class="anchor-link">Refunds</a>
+    <a href="#accuracy" class="anchor-link">Accuracy</a>
+    <a href="#acceptable" class="anchor-link">Acceptable use</a>
+    <a href="#ip" class="anchor-link">Intellectual property</a>
+    <a href="#liability" class="anchor-link">Liability</a>
+    <a href="#governing" class="anchor-link">Governing law</a>
+    <a href="#changes" class="anchor-link">Changes</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-kicker">Terms of Service</div>
+  <h1 class="hero-h1">Fair terms.<br>Written <em>to be read.</em></h1>
+  <p class="hero-statement">Most terms of service exist to protect companies, not to inform customers. These terms exist to do both — clearly, in the same voice we use everywhere else. If something is unclear, email us. We are not hiding behind language.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">Last updated: 1 July 2026</div>
+    <div class="hero-meta-item">Version 1.0 — initial terms</div>
+    <div class="hero-meta-item">Questions: <a href="mailto:hello@choive.com">hello@choive.com</a></div>
+  </div>
+</section>
+
+<!-- THREE COMMITMENTS -->
+<div class="commitments">
+  <div class="commitments-inner">
+    <div class="commitment">
+      <div class="commitment-num">Commitment 01</div>
+      <div class="commitment-claim">No subscriptions. No auto-renewals. Ever.</div>
+      <div class="commitment-detail">Every CHOIVE purchase is a single payment for a specific product. You will never be charged again without making a new deliberate purchase. <strong>There is no card on file, no recurring billing, no surprise charges.</strong></div>
+    </div>
+    <div class="commitment">
+      <div class="commitment-num">Commitment 02</div>
+      <div class="commitment-claim">If the product fails to deliver, we fix it or refund it.</div>
+      <div class="commitment-detail">A result that does not load is not a result. A Report that does not arrive is not a Report. <strong>We stand behind what we build. If something breaks on our end, you do not pay for it.</strong></div>
+    </div>
+    <div class="commitment">
+      <div class="commitment-num">Commitment 03</div>
+      <div class="commitment-claim">We will tell you if these terms change before the change takes effect.</div>
+      <div class="commitment-detail">No silent updates. No retroactive application. <strong>Material changes are announced on the CHOIVE homepage at least 14 days before they apply.</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT CHOIVE IS -->
+<div class="section-dark dark" id="what">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">What CHOIVE is</div>
+        <h2 class="section-h dark">The product you are using and what it is designed to do.</h2>
+      </div>
+      <div>
+        <p>CHOIVE is an AI selection diagnostic platform. It analyses how likely AI systems — ChatGPT, Perplexity, Gemini, Claude — are to recommend your business when a potential customer asks for one. It scores your current position, identifies who AI recommends instead of you, and tells you exactly what to fix.</p>
+        <div class="duality">
+          <div class="duality-col duality-col--no">
+            <div class="duality-label">What CHOIVE is not</div>
+            <ul class="duality-list">
+              <li>A guarantee that AI will recommend you</li>
+              <li>A ranking service or SEO tool</li>
+              <li>A legal or professional advisory service</li>
+              <li>A prediction of any specific commercial outcome</li>
+              <li>An endorsement of your business by CHOIVE</li>
+            </ul>
+          </div>
+          <div class="duality-col duality-col--yes">
+            <div class="duality-label">What CHOIVE is</div>
+            <ul class="duality-list">
+              <li>An honest diagnosis of your current AI selection position</li>
+              <li>A live analysis of real signals at the time of the diagnostic</li>
+              <li>An automated AI assessment — not a human opinion</li>
+              <li>A starting point for informed action, not a final verdict</li>
+              <li>A product that tells the truth, even when the truth is uncomfortable</li>
+            </ul>
+          </div>
+        </div>
+        <p>AI recommendation behaviour is determined by the AI platforms themselves. CHOIVE analyses the signals that influence that behaviour — it does not control it. No diagnostic tool can guarantee how any AI platform will respond to any specific query on any given day.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<div class="pricing-strip light" id="pricing">
+  <div class="pricing-inner">
+    <div class="section-eyebrow light">Pricing</div>
+    <h2 class="section-h light">Three tiers. No hidden fees. No subscriptions.</h2>
+    <div class="pricing-grid">
+      <div class="pricing-tier">
+        <div class="pricing-label">Free</div>
+        <div class="pricing-name">CHOIVE Diagnostic™</div>
+        <div class="pricing-amount">$0<span>forever</span></div>
+        <div class="pricing-desc">Scored analysis across four pillars — Clarity, Trust, Difference, and Ease. Competitor identification. Shareable result link. No account. No credit card. No time limit.</div>
+      </div>
+      <div class="pricing-tier pricing-tier--paid">
+        <div class="pricing-label">One-time</div>
+        <div class="pricing-name">CHOIVE Analysis™</div>
+        <div class="pricing-amount">$99<span>once</span></div>
+        <div class="pricing-desc">Everything in the free diagnostic plus full pillar breakdown with evidence, AI platform simulation, priority actions, ready-to-use assets, and a permanent shareable result link. Unlocked immediately on payment.</div>
+      </div>
+      <div class="pricing-tier pricing-tier--paid">
+        <div class="pricing-label">One-time</div>
+        <div class="pricing-name">CHOIVE Report™</div>
+        <div class="pricing-amount">$499<span>once</span></div>
+        <div class="pricing-desc">Everything in the Analysis plus a complete branded PDF — personalised founder letter, score projection, competitor signal table, and a 30-day implementation plan. Emailed seconds after payment.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT -->
+<div class="section-void dark" id="payment">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Payment</div>
+        <h2 class="section-h dark">How money works at CHOIVE.</h2>
+      </div>
+      <div>
+        <p>All payments are processed by Stripe. When you pay for an Analysis or Report, you are paying Stripe — CHOIVE never sees, stores, or has access to your card details at any point.</p>
+        <p>Payment is due at the time of purchase. Access to your paid result or Report is granted immediately upon Stripe confirming payment — there is no delay, no manual approval, no waiting period.</p>
+        <p>All prices are in USD. CHOIVE does not currently charge VAT or GST separately — the price shown is the price you pay.</p>
+        <div class="callout">
+          <p><strong>No card on file.</strong> After a purchase, CHOIVE holds no payment information about you. If you run a new diagnostic and want to unlock it, you enter payment details fresh via Stripe each time. There is no stored card, no auto-renewal, and no way for CHOIVE to charge you again without a new deliberate action on your part.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REFUNDS -->
+<div class="section-dark dark" id="refunds">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Refunds</div>
+        <h2 class="section-h dark">When we refund.<br>When we don't.<br><em>And why.</em></h2>
+      </div>
+      <div>
+        <p>Every CHOIVE diagnostic runs real-time — live search queries, live website inspection, live AI simulation. The moment you pay, that work has happened. This is why our general position is that payments are non-refundable.</p>
+        <p>But we stand behind what we build. Here is exactly when refunds apply and when they do not:</p>
+        <div class="refund-block">
+          <div class="refund-row">
+            <div class="refund-situation">Product fails to load</div>
+            <div class="refund-outcome"><strong>Full refund.</strong> If your paid result never loads or your Report PDF never arrives, you have not received what you paid for. Email us within 48 hours — subject: "Refund request." We resolve or refund within 24 hours.</div>
+          </div>
+          <div class="refund-row">
+            <div class="refund-situation">Technical error in result</div>
+            <div class="refund-outcome"><strong>Full refund or re-run.</strong> If your result contains a clear technical error — corrupted data, missing sections, incorrect business information used — we will either re-run the diagnostic at no charge or refund you. Your call.</div>
+          </div>
+          <div class="refund-row">
+            <div class="refund-situation">Report not delivered within 30 minutes</div>
+            <div class="refund-outcome"><strong>Immediate resolution.</strong> Report PDFs are generated and emailed automatically. If yours has not arrived within 30 minutes of payment, email us before assuming the worst — it is sometimes a spam filter. We will resend or refund immediately.</div>
+          </div>
+          <div class="refund-row">
+            <div class="refund-situation">Score lower than expected</div>
+            <div class="refund-outcome"><strong>No refund.</strong> CHOIVE measures your business's real AI selection signals honestly. A low score is the product working correctly — it is telling you something true. Discomfort with the truth is not grounds for a refund.</div>
+          </div>
+          <div class="refund-row">
+            <div class="refund-situation">Changed your mind</div>
+            <div class="refund-outcome"><strong>No refund.</strong> The diagnostic runs the moment you pay. The work is done. We cannot un-run a diagnostic any more than a laboratory can un-run a blood test.</div>
+          </div>
+          <div class="refund-row">
+            <div class="refund-situation">Duplicate purchase</div>
+            <div class="refund-outcome"><strong>Full refund for the duplicate.</strong> If you accidentally purchased the same product twice for the same diagnostic, email us within 48 hours — we refund the duplicate immediately.</div>
+          </div>
+        </div>
+        <p>To request a refund: <a href="mailto:hello@choive.com">hello@choive.com</a> — subject: "Refund request." Include your job ID if you have it. We respond within 24 hours.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACCURACY -->
+<div class="section-light light" id="accuracy">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow light">Accuracy and limitations</div>
+        <h2 class="section-h light">What your result means.<br>And what it doesn't.</h2>
+      </div>
+      <div>
+        <p>CHOIVE generates diagnostic results using live data — search signals, website inspection, citation checking, and AI simulation — at the exact moment you run the diagnostic. Those signals change constantly. A result from Monday may differ from one run on Friday. That is not a defect. It is the product accurately reflecting a live and shifting environment.</p>
+        <p><strong>Your result is a snapshot, not a permanent judgement.</strong> AI recommendation behaviour across ChatGPT, Perplexity, Gemini, and Claude shifts as those platforms update their models, change their training data, and adjust their response behaviour. CHOIVE measures your position at a point in time. It cannot predict how those platforms will behave tomorrow.</p>
+        <div class="callout">
+          <p><strong>On score variation between runs.</strong> Running the same diagnostic twice in 24 hours may produce slightly different scores. This is expected and correct — it means the signals CHOIVE is measuring are genuinely live. A score that never changes regardless of what you do would be the lie. CHOIVE does not lie.</p>
+        </div>
+        <p><strong>CHOIVE is not professional advice.</strong> Nothing in your diagnostic result constitutes legal, financial, marketing, or professional advisory guidance. It is an AI-generated analysis of observable signals. Act on it with the same judgement you would apply to any business intelligence tool.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACCEPTABLE USE -->
+<div class="section-void dark" id="acceptable">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Acceptable use</div>
+        <h2 class="section-h dark">What you can do with CHOIVE.<br>And what will get you removed.</h2>
+      </div>
+      <div>
+        <p>CHOIVE is built for businesses to understand and improve their AI selection position. Use it for that. The following will result in immediate termination of access, and in serious cases, legal action:</p>
+        <ul>
+          <li><strong>Running diagnostics on businesses you have no authority to represent,</strong> with intent to extract competitive intelligence or cause reputational harm.</li>
+          <li><strong>Misrepresenting your CHOIVE results</strong> — presenting a diagnostic as current when it is not, fabricating scores, or using results in a way that is false or misleading.</li>
+          <li><strong>Attempting to reverse-engineer the CHOIVE methodology</strong> — scraping outputs systematically, probing the API to reconstruct scoring logic, or using diagnostic results to build a competing product.</li>
+          <li><strong>Reselling or relicensing CHOIVE results</strong> without written permission from CHOIVE.</li>
+          <li><strong>Using CHOIVE to generate content that is defamatory, fraudulent, or unlawful.</strong></li>
+          <li><strong>Submitting false business information</strong> to manipulate results or test the engine at scale without authorisation.</li>
+        </ul>
+        <p>Reasonable and legitimate use — running diagnostics on your own business, sharing results with your team or agency, purchasing reports for internal strategy, citing your CHOIVE score in marketing materials — is entirely permitted and encouraged.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTELLECTUAL PROPERTY -->
+<div class="section-light light" id="ip">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow light">Intellectual property</div>
+        <h2 class="section-h light">What belongs to CHOIVE.<br>What belongs to you.</h2>
+      </div>
+      <div>
+        <p><strong>What belongs to CHOIVE:</strong> The CHOIVE platform, the CHOIVE Index™ scoring methodology, the diagnostic engine, the prompt architecture, the output structure, the CHOIVE Analysis™, and the CHOIVE Report™ are proprietary. The brand, the design system, and all generated content produced by the CHOIVE engine are owned by CHOIVE.</p>
+        <p><strong>What belongs to you:</strong> The business information you provide. You own your data. CHOIVE uses it to run your diagnostic and for nothing else.</p>
+        <p><strong>What you are licensed to do with your result:</strong> When you purchase an Analysis or Report, you receive a personal, non-exclusive, non-transferable licence to use that result for your own business purposes. You can share it internally, show it to your agency, include it in board presentations, and cite your score in marketing. You cannot resell it, rebrand it, or present it as your own original analysis.</p>
+        <div class="callout">
+          <p><strong>On citing your CHOIVE score publicly.</strong> You are welcome to share your score, your competitor name, and your result. If you do, please represent it accurately — including the date it was run, since scores change with market conditions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIABILITY -->
+<div class="section-dark dark" id="liability">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Limitation of liability</div>
+        <h2 class="section-h dark">What we are responsible for.<br>And what we are not.</h2>
+      </div>
+      <div>
+        <p>CHOIVE is responsible for delivering the product you paid for. If your Analysis fails to load or your Report fails to arrive, that is on us and we fix it. That is where our direct responsibility is clear.</p>
+        <p><strong>What CHOIVE is not liable for:</strong> We are not liable for indirect, consequential, or lost-profit damages arising from your use of CHOIVE results. This means: if you act on a CHOIVE recommendation, implement the suggested changes, and your AI selection position does not improve — we are not liable for that outcome. AI platform behaviour is outside our control.</p>
+        <p><strong>The cap.</strong> CHOIVE's total liability to you for any claim arising from use of the service is limited to the amount you paid for the specific product involved in the claim. If you paid $99 for an Analysis, our maximum liability related to that Analysis is $99.</p>
+        <div class="callout">
+          <p><strong>What this cap does not cover.</strong> Nothing here limits our liability for fraud, deliberate misrepresentation, death or personal injury caused by our negligence, or any other liability that cannot legally be excluded or limited. If we do something genuinely wrong, we are accountable for it.</p>
+        </div>
+        <p>This limitation exists not to escape responsibility for failures, but to accurately describe what CHOIVE can and cannot control. A diagnostic tool does not guarantee outcomes. Neither do we.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GOVERNING LAW -->
+<div class="section-light light" id="governing">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow light">Governing law</div>
+        <h2 class="section-h light">Where disputes go<br>if they cannot be resolved directly.</h2>
+      </div>
+      <div>
+        <p>CHOIVE is a global product. Our legal entity is being formalised in the United Arab Emirates. These terms are governed by UAE law to the extent our entity is registered there, and otherwise by the laws of the jurisdiction where CHOIVE's primary operations are based at the time of any dispute.</p>
+        <p><strong>Before anything formal happens.</strong> If you have a dispute with CHOIVE — about a charge, a result, a decision, anything — the first step is an email to <a href="mailto:hello@choive.com">hello@choive.com</a>. We would rather resolve it in 48 hours than spend months in a legal process that serves neither party.</p>
+        <p>If a dispute cannot be resolved informally, both parties agree to attempt mediation before initiating formal legal proceedings. This is not a legal requirement — it is the reasonable thing to do and we commit to it in good faith.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRIVACY -->
+<div class="section-void dark">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Privacy</div>
+        <h2 class="section-h dark">Data is covered separately — and in full detail.</h2>
+      </div>
+      <div>
+        <p>How CHOIVE collects, uses, stores, and protects your data is covered in the <a href="/privacy">Privacy Policy</a> — a separate document written with the same level of honesty and specificity as these terms.</p>
+        <p>The privacy policy is incorporated into these terms. Using CHOIVE means accepting both documents. If there is a conflict between what the privacy policy says and what these terms say about data, the privacy policy governs.</p>
+        <p>The privacy policy covers: what data we collect and why, every third-party service that touches your data, international transfer mechanisms, specific retention periods, your rights, automated decision-making disclosure, and CCPA rights for California residents.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGES -->
+<div class="section-light light" id="changes">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow light">Changes to these terms</div>
+        <h2 class="section-h light">How we handle updates.<br>With no surprises.</h2>
+      </div>
+      <div>
+        <p>The date at the top of this page changes whenever these terms change. For material changes — anything that meaningfully affects your rights or obligations as a CHOIVE user — we announce it on the CHOIVE homepage for at least 14 days before it takes effect.</p>
+        <p>Previous versions of these terms are available on request by emailing <a href="mailto:hello@choive.com">hello@choive.com</a>. We do not apply changes retroactively to purchases made before the change took effect.</p>
+        <p>Using CHOIVE after a material change takes effect means you accept the updated terms. If a change is not acceptable to you, stop using the service before the effective date. If you have an active paid result, your access to that result is not affected by declining future terms.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHILDREN -->
+<div class="section-void dark">
+  <div class="section-inner">
+    <div class="section-cols">
+      <div>
+        <div class="section-eyebrow dark">Age restriction</div>
+        <h2 class="section-h dark">CHOIVE is for adults running businesses.</h2>
+      </div>
+      <div>
+        <p>You must be at least 18 years old to use CHOIVE, create an account, or make a purchase. CHOIVE is a professional business tool. It is not designed for, directed at, or appropriate for anyone under 18.</p>
+        <p>By using CHOIVE, you confirm that you are at least 18 years old and have the legal capacity to enter into a binding agreement in your jurisdiction.</p>
+        <p>If a purchase is made by or on behalf of someone under 18, contact us at <a href="mailto:hello@choive.com">hello@choive.com</a> immediately. We will cancel the purchase, issue a full refund, and delete all associated data.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSE -->
+<div class="close">
+  <div class="close-inner">
+    <div class="close-kicker">Still have questions</div>
+    <h2 class="close-h">We wrote these terms<br><em>to be read.</em></h2>
+    <p class="close-body">If something in here is unclear, if a situation is not covered, or if something does not feel fair — email us directly. We are not hiding behind legal language and we will not route your question to a ticket system.</p>
+    <a href="mailto:hello@choive.com" class="close-email">hello@choive.com</a>
+    <div class="close-note">We respond to all terms and billing questions within 48 hours.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-links">
+    <a href="/" class="foot-link">Home</a>
+    <a href="/privacy" class="foot-link">Privacy Policy</a>
+    <a href="/#diagnostic" class="foot-link">Run a diagnostic</a>
+  </div>
+  <div class="foot-copy">© 2026 CHOIVE· — AI Selection Intelligence</div>
+</footer>
+
+<script>
+(function(){
+  var links = document.querySelectorAll('.anchor-link');
+  var sections = [];
+  links.forEach(function(l){
+    var id = l.getAttribute('href').replace('#','');
+    var el = document.getElementById(id);
+    if(el) sections.push({el:el,link:l});
+  });
+  if(!sections.length) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active');});
+        var m = sections.find(function(s){return s.el===e.target;});
+        if(m) m.link.classList.add('active');
+      }
+    });
+  },{rootMargin:'-56px 0px -60% 0px',threshold:0});
+  sections.forEach(function(s){io.observe(s.el);});
+})();
+</script>
+
+</body>
+</html>
