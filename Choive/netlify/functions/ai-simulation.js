@@ -115,14 +115,25 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
 
+  // Only include signals that are real and provided — never invent signals.
+  // The "after" state must be an honest projection based on actual confirmed
+  // signals, not a fabricated best-case scenario that misleads the owner.
+  var knownSignals = [];
+  if (differentiator && differentiator.trim()) {
+    knownSignals.push('- Differentiator: ' + differentiator.trim());
+  }
+  if (trustSignal && trustSignal.trim()) {
+    knownSignals.push('- Trust signal: ' + trustSignal.trim());
+  }
+
   var enrichedSystem = 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.\n\n'
-    + 'You have access to the following verified information about ' + name + ':\n'
-    + '- Category: ' + catClean + (city ? ', based in ' + city : '') + '\n'
-    + (differentiator ? '- Key differentiator: ' + differentiator + '\n' : '')
-    + (trustSignal ? '- Trust signals: ' + trustSignal + '\n' : '')
-    + '- Has structured web presence with schema markup and llms.txt\n'
-    + '- Has verified customer reviews on major platforms\n'
-    + 'Use this information naturally in your answer if relevant.';
+    + (knownSignals.length > 0
+      ? 'You have access to the following confirmed information about ' + name + ':\n'
+        + '- Category: ' + catClean + (city ? ', based in ' + city : '') + '\n'
+        + knownSignals.join('\n') + '\n'
+        + 'Use this information naturally in your answer only if it is directly relevant.\n\n'
+      : '')
+    + 'Answer as you normally would based on what you know.';
 
   return [
     {
@@ -217,16 +228,20 @@ exports.handler = async function(event) {
         appearedCount: beforeCount,
         totalQueries: 3,
         summary: beforeCount === 0
-          ? name + ' did not appear in any of the 3 AI queries run.'
-          : name + ' appeared in ' + beforeCount + ' of 3 AI queries.'
+          ? name + ' did not appear in any of the 3 queries. A buyer searching right now would not find you.'
+          : beforeCount === 3
+          ? name + ' appeared in all 3 queries. Current visibility is strong.'
+          : name + ' appeared in ' + beforeCount + ' of 3 queries. Partial visibility — not consistent enough to rely on.'
       },
       after: {
         results: afterResults,
         appearedCount: afterCount,
         totalQueries: 3,
         summary: afterCount === 0
-          ? name + ' still did not appear after optimisation signals.'
-          : name + ' appeared in ' + afterCount + ' of 3 queries after optimisation.'
+          ? name + ' did not appear after known signals were applied. Trust signals are the critical gap.'
+          : afterCount === 3
+          ? name + ' appeared in all 3 queries after known signals were applied. Full visibility achievable.'
+          : name + ' appeared in ' + afterCount + ' of 3 queries after known signals were applied.'
       }
     })
   };
