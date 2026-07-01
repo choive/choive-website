@@ -137,6 +137,7 @@ function generateMetaDescription(evidence, result) {
   var city     = (evidence.city           || '').trim();
   var pillars  = result.pillars           || {};
 
+  var cityDisplay     = capitaliseCity(city);
   var clarityEvidence = (pillars.clarity    && pillars.clarity.evidence)    || '';
   var diffEvidence    = (pillars.difference && pillars.difference.evidence) || '';
   var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
