@@ -2738,6 +2738,26 @@ function showResults(r, jobId) {
     ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
     : '';
 
+  // Competitor name — pulled from displacement or competitors array
+  var topComp = (r.displacement && r.displacement.competitorName)
+    ? r.displacement.competitorName
+    : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].name)
+      ? r.competitors[0].name
+      : '';
+  var topCompQuery = (r.displacement && r.displacement.competitorQuery)
+    ? r.displacement.competitorQuery
+    : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].queryContext)
+      ? r.competitors[0].queryContext
+      : 'your category';
+
+  var competitorBanner = topComp
+    ? '<div style="background:var(--void);padding:24px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(184,50,50,0.6);margin-bottom:8px;">AI is currently recommending instead of you</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.4);">On queries like: <em>"' + esc(topCompQuery) + '"</em></div>'
+      + '</div>'
+    : '';
+
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
     + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
     + inferredCat
@@ -2751,7 +2771,8 @@ function showResults(r, jobId) {
     + '</div>';
 
   zone.innerHTML =
-    scoreHeader
+    competitorBanner
+    + scoreHeader
     + buildScoreLabels(r)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
@@ -2784,7 +2805,7 @@ function showResults(r, jobId) {
     document.querySelectorAll('.pillar-bar-fill').forEach(function(el) {
       el.style.width = (el.dataset.pct || 0) + '%';
     });
-  }, 120);
+  }, 600);
   // Purely visual: brief glow pulse once the count-up settles.
   setTimeout(function() {
     var scoreEl = document.getElementById('scoreNum');
