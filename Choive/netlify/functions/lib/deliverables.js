@@ -131,13 +131,12 @@ function generateH1Options(evidence, result) {
 }
 
 function generateMetaDescription(evidence, result) {
-  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
   var pillars  = result.pillars           || {};
-
-  var cityDisplay     = capitaliseCity(city);
+  var cityDisplay = capitaliseCity(city);
+  
   var clarityEvidence = (pillars.clarity    && pillars.clarity.evidence)    || '';
   var diffEvidence    = (pillars.difference && pillars.difference.evidence) || '';
   var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
