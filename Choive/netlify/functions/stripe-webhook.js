@@ -198,8 +198,9 @@ exports.handler = async function (event) {
     }
   }
 
-  // Send confirmation email (best-effort, does not block response)
-  if (customerEmail && process.env.RESEND_API_KEY) {
+  // Send confirmation email — only for $99 Analysis, not $499 Report
+  // (Report email is handled by generate-report.js)
+  if (customerEmail && process.env.RESEND_API_KEY && !isReportPayment) {
     try {
       var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
       var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
