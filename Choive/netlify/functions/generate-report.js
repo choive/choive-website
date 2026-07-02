@@ -449,8 +449,39 @@ var CSS = [
   '.final-meta{font-size:11px;color:rgba(12,12,14,0.3);text-align:right;line-height:1.8;}',
   '@page{size:A4;margin:0;}'
 ,  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:100vh;box-sizing:border-box;} .letter{page-break-after:always;break-after:page;} .toc{page-break-after:always;break-after:page;} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;}}'
+,'.eb{background:#F5F2EE;padding:44px 52px;height:297mm;box-sizing:border-box;display:flex;flex-direction:column;border:1px solid rgba(12,12,14,0.06);position:relative;page-break-after:always;break-after:page;}'
++'.eb::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}'
++'.eb-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:24px;}'
++'.eb-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(201,168,106,0.7);margin-bottom:8px;}'
++'.eb-biz{font-family:Georgia,serif;font-size:26px;font-weight:400;color:#0C0C0E;letter-spacing:-0.02em;margin-bottom:4px;}'
++'.eb-meta{font-size:12px;color:#67676E;}'
++'.eb-score-section{display:grid;grid-template-columns:160px 1fr;gap:36px;align-items:center;padding:24px 0;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:20px;}'
++'.eb-score-label{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#BBBBC2;margin-bottom:4px;}'
++'.eb-score-num{font-family:Georgia,serif;font-size:80px;font-weight:700;color:#0C0C0E;line-height:1;letter-spacing:-0.04em;margin-bottom:8px;}'
++'.eb-score-den{font-size:18px;color:#BBBBC2;font-weight:400;}'
++'.eb-tier{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:4px 12px;border:1px solid;}'
++'.eb-verdict{font-family:Georgia,serif;font-size:20px;font-weight:400;color:#0C0C0E;line-height:1.3;margin-bottom:16px;letter-spacing:-0.01em;}'
++'.eb-bar{height:5px;background:rgba(12,12,14,0.06);margin-bottom:5px;}'
++'.eb-bar-fill{height:100%;}'
++'.eb-bar-labels{display:flex;justify-content:space-between;font-size:9px;color:#BBBBC2;}'
++'.eb-pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:18px 0;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:20px;}'
++'.eb-pillar-name{font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#BBBBC2;margin-bottom:7px;}'
++'.eb-pillar-bar{height:3px;background:rgba(12,12,14,0.06);margin-bottom:5px;}'
++'.eb-pillar-fill{height:100%;}'
++'.eb-pillar-score{font-family:Georgia,serif;font-size:18px;font-weight:700;}'
++'.eb-pillar-score span{font-size:10px;font-family:Inter,sans-serif;color:#BBBBC2;font-weight:400;}'
++'.eb-body{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}'
++'.eb-panel{padding:20px;background:#fff;border:1px solid rgba(12,12,14,0.07);}'
++'.eb-panel-label{font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#BBBBC2;margin-bottom:10px;}'
++'.eb-comp-name{font-family:Georgia,serif;font-size:28px;font-weight:400;font-style:italic;color:#B83232;letter-spacing:-0.02em;}'
++'.eb-comp-none{font-size:13px;color:#2A7A48;font-style:italic;line-height:1.65;}'
++'.eb-action-title{font-family:Georgia,serif;font-size:15px;font-weight:700;color:#0C0C0E;margin-bottom:8px;line-height:1.3;}'
++'.eb-action-body{font-size:12px;color:#48484F;line-height:1.75;}'
++'.eb-footer{display:flex;align-items:flex-end;justify-content:space-between;padding-top:18px;border-top:1px solid rgba(12,12,14,0.08);margin-top:auto;}'
++'.eb-footer-label{font-size:11px;font-weight:700;color:#BBBBC2;margin-bottom:3px;}'
++'.eb-footer-sub{font-size:11px;color:#BBBBC2;}'
++'.eb-qr-label{font-size:8px;text-align:center;color:#BBBBC2;letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;}'
 ].join('');
-
 // ── BUILD FULL GOLD REPORT HTML ───────────────────────────────────────────────
 function buildReportHTML(diagnostic, jobId) {
   var input = safeObj(diagnostic.input);
@@ -561,6 +592,84 @@ function buildReportHTML(diagnostic, jobId) {
       + '<div class="pf-pg">' + pg + '</div></div>';
   }
 
+  // ── EXECUTIVE BRIEF ───────────────────────────────────────────────────────────
+function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl) {
+  var category  = safeStr(input.category, '');
+  var city      = safeStr(input.city, '');
+  var verdict   = safeStr(r.verdictHeadline, '');
+  var cl        = pillarScore(r, 'clarity');
+  var tr        = pillarScore(r, 'trust');
+  var di        = pillarScore(r, 'difference');
+  var ea        = pillarScore(r, 'ease');
+  var actions   = safeArr(r.actions);
+  var act0      = safeObj(actions[0] || {});
+  var actTitle  = safeStr(act0.title, '');
+  var actBody   = safeStr(act0.body,  '');
+  var tierCol   = score >= 76 ? '#2A7A48' : score >= 56 ? '#9A6A14' : '#B83232';
+  var tier      = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
+  var barCol    = score >= 76 ? '#2A7A48' : score >= 56 ? '#C9A86A' : score >= 31 ? '#9A6A14' : '#B83232';
+
+  function pillarRow(label, val) {
+    var col = val >= 20 ? '#2A7A48' : val >= 12 ? '#C9A86A' : '#B83232';
+    return '<div class="eb-pillar">'
+      + '<div class="eb-pillar-name">' + label + '</div>'
+      + '<div class="eb-pillar-bar"><div class="eb-pillar-fill" style="width:' + Math.round(val/25*100) + '%;background:' + col + ';"></div></div>'
+      + '<div class="eb-pillar-score" style="color:' + col + '">' + val + '<span> /25</span></div>'
+      + '</div>';
+  }
+
+  return '<div class="eb">'
+    + '<div class="eb-top">'
+    + '<div><div class="eb-eyebrow">Executive Brief \u00b7 AI Selection Diagnostic</div>'
+    + '<div class="eb-biz">' + esc(bizName) + '</div>'
+    + '<div class="eb-meta">' + esc(category) + (city ? ' \u00b7 ' + esc(city) : '') + ' \u00b7 ' + date + '</div>'
+    + '</div>'
+    + '<img src="' + LOGO_URL + '" style="height:26px;width:auto;opacity:0.65;" alt="CHOIVE"/>'
+    + '</div>'
+    + '<div class="eb-score-section">'
+    + '<div>'
+    + '<div class="eb-score-label">CHOIVE Index\u2122</div>'
+    + '<div class="eb-score-num">' + score + '<span class="eb-score-den">/100</span></div>'
+    + '<div class="eb-tier" style="color:' + tierCol + ';border-color:' + tierCol + ';">' + tier + '</div>'
+    + '</div>'
+    + '<div>'
+    + '<div class="eb-verdict">' + esc(verdict) + '</div>'
+    + '<div class="eb-bar"><div class="eb-bar-fill" style="width:' + score + '%;background:' + barCol + ';"></div></div>'
+    + '<div class="eb-bar-labels"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="eb-pillars">'
+    + pillarRow('Clarity', cl)
+    + pillarRow('Trust', tr)
+    + pillarRow('Difference', di)
+    + pillarRow('Ease', ea)
+    + '</div>'
+    + '<div class="eb-body">'
+    + '<div class="eb-panel">'
+    + '<div class="eb-panel-label">AI is recommending instead</div>'
+    + (compName
+        ? '<div class="eb-comp-name">' + esc(compName) + '</div>'
+        : '<div class="eb-comp-none">No dominant competitor established yet. A significant opportunity to be first.</div>')
+    + '</div>'
+    + '<div class="eb-panel">'
+    + '<div class="eb-panel-label">The single most important action</div>'
+    + (actTitle ? '<div class="eb-action-title">' + esc(actTitle) + '</div>' : '')
+    + (actBody  ? '<div class="eb-action-body">'  + esc(actBody)  + '</div>' : '')
+    + '</div>'
+    + '</div>'
+    + '<div class="eb-footer">'
+    + '<div>'
+    + '<div class="eb-footer-label">For internal use only. Do not share publicly.</div>'
+    + '<div class="eb-footer-sub">Full 10-section report attached \u00b7 choive.com</div>'
+    + '</div>'
+    + '<div style="text-align:center;">'
+    + '<img src="' + qrDataUrl + '" style="width:48px;height:48px;display:block;" alt="Scan for live result"/>'
+    + '<div class="eb-qr-label">Live result</div>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+  
   // Personalised letter
   var letter = buildLetter(bizName, score, tr, compName, input);
 
@@ -599,21 +708,24 @@ function buildReportHTML(diagnostic, jobId) {
   H.push(pageFt('Cover'));
 
   // ── LETTER ──────────────────────────────────────────────────────────────────
-  H.push(letter);
+  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl));
   H.push(pageFt('2'));
+
+  H.push(letter);
+  H.push(pageFt('3'));
 
   // ── TOC ──────────────────────────────────────────────────────────────────────
   var tocItems = [
-    ['Executive Summary',           'Score, verdict, and what it means right now',                       '3'],
-    ['Score Projection',            'Where you will be at 30, 60, and 90 days',                          '4'],
-    ['What AI Currently Thinks',    'AI’s perception of your business before any fixes',            '5'],
-    ['Four Pillar Analysis',        'Exactly where your score comes from — with evidence',          '6'],
-    ['AI Platform Coverage',        'Your status across ChatGPT, Perplexity, Gemini, Claude',            '7'],
-    ['AI Simulation',               'Three real queries. What AI said. Word for word.',                  '8'],
-    ['Competitor Intelligence',     'Who AI chose instead — and the exact structural gap',          '9'],
-    ['Priority Actions',            'What to do, in what order, and what happens if you do nothing.',    '10'],
-    ['Ready-to-Use Assets',         'Copy-paste files generated for your business',                      '11'],
-    ['30-Day Implementation Plan',  'Week-by-week plan with dates, owners, and impact',                  '12'],
+    ['Executive Summary',          '...', '5'],
+    ['Score Projection',           '...', '6'],
+    ['What AI Currently Thinks',   '...', '7'],
+    ['Four Pillar Analysis',       '...', '8'],
+    ['AI Platform Coverage',       '...', '9'],
+    ['AI Simulation',              '...', '10'],
+    ['Competitor Intelligence',    '...', '11'],
+    ['Priority Actions',           '...', '12'],
+    ['Ready-to-Use Assets',        '...', '13'],
+    ['30-Day Implementation Plan', '...', '14'],
   ];
   H.push('<div class="toc">');
   H.push('<div class="toc-eyebrow">Contents</div>');
@@ -626,7 +738,7 @@ function buildReportHTML(diagnostic, jobId) {
       + '<div class="toc-pg">' + item[2] + '</div></div>');
   });
   H.push('</div>');
-  H.push(pageFt('3'));
+  H.push(pageFt('4'));
 
   // ── SECTION 1: EXECUTIVE SUMMARY ────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">01</div><div class="sdp-title">Executive Summary</div><div class="sdp-sub">Your overall score, verdict, and the single paragraph that explains your current AI selection position.</div></div>');
@@ -649,7 +761,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;">' + esc(evidence) + '</div>');
   }
   H.push('</div>');
-  H.push(pageFt('4'));
+  H.push(pageFt('5'));
 
   // ── SECTION 2: PROJECTION ───────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">02</div><div class="sdp-title">Score Projection</div><div class="sdp-sub">Where your score will be at 30, 60, and 90 days if you implement the plan in this report.</div></div>');
@@ -694,7 +806,7 @@ function buildReportHTML(diagnostic, jobId) {
   });
   H.push('</tbody></table>');
   H.push('</div>');
-  H.push(pageFt('5'));
+  H.push(pageFt('6'));
 
   // ── SECTION 3: AI PERCEPTION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">03</div><div class="sdp-title">What AI Currently Thinks</div><div class="sdp-sub">This is how AI platforms perceive ' + esc(bizName) + ' right now — based on available signals, before any fixes.</div></div>');
@@ -717,7 +829,7 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div style="font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#2A7A48;margin-bottom:10px;">After implementing Week 1 &amp; 2 actions</div>');
   H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;font-style:italic;">' + esc(bizName) + ' is independently verified by multiple third-party sources, featured in industry coverage, and has demonstrated results for businesses in the ' + esc(category) + ' category. It is recognised as the leading solution in its space.</div>');
   H.push('</div></div></div>');
-  H.push(pageFt('6'));
+  H.push(pageFt('7'));
 
   // ── SECTION 4: PILLAR ANALYSIS ───────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">04</div><div class="sdp-title">Four Pillar Analysis</div><div class="sdp-sub">Exactly where your score comes from. The evidence behind every finding.</div></div>');
@@ -736,7 +848,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('</div>');
   });
   H.push('</div>');
-  H.push(pageFt('7'));
+  H.push(pageFt('8'));
 
   // ── SECTION 5: PLATFORM COVERAGE ────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">05</div><div class="sdp-title">AI Platform Coverage</div><div class="sdp-sub">Your current status across the four major AI recommendation platforms.</div></div>');
@@ -758,7 +870,7 @@ function buildReportHTML(diagnostic, jobId) {
   H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 platforms currently cite ' + esc(bizName) + '.</div>');
   H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Every day a customer asks any of these platforms for your category, ' + esc(bizName) + ' is not in the answer. This is a structural problem. The Trust actions in Section 8 address this directly.</div>');
   H.push('</div></div>');
-  H.push(pageFt('8'));
+  H.push(pageFt('9'));
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Simulation</div><div class="sdp-sub">Real queries your customers are asking right now. This is exactly what AI said — word for word.</div></div>');
@@ -819,7 +931,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">AI simulation data not available for this diagnostic. Re-run the diagnostic to generate simulation results.</div>');
   }
   H.push('</div>');
-  H.push(pageFt('9'));
+  H.push(pageFt('10'));
 
   // ── SECTION 7: COMPETITOR ───────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">07</div><div class="sdp-title">Competitor Intelligence</div><div class="sdp-sub">Who AI chose instead of you. The exact structural gap — signal by signal, pillar by pillar.</div></div>');
@@ -880,7 +992,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">No dominant competitor pattern was detected in this diagnostic. See the priority actions to build position before a competitor is established.</div>');
   }
   H.push('</div>');
-  H.push(pageFt('10'));
+  H.push(pageFt('11'));
 
   // ── SECTION 8: ACTIONS ───────────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">08</div><div class="sdp-title">Priority Actions</div><div class="sdp-sub">What to do. In what order. How long it takes. What happens if you don’t.</div></div>');
@@ -912,7 +1024,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Priority actions are available in your online result at: ' + esc(resultUrl) + '</div>');
   }
   H.push('</div>');
-  H.push(pageFt('11'));
+  H.push(pageFt('12'));
 
   // ── SECTION 9: ASSETS ───────────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">09</div><div class="sdp-title">Ready-to-Use Assets</div><div class="sdp-sub">Copy and implement these directly. Generated specifically for ' + esc(bizName) + '.</div></div>');
@@ -948,7 +1060,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Ready-to-use assets are available in your online result at: ' + esc(resultUrl) + '</div>');
   }
   H.push('</div>');
-  H.push(pageFt('12'));
+  H.push(pageFt('13'));
 
   // ── SECTION 10: 30-DAY PLAN ──────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">10</div><div class="sdp-title">30-Day Implementation Plan</div><div class="sdp-sub">Week by week. What you do. What your developer does. Dates, owners, and exact impact.</div></div>');
@@ -987,7 +1099,7 @@ function buildReportHTML(diagnostic, jobId) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Your 30-day implementation plan is available in your online result at: ' + esc(resultUrl) + '</div>');
   }
   H.push('</div>');
-  H.push(pageFt('13'));
+  H.push(pageFt('14'));
 
   // ── FINAL PAGE ───────────────────────────────────────────────────────────────
   var firstAction = actions.length > 0 ? safeStr(safeObj(actions[0]).title, '') : 'Implement the priority actions above';
