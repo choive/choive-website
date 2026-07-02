@@ -1739,8 +1739,6 @@ function openForm(product) {
   window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
 }
 
-function getShareUrl(jobId) { return window.location.origin + '/?jobId=' + jobId; }
-
 async function fetchSharedResult(jobId) {
   try {
     var res  = await fetch('/.netlify/functions/get-result?jobId=' + jobId);
