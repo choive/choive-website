@@ -2,7 +2,7 @@
 // CHOIVE™ background diagnostic engine
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
-const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint } = require('./lib/supabase');
+const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory } = require('./lib/claude');
@@ -198,6 +198,19 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] Second-pass competitor search failed:', err.message);
       }
 
+    }
+
+    // ── COMPETITOR STABILITY — look up previously identified competitor ────────
+    // This prevents drift between runs (e.g. Semrush one day, Profound the next)
+    // by giving Claude a strong prior anchored to the last verified run.
+    try {
+      var previousCompetitor = await getPreviousCompetitor(fingerprint);
+      if (previousCompetitor) {
+        evidence['previousCompetitor'] = previousCompetitor;
+        console.log('[' + jobId + '] Previous competitor: ' + previousCompetitor);
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Previous competitor lookup failed:', err.message);
     }
 
     // ── STAGE 2: SCORING ──────────────────────────────────────────────────────
