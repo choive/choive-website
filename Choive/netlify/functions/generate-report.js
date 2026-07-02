@@ -705,7 +705,6 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="cover-score-num">' + score + '</div>');
   H.push('<div class="cover-score-den">/ 100</div>');
   H.push('</div></div>');
-  H.push(pageFt('Cover'));
   H.push('</div>');
   
 
