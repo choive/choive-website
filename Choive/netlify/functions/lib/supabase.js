@@ -103,6 +103,35 @@ async function getCachedEvidence(fingerprint, maxAgeHours) {
   }
   return data;
 }
+// Returns the competitor name identified in the most recent complete diagnostic
+// for this business fingerprint. Used to stabilise competitor identification
+// across runs — prevents Semrush→Profound type drift between cached windows.
+async function getPreviousCompetitor(fingerprint) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .select('result')
+    .eq('business_fingerprint', fingerprint)
+    .eq('status', 'complete')
+    .not('result', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn('getPreviousCompetitor failed:', error.message);
+    return null;
+  }
+  if (!data || !data.result) return null;
+  var result = data.result;
+  // Check competitors array first
+  var competitors = Array.isArray(result.competitors) ? result.competitors : [];
+  if (competitors.length > 0 && competitors[0] && competitors[0].name) {
+    return String(competitors[0].name).trim() || null;
+  }
+  // Fallback: check displacement object
+  var disp = (result.displacement && typeof result.displacement === 'object') ? result.displacement : {};
+  return (disp.competitorName && String(disp.competitorName).trim()) || null;
+}
 
 async function updateStatus(jobId, status, stage) {
   const supabase = getClient();
@@ -197,5 +226,6 @@ module.exports = {
   markDiagnosticPaid,
   saveLead,
   buildFingerprint,
-  getCachedEvidence
+  getCachedEvidence,
+  getPreviousCompetitor
 };
