@@ -761,8 +761,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="eyebrow">Diagnostic evidence</div>');
     H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;">' + esc(evidence) + '</div>');
   }
-  H.push('</div>');
   H.push(pageFt('5'));
+  H.push('</div>');
 
   // ── SECTION 2: PROJECTION ───────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">02</div><div class="sdp-title">Score Projection</div><div class="sdp-sub">Where your score will be at 30, 60, and 90 days if you implement the plan in this report.</div></div>');
@@ -806,8 +806,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       + '</tr>');
   });
   H.push('</tbody></table>');
-  H.push('</div>');
   H.push(pageFt('6'));
+  H.push('</div>');
 
   // ── SECTION 3: AI PERCEPTION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">03</div><div class="sdp-title">What AI Currently Thinks</div><div class="sdp-sub">This is how AI platforms perceive ' + esc(bizName) + ' right now — based on available signals, before any fixes.</div></div>');
@@ -848,8 +848,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     if (ev) H.push('<div class="pd-evidence">' + esc(ev) + '</div>');
     H.push('</div>');
   });
-  H.push('</div>');
   H.push(pageFt('8'));
+  H.push('</div>');
 
   // ── SECTION 5: PLATFORM COVERAGE ────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">05</div><div class="sdp-title">AI Platform Coverage</div><div class="sdp-sub">Your current status across the four major AI recommendation platforms.</div></div>');
@@ -870,8 +870,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div style="padding:22px 26px;background:#EDEAE5;border-left:4px solid #B83232;">');
   H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 platforms currently cite ' + esc(bizName) + '.</div>');
   H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Every day a customer asks any of these platforms for your category, ' + esc(bizName) + ' is not in the answer. This is a structural problem. The Trust actions in Section 8 address this directly.</div>');
-  H.push('</div></div>');
   H.push(pageFt('9'));
+  H.push('</div></div>');
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Simulation</div><div class="sdp-sub">Real queries your customers are asking right now. This is exactly what AI said — word for word.</div></div>');
@@ -931,8 +931,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   if (simBeforeResults.length === 0 && simAfterResults.length === 0) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">AI simulation data not available for this diagnostic. Re-run the diagnostic to generate simulation results.</div>');
   }
-  H.push('</div>');
   H.push(pageFt('10'));
+  H.push('</div>');
 
   // ── SECTION 7: COMPETITOR ───────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">07</div><div class="sdp-title">Competitor Intelligence</div><div class="sdp-sub">Who AI chose instead of you. The exact structural gap — signal by signal, pillar by pillar.</div></div>');
@@ -992,8 +992,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   } else {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">No dominant competitor pattern was detected in this diagnostic. See the priority actions to build position before a competitor is established.</div>');
   }
-  H.push('</div>');
   H.push(pageFt('11'));
+  H.push('</div>');
 
   // ── SECTION 8: ACTIONS ───────────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">08</div><div class="sdp-title">Priority Actions</div><div class="sdp-sub">What to do. In what order. How long it takes. What happens if you don’t.</div></div>');
@@ -1024,8 +1024,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   } else {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Priority actions are available in your online result at: ' + esc(resultUrl) + '</div>');
   }
-  H.push('</div>');
   H.push(pageFt('12'));
+  H.push('</div>');
 
   // ── SECTION 9: ASSETS ───────────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">09</div><div class="sdp-title">Ready-to-Use Assets</div><div class="sdp-sub">Copy and implement these directly. Generated specifically for ' + esc(bizName) + '.</div></div>');
@@ -1060,8 +1060,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   if (!llmsTxt && !h1Options.length && !metaCurrent) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Ready-to-use assets are available in your online result at: ' + esc(resultUrl) + '</div>');
   }
-  H.push('</div>');
   H.push(pageFt('13'));
+  H.push('</div>');
 
   // ── SECTION 10: 30-DAY PLAN ──────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">10</div><div class="sdp-title">30-Day Implementation Plan</div><div class="sdp-sub">Week by week. What you do. What your developer does. Dates, owners, and exact impact.</div></div>');
@@ -1099,8 +1099,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   } else {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Your 30-day implementation plan is available in your online result at: ' + esc(resultUrl) + '</div>');
   }
-  H.push('</div>');
   H.push(pageFt('14'));
+  H.push('</div>');
 
   // ── FINAL PAGE ───────────────────────────────────────────────────────────────
   var firstAction = actions.length > 0 ? safeStr(safeObj(actions[0]).title, '') : 'Implement the priority actions above';
