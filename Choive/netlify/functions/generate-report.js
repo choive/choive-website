@@ -772,7 +772,7 @@ function buildReportHTML(diagnostic, jobId) {
       if (didAppear) appeared++;
       H.push('<div class="sim-q"><div class="sim-inner">');
       H.push('<div class="sim-head"><div class="sim-qlabel">' + esc(label) + ' \u2014 Query ' + (i+1) + ' of ' + results.length + '</div>');
-      H.push('<div class="' + (didAppear ? 'sim-yes' : 'sim-no') + '">' + (didAppear ? 'You appeared' : 'Not mentioned') + '</div></div>');
+      H.push('<div class="' + (didAppear ? 'sim-yes' : 'sim-no') + '">' + (didAppear ? 'Mentioned' : 'Not mentioned') + '</div></div>');
       H.push('<div class="sim-query">"' + esc(safeStr(sim.query, '')) + '"</div>');
       H.push('<div class="sim-resp-label">What AI said</div>');
       H.push('<div class="sim-resp' + (didAppear ? ' yes' : '') + '">' + esc(safeStr(sim.response || sim.aiResponse, '')) + '</div>');
