@@ -1167,9 +1167,9 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
       subject: 'Your CHOIVE· Report — ' + bizName,
       html: emailHtml,
       attachments: [{
-        filename: 'CHOIVE-Report-' + safeFileName + '.html',
-        content: Buffer.from(reportHTML, 'utf8').toString('base64'),
-        content_type: 'text/html'
+        filename: `CHOIVE-Report-${...}.html`,
+        content: htmlContent,
+        contentType: 'application/octet-stream'   // ← forces download
       }]
     })
   });
