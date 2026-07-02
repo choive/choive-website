@@ -189,44 +189,43 @@ function buildPillarRing(score, label) {
 
 // ── PERSONALISED LETTER ───────────────────────────────────────────────────────
 function buildLetter(bizName, score, trustScore, compName, input) {
-  var tier = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
 
-  var opening = score >= 76
-    ? 'Your business is in a strong position. Not because of luck \u2014 because of real structural signals that AI platforms recognise and reward. This report shows you exactly what is working, what is still exposed, and how to make your position genuinely unassailable before a competitor closes the gap.'
-    : score >= 56
-    ? 'You are in the room, but not yet getting the call. AI platforms know your business exists \u2014 they are just not choosing you consistently. That gap is not mysterious. It is structural, it is specific, and every part of it is fixable. That is what this report is for.'
-    : score >= 31
-    ? 'Your business is visible but not being selected. When someone asks AI for your category, the answer comes back without your name in it \u2014 even though you have built something real. That is not a verdict on your business. It is a signal problem. And signal problems have solutions.'
-    : 'Right now, AI platforms are not finding ' + esc(bizName) + ' when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and the path from here to being the obvious recommendation is shorter than you might think.';
+  // Opening — the Mabeihe story. Always the same. It is why CHOIVE exists.
+  var opening = 'A few years ago I was on holiday in Mabeihe with people I care about. It was a Friday night and we were looking for somewhere to go \u2014 a bar, a restaurant, somewhere with life in it. We asked AI. It sent us first to a club that was closed. Then to a restaurant that had shut down years earlier, rebranded, moved on. We ended up standing on a street asking a stranger if they knew where this place was. They looked at us and said: it doesn\u2019t exist anymore.'
+    + '<br><br>'
+    + 'That is why CHOIVE exists. Not because AI got it wrong \u2014 that happens. But because those businesses had no idea. No one had told them that AI was sending people to their old address, their closed doors, their old name. The gap between what a business actually is and what AI thinks it is \u2014 that gap is silent. And it costs real customers, every single day.';
 
-  var trustNote = trustScore <= 8
-    ? 'The biggest issue we found is Trust \u2014 you scored ' + trustScore + ' out of 25. This is the signal AI uses to decide whether a business is real, verified, and worth recommending. Right now, there is not enough independent evidence. No reviews it can cite. No press it can reference. No third-party confirmation. That is what makes closing this pillar the highest-leverage move you can make \u2014 everything else in your score improves when Trust moves.'
-    : trustScore <= 15
-    ? 'Your Trust score of ' + trustScore + ' out of 25 is where the biggest improvement lives. You have some signals \u2014 but not enough for AI to confidently cite you over a better-verified alternative. Three or four specific trust actions, done in the right order, will shift this materially within 30 days.'
-    : 'Your Trust score of ' + trustScore + ' out of 25 is a genuine strength. The work needed is more nuanced \u2014 see Section 4 for the specific findings. Your path forward is about precision, not a complete rebuild.';
+  // Middle — specific to their score. Direct and honest.
+  var middle;
+  if (score >= 76) {
+    middle = 'What we found for <strong>' + esc(bizName) + '</strong> is genuinely strong. Your score of ' + score + ' puts you in a position most businesses in your category are not close to. That is real \u2014 and it is worth protecting. The risk at this level is not collapse, it is drift. A competitor who closes the Trust gap quietly, a signal that goes stale, a platform that re-indexes you differently. This report tells you exactly where the exposure still lives and what keeps your position solid.';
+  } else if (score >= 56) {
+    middle = 'What we found for <strong>' + esc(bizName) + '</strong> is this: AI knows you exist. It is just not choosing you consistently. A score of ' + score + ' means you are in the consideration set \u2014 but when a buyer asks for a direct recommendation, another name comes back'
+      + (compName ? ' \u2014 right now, that name is <strong>' + esc(compName) + '</strong>' : '')
+      + '. That is not a verdict on your business. It is a signal problem. And signal problems have precise solutions. Section 4 shows exactly where the gap is. Section 8 shows you how to close it.';
+  } else if (score >= 31) {
+    middle = 'What we found for <strong>' + esc(bizName) + '</strong> is that you are visible but not being selected. A score of ' + score + ' means AI has some picture of you \u2014 but not enough of the right signals to confidently put your name in an answer when someone asks for your category'
+      + (compName ? '. When that question gets asked right now, the name that comes back is <strong>' + esc(compName) + '</strong>' : '')
+      + '. The gap is almost entirely in Trust \u2014 you scored ' + trustScore + ' out of 25 there. That is the number that unlocks everything else. Three specific actions move it. Section 8 sequences them in order.';
+  } else {
+    middle = 'I want to be honest with you about what we found for <strong>' + esc(bizName) + '</strong>. A score of ' + score + ' means AI platforms are not finding you when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and none of them require rebuilding what you have built. The biggest gap is Trust, at ' + trustScore + ' out of 25. That is where we start. Section 8 tells you exactly what to do first.';
+  }
 
-  var compNote = compName
-    ? 'When a buyer asks AI for your category right now, the name it returns is <strong>' + esc(compName) + '</strong>. Not because they are better at what you do \u2014 but because they are better verified in the signals AI uses to decide. Section 7 shows you exactly where the gap is, signal by signal. Close it and the selection reverses. That is not hope \u2014 that is what the evidence says.'
-    : 'No single dominant competitor is entrenched in your category yet. That is a significant opportunity. The businesses that establish strong AI selection signals now will be the ones automatically recommended when the market matures. You have a window. Section 8 tells you exactly how to use it.';
-
-  var projScore = Math.min(95, score + 14);
-
-  var closing = 'Run the free diagnostic again in 30 days. Based on what we found, I expect your score to reach <strong>' + projScore + ' or above</strong> if you implement the priority actions. That is not an optimistic estimate \u2014 it is what the evidence says is achievable in the timeframe, for a business at your starting position.';
+  // Closing — honest, respectful, direct.
+  var closing = 'What you are holding is the honest picture. Not softened, not dressed up. I would rather you read something real and act on it than receive something comfortable and file it away.'
+    + '<br><br>'
+    + 'Start with Section 8. Do the first action. Then come back and do the second. The sequence is ordered by what unlocks what \u2014 do not skip ahead. And if anything in this report is unclear, or you want to talk through what you found, write to us at <strong>hello@choive.com</strong>. Every message gets read personally.';
 
   return '<div class="letter">'
-    + '<div class="letter-eyebrow">A personal note from the founder</div>'
+    + '<div class="letter-eyebrow">A note from the founder</div>'
     + '<div class="letter-salutation">Dear ' + esc(bizName) + ',</div>'
-    + '<p class="letter-p">Thank you for trusting CHOIVE with this diagnostic. I want to make sure you get full value from what is in front of you \u2014 so let me be direct about what we found, and what it means.</p>'
     + '<p class="letter-p">' + opening + '</p>'
-    + '<p class="letter-p">' + trustNote + '</p>'
-    + '<p class="letter-p">' + compNote + '</p>'
-    + '<p class="letter-p">What you are holding is not a generic AI report. Every finding in here is specific to <strong>' + esc(bizName) + '</strong> \u2014 pulled from live search signals, real AI queries run against your category right now, and a four-pillar diagnostic built around how AI actually makes selection decisions. The assets in Section 9 are ready to implement. The plan in Section 10 is sequenced by impact. Start with Section 8 and work forward.</p>'
+    + '<p class="letter-p">' + middle + '</p>'
     + '<p class="letter-p">' + closing + '</p>'
-    + '<p class="letter-p">If you have questions at any point \u2014 about the findings, the actions, or anything in this report \u2014 write to us at <strong>hello@choive.com</strong>. We read every message.</p>'
     + '<div class="letter-sign">'
     + '<div class="letter-name">Blessing Ashionye Ebogu</div>'
     + '<div class="letter-title">Founder &amp; CEO, CHOIVE\u00b7</div>'
-     + '<div class="letter-tagline">AI Selection Intelligence.</div>'
+    + '<div class="letter-tagline">AI Selection Intelligence.</div>'
     + '</div>'
     + '</div>';
 }
