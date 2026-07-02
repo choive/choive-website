@@ -1134,6 +1134,7 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
     '<div style="margin-bottom:36px;"><img src="' + 'https://choive.com/choive-logo.png' + '" style="height:36px;width:auto;" alt="CHOIVE"/></div>',
     '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 14px;line-height:1.2;color:#0C0C0E;">Your AI Selection Report is ready.</h1>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">Your complete CHOIVE Report for <strong>' + esc(bizName) + '</strong> is attached to this email.</p>',
+    '<p style="font-size:13px;line-height:1.7;color:#67676E;margin:0 0 8px;padding:10px 14px;background:#F5F2EE;border-left:3px solid #C9A86A;"><strong style="color:#0C0C0E;">To open your report:</strong> download the attachment and open it in Chrome or Safari. Use the <em>Save as PDF</em> button inside the report to keep a copy.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">This is your confidential analysis. Do not share it publicly — it contains your exact competitive gaps.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 28px;">Your score: <strong style="font-size:18px;font-family:Georgia,serif;color:#0C0C0E;">' + score + '/100</strong></p>',
     '<div style="background:#F5F2EE;padding:22px 26px;margin-bottom:28px;border-left:3px solid #C9A86A;">',
@@ -1156,7 +1157,7 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
     'CHOIVE· — Be the answer. Not the alternative.',
     '</p></div>'
   ].join('');
-
+  
   var res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
