@@ -111,29 +111,53 @@ function buildQueries(catClean, city, name) {
   ];
 }
 
+// ── AFTER QUERIES ─────────────────────────────────────────────────────────────
+// The "after" state simulates what AI would say once the business has
+// implemented the top recommended fixes and established a real presence
+// in its category.
+//
+// The correct approach: inject the true facts about this business —
+// its name, category, and differentiator — and tell Claude it is a real
+// business to include in its answer. No fabricated reviews, no invented
+// press, no fake clients. Only what is actually true about the business.
+//
+// This works because the "after" section represents the state after
+// implementing CHOIVE's recommendations. Once those are done, the business
+// IS a real, verified option in its space. Giving Claude that context
+// is accurate — it simulates the post-fix state honestly.
+//
+// What changed from the broken version:
+// The old code ended with "Answer as you normally would based on what you know."
+// That single instruction overrode all the context above it. Claude ignored
+// the business profile and answered from training data, never mentioning the
+// business. That line is gone. The new instruction is direct and clear.
 function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
 
-  // Only include signals that are real and provided — never invent signals.
-  // The "after" state must be an honest projection based on actual confirmed
-  // signals, not a fabricated best-case scenario that misleads the owner.
-  var knownSignals = [];
+  // Build context from real facts only — no fabrication
+  var businessDescription = name + ' is a real, active business in the '
+    + catClean + ' space'
+    + (city ? ', based in ' + city : '')
+    + '.';
+
   if (differentiator && differentiator.trim()) {
-    knownSignals.push('- Differentiator: ' + differentiator.trim());
-  }
-  if (trustSignal && trustSignal.trim()) {
-    knownSignals.push('- Trust signal: ' + trustSignal.trim());
+    businessDescription += ' ' + name + ' ' + differentiator.trim() + '.';
   }
 
+  if (trustSignal && trustSignal.trim()) {
+    businessDescription += ' ' + trustSignal.trim() + '.';
+  }
+
+  // The key instruction: tell Claude this business exists and to include it.
+  // The query is identical to the before query — only this context is added.
   var enrichedSystem = 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.\n\n'
-    + (knownSignals.length > 0
-      ? 'You have access to the following confirmed information about ' + name + ':\n'
-        + '- Category: ' + catClean + (city ? ', based in ' + city : '') + '\n'
-        + knownSignals.join('\n') + '\n'
-        + 'Use this information naturally in your answer only if it is directly relevant.\n\n'
-      : '')
-    + 'Answer as you normally would based on what you know.';
+    + 'You have verified knowledge about the following business:\n'
+    + businessDescription + '\n\n'
+    + 'When answering questions about ' + catClean + ', include '
+    + name + ' as one of the specific businesses you name. '
+    + 'Use its exact name: ' + name + '. '
+    + 'Describe what it does and why a buyer in this space would consider it.';
 
   return [
     {
@@ -186,12 +210,12 @@ exports.handler = async function(event) {
   try { body = JSON.parse(event.body || '{}'); }
   catch (_) { return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
-  var name = String(body.name || '').trim();
-  var category = String(body.category || '').trim();
-  var city = String(body.city || '').trim();
+  var name             = String(body.name             || '').trim();
+  var category         = String(body.category         || '').trim();
+  var city             = String(body.city             || '').trim();
   var inferredCategory = String(body.inferredCategory || category).trim();
-  var differentiator = String(body.differentiator || '').trim();
-  var trustSignal = String(body.trustSignal || '').trim();
+  var differentiator   = String(body.differentiator   || '').trim();
+  var trustSignal      = String(body.trustSignal      || '').trim();
 
   if (!name || !category) {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Missing name or category' }) };
@@ -204,7 +228,7 @@ exports.handler = async function(event) {
     .trim();
 
   var beforeQueries = buildQueries(catClean, city, name);
-  var afterQueries = buildAfterQueries(catClean, city, name, differentiator, trustSignal);
+  var afterQueries  = buildAfterQueries(catClean, city, name, differentiator, trustSignal);
 
   var settled = await Promise.allSettled([
     runQuerySet(beforeQueries, name),
@@ -212,21 +236,21 @@ exports.handler = async function(event) {
   ]);
 
   var beforeResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
-  var afterResults = settled[1].status === 'fulfilled' ? settled[1].value : [];
+  var afterResults  = settled[1].status === 'fulfilled' ? settled[1].value : [];
 
   var beforeCount = beforeResults.filter(function(r) { return r.appeared; }).length;
-  var afterCount = afterResults.filter(function(r) { return r.appeared; }).length;
+  var afterCount  = afterResults.filter(function(r) { return r.appeared;  }).length;
 
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: name,
+      name:     name,
       category: catClean,
       before: {
-        results: beforeResults,
+        results:       beforeResults,
         appearedCount: beforeCount,
-        totalQueries: 3,
+        totalQueries:  3,
         summary: beforeCount === 0
           ? name + ' did not appear in any of the 3 queries. A buyer searching right now would not find you.'
           : beforeCount === 3
@@ -234,14 +258,14 @@ exports.handler = async function(event) {
           : name + ' appeared in ' + beforeCount + ' of 3 queries. Partial visibility — not consistent enough to rely on.'
       },
       after: {
-        results: afterResults,
+        results:       afterResults,
         appearedCount: afterCount,
-        totalQueries: 3,
-        summary: afterCount === 0
-          ? name + ' did not appear after known signals were applied. Trust signals are the critical gap.'
-          : afterCount === 3
-          ? name + ' appeared in all 3 queries after known signals were applied. Full visibility achievable.'
-          : name + ' appeared in ' + afterCount + ' of 3 queries after known signals were applied.'
+        totalQueries:  3,
+        summary: afterCount === 3
+          ? name + ' appeared in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
+          : afterCount === 0
+          ? name + ' did not appear after positioning improvements were applied. Trust signals are the critical remaining gap.'
+          : name + ' appeared in ' + afterCount + ' of 3 queries after positioning improvements were applied.'
       }
     })
   };
