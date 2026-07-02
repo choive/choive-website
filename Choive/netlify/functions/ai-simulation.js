@@ -252,20 +252,20 @@ exports.handler = async function(event) {
         appearedCount: beforeCount,
         totalQueries:  3,
         summary: beforeCount === 0
-          ? name + ' did not appear in any of the 3 queries. A buyer searching right now would not find you.'
+          ? name + ' was not mentioned in any of the 3 queries. A buyer searching right now would not find you.'
           : beforeCount === 3
-          ? name + ' appeared in all 3 queries. Current visibility is strong.'
-          : name + ' appeared in ' + beforeCount + ' of 3 queries. Partial visibility — not consistent enough to rely on.'
+          ? name + ' was mentioned in all 3 queries. Current visibility is strong.'
+          : name + ' was mentioned in ' + beforeCount + ' of 3 queries. Partial visibility — not consistent enough to rely on.'
       },
       after: {
         results:       afterResults,
         appearedCount: afterCount,
         totalQueries:  3,
         summary: afterCount === 3
-          ? name + ' appeared in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
+          ? name + ' was mentioned in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
           : afterCount === 0
-          ? name + ' did not appear after positioning improvements were applied. Trust signals are the critical remaining gap.'
-          : name + ' appeared in ' + afterCount + ' of 3 queries after positioning improvements were applied.'
+          ? name + ' was not mentioned after positioning improvements were applied. Trust signals are the critical remaining gap.'
+          : name + ' was mentioned in ' + afterCount + ' of 3 queries after positioning improvements were applied.'
       }
     })
   };
