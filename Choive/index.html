@@ -3458,6 +3458,11 @@ async function fetchSharedResult(jobId) {
     var res  = await fetch('/.netlify/functions/get-result?jobId=' + jobId);
     var data = await res.json();
     if (data && data.result) {
+      // Honour paid status returned from backend
+      if (data.paid === true || data.result.paid === true) {
+        window.__choivePaidVerified = true;
+        data.result.paid = true;
+      }
       if (data.input) {
         bizData.name     = data.input.name     || '';
         bizData.category = data.input.category || '';
