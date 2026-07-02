@@ -709,10 +709,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push(pageFt('Cover'));
 
   // ── LETTER ──────────────────────────────────────────────────────────────────
-  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl));
-  H.push(pageFt('2'));
-
   H.push(letter);
+  H.push(pageFt('2'));
+  
+  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl));
   H.push(pageFt('3'));
 
   // ── TOC ──────────────────────────────────────────────────────────────────────
