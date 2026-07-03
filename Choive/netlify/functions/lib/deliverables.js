@@ -51,9 +51,13 @@ function generateLlmsTxt(evidence, result) {
     lines.push(siteUrl);
     lines.push('');
   }
-  if (differentiator) {
+  // Clean differentiator — same noise filter the meta description uses.
+  // Raw search evidence or scraping output must never appear in a customer asset.
+  var diffIsNoise = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(differentiator);
+  var diffClean   = diffIsNoise ? '' : differentiator.replace(/["']/g, '').trim();
+  if (diffClean) {
     lines.push('## What makes us different');
-    lines.push(differentiator.replace(/["']/g, '').trim());
+    lines.push(diffClean);
     lines.push('');
   }
   // Clean trust signal — skip if it looks like raw scraping noise
@@ -156,9 +160,19 @@ function generateMetaDescription(evidence, result) {
   improved += (diff || 'a ' + category);
   if (city) improved += ' based in ' + cityDisplay;
   improved += '.';
-  if (trust && trust.length < 100) improved += ' ' + trust + '.';
-  if (improved.length < 100) improved += ' Find out if AI recommends your business.';
-  if (improved.length > 155) improved = improved.slice(0, 152) + '...';
+  // Only append the trust sentence if the whole thing still fits in 155 chars
+  if (trust && trust.length < 100 && (improved.length + trust.length + 2) <= 155) {
+    improved += ' ' + trust + '.';
+  }
+  // Never cut mid-word or mid-sentence — truncate at the last clean boundary
+  if (improved.length > 155) {
+    improved = improved.slice(0, 155);
+    var lastStop  = improved.lastIndexOf('. ');
+    var lastSpace = improved.lastIndexOf(' ');
+    var cutAt = lastStop > 80 ? lastStop + 1 : (lastSpace > 80 ? lastSpace : 155);
+    improved = improved.slice(0, cutAt).replace(/[,;:\s]+$/, '');
+    if (!/[.!?]$/.test(improved)) improved += '.';
+  }
 
   return { current: current, improved: improved };
 }
@@ -278,6 +292,23 @@ function generateActionPlan(evidence, result) {
   var high     = actions.filter(function(a) { return a.priority === 'high'; });
   var medium   = actions.filter(function(a) { return a.priority === 'medium'; });
 
+  // ── Dedupe across weeks — the same action must never appear in two weeks
+  var usedTitles = {};
+  function normTitle(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+  function markUsed(t)  { var n = normTitle(t); if (n) usedTitles[n] = true; }
+  function firstUnused(list) {
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].title && !usedTitles[normTitle(list[i].title)]) return list[i];
+    }
+    return null;
+  }
+  // Owner is decided by what the task IS, not which week it lands in.
+  // A founder task like emailing customers for G2 reviews must never say "developer".
+  function taskOwner(a) {
+    var text = (a.title || '') + ' ' + (a.body || '');
+    return /schema|llms\.txt|markup|structured data|json-ld|sitemap|robots\.txt|meta tag|canonical|redirect|H1 tag|code|deploy/i.test(text) ? 'developer' : 'you';
+  }
+
   var easeScore  = (pillars.ease  && pillars.ease.score)  || 0;
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
 
@@ -321,17 +352,19 @@ function generateActionPlan(evidence, result) {
     });
     week2.tasks.push({
       task:   'Email your 10 best customers asking for a review',
-      how:    'Write one sentence: "We would love your feedback on ' + (ra.platform || 'Trustpilot') + '. Here is the link: [your review link]"',
+      how:    'Write one sentence: "We would love your feedback on ' + (ra.platform || 'Trustpilot') + '." Then add the review link from the ' + (ra.platform || 'Trustpilot') + ' business profile you created in the task above.',
       impact: '3-5 reviews typically result from 10 asks — enough to start building trust signals',
       owner:  'you'
     });
   }
-  if (high.length > 0) {
+  var w2act = firstUnused(high);
+  if (w2act) {
+    markUsed(w2act.title);
     week2.tasks.push({
-      task:   high[0].title,
-      how:    high[0].body,
-      impact: high[0].explanation || 'Improves selection confidence',
-      owner:  'you'
+      task:   w2act.title,
+      how:    w2act.body,
+      impact: w2act.explanation || 'Improves selection confidence',
+      owner:  taskOwner(w2act)
     });
   }
   weeks.push(week2);
@@ -346,12 +379,21 @@ function generateActionPlan(evidence, result) {
       owner:  'developer'
     });
   }
-  if (critical.length > 1) {
+  // Prefer an unused TECHNICAL action (critical[0] stays reserved for the
+  // headline action elsewhere in the report); fall back to any unused critical.
+  var w3act = null;
+  for (var ci = 1; ci < critical.length; ci++) {
+    var cand = critical[ci];
+    if (cand && cand.title && !usedTitles[normTitle(cand.title)] && taskOwner(cand) === 'developer') { w3act = cand; break; }
+  }
+  if (!w3act) w3act = firstUnused(critical.slice(1));
+  if (w3act) {
+    markUsed(w3act.title);
     week3.tasks.push({
-      task:   critical[1].title,
-      how:    critical[1].body,
-      impact: critical[1].explanation || 'Critical for AI selection',
-      owner:  'developer'
+      task:   w3act.title,
+      how:    w3act.body,
+      impact: w3act.explanation || 'Critical for AI selection',
+      owner:  taskOwner(w3act)
     });
   }
   weeks.push(week3);
@@ -364,12 +406,14 @@ function generateActionPlan(evidence, result) {
     impact: 'See exactly what changed and what gaps remain',
     owner:  'you'
   });
-  if (medium.length > 0) {
+  var w4act = firstUnused(medium);
+  if (w4act) {
+    markUsed(w4act.title);
     week4.tasks.push({
-      task:   medium[0].title,
-      how:    medium[0].body,
-      impact: medium[0].explanation || 'Ongoing improvement',
-      owner:  'you'
+      task:   w4act.title,
+      how:    w4act.body,
+      impact: w4act.explanation || 'Ongoing improvement',
+      owner:  taskOwner(w4act)
     });
   }
   weeks.push(week4);
