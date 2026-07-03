@@ -137,6 +137,18 @@ function buildPrompt(evidence) {
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
   var previousCompetitor = sanitizeExternal(String(evidence.previousCompetitor || '')).trim();
+
+  // AI SELECTION GROUND TRUTH — the three real recommendation queries run in
+  // Stage 1c. The businesses named in these responses are who AI actually
+  // recommends today; they are the primary source for competitor selection.
+  var simBefore = evidence.aiSimulationBefore || null;
+  var simGroundTruth = '';
+  if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
+    simGroundTruth = simBefore.before.results.map(function(r, i) {
+      return 'QUERY ' + (i + 1) + ' (' + String(r.label || '') + '): "' + String(r.query || '') + '"\n'
+        + 'AI ANSWERED: ' + sanitizeExternal(String(r.response || ''));
+    }).join('\n\n');
+  }
   var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
   var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
   var apifyText          = sanitizeExternal(evidence.apifyText  || '');
@@ -175,6 +187,7 @@ function buildPrompt(evidence) {
     + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
     + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
     + (previousCompetitor ? '\n\nPREVIOUSLY VERIFIED COMPETITOR (identified in the last completed diagnostic of this exact business): ' + previousCompetitor : '')
+    + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category and location. The businesses named below are who AI ACTUALLY recommends today:\n' + simGroundTruth : '')
     + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
     + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
@@ -204,7 +217,7 @@ function buildPrompt(evidence) {
     + '2. Every score must be justified by specific evidence.\n'
     + '3. If a signal is missing, say it is missing. Do not invent it.\n'
     + '4. Every pillar finding must quote or directly reference specific evidence.\n'
-    + '5. Competitor must appear directly in the search evidence. If none clearly appears, return null.\n'
+    + '5. If an AI SELECTION GROUND TRUTH section is present, the competitor MUST be a business named in those AI responses — they are who AI actually recommends. Otherwise the competitor must appear directly in the search evidence. If neither yields one, return null.\n'
     + '6. CRITICAL: It is NOT the same business being diagnosed — never name the subject business or any variation of its name as a competitor\n'
     + '7. CRITICAL: It is NOT a platform, tool, or service that this business measures, diagnoses, audits, or helps businesses appear on — for example, if this business helps clients appear on ChatGPT, then ChatGPT is not a competitor; it is the platform being measured\n'
     + 'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n'
@@ -268,9 +281,12 @@ function buildPrompt(evidence) {
     + '- HARD CONSTRAINT: confirmed "Schema markup: NO" → score MAXIMUM 8\n'
     + '- HARD CONSTRAINT: confirmed "llms.txt: YES" → score MINIMUM 18\n'
     + '- Required: state exactly which signals were confirmed and which were absent\n\n'
-    + 'COMPETITOR RULE:\n'
+    + 'COMPETITOR RULE — SOURCE PRIORITY:\n'
+    + 'PRIORITY 1 — AI SELECTION GROUND TRUTH: if the evidence contains an AI SELECTION GROUND TRUTH section, the dominant competitor (competitors[0], the business shown as \u201cAI is recommending instead of you\u201d) MUST be a business named in those AI responses. Choose the most prominently recommended one — a top pick outranks a list mention; more mentions outrank fewer. The ground truth OUTRANKS the previously verified competitor: if they disagree, follow the ground truth — this is how past mis-identifications are corrected. Additional competitors (competitors[1..2]) MAY come from search evidence as structural benchmarks.\n'
+    + 'PRIORITY 2 — SEARCH EVIDENCE: only if no AI SELECTION GROUND TRUTH section exists, select from search evidence under the rule below.\n'
+    + 'In BOTH cases every exclusion criterion below still applies.\n'
     + 'Only name a competitor if ALL of these are true:\n'
-    + '1. The competitor domain or name appears in the search evidence above\n'
+    + '1. The competitor name appears in the AI SELECTION GROUND TRUTH responses or in the search evidence above\n'
     + '2. It is in the exact same category as this business\n'
     + '3. It competes for the same buyer type at the same deal size\n'
     + '4. It is not a directory, review platform, aggregator, or listing site\n'
