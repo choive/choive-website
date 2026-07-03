@@ -188,27 +188,38 @@ function buildPillarRing(score, label) {
 }
 
 // ── PERSONALISED LETTER ───────────────────────────────────────────────────────
-function buildLetter(bizName, score, trustScore, compName, input) {
+function buildLetter(bizName, score, weakest, compName, input) {
 
-  // Opening — the Mabeihe story. Always the same. It is why CHOIVE exists.
-  var opening = 'A few years ago I was on holiday in Mabeihe with people I care about. It was a Friday night and we were looking for somewhere to go \u2014 a bar, a restaurant, somewhere with life in it. We asked AI. It sent us first to a club that was closed. Then to a restaurant that had shut down years earlier, rebranded, moved on. We ended up standing on a street asking a stranger if they knew where this place was. They looked at us and said: it doesn\u2019t exist anymore.'
+  // Why this pillar is the gap — one honest sentence per pillar, no promises.
+  var pillarWhy = {
+    'Trust':      'Not because customers do not trust you — because there is currently nothing independent for AI to cite.',
+    'Clarity':    'AI cannot recommend what it cannot confidently describe.',
+    'Difference': 'When nothing verifiable sets you apart, AI defaults to the name it already knows.',
+    'Ease':       'Your signals are not yet machine-readable — AI cannot cite what it cannot parse.'
+  };
+  var wLabel = weakest && weakest.label ? weakest.label : 'Trust';
+  var wScore = weakest && typeof weakest.score === 'number' ? weakest.score : 0;
+  var weakestLine = 'Your gap is <strong>' + wLabel + '</strong> — ' + wScore + ' out of 25. ' + (pillarWhy[wLabel] || '');
+
+  // Opening — the Marbella story. Always the same. It is why CHOIVE exists.
+  var opening = 'A few years ago I was on holiday in Marbella with people I care about. It was a Friday night and we were looking for somewhere to go \u2014 a bar, a restaurant, somewhere with life in it. We asked AI. It sent us first to a club that was closed. Then to a restaurant that had shut down years earlier, rebranded, moved on. We ended up standing on a street asking a stranger if they knew where this place was. They looked at us and said: it doesn\u2019t exist anymore.'
     + '<br><br>'
     + 'That is why CHOIVE exists. Not because AI got it wrong \u2014 that happens. But because those businesses had no idea. No one had told them that AI was sending people to their old address, their closed doors, their old name. The gap between what a business actually is and what AI thinks it is \u2014 that gap is silent. And it costs real customers, every single day.';
 
   // Middle — specific to their score. Direct and honest.
   var middle;
   if (score >= 76) {
-    middle = 'What we found for <strong>' + esc(bizName) + '</strong> is genuinely strong. Your score of ' + score + ' puts you in a position most businesses in your category are not close to. That is real \u2014 and it is worth protecting. The risk at this level is not collapse, it is drift. A competitor who closes the Trust gap quietly, a signal that goes stale, a platform that re-indexes you differently. This report tells you exactly where the exposure still lives and what keeps your position solid.';
+    middle = 'What we found for <strong>' + esc(bizName) + '</strong> is genuinely strong. Your score of ' + score + ' puts you in a position most businesses in your category are not close to. That is real \u2014 and it is worth protecting. The risk at this level is not collapse, it is drift. A competitor who closes the ' + wLabel + ' gap quietly, a signal that goes stale, a platform that re-indexes you differently. This report tells you exactly where the exposure still lives and what keeps your position solid.';
   } else if (score >= 56) {
     middle = 'What we found for <strong>' + esc(bizName) + '</strong> is this: AI knows you exist. It is just not choosing you consistently. A score of ' + score + ' means you are in the consideration set \u2014 but when a buyer asks for a direct recommendation, another name comes back'
       + (compName ? ' \u2014 right now, that name is <strong>' + esc(compName) + '</strong>' : '')
-      + '. That is not a verdict on your business. It is a signal problem. And signal problems have precise solutions. Section 4 shows exactly where the gap is. Section 8 shows you how to close it.';
+      + '. That is not a verdict on your business. It is a signal problem. And signal problems have precise solutions. ' + weakestLine + ' Section 4 shows the full evidence. Section 8 shows you how to close it, in order.';
   } else if (score >= 31) {
     middle = 'What we found for <strong>' + esc(bizName) + '</strong> is that you are visible but not being selected. A score of ' + score + ' means AI has some picture of you \u2014 but not enough of the right signals to confidently put your name in an answer when someone asks for your category'
       + (compName ? '. When that question gets asked right now, the name that comes back is <strong>' + esc(compName) + '</strong>' : '')
-      + '. The gap is almost entirely in Trust \u2014 you scored ' + trustScore + ' out of 25 there. That is the number that unlocks everything else. Three specific actions move it. Section 8 sequences them in order.';
+      + '. ' + weakestLine + ' That is the number that unlocks everything else. Section 8 sequences the actions that move it, in order.';
   } else {
-    middle = 'I want to be honest with you about what we found for <strong>' + esc(bizName) + '</strong>. A score of ' + score + ' means AI platforms are not finding you when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and none of them require rebuilding what you have built. The biggest gap is Trust, at ' + trustScore + ' out of 25. That is where we start. Section 8 tells you exactly what to do first.';
+    middle = 'I want to be honest with you about what we found for <strong>' + esc(bizName) + '</strong>. A score of ' + score + ' means AI platforms are not finding you when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and none of them require rebuilding what you have built. ' + weakestLine + ' That is where we start. Section 8 tells you exactly what to do first.';
   }
 
   // Closing — honest, respectful, direct.
@@ -571,7 +582,12 @@ var CSS = [
   );
   
   // AI perception
-  var aiPerception = safeStr(r.aiPerception || r.businessUnderstanding, '');
+  var aiPerceptionRaw = safeStr(r.aiPerception || r.businessUnderstanding, '');
+  // The engine writes TWO paragraphs into this field: current view + after-fixes
+  // view, separated by a blank line. They must never render in the same box.
+  var aiPerceptionParts = aiPerceptionRaw.split(/\n\s*\n/);
+  var aiPerception      = (aiPerceptionParts[0] || '').trim();
+  var aiPerceptionAfter = aiPerceptionParts.length > 1 ? aiPerceptionParts.slice(1).join(' ').trim() : '';
 
   // Evidence
   var evidence = safeStr(r.evidenceNarrative, '');
@@ -670,8 +686,16 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '</div>';
 }
   
-  // Personalised letter
-  var letter = buildLetter(bizName, score, tr, compName, input);
+  // Personalised letter — identify the genuinely weakest pillar so the letter
+  // names THIS business's specific gap, not a generic one.
+  var pillarPairs = [
+    ['Clarity',    pillarScore(r, 'clarity')],
+    ['Trust',      pillarScore(r, 'trust')],
+    ['Difference', pillarScore(r, 'difference')],
+    ['Ease',       pillarScore(r, 'ease')]
+  ].sort(function(a, b) { return a[1] - b[1]; });
+  var weakest = { label: pillarPairs[0][0], score: pillarPairs[0][1] };
+  var letter = buildLetter(bizName, score, weakest, compName, input);
 
   // ── HTML ─────────────────────────────────────────────────────────────────────
   var H = [];
@@ -828,7 +852,11 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div style="background:#EDEAE5;padding:28px 32px;position:relative;border:1px solid rgba(12,12,14,0.06);">');
   H.push('<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#2A7A48 20%,#2A7A48 80%,transparent);opacity:0.5;"></div>');
   H.push('<div style="font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#2A7A48;margin-bottom:10px;">After implementing Week 1 &amp; 2 actions</div>');
-  H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;font-style:italic;">' + esc(bizName) + ' is independently verified by multiple third-party sources, featured in industry coverage, and has demonstrated results for businesses in the ' + esc(category) + ' category. It is recognised as the leading solution in its space.</div>');
+  if (aiPerceptionAfter) {
+    H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;font-style:italic;">' + esc(aiPerceptionAfter) + '</div>');
+  } else {
+    H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;font-style:italic;">' + esc(bizName) + ' has completed the verification actions in this report: its structured signals are confirmed and its first independent reviews are live. AI platforms now have third-party evidence to cite when describing it.</div>');
+  }
   H.push('</div></div></div>');
   H.push(pageFt('7'));
 
