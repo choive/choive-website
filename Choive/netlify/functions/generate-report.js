@@ -522,7 +522,7 @@ var CSS = [
   var compList = safeArr(r.competitors);
   var comp0    = compList.length > 0 ? safeObj(compList[0]) : {};
   var compName = safeStr(disp.competitorName || comp0.name, '');
-  var compWhy  = safeStr(disp.competitorWhy  || comp0.analysis || comp0.why, '');
+  var compWhy  = safeStr(disp.competitorWhy  || comp0.advantage || comp0.analysis || comp0.why, '');
   var compQuery= safeStr(disp.competitorQuery || comp0.queryContext, '');
 
   // Competitor scores (if available)
@@ -943,6 +943,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="comp-name">' + esc(compName) + '</div>');
     if (compQuery) H.push('<div class="comp-query">On queries like: “' + esc(compQuery) + '”</div>');
     if (compWhy)   H.push('<div class="comp-why">' + esc(compWhy) + '</div>');
+    var compGap = safeStr(comp0.gapLocation, '');
+    var compFix = safeStr(comp0.closeGap, '');
+    if (compGap) H.push('<div style="font-size:12px;color:#BBBBC2;line-height:1.7;margin-top:10px;"><strong style="color:#F5F2EE;">Where they beat you:</strong> ' + esc(compGap) + '</div>');
+    if (compFix) H.push('<div style="font-size:12px;color:#BBBBC2;line-height:1.7;margin-top:4px;"><strong style="color:#C9A86A;">How to close it:</strong> ' + esc(compFix) + '</div>');
     H.push('</div>');
     // Signal table if available
     if (signals.length > 0) {
@@ -989,6 +993,24 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">The bottom line</div>');
     H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">You are not being outperformed — you are being out-verified. The gap is almost entirely in Trust. Close it and the selection position reverses. This is winnable.</div>');
     H.push('</div>');
+    // Additional competitors — the engine returns up to 3 (local + international target shape)
+    var moreComps = compList.slice(1).filter(function(c) { return c && c.name; }).slice(0, 2);
+    if (moreComps.length > 0) {
+      H.push('<div class="eyebrow" style="margin-top:28px;">Also competing in your space</div>');
+      moreComps.forEach(function(mc) {
+        var m     = safeObj(mc);
+        var mName = safeStr(m.name, '');
+        var mAdv  = safeStr(m.advantage || m.analysis || m.why, '');
+        var mGap  = safeStr(m.gapLocation, '');
+        var mFix  = safeStr(m.closeGap, '');
+        H.push('<div style="padding:18px 22px;background:#F5F2EE;border-left:3px solid #0C0C0E;margin-bottom:10px;">');
+        H.push('<div style="font-size:14px;font-weight:700;color:#0C0C0E;margin-bottom:5px;">' + esc(mName) + '</div>');
+        if (mAdv) H.push('<div style="font-size:12.5px;color:#48484F;line-height:1.7;margin-bottom:6px;">' + esc(mAdv) + '</div>');
+        if (mGap) H.push('<div style="font-size:11.5px;color:#67676E;line-height:1.6;"><strong style="color:#0C0C0E;">Where they beat you:</strong> ' + esc(mGap) + '</div>');
+        if (mFix) H.push('<div style="font-size:11.5px;color:#67676E;line-height:1.6;"><strong style="color:#0C0C0E;">How to close it:</strong> ' + esc(mFix) + '</div>');
+        H.push('</div>');
+      });
+    }
   } else {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">No dominant competitor pattern was detected in this diagnostic. See the priority actions to build position before a competitor is established.</div>');
   }
