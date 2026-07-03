@@ -136,6 +136,7 @@ function buildPrompt(evidence) {
   var knownCompetitors   = evidence.knownCompetitors   || '';
   var competitorDomain   = evidence.competitorDomain   || '';
   var competitorPageText = evidence.competitorPageText || '';
+  var previousCompetitor = sanitizeExternal(String(evidence.previousCompetitor || '')).trim();
   var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
   var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
   var apifyText          = sanitizeExternal(evidence.apifyText  || '');
@@ -173,6 +174,7 @@ function buildPrompt(evidence) {
     + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
     + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
     + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
+    + (previousCompetitor ? '\n\nPREVIOUSLY VERIFIED COMPETITOR (identified in the last completed diagnostic of this exact business): ' + previousCompetitor : '')
     + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
     + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
@@ -293,6 +295,11 @@ function buildPrompt(evidence) {
     + 'The SECOND-PASS results (labelled "SECOND-PASS COMPETITOR SEARCH") used the REAL inferred category — these are more accurate than first-pass results.\n'
     + 'If a competitor appears in second-pass results, ALWAYS prefer them over first-pass results.\n'
     + 'First-pass competitors should only be used if no second-pass competitors exist.\n\n'
+    + (previousCompetitor ? ('COMPETITOR STABILITY \u2014 PREVIOUSLY VERIFIED COMPETITOR:\n'
+    + 'A previous completed diagnostic of this exact business identified "' + previousCompetitor + '" as the primary competitor.\n'
+    + 'Treat this as a strong prior. If "' + previousCompetitor + '" still meets ALL competitor criteria above, keep it as the FIRST competitor in your list.\n'
+    + 'Only replace it as primary if the current evidence clearly shows it no longer qualifies (wrong category, not a genuine competitor, or directly contradicted by evidence).\n'
+    + 'Do not swap the primary competitor between runs without a clear evidence-based reason \u2014 stability matters more than novelty.\n\n') : '')
     + 'GEOGRAPHIC COVERAGE:\n'
     + 'Return UP TO 3 competitors. Target shape:\n'
     + '- One LOCAL or DOMESTIC competitor (same country/region)\n'
