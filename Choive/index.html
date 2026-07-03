@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1880,7 +1879,7 @@ footer::before {
           <div class="hero-card-badge">Not yet known<br>to AI systems</div>
         </div>
         <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(184,50,50,0.5);margin-bottom:8px;">AI is recommending instead</div>
-        <div style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:20px;">Semrush</div>
+        <div style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:20px;">Profound</div>
         <div class="hero-card-score-row">
           <div class="hero-card-score">62</div>
           <div class="hero-card-denom">/ 100</div>
@@ -2987,8 +2986,8 @@ function buildDeliverables(r) {
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Save this file as <strong>llms.txt</strong> and upload it to your website root so it is accessible at <strong>yourdomain.com/llms.txt</strong>. Works in Shopify, Squarespace, WordPress, and any website builder that allows file uploads.</div>'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
-    + '<div class="deliv-code" id="dLlms">' + esc(d.llmsTxt || '') + '</div>'
-    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dLlms\\")">Copy llms.txt</button>'
+    + '<div class="deliv-code" id="dLlmsCode">' + esc(d.llmsTxt || '') + '</div>'
+    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsCode\')">Copy llms.txt</button>'
     + '</div>';
 
   var h1Html = '';
@@ -3024,8 +3023,8 @@ function buildDeliverables(r) {
         + '<div style="font-size:13px;color:var(--tm);font-style:italic;padding:10px 14px;background:var(--dk-3);border-left:2px solid var(--rule-d);margin-bottom:14px;">' + esc(d.metaDesc.current) + '</div>';
     }
     metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
-      + '<div class="deliv-code" id="dMeta">' + esc(d.metaDesc.improved || '') + '</div>'
-      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \\"dMeta\\")">Copy Meta Description</button>'
+      + '<div class="deliv-code" id="dMetaCode">' + esc(d.metaDesc.improved || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dMetaCode\')">Copy Meta Description</button>'
       + '</div>';
   }
 
@@ -3154,23 +3153,32 @@ async function runAISimulation(r) {
   console.log('[CHOIVE] runAISimulation called for:', bizData.name);
 
   try {
-    var diffEv  = (r.pillars && r.pillars.difference && r.pillars.difference.evidence) || '';
-    var trustEv = (r.pillars && r.pillars.trust      && r.pillars.trust.evidence)      || '';
+    var data = null;
 
-    var res = await fetch('/.netlify/functions/ai-simulation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name:             bizData.name             || '',
-        category:         bizData.category         || '',
-        city:             bizData.city             || '',
-        inferredCategory: r.inferredCategory       || bizData.category || '',
-        differentiator:   diffEv.slice(0, 200),
-        trustSignal:      trustEv.slice(0, 200)
-      })
-    });
+    // Prefer the simulation saved with the diagnostic result — the exact
+    // word-for-word queries the paid report uses, so screen and PDF always
+    // match. Live fallback only for older diagnostics without stored data.
+    if (r.aiSimulation && r.aiSimulation.before && Array.isArray(r.aiSimulation.before.results) && r.aiSimulation.before.results.length > 0) {
+      data = r.aiSimulation;
+    } else {
+      var diffEv  = (r.pillars && r.pillars.difference && r.pillars.difference.evidence) || '';
+      var trustEv = (r.pillars && r.pillars.trust      && r.pillars.trust.evidence)      || '';
 
-    var data = await res.json();
+      var res = await fetch('/.netlify/functions/ai-simulation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:             bizData.name             || '',
+          category:         bizData.category         || '',
+          city:             bizData.city             || '',
+          inferredCategory: r.inferredCategory       || bizData.category || '',
+          differentiator:   diffEv.slice(0, 200),
+          trustSignal:      trustEv.slice(0, 200)
+        })
+      });
+
+      data = await res.json();
+    }
     loading.style.display = 'none';
     results.style.display = 'flex';
 
