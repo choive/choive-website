@@ -741,8 +741,12 @@ var CSS = [
   '.final-qr-box{width:76px;height:76px;border:1px solid rgba(12,12,14,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(12,12,14,0.02);padding:4px;}',
   '.final-qr-label{font-size:8px;color:rgba(12,12,14,0.3);letter-spacing:0.1em;text-transform:uppercase;text-align:center;line-height:1.4;}',
   '.final-meta{font-size:11px;color:rgba(12,12,14,0.3);text-align:right;line-height:1.8;}',
+  '.letter .pf{margin:40px -56px -60px -64px;}',
+  '.eb .pf{margin:18px -56px -32px;}',
+  '.toc .pf{margin:40px -56px -60px;}',
+  '.section .pf{margin:40px -56px -56px;}',
   '@page{size:A4;margin:0;}',
-  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:calc(297mm - 47px);box-sizing:border-box;overflow:hidden;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;}}'
+  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;display:flex;flex-direction:column;} .letter .pf{margin-top:auto;margin-bottom:-36px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:297mm;box-sizing:border-box;overflow:hidden;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;} .sdp{height:180px;box-sizing:border-box;overflow:hidden;} .section{min-height:calc(297mm - 180px);display:flex;flex-direction:column;box-sizing:border-box;} .section .pf{margin:auto -56px -56px;} .toc{min-height:297mm;display:flex;flex-direction:column;box-sizing:border-box;page-break-after:always;break-after:page;} .toc .pf{margin:auto -56px -60px;}}'
   +'.eb{background:#F5F2EE;padding:36px 56px 32px;position:relative;display:flex;flex-direction:column;min-height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}'
   +'.eb::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}'
   +'.eb-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:24px;}'
@@ -1016,11 +1020,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   
 
   // ── LETTER ──────────────────────────────────────────────────────────────────
-  H.push(letter);
-  H.push(pageFt('2'));
-  
-  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl));
-  H.push(pageFt('3'));
+  H.push(letter.replace(/<\/div>$/, pageFt('2') + '</div>'));
+  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl).replace(/<\/div>$/, pageFt('3') + '</div>'));
 
   // ── TOC ──────────────────────────────────────────────────────────────────────
   var tocItems = [
@@ -1045,8 +1046,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       + '<div class="toc-dots"></div>'
       + '<div class="toc-pg">' + item[2] + '</div></div>');
   });
-  H.push('</div>');
   H.push(pageFt('4'));
+  H.push('</div>');
 
   // ── SECTION 1: EXECUTIVE SUMMARY ────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">01</div><div class="sdp-title">Executive Summary</div><div class="sdp-sub">Your overall score, verdict, and the single paragraph that explains your current AI selection position.</div></div>');
@@ -1140,8 +1141,9 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   } else {
     H.push('<div style="font-size:14px;color:#48484F;line-height:1.9;font-style:italic;">' + esc(bizName) + ' has completed the verification actions in this report: its structured signals are confirmed and its first independent reviews are live. AI platforms now have third-party evidence to cite when describing it.</div>');
   }
-  H.push('</div></div></div>');
+  H.push('</div></div>');
   H.push(pageFt('7'));
+  H.push('</div>');
 
   // ── SECTION 4: PILLAR ANALYSIS ───────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">04</div><div class="sdp-title">Four Pillar Analysis</div><div class="sdp-sub">Exactly where your score comes from. The evidence behind every finding.</div></div>');
@@ -1181,8 +1183,9 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div style="padding:22px 26px;background:#EDEAE5;border-left:4px solid #B83232;">');
   H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 platforms currently cite ' + esc(bizName) + '.</div>');
   H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Every day a customer asks any of these platforms for your category, ' + esc(bizName) + ' is not in the answer. This is a structural problem. The Trust actions in Section 8 address this directly.</div>');
+  H.push('</div>');
   H.push(pageFt('9'));
-  H.push('</div></div>');
+  H.push('</div>');
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Simulation</div><div class="sdp-sub">Real queries your customers are asking right now. This is exactly what AI said — word for word.</div></div>');
