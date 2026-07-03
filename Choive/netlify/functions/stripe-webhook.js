@@ -199,7 +199,10 @@ exports.handler = async function (event) {
   }
 
   // Send confirmation email (best-effort, does not block response)
-  if (customerEmail && process.env.RESEND_API_KEY) {
+  // Report buyers are excluded — they receive the report email from
+  // generate-report. Sending both meant every $499 customer got a
+  // duplicate “Analysis is ready” email that did not match what they bought.
+  if (!isReportPayment && customerEmail && process.env.RESEND_API_KEY) {
     try {
       var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
       var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
