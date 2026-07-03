@@ -10,6 +10,7 @@ const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
+const { runSimulation }       = require('./lib/simulation');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -198,6 +199,16 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] Second-pass competitor search failed:', err.message);
       }
 
+      // ── FINAL EVIDENCE SAVE — persist the fully enriched evidence ───────────
+      // The early save above stores only the initial Serper + website snapshot.
+      // Everything collected after it (social, review pages, Apify, competitor
+      // homepage, inferred category, second-pass competitors) must be in the
+      // saved copy — otherwise cached runs within 24h score with LESS evidence
+      // than fresh runs, producing inconsistent scores and fewer competitors.
+      await saveEvidence(jobId, evidence).catch(err =>
+        console.warn('[' + jobId + '] saveEvidence (final) failed:', err.message)
+      );
+
     }
 
     // ── COMPETITOR STABILITY — look up previously identified competitor ────────
@@ -244,6 +255,29 @@ exports.handler = async function (event) {
       finalResult['deliverables'] = deliverables;
     } catch (err) {
       console.warn('[' + jobId + '] Deliverables failed:', err.message);
+    }
+    // ── STAGE 3b: AI SIMULATION ──────────────────────────────────────────────
+    // Runs the before/after query simulation server-side and saves it with the
+    // result, so the paid report always has real word-for-word queries and the
+    // free result page shows the exact same data. Failure here never breaks
+    // the diagnostic — the report has a graceful fallback.
+    try {
+      var pDiff  = (finalResult.pillars && finalResult.pillars.difference) || {};
+      var pTrust = (finalResult.pillars && finalResult.pillars.trust)      || {};
+      var simData = await runSimulation({
+        name:             name,
+        category:         category,
+        city:             city,
+        inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
+        differentiator:   String(pDiff.evidence  || '').slice(0, 200),
+        trustSignal:      String(pTrust.evidence || '').slice(0, 200)
+      });
+      if (simData && simData.before && simData.after) {
+        finalResult['aiSimulation'] = simData;
+        console.log('[' + jobId + '] AI simulation: before ' + simData.before.appearedCount + '/3, after ' + simData.after.appearedCount + '/3');
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] AI simulation failed:', err.message);
     }
     await saveResult(jobId, finalResult);
     console.log('[' + jobId + '] Diagnostic complete.');
