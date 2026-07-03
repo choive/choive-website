@@ -10,7 +10,7 @@ const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
-const { runSimulation }       = require('./lib/simulation');
+const { runSimulation, runBeforeSimulation, runAfterSimulation } = require('./lib/simulation');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -199,6 +199,29 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] Second-pass competitor search failed:', err.message);
       }
 
+      // ── STAGE 1c: AI SELECTION GROUND TRUTH (before-simulation) ───────────
+      // Runs the three real "who would you recommend" queries BEFORE scoring,
+      // so the dominant competitor is chosen from what AI actually recommends
+      // today — not from whoever happens to SEO-rank in search evidence.
+      // Saved inside evidence so it caches with the fingerprint: competitor
+      // identity stays stable across runs within the cache window.
+      if (!evidence['aiSimulationBefore']) {
+        try {
+          var simBefore = await runBeforeSimulation({
+            name:             name,
+            category:         category,
+            city:             city,
+            inferredCategory: evidence['inferredCategory'] || category
+          });
+          if (simBefore && simBefore.before) {
+            evidence['aiSimulationBefore'] = simBefore;
+            console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount + '/3');
+          }
+        } catch (err) {
+          console.warn('[' + jobId + '] Before-simulation failed:', err.message);
+        }
+      }
+
       // ── FINAL EVIDENCE SAVE — persist the fully enriched evidence ───────────
       // The early save above stores only the initial Serper + website snapshot.
       // Everything collected after it (social, review pages, Apify, competitor
@@ -264,14 +287,40 @@ exports.handler = async function (event) {
     try {
       var pDiff  = (finalResult.pillars && finalResult.pillars.difference) || {};
       var pTrust = (finalResult.pillars && finalResult.pillars.trust)      || {};
-      var simData = await runSimulation({
-        name:             name,
-        category:         category,
-        city:             city,
-        inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
-        differentiator:   String(pDiff.evidence  || '').slice(0, 200),
-        trustSignal:      String(pTrust.evidence || '').slice(0, 200)
-      });
+      var simData = null;
+      var preBefore = evidence['aiSimulationBefore'];
+      if (preBefore && preBefore.before) {
+        try {
+          var afterHalf = await runAfterSimulation({
+            name:             name,
+            category:         category,
+            city:             city,
+            inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
+            differentiator:   String(pDiff.evidence  || '').slice(0, 200),
+            trustSignal:      String(pTrust.evidence || '').slice(0, 200)
+          });
+          if (afterHalf && afterHalf.after) {
+            simData = {
+              name:     preBefore.name,
+              category: preBefore.category,
+              before:   preBefore.before,
+              after:    afterHalf.after
+            };
+          }
+        } catch (err) {
+          console.warn('[' + jobId + '] After-simulation failed, falling back to full run:', err.message);
+        }
+      }
+      if (!simData) {
+        simData = await runSimulation({
+          name:             name,
+          category:         category,
+          city:             city,
+          inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
+          differentiator:   String(pDiff.evidence  || '').slice(0, 200),
+          trustSignal:      String(pTrust.evidence || '').slice(0, 200)
+        });
+      }
       if (simData && simData.before && simData.after) {
         finalResult['aiSimulation'] = simData;
         console.log('[' + jobId + '] AI simulation: before ' + simData.before.appearedCount + '/3, after ' + simData.after.appearedCount + '/3');
