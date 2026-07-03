@@ -179,22 +179,34 @@ exports.handler = async function (event) {
 
   if (isReportPayment && customerEmail) {
     console.log('stripe-webhook: Report payment detected — triggering generate-report');
+    // MUST be awaited. Serverless functions freeze the moment the handler
+    // returns — a fire-and-forget fetch is killed before it is ever sent,
+    // which meant paying customers never received their report.
+    // On failure we return 500 so Stripe retries the webhook automatically.
     try {
       var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
       var generateUrl = siteUrl + '/.netlify/functions/generate-report';
-      fetch(generateUrl, {
+      var gr = await fetch(generateUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: jobId, email: customerEmail })
-      }).then(function(gr) {
-        return gr.json().then(function(gd) {
-          console.log('stripe-webhook: generate-report response:', JSON.stringify(gd));
-        });
-      }).catch(function(ge) {
-        console.error('stripe-webhook: generate-report trigger failed:', ge.message);
       });
+      var gd = await gr.json().catch(function() { return {}; });
+      console.log('stripe-webhook: generate-report response:', gr.status, JSON.stringify(gd));
+      if (!gr.ok) {
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Report generation failed: ' + (gd.error || gr.status) })
+        };
+      }
     } catch (err) {
-      console.warn('stripe-webhook: could not trigger report generation:', err.message);
+      console.error('stripe-webhook: generate-report trigger failed:', err.message);
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Report generation failed: ' + err.message })
+      };
     }
   }
 
