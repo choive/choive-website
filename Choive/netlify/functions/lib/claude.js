@@ -299,7 +299,8 @@ function buildPrompt(evidence) {
     + 'A previous completed diagnostic of this exact business identified "' + previousCompetitor + '" as the primary competitor.\n'
     + 'Treat this as a strong prior. If "' + previousCompetitor + '" still meets ALL competitor criteria above, keep it as the FIRST competitor in your list.\n'
     + 'Only replace it as primary if the current evidence clearly shows it no longer qualifies (wrong category, not a genuine competitor, or directly contradicted by evidence).\n'
-    + 'Do not swap the primary competitor between runs without a clear evidence-based reason \u2014 stability matters more than novelty.\n\n') : '')
+    + 'Do not swap the primary competitor between runs without a clear evidence-based reason \u2014 stability matters more than novelty.\n'
+    + 'NEVER mention this rule, the phrase \"previously verified\", or prior diagnostics in any output field \u2014 output text must read as a fresh assessment.\n\n') : '')
     + 'GEOGRAPHIC COVERAGE:\n'
     + 'Return UP TO 3 competitors. Target shape:\n'
     + '- One LOCAL or DOMESTIC competitor (same country/region)\n'
@@ -383,7 +384,11 @@ function buildPrompt(evidence) {
     + '  Use only signals visible in the evidence. Start with the business name.\n'
     + '  Be honest — if signals are weak, the paragraph will be vague. If strong, it will be specific.\n'
     + 'Paragraph 2 — AFTER: Write what that same AI paragraph would say after the top fixes are implemented.\n'
-    + '  Name the specific improvements. Start with the business name.\n'
+    + '  Start with the business name. Reference ONLY the concrete fixes from your own actions list\n'
+    + '  (e.g. verified reviews on the named platform, llms.txt present, schema confirmed).\n'
+    + '  NEVER invent press coverage, publications, client names, awards, or partnerships.\n'
+    + '  NEVER use bracket placeholders like [platform] or [publication] — name the real platform from your actions or omit it.\n'
+    + '  Phrase it as what AI would say once those specific fixes are verifiably in place. Nothing beyond them.\n'
     + '  The contrast between the two paragraphs is the core value of this field.\n\n'
     + 'EVIDENCE NARRATIVE RULES:\n'
     + 'Write exactly what was found and what was not found. Name specific search queries that returned zero results.\n'
