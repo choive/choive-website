@@ -200,13 +200,12 @@ async function runQuerySet(queries, name) {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 // Runs the full before/after simulation and returns the same payload shape
 // the ai-simulation endpoint returns: { name, category, before, after }.
-async function runSimulation(input) {
+// Shared input normalization — one place for the category-cleaning rules.
+function normalizeSimInput(input) {
   var name             = String(input.name             || '').trim();
   var category         = String(input.category         || '').trim();
   var city             = String(input.city             || '').trim();
   var inferredCategory = String(input.inferredCategory || category).trim();
-  var differentiator   = String(input.differentiator   || '').trim();
-  var trustSignal      = String(input.trustSignal      || '').trim();
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -218,44 +217,90 @@ async function runSimulation(input) {
     .replace(/\s+platform(s)?$/i, ' platform').replace(/\s+direct-to-consumer$/i, '')
     .trim();
 
-  var beforeQueries = buildQueries(catClean, city, name);
-  var afterQueries  = buildAfterQueries(catClean, city, name, differentiator, trustSignal);
+  return { name: name, category: category, city: city, catClean: catClean };
+}
 
-  var settled = await Promise.allSettled([
-    runQuerySet(beforeQueries, name),
-    runQuerySet(afterQueries, name)
-  ]);
+function beforeSummary(name, count) {
+  return count === 0
+    ? name + ' was not mentioned in any of the 3 queries. A buyer searching right now would not find you.'
+    : count === 3
+    ? name + ' was mentioned in all 3 queries. Current visibility is strong.'
+    : name + ' was mentioned in ' + count + ' of 3 queries. Partial visibility \u2014 not consistent enough to rely on.';
+}
 
-  var beforeResults = settled[0].status === 'fulfilled' ? settled[0].value : [];
-  var afterResults  = settled[1].status === 'fulfilled' ? settled[1].value : [];
+function afterSummary(name, count) {
+  return count === 3
+    ? name + ' was mentioned in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
+    : count === 0
+    ? name + ' was not mentioned after positioning improvements were applied. Trust signals are the critical remaining gap.'
+    : name + ' was mentioned in ' + count + ' of 3 queries after positioning improvements were applied.';
+}
 
-  var beforeCount = beforeResults.filter(function(r) { return r.appeared; }).length;
-  var afterCount  = afterResults.filter(function(r) { return r.appeared;  }).length;
-
+// BEFORE half — needs only name/category/city/inferredCategory, so it can run
+// BEFORE scoring. Its responses are the AI selection ground truth: the
+// businesses AI actually recommends today, which drive competitor selection.
+async function runBeforeSimulation(input) {
+  var n = normalizeSimInput(input);
+  var results = await runQuerySet(buildQueries(n.catClean, n.city, n.name), n.name);
+  var count = results.filter(function(r) { return r.appeared; }).length;
   return {
-    name:     name,
-    category: catClean,
+    name:     n.name,
+    category: n.catClean,
     before: {
-      results:       beforeResults,
-      appearedCount: beforeCount,
+      results:       results,
+      appearedCount: count,
       totalQueries:  3,
-      summary: beforeCount === 0
-        ? name + ' was not mentioned in any of the 3 queries. A buyer searching right now would not find you.'
-        : beforeCount === 3
-        ? name + ' was mentioned in all 3 queries. Current visibility is strong.'
-        : name + ' was mentioned in ' + beforeCount + ' of 3 queries. Partial visibility \u2014 not consistent enough to rely on.'
-    },
-    after: {
-      results:       afterResults,
-      appearedCount: afterCount,
-      totalQueries:  3,
-      summary: afterCount === 3
-        ? name + ' was mentioned in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
-        : afterCount === 0
-        ? name + ' was not mentioned after positioning improvements were applied. Trust signals are the critical remaining gap.'
-        : name + ' was mentioned in ' + afterCount + ' of 3 queries after positioning improvements were applied.'
+      summary:       beforeSummary(n.name, count)
     }
   };
 }
 
-module.exports = { runSimulation };
+// AFTER half — consumes the scored differentiator and trust signal, so it
+// runs after scoring, exactly as before.
+async function runAfterSimulation(input) {
+  var n = normalizeSimInput(input);
+  var differentiator = String(input.differentiator || '').trim();
+  var trustSignal    = String(input.trustSignal    || '').trim();
+  var results = await runQuerySet(
+    buildAfterQueries(n.catClean, n.city, n.name, differentiator, trustSignal), n.name);
+  var count = results.filter(function(r) { return r.appeared; }).length;
+  return {
+    name:     n.name,
+    category: n.catClean,
+    after: {
+      results:       results,
+      appearedCount: count,
+      totalQueries:  3,
+      summary:       afterSummary(n.name, count)
+    }
+  };
+}
+
+// Full simulation — composes both halves in parallel. Payload shape is
+// byte-identical to the previous implementation, so the ai-simulation.js
+// HTTP endpoint and the free result page are unaffected.
+async function runSimulation(input) {
+  var n = normalizeSimInput(input); // validates early, same error contract
+
+  var settled = await Promise.allSettled([
+    runBeforeSimulation(input),
+    runAfterSimulation(input)
+  ]);
+
+  var beforeHalf = settled[0].status === 'fulfilled' ? settled[0].value : null;
+  var afterHalf  = settled[1].status === 'fulfilled' ? settled[1].value : null;
+
+  var emptyResults = [];
+  return {
+    name:     n.name,
+    category: n.catClean,
+    before: beforeHalf ? beforeHalf.before : {
+      results: emptyResults, appearedCount: 0, totalQueries: 3, summary: beforeSummary(n.name, 0)
+    },
+    after: afterHalf ? afterHalf.after : {
+      results: emptyResults, appearedCount: 0, totalQueries: 3, summary: afterSummary(n.name, 0)
+    }
+  };
+}
+
+module.exports = { runSimulation: runSimulation, runBeforeSimulation: runBeforeSimulation, runAfterSimulation: runAfterSimulation };
