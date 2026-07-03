@@ -69,70 +69,352 @@ function statusLabel(s) {
 }
 
 // ── QR CODE GENERATOR (pure JS, no dependencies) ─────────────────────────────
-// Minimal QR encoder — generates a data URL PNG for a short URL
-// Uses a simplified approach: encode URL as QR version 3, draw to canvas via SVG
-function buildQRDataURL(url) {
-  // Use a QR SVG matrix approach — simplified for URLs up to ~80 chars
-  // We use a 21x21 grid (QR version 1) encoded manually for the result URL
-  // For reliability with arbitrary URLs, we return a styled placeholder
-  // that will be replaced with a real QR when rendered in browser
-  // The real QR is generated client-side via the print button onclick
-  var encoded = encodeURIComponent(url);
-  var qrSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">'
-    + '<rect width="200" height="200" fill="#0C0C0E"/>'
-    + '<rect x="10" y="10" width="180" height="180" fill="none" stroke="#C9A86A" stroke-width="2"/>'
-    // Top-left finder pattern
-    + '<rect x="20" y="20" width="49" height="49" fill="#C9A86A"/>'
-    + '<rect x="27" y="27" width="35" height="35" fill="#0C0C0E"/>'
-    + '<rect x="34" y="34" width="21" height="21" fill="#C9A86A"/>'
-    // Top-right finder pattern
-    + '<rect x="131" y="20" width="49" height="49" fill="#C9A86A"/>'
-    + '<rect x="138" y="27" width="35" height="35" fill="#0C0C0E"/>'
-    + '<rect x="145" y="34" width="21" height="21" fill="#C9A86A"/>'
-    // Bottom-left finder pattern
-    + '<rect x="20" y="131" width="49" height="49" fill="#C9A86A"/>'
-    + '<rect x="27" y="138" width="35" height="35" fill="#0C0C0E"/>'
-    + '<rect x="34" y="145" width="21" height="21" fill="#C9A86A"/>'
-    // Data modules (simplified pattern to represent the URL)
-    + '<rect x="90" y="20" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="104" y="20" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="118" y="20" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="90" y="34" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="118" y="34" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="97" y="48" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="111" y="48" width="7" height="7" fill="#C9A86A"/>'
-    // Centre data
-    + '<rect x="76" y="76" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="90" y="76" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="104" y="76" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="118" y="76" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="76" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="104" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="76" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="90" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="118" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="76" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="104" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="90" y="118" width="7" height="7" fill="#C9A86A"/>'
-    // Bottom-right data
-    + '<rect x="131" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="145" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="159" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="131" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="159" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="145" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="20" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="34" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="48" y="90" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="20" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="48" y="104" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="20" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="34" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '<rect x="48" y="118" width="7" height="7" fill="#C9A86A"/>'
-    + '</svg>';
+// Real, scannable QR encoder: byte mode, EC level M (auto-fallback to L),
+// versions 1\u20136. Verified by decoding output with OpenCV\u2019s QR reader.
 
-  var b64 = Buffer.from(qrSvg).toString('base64');
-  return 'data:image/svg+xml;base64,' + b64;
+// Pure-JS QR encoder — byte mode, EC level M (fallback L), versions 1–6.
+// No dependencies. Returns a boolean matrix (true = dark module).
+
+// ── GF(256) arithmetic for Reed-Solomon ──────────────────────────────────────
+var GF_EXP = new Array(512);
+var GF_LOG = new Array(256);
+(function () {
+  var x = 1;
+  for (var i = 0; i < 255; i++) {
+    GF_EXP[i] = x;
+    GF_LOG[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11d;
+  }
+  for (var j = 255; j < 512; j++) GF_EXP[j] = GF_EXP[j - 255];
+})();
+function gfMul(a, b) {
+  if (a === 0 || b === 0) return 0;
+  return GF_EXP[GF_LOG[a] + GF_LOG[b]];
+}
+function rsGeneratorPoly(degree) {
+  var poly = [1];
+  for (var i = 0; i < degree; i++) {
+    var next = new Array(poly.length + 1).fill(0);
+    for (var j = 0; j < poly.length; j++) {
+      next[j] ^= poly[j];                        // poly * x
+      next[j + 1] ^= gfMul(poly[j], GF_EXP[i]);  // poly * alpha^i
+    }
+    poly = next;
+  }
+  return poly;
+}
+function rsEncode(data, ecLen) {
+  var gen = rsGeneratorPoly(ecLen);
+  var res = data.concat(new Array(ecLen).fill(0));
+  for (var i = 0; i < data.length; i++) {
+    var factor = res[i];
+    if (factor === 0) continue;
+    for (var j = 0; j < gen.length; j++) {
+      res[i + j] ^= gfMul(gen[j], factor);
+    }
+  }
+  return res.slice(data.length);
+}
+
+// ── Version tables (versions 1–6) ────────────────────────────────────────────
+// [totalCodewords, blocksTable]
+// blocksTable per EC level: { numBlocks, dataPerBlock } (all blocks equal size for v1–6 at L/M)
+var VERSIONS = {
+  1: { total: 26,  L: { blocks: 1, data: 19 },  M: { blocks: 1, data: 16 } },
+  2: { total: 44,  L: { blocks: 1, data: 34 },  M: { blocks: 1, data: 28 } },
+  3: { total: 70,  L: { blocks: 1, data: 55 },  M: { blocks: 1, data: 44 } },
+  4: { total: 100, L: { blocks: 1, data: 80 },  M: { blocks: 2, data: 32 } },
+  5: { total: 134, L: { blocks: 1, data: 108 }, M: { blocks: 2, data: 43 } },
+  6: { total: 172, L: { blocks: 2, data: 68 },  M: { blocks: 4, data: 27 } }
+};
+var ALIGNMENT = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34] };
+var REMAINDER_BITS = { 1: 0, 2: 7, 3: 7, 4: 7, 5: 7, 6: 7 };
+
+function pickVersion(byteLen, ecLevel) {
+  for (var v = 1; v <= 6; v++) {
+    var cfg = VERSIONS[v][ecLevel];
+    var dataCodewords = cfg.blocks * cfg.data;
+    // byte mode header: 4 bits mode + 8 bits count (v1-9) = 12 bits
+    var capacityBytes = Math.floor((dataCodewords * 8 - 12) / 8);
+    if (byteLen <= capacityBytes) return v;
+  }
+  return null;
+}
+
+// ── Bit buffer ────────────────────────────────────────────────────────────────
+function BitBuf() { this.bits = []; }
+BitBuf.prototype.put = function (val, len) {
+  for (var i = len - 1; i >= 0; i--) this.bits.push((val >>> i) & 1);
+};
+BitBuf.prototype.toBytes = function (totalDataCodewords) {
+  // terminator
+  var remaining = totalDataCodewords * 8 - this.bits.length;
+  for (var t = 0; t < Math.min(4, remaining); t++) this.bits.push(0);
+  while (this.bits.length % 8 !== 0) this.bits.push(0);
+  var bytes = [];
+  for (var i = 0; i < this.bits.length; i += 8) {
+    var b = 0;
+    for (var j = 0; j < 8; j++) b = (b << 1) | this.bits[i + j];
+    bytes.push(b);
+  }
+  var pads = [0xec, 0x11], p = 0;
+  while (bytes.length < totalDataCodewords) bytes.push(pads[(p++) % 2]);
+  return bytes;
+};
+
+// ── Matrix construction ───────────────────────────────────────────────────────
+function buildMatrix(version, dataWithEC, maskId, ecLevel) {
+  var size = 17 + version * 4;
+  var m = [];       // module values
+  var reserved = []; // function-pattern flags
+  for (var r = 0; r < size; r++) { m.push(new Array(size).fill(false)); reserved.push(new Array(size).fill(false)); }
+
+  function setFunc(r, c, val) { m[r][c] = val; reserved[r][c] = true; }
+
+  // finder patterns + separators
+  function placeFinder(row, col) {
+    for (var dr = -1; dr <= 7; dr++) {
+      for (var dc = -1; dc <= 7; dc++) {
+        var r = row + dr, c = col + dc;
+        if (r < 0 || r >= size || c < 0 || c >= size) continue;
+        var dark = (dr >= 0 && dr <= 6 && (dc === 0 || dc === 6)) ||
+                   (dc >= 0 && dc <= 6 && (dr === 0 || dr === 6)) ||
+                   (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4);
+        setFunc(r, c, dark);
+      }
+    }
+  }
+  placeFinder(0, 0);
+  placeFinder(0, size - 7);
+  placeFinder(size - 7, 0);
+
+  // alignment patterns
+  var centers = ALIGNMENT[version];
+  for (var ai = 0; ai < centers.length; ai++) {
+    for (var aj = 0; aj < centers.length; aj++) {
+      var ar = centers[ai], ac = centers[aj];
+      if (reserved[ar][ac]) continue; // overlaps finder
+      for (var dr2 = -2; dr2 <= 2; dr2++) {
+        for (var dc2 = -2; dc2 <= 2; dc2++) {
+          var dark2 = Math.max(Math.abs(dr2), Math.abs(dc2)) !== 1;
+          setFunc(ar + dr2, ac + dc2, dark2);
+        }
+      }
+    }
+  }
+
+  // timing patterns
+  for (var i = 8; i < size - 8; i++) {
+    if (!reserved[6][i]) setFunc(6, i, i % 2 === 0);
+    if (!reserved[i][6]) setFunc(i, 6, i % 2 === 0);
+  }
+
+  // dark module
+  setFunc(size - 8, 8, true);
+
+  // reserve format info areas
+  for (var f = 0; f <= 8; f++) {
+    if (f !== 6) { reserved[8][f] = true; reserved[f][8] = true; }
+  }
+  reserved[8][8] = true;
+  for (var f2 = 0; f2 < 8; f2++) {
+    reserved[8][size - 1 - f2] = true;
+    reserved[size - 1 - f2][8] = true;
+  }
+
+  // data placement (zig-zag, right to left, skipping column 6)
+  var bitIdx = 0;
+  var totalBits = dataWithEC.length * 8 + REMAINDER_BITS[version];
+  function nextBit() {
+    if (bitIdx >= dataWithEC.length * 8) { bitIdx++; return 0; } // remainder bits
+    var byte = dataWithEC[bitIdx >> 3];
+    var bit = (byte >>> (7 - (bitIdx & 7))) & 1;
+    bitIdx++;
+    return bit;
+  }
+  var col = size - 1;
+  var upward = true;
+  while (col > 0) {
+    if (col === 6) col--; // skip timing column
+    for (var step = 0; step < size; step++) {
+      var row = upward ? size - 1 - step : step;
+      for (var cc = 0; cc < 2; cc++) {
+        var c2 = col - cc;
+        if (reserved[row][c2]) continue;
+        if (bitIdx >= totalBits) { m[row][c2] = false; continue; }
+        var bitVal = nextBit() === 1;
+        // apply mask
+        var masked = maskFn(maskId, row, c2) ? !bitVal : bitVal;
+        m[row][c2] = masked;
+      }
+    }
+    upward = !upward;
+    col -= 2;
+  }
+
+  // format info
+  var ecBits = ecLevel === 'L' ? 0x1 : 0x0; // L=01, M=00
+  var formatData = (ecBits << 3) | maskId;
+  var rem = formatData << 10;
+  var g = 0x537;
+  for (var k = 14; k >= 10; k--) {
+    if ((rem >>> k) & 1) rem ^= g << (k - 10);
+  }
+  var format = ((formatData << 10) | rem) ^ 0x5412;
+  // place format bits (bit 14 = MSB)
+  for (var b = 0; b < 15; b++) {
+    var v = ((format >>> b) & 1) === 1;
+    // copy 1 — around top-left finder (bit 0 at (0,8), bit 14 at (8,0))
+    if (b < 6) m[b][8] = v;
+    else if (b === 6) m[7][8] = v;
+    else if (b === 7) m[8][8] = v;
+    else if (b === 8) m[8][7] = v;
+    else m[8][14 - b] = v;
+    // copy 2 — split top-right / bottom-left
+    if (b < 8) m[8][size - 1 - b] = v;
+    else m[size - 15 + b][8] = v;
+  }
+
+  return m;
+}
+
+function maskFn(id, r, c) {
+  switch (id) {
+    case 0: return (r + c) % 2 === 0;
+    case 1: return r % 2 === 0;
+    case 2: return c % 3 === 0;
+    case 3: return (r + c) % 3 === 0;
+    case 4: return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0;
+    case 5: return ((r * c) % 2 + (r * c) % 3) === 0;
+    case 6: return (((r * c) % 2 + (r * c) % 3) % 2) === 0;
+    case 7: return (((r + c) % 2 + (r * c) % 3) % 2) === 0;
+  }
+  return false;
+}
+
+// ── Penalty scoring to choose the best mask (spec rules N1–N4) ────────────────
+function penalty(m) {
+  var size = m.length, score = 0, r, c;
+  // N1: runs of same colour >= 5 (rows and cols)
+  for (r = 0; r < size; r++) {
+    var runC = 1, runR = 1;
+    for (c = 1; c < size; c++) {
+      if (m[r][c] === m[r][c - 1]) { runC++; if (c === size - 1 && runC >= 5) score += 3 + runC - 5; }
+      else { if (runC >= 5) score += 3 + runC - 5; runC = 1; }
+      if (m[c][r] === m[c - 1][r]) { runR++; if (c === size - 1 && runR >= 5) score += 3 + runR - 5; }
+      else { if (runR >= 5) score += 3 + runR - 5; runR = 1; }
+    }
+  }
+  // N2: 2x2 blocks
+  for (r = 0; r < size - 1; r++) for (c = 0; c < size - 1; c++) {
+    if (m[r][c] === m[r][c + 1] && m[r][c] === m[r + 1][c] && m[r][c] === m[r + 1][c + 1]) score += 3;
+  }
+  // N3: finder-like patterns 1011101 with 4 light on either side
+  var pat1 = [true,false,true,true,true,false,true,false,false,false,false];
+  var pat2 = pat1.slice().reverse();
+  function checkLine(get) {
+    for (var i = 0; i <= size - 11; i++) {
+      var ok1 = true, ok2 = true;
+      for (var j = 0; j < 11; j++) {
+        if (get(i + j) !== pat1[j]) ok1 = false;
+        if (get(i + j) !== pat2[j]) ok2 = false;
+      }
+      if (ok1) score += 40;
+      if (ok2) score += 40;
+    }
+  }
+  for (r = 0; r < size; r++) {
+    (function (rr) { checkLine(function (i) { return m[rr][i]; }); })(r);
+    (function (cc) { checkLine(function (i) { return m[i][cc]; }); })(r);
+  }
+  // N4: dark ratio
+  var dark = 0;
+  for (r = 0; r < size; r++) for (c = 0; c < size; c++) if (m[r][c]) dark++;
+  var pct = (dark * 100) / (size * size);
+  score += Math.floor(Math.abs(pct - 50) / 5) * 10;
+  return score;
+}
+
+// ── Main entry: URL string → boolean matrix (or null if too long) ─────────────
+function qrMatrix(text) {
+  var bytes = [];
+  for (var i = 0; i < text.length; i++) {
+    var code = text.charCodeAt(i);
+    if (code > 127) { // UTF-8 encode non-ASCII (URLs are ASCII but be safe)
+      var enc = encodeURIComponent(text[i]).split('%').slice(1);
+      for (var e = 0; e < enc.length; e++) bytes.push(parseInt(enc[e], 16));
+    } else bytes.push(code);
+  }
+
+  var ecLevel = 'M';
+  var version = pickVersion(bytes.length, 'M');
+  if (!version) { version = pickVersion(bytes.length, 'L'); ecLevel = 'L'; }
+  if (!version) return null;
+
+  var cfg = VERSIONS[version][ecLevel];
+  var totalDataCodewords = cfg.blocks * cfg.data;
+  var ecPerBlock = (VERSIONS[version].total - totalDataCodewords) / cfg.blocks;
+
+  var buf = new BitBuf();
+  buf.put(0x4, 4);              // byte mode
+  buf.put(bytes.length, 8);     // count (8 bits for versions 1–9)
+  for (var bi = 0; bi < bytes.length; bi++) buf.put(bytes[bi], 8);
+  var data = buf.toBytes(totalDataCodewords);
+
+  // split into blocks, compute EC, interleave
+  var blocks = [], ecs = [];
+  for (var blk = 0; blk < cfg.blocks; blk++) {
+    var d = data.slice(blk * cfg.data, (blk + 1) * cfg.data);
+    blocks.push(d);
+    ecs.push(rsEncode(d, ecPerBlock));
+  }
+  var interleaved = [];
+  for (var di = 0; di < cfg.data; di++) for (var b2 = 0; b2 < cfg.blocks; b2++) interleaved.push(blocks[b2][di]);
+  for (var ei = 0; ei < ecPerBlock; ei++) for (var b3 = 0; b3 < cfg.blocks; b3++) interleaved.push(ecs[b3][ei]);
+
+  // choose best mask by penalty score
+  var best = null, bestScore = Infinity;
+  for (var mask = 0; mask < 8; mask++) {
+    var candidate = buildMatrix(version, interleaved, mask, ecLevel);
+    var s = penalty(candidate);
+    if (s < bestScore) { bestScore = s; best = candidate; }
+  }
+  return best;
+}
+
+
+// URL \u2192 SVG data URL. Dark modules on paper with a proper quiet zone so it
+// scans on screen and in print. Falls back to a styled placeholder only if the
+// URL somehow exceeds version-6 capacity (it never should).
+function buildQRDataURL(url) {
+  var matrix = qrMatrix(String(url));
+  if (!matrix) {
+    var ph = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">'
+      + '<rect width="200" height="200" fill="#F5F2EE"/>'
+      + '<rect x="10" y="10" width="180" height="180" fill="none" stroke="#0C0C0E" stroke-width="2"/>'
+      + '</svg>';
+    return 'data:image/svg+xml;base64,' + Buffer.from(ph).toString('base64');
+  }
+  var n = matrix.length;
+  var quiet = 4;
+  var total = n + quiet * 2;
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + total + '" width="200" height="200" shape-rendering="crispEdges">'
+    + '<rect width="' + total + '" height="' + total + '" fill="#F5F2EE"/>';
+  for (var r = 0; r < n; r++) {
+    // merge consecutive dark modules in a row into one rect (smaller output)
+    var c = 0;
+    while (c < n) {
+      if (matrix[r][c]) {
+        var run = 1;
+        while (c + run < n && matrix[r][c + run]) run++;
+        svg += '<rect x="' + (c + quiet) + '" y="' + (r + quiet) + '" width="' + run + '" height="1" fill="#0C0C0E"/>';
+        c += run;
+      } else c++;
+    }
+  }
+  svg += '</svg>';
+  return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
 }
 
 // ── SCORE GAUGE SVG ───────────────────────────────────────────────────────────
@@ -250,7 +532,7 @@ var CSS = [
   '.print-btn{position:fixed;top:20px;right:20px;z-index:9999;background:#C9A86A;color:#0C0C0E;border:none;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:14px 22px;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,0.2);}',
   '.print-btn:hover{background:#B8935A;}',
   /* PAGE FOOTER */
-  '.pf{display:flex;justify-content:space-between;align-items:center;padding:14px 48px;background:#F5F2EE;border-top:1px solid rgba(12,12,14,0.06);}',
+  '.pf{display:flex;justify-content:space-between;align-items:center;height:18px;padding:14px 48px;box-sizing:content-box;background:#F5F2EE;border-top:1px solid rgba(12,12,14,0.06);}',
   '.pf-logo{font-size:11px;font-weight:700;letter-spacing:0.14em;color:rgba(12,12,14,0.2);}',
   '.pf-logo span{color:#C9A86A;}',
   '.pf-biz{font-size:10px;color:#BBBBC2;}',
@@ -460,7 +742,8 @@ var CSS = [
   '.final-qr-label{font-size:8px;color:rgba(12,12,14,0.3);letter-spacing:0.1em;text-transform:uppercase;text-align:center;line-height:1.4;}',
   '.final-meta{font-size:11px;color:rgba(12,12,14,0.3);text-align:right;line-height:1.8;}',
   '@page{size:A4;margin:0;}',
-  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;}}'
+  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:calc(297mm - 47px);box-sizing:border-box;overflow:hidden;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;}}'
+  +'.eb{background:#F5F2EE;padding:36px 56px 32px;position:relative;display:flex;flex-direction:column;min-height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}'
   +'.eb::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}'
   +'.eb-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:24px;}'
   +'.eb-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(201,168,106,0.7);margin-bottom:8px;}'
