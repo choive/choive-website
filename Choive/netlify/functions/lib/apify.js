@@ -1,8 +1,10 @@
-// lib/apify.js — v2 disabled pending actor ID verification
+// lib/apify.js
 // CHOIVE Apify integration — fetches real review and social evidence
 // Actors used:
-//   - Trustpilot scraper: easyapify/trustpilot-scraper
-//   - Google Maps reviews: compass/google-maps-reviews-scraper
+//   - Trustpilot scraper: novi~trustpilot-scraper (via Trustpilot search)
+//   - Google Maps reviews: compass~google-maps-reviews-scraper (fallback: nwua9Gu5YkAVuf7GY)
+// Identity guard: results that do not verifiably match the diagnosed business
+// are discarded — wrong-business reviews must never enter the evidence.
 // ENV: APIFY_API_KEY
 
 const APIFY_BASE  = 'https://api.apify.com/v2';
@@ -77,6 +79,28 @@ async function runActor(actorId, input) {
   return null;
 }
 
+// ── Identity guard ────────────────────────────────────────────────────
+// Confirms a scraped result actually belongs to the diagnosed business before
+// its reviews and ratings are allowed into the evidence. Two accepted proofs:
+// 1. The result URL contains the business domain (Trustpilot company URLs
+//    embed the domain, e.g. trustpilot.com/review/example.com) — strongest.
+// 2. Every significant word of the business name appears in the result name
+//    — same matching standard the AI simulation uses. A single shared word
+//    (e.g. "Panorama") must never attribute another company's reviews.
+function looksLikeSameBusiness(candidateName, candidateUrl, businessName, domain) {
+  var cn = String(candidateName || '').toLowerCase().trim();
+  var bn = String(businessName  || '').toLowerCase().trim();
+  var d  = String(domain        || '').toLowerCase().trim();
+
+  if (d && String(candidateUrl || '').toLowerCase().indexOf(d) !== -1) return true;
+  if (!cn || !bn) return false;
+  if (cn.indexOf(bn) !== -1 || bn.indexOf(cn) !== -1) return true;
+
+  var words = bn.split(/\s+/).filter(function(w) { return w.length > 2; });
+  if (words.length === 0) return false;
+  return words.every(function(w) { return cn.indexOf(w) !== -1; });
+}
+
 // ── Fetch Trustpilot reviews ──────────────────────────────────────────────────
 async function fetchTrustpilot(businessName, website) {
   // Build Trustpilot search URL from business name
@@ -93,6 +117,11 @@ async function fetchTrustpilot(businessName, website) {
 
   var company = items[0];
   if (!company) return null;
+
+  if (!looksLikeSameBusiness(company.name, company.url, businessName, domain)) {
+    console.warn('[apify] Trustpilot result "' + (company.name || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
+    return null;
+  }
 
   var reviews = (company.reviews || []).slice(0, 5).map(function(r) {
     return (r.rating ? r.rating + '/5: ' : '') + (r.text || '').slice(0, 200);
@@ -131,6 +160,11 @@ async function fetchGoogleReviews(businessName, city) {
 
   var place = items[0];
   if (!place) return null;
+
+  if (!looksLikeSameBusiness(place.title, place.website, businessName, '')) {
+    console.warn('[apify] Google result "' + (place.title || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
+    return null;
+  }
 
   var reviews = (place.reviews || []).slice(0, 5).map(function(r) {
     return (r.stars ? r.stars + '/5: ' : '') + (r.text || '').slice(0, 200);
