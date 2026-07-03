@@ -2910,7 +2910,7 @@ function showResults(r, jobId) {
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Business Intelligence</div>'
-      + '<div class="paid-narrative">' + esc(r.businessUnderstanding || r.summaryParagraph || '') + '</div></div>'
+      + '<div class="paid-narrative">' + esc(String(r.businessUnderstanding || r.summaryParagraph || '').split(/\n\s*\n/)[0].trim()) + '</div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Evidence Narrative</div>'
       + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
