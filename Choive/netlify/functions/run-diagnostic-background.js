@@ -2,7 +2,7 @@
 // CHOIVE™ background diagnostic engine
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
-const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor } = require('./lib/supabase');
+const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory } = require('./lib/claude');
@@ -17,6 +17,81 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+// ── VERIFICATION ENGINE ─────────────────────────────────────────────
+// Compares this run against the previous completed run for the same business
+// and produces a provable delta: score movement, per-pillar movement, and —
+// because signals are mechanically confirmed — attributable changes ("llms.txt:
+// absent → present"). The measure → prescribe → VERIFY loop no monitoring
+// platform closes. Pure function; never throws into the pipeline.
+function computeProgressDelta(prevRow, finalResult, evidence) {
+  if (!prevRow || !prevRow.result || !finalResult) return null;
+  var prev      = prevRow.result;
+  var prevScore = Number(prev.score);
+  var curScore  = Number(finalResult.score);
+  if (!isFinite(prevScore) || !isFinite(curScore)) return null;
+
+  var delta = {
+    previousJobId: prevRow.job_id || null,
+    previousDate:  prevRow.created_at || null,
+    previousScore: prevScore,
+    scoreDelta:    curScore - prevScore,
+    pillars:       {},
+    signals:       [],
+    selectionRate: null,
+    competitorChange: null
+  };
+
+  var pKeys = ['clarity', 'trust', 'difference', 'ease'];
+  for (var i = 0; i < pKeys.length; i++) {
+    var k  = pKeys[i];
+    var pp = prev.pillars && prev.pillars[k] ? Number(prev.pillars[k].score) : NaN;
+    var cp = finalResult.pillars && finalResult.pillars[k] ? Number(finalResult.pillars[k].score) : NaN;
+    if (isFinite(pp) && isFinite(cp)) delta.pillars[k] = cp - pp;
+  }
+
+  var prevSite = (prevRow.evidence && prevRow.evidence.website) || {};
+  var curSite  = (evidence && evidence.website) || {};
+  var sigMap = [
+    ['hasSchema',          'Schema markup'],
+    ['hasLlmsTxt',         'llms.txt'],
+    ['hasH1',              'H1 tag'],
+    ['hasTitle',           'Title tag'],
+    ['hasMetaDescription', 'Meta description'],
+    ['hasCanonical',       'Canonical tag'],
+    ['hasSitemap',         'sitemap.xml'],
+    ['hasRobots',          'robots.txt'],
+    ['hasOgTags',          'OG tags']
+  ];
+  for (var s = 0; s < sigMap.length; s++) {
+    var key = sigMap[s][0], label = sigMap[s][1];
+    var was = prevSite[key] === true, now = curSite[key] === true;
+    if (was !== now && (key in prevSite || key in curSite)) {
+      delta.signals.push({ label: label, from: was, to: now });
+    }
+  }
+
+  var prevB = prev.aiSimulation && prev.aiSimulation.before;
+  var curB  = (finalResult.aiSimulation && finalResult.aiSimulation.before)
+           || ((evidence.aiSimulationBefore || {}).before);
+  if (prevB && curB && isFinite(Number(prevB.appearedCount)) && isFinite(Number(curB.appearedCount))) {
+    delta.selectionRate = {
+      previous: Number(prevB.appearedCount),
+      current:  Number(curB.appearedCount),
+      total:    Number(curB.totalQueries) || 3
+    };
+  }
+
+  var prevComp = Array.isArray(prev.competitors) && prev.competitors[0] && prev.competitors[0].name
+    ? String(prev.competitors[0].name).trim() : null;
+  var curComp = Array.isArray(finalResult.competitors) && finalResult.competitors[0] && finalResult.competitors[0].name
+    ? String(finalResult.competitors[0].name).trim() : null;
+  if (prevComp && curComp && prevComp.toLowerCase() !== curComp.toLowerCase()) {
+    delta.competitorChange = { from: prevComp, to: curComp };
+  }
+
+  return delta;
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -41,12 +116,39 @@ exports.handler = async function (event) {
     let evidence = null;
 
     if (cached && cached.evidence) {
-      console.log('[' + jobId + '] Using cached evidence from job ' + cached.job_id + ' (within 24h)');
-      evidence = cached.evidence;
-      await saveEvidence(jobId, evidence).catch(err =>
-        console.warn('[' + jobId + '] saveEvidence (cached) failed:', err.message)
-      );
-    } else {
+      // ── REALITY CHECK — the cache is valid only if the website hasn't changed.
+      // One cheap fetch. If the customer implemented fixes since the cached run
+      // (new llms.txt, new H1, new schema types...), the cache is stale by
+      // definition: bust it and re-measure everything NOW, so verification
+      // never makes someone wait a day to see their own work count.
+      var cacheValid = true;
+      if (website) {
+        try {
+          var freshSite = await fetchWebsiteText(website);
+          var freshSig  = (freshSite && freshSite.signals) || {};
+          var cachedSig = (cached.evidence && cached.evidence.website) || {};
+          var sigKeys = ['hasSchema','hasLlmsTxt','hasH1','hasTitle','hasMetaDescription','hasCanonical','hasSitemap','hasRobots','hasOgTags'];
+          var changed = sigKeys.filter(function(k) { return (freshSig[k] === true) !== (cachedSig[k] === true); });
+          var freshTypes  = Array.isArray(freshSig.schemaTypes)  ? freshSig.schemaTypes.length  : 0;
+          var cachedTypes = Array.isArray(cachedSig.schemaTypes) ? cachedSig.schemaTypes.length : 0;
+          if (freshTypes !== cachedTypes) changed.push('schemaTypes(' + cachedTypes + '\u2192' + freshTypes + ')');
+          if (changed.length > 0) {
+            cacheValid = false;
+            console.log('[' + jobId + '] Cache busted \u2014 website changed since cached run: ' + changed.join(', '));
+          }
+        } catch (err) {
+          console.warn('[' + jobId + '] Cache revalidation fetch failed, keeping cache:', err.message);
+        }
+      }
+      if (cacheValid) {
+        console.log('[' + jobId + '] Using cached evidence from job ' + cached.job_id + ' (within 24h, website unchanged)');
+        evidence = cached.evidence;
+        await saveEvidence(jobId, evidence).catch(err =>
+          console.warn('[' + jobId + '] saveEvidence (cached) failed:', err.message)
+        );
+      }
+    }
+    if (!evidence) {
       await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
       // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
       let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
@@ -261,6 +363,55 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
     const finalResult = buildSafeOutput(rawOutput);
+    // ── COMPETITOR ENFORCEMENT (code-level) ───────────────────────────
+    // The dedicated selection stage's decision is final. If the scoring model
+    // ignored the directive, this overwrites the result — a prompt can be
+    // disobeyed; an assignment cannot. Survives poisoned caches and priors.
+    try {
+      var cd = evidence['competitorDecision'];
+      if (cd && cd.realCompetitor) {
+        if (!Array.isArray(finalResult.competitors)) finalResult.competitors = [];
+        var comps = finalResult.competitors;
+        var normName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+        var target = normName(cd.realCompetitor);
+        var idx = comps.findIndex(function(c) { return c && normName(c.name) === target; });
+        if (idx === 0) {
+          // scoring model obeyed — nothing to do
+        } else if (idx > 0) {
+          var entry = comps.splice(idx, 1)[0];
+          comps.unshift(entry);
+          console.warn('[' + jobId + '] Competitor enforcement: promoted ' + cd.realCompetitor + ' from position ' + idx);
+        } else {
+          comps.unshift({
+            name:         cd.realCompetitor,
+            advantage:    cd.reason || 'Direct head-to-head competitor in this category.',
+            gapLocation:  '',
+            closeGap:     '',
+            evidence:     'Identified by the dedicated competitor-selection stage (source: ' + cd.source + ').'
+              + (cd.categoryUnowned ? ' AI answers for this category currently name no true same-category player — the category answer is unowned.' : ''),
+            queryContext: cd.source
+          });
+          console.warn('[' + jobId + '] Competitor enforcement: inserted ' + cd.realCompetitor + ' (scoring model had ignored the decision)');
+        }
+        // who AI actually names — ensure it is present as displacement evidence
+        if (cd.aiRecommends && normName(cd.aiRecommends) !== target) {
+          var hasAI = comps.some(function(c) { return c && normName(c.name) === normName(cd.aiRecommends); });
+          if (!hasAI) {
+            comps.splice(1, 0, {
+              name:         cd.aiRecommends,
+              advantage:    'This is the business AI currently recommends when buyers ask for this category.',
+              gapLocation:  '',
+              closeGap:     '',
+              evidence:     'Named in the AI selection ground truth — the real recommendation queries run for this diagnostic.',
+              queryContext: 'ai-ground-truth'
+            });
+          }
+          finalResult.competitors = comps.slice(0, 3);
+        }
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Competitor enforcement failed:', err.message);
+    }
     // Merge evidence-level fields not returned by Claude into final result
     if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
       finalResult['socialSignals'] = evidence['socialSignals'];
@@ -328,6 +479,20 @@ exports.handler = async function (event) {
     } catch (err) {
       console.warn('[' + jobId + '] AI simulation failed:', err.message);
     }
+    // ── VERIFICATION: compare against the previous completed run ───────────
+    try {
+      var prevRow = await getPreviousResult(fingerprint);
+      var progressDelta = computeProgressDelta(prevRow, finalResult, evidence);
+      if (progressDelta) {
+        finalResult['progressDelta'] = progressDelta;
+        console.log('[' + jobId + '] Progress vs previous run: '
+          + (progressDelta.scoreDelta >= 0 ? '+' : '') + progressDelta.scoreDelta
+          + ' | signals changed: ' + progressDelta.signals.length);
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Verification delta failed:', err.message);
+    }
+
     await saveResult(jobId, finalResult);
     console.log('[' + jobId + '] Diagnostic complete.');
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
