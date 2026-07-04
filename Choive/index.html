@@ -2911,10 +2911,71 @@ function showResults(r, jobId) {
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(r.summaryParagraph || r.signatureLine || '') + '</div>'
     + '</div>';
 
+  // ── VERIFICATION BLOCK — provable progress since the last run ───────────
+  function buildProgressDelta(r) {
+    var d = r.progressDelta;
+    if (!d || typeof d !== 'object' || !isFinite(Number(d.previousScore))) return '';
+    var sd = Number(d.scoreDelta) || 0;
+    var sign = sd > 0 ? '+' : '';
+    var tone = sd > 0 ? 'var(--ac)' : (sd < 0 ? '#E05252' : 'var(--tm)');
+    var dateTxt = '';
+    try { dateTxt = new Date(d.previousDate).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }); } catch(e) {}
+
+    var pillarNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
+    var chips = Object.keys(d.pillars || {}).map(function(k) {
+      var v = Number(d.pillars[k]) || 0;
+      var c = v > 0 ? 'var(--ac)' : (v < 0 ? '#E05252' : 'var(--tm)');
+      return '<span style="font-size:12px;color:' + c + ';margin-right:16px;white-space:nowrap;">' + pillarNames[k] + ' ' + (v > 0 ? '+' : '') + v + '</span>';
+    }).join('');
+
+    var sigLines = (d.signals || []).map(function(s) {
+      var fixed = s.to === true;
+      return '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
+        + '<span style="color:' + (fixed ? 'var(--ac)' : '#E05252') + ';margin-right:8px;">' + (fixed ? '\u2713' : '\u2717') + '</span>'
+        + esc(s.label) + ': ' + (s.from ? 'present' : 'absent') + ' \u2192 ' + (s.to ? 'present' : 'absent')
+        + '</div>';
+    }).join('');
+
+    var rateLine = '';
+    if (d.selectionRate) {
+      rateLine = '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
+        + '<span style="color:var(--ac);margin-right:8px;">\u25B8</span>'
+        + 'AI selection rate: ' + d.selectionRate.previous + '/' + d.selectionRate.total
+        + ' \u2192 <strong style="color:var(--tx);">' + d.selectionRate.current + '/' + d.selectionRate.total + '</strong></div>';
+    }
+
+    var compLine = '';
+    if (d.competitorChange) {
+      compLine = '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
+        + '<span style="color:var(--ac);margin-right:8px;">\u25B8</span>'
+        + 'Dominant competitor: ' + esc(d.competitorChange.from) + ' \u2192 ' + esc(d.competitorChange.to) + '</div>';
+    }
+
+    // HONESTY GATE: "verified" is earned only by mechanically confirmed change.
+    var hasConfirmed = (d.signals || []).length > 0
+      || (d.selectionRate && d.selectionRate.previous !== d.selectionRate.current)
+      || !!d.competitorChange;
+    var headTxt = hasConfirmed ? 'Verified progress' : 'Since last run';
+    var driftNote = (!hasConfirmed && sd !== 0)
+      ? '<div style="font-size:12px;color:var(--tm);margin-top:12px;font-style:italic;">No confirmed signal changes detected \u2014 this movement reflects refreshed evidence, not verified fixes.</div>'
+      : '';
+
+    return '<div style="border:1px solid var(--rule);border-left:3px solid ' + tone + ';padding:24px 28px;margin-bottom:2px;background:rgba(201,168,106,0.03);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--tm);">' + headTxt + (dateTxt ? ' \u00b7 since ' + dateTxt : '') + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:28px;font-weight:700;color:' + tone + ';">' + sign + sd + '</div>'
+      + '</div>'
+      + (chips ? '<div style="margin-bottom:' + ((sigLines || rateLine || compLine) ? '14px' : '0') + ';">' + chips + '</div>' : '')
+      + sigLines + rateLine + compLine + driftNote
+      + (sd > 0 && hasConfirmed ? '<div style="font-size:12px;color:var(--tm);margin-top:12px;font-style:italic;">The changes are mechanically confirmed live \u2014 and the score moved with them. This is your diagnostic proving it.</div>' : '')
+      + '</div>';
+  }
+
   zone.innerHTML =
     competitorBanner
     + scoreHeader
     + buildScoreLabels(r)
+    + buildProgressDelta(r)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
     + [].concat(buildPillarCards(r)).join('')
