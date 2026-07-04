@@ -214,6 +214,27 @@ async function saveLead(opts) {
     }, { onConflict: 'email' });
   if (error) throw new Error('Supabase saveLead failed: ' + error.message);
 }
+// Most recent COMPLETED diagnostic for this business — result + evidence +
+// timestamps. Powers the verification engine: every re-run is compared against
+// this row to prove (or disprove) that the prescribed fixes moved the score.
+async function getPreviousResult(fingerprint) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .select('job_id, result, evidence, created_at')
+    .eq('business_fingerprint', fingerprint)
+    .eq('status', 'complete')
+    .not('result', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn('getPreviousResult failed:', error.message);
+    return null;
+  }
+  return data || null;
+}
+
 module.exports = {
   createDiagnostic,
   createDiagnosticWithParent,
@@ -227,5 +248,6 @@ module.exports = {
   saveLead,
   buildFingerprint,
   getCachedEvidence,
-  getPreviousCompetitor
+  getPreviousCompetitor,
+  getPreviousResult
 };
