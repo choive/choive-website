@@ -187,6 +187,17 @@ function buildPrompt(evidence) {
     + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
     + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
     + (previousCompetitor ? '\n\nPREVIOUSLY VERIFIED COMPETITOR (identified in the last completed diagnostic of this exact business): ' + previousCompetitor : '')
+    + (evidence.competitorDecision ? '\n\nCOMPETITOR DECISION \u2014 MADE BY THE DEDICATED SELECTION STAGE (do not override):\n'
+        + (evidence.competitorDecision.realCompetitor
+            ? 'competitors[0].name MUST be exactly: ' + evidence.competitorDecision.realCompetitor + ' \u2014 the subject\u2019s true head-to-head market rival (source: ' + evidence.competitorDecision.source + '). Reason: ' + evidence.competitorDecision.reason + ' Its evidence text MUST state honestly whether the AI SELECTION GROUND TRUTH currently names this rival, quoting what AI answered instead if it does not.'
+            : 'No true head-to-head rival could be named with confidence \u2014 apply the normal fallback rules for competitors[0].')
+        + (evidence.competitorDecision.aiRecommends && evidence.competitorDecision.aiRecommends !== evidence.competitorDecision.realCompetitor
+            ? ' competitors[1] MUST be: ' + evidence.competitorDecision.aiRecommends + ' \u2014 the business AI actually recommends for these queries today; label its queryContext accordingly and ground its entry in the AI SELECTION GROUND TRUTH.'
+            : '')
+        + (evidence.competitorDecision.categoryUnowned
+            ? ' The ground truth names no true same-category player \u2014 the category answer is UNOWNED; state this as an opportunity in the competitor narrative.'
+            : '')
+        : '')
     + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category and location. The businesses named below are who AI ACTUALLY recommends today:\n' + simGroundTruth : '')
     + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
@@ -429,6 +440,7 @@ function buildPrompt(evidence) {
     + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
     + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
     + '  },\n'
+    + (evidence.competitorDecision && evidence.competitorDecision.realCompetitor ? '  REMINDER: competitors[0].name must be exactly "' + evidence.competitorDecision.realCompetitor + '".\n' : '')
     + '  "competitors": [\n'
     + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
     + '  ],\n'
@@ -533,7 +545,105 @@ function safeOutput(raw) {
 }
 
 // ── Main scoring function ─────────────────────────────────────────────────────
+// ── DEDICATED COMPETITOR SELECTION STAGE ─────────────────────────────────────
+// Competitor identity is too important to be one rule inside the giant scoring
+// prompt (where converging priors caused wrong-competitor lock-in). This small
+// single-purpose call decides the dominant competitor; the scoring prompt then
+// receives the decision as fact. Fails soft: on any error, returns null and the
+// scoring prompt's own rules apply as before.
+async function selectDominantCompetitor(evidence) {
+  var name       = String(evidence.name || '').trim();
+  var category   = String(evidence.category || '').trim();
+  var inferred   = String(evidence.inferredCategory || category).trim();
+  var previous   = sanitizeExternal(String(evidence.previousCompetitor || '')).trim();
+  var known      = String(evidence.knownCompetitors || '').trim();
+  var summary    = String((evidence.summaries || {}).businessSummary || '').slice(0, 600);
+  var website    = String(evidence.website || '').trim();
+
+  var simBefore = evidence.aiSimulationBefore || null;
+  var groundTruth = '';
+  if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
+    groundTruth = simBefore.before.results.map(function(r, i) {
+      return 'QUERY ' + (i + 1) + ': "' + String(r.query || '') + '"\nAI ANSWERED: '
+        + sanitizeExternal(String(r.response || '')).slice(0, 900);
+    }).join('\n\n');
+  }
+  var searchComps = (evidence.competitors || []).map(function(c) {
+    return String(c.name || c.domain || '');
+  }).filter(Boolean).slice(0, 6).join(', ');
+
+  var prompt = 'You identify competitors for a business diagnostic. Respond ONLY with a JSON object, no markdown, no preamble.\n\n'
+    + 'SUBJECT BUSINESS: ' + name + (website ? ' (' + website + ')' : '') + '\n'
+    + 'CATEGORY: ' + inferred + '\n'
+    + (summary ? 'WHAT IT DOES: ' + summary + '\n' : '')
+    + (known ? 'COMPETITORS NAMED BY THE OWNER (highest-truth source): ' + known + '\n' : '')
+    + (previous ? 'PREVIOUS RUN COMPETITOR (continuity hint only \u2014 NOT verified truth; discard if it fails the tests): ' + previous + '\n' : '')
+    + (groundTruth ? '\nAI SELECTION GROUND TRUTH \u2014 what AI actually recommended when asked for this category:\n' + groundTruth + '\n' : '')
+    + (searchComps ? '\nCOMPETITORS FOUND IN SEARCH EVIDENCE: ' + searchComps + '\n' : '')
+    + '\nProduce TWO answers:\n\n'
+    + 'ANSWER A \u2014 realCompetitor: the subject\u2019s TRUE head-to-head market rival \u2014 the company a knowledgeable buyer or the owner would name as the direct alternative in a deal. Source priority: (1) owner-named competitors, (2) your own industry knowledge of this niche \u2014 you MAY use it here; direct-competitor relationships are stable public facts and this is the one place prior knowledge is required, (3) names in the evidence. Requirements: same category, same buyer type, comparable deal size; a real, currently operating company you are confident exists; never a directory, aggregator, or adjacent giant from another industry (e.g. a data-labeling company is NOT a rival to an AI-visibility tool); never the subject or a name variant. CONTINUITY: if the previous run competitor passes these tests, keep it. If you cannot name a real head-to-head rival with confidence, return null rather than guessing.\n\n'
+    + 'ANSWER B \u2014 aiRecommends: from the AI SELECTION GROUND TRUTH only \u2014 the real business AI recommended most prominently (top pick > list mention; more mentions > fewer), excluding the subject. This is a factual reading of the responses, NOT a judgment of fair rivalry. null if no ground truth or no real business is named.\n\n'
+    + 'Also report categoryUnowned: true if NO business in the ground truth is genuinely in the subject\u2019s category (AI answered with adjacent players) \u2014 meaning the category answer is unowned.\n\n'
+    + 'Respond with exactly: {"realCompetitor": <name or null>, "aiRecommends": <name or null>, "source": "owner" | "industry_knowledge" | "evidence" | "continuity" | "none", "categoryUnowned": <true|false>, "reason": "<one sentence on why realCompetitor is the true rival>"}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 40000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 350,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    var data = await res.json();
+    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== 'object') return null;
+    function cleanName(v) {
+      var s = v ? String(v).trim() : '';
+      if (!s) return null;
+      if (name && s.toLowerCase().indexOf(name.toLowerCase()) !== -1) return null; // never the subject
+      return s;
+    }
+    return {
+      realCompetitor:  cleanName(parsed.realCompetitor),
+      aiRecommends:    cleanName(parsed.aiRecommends),
+      source:          String(parsed.source || 'none'),
+      categoryUnowned: parsed.categoryUnowned === true,
+      reason:          String(parsed.reason || '').slice(0, 300)
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[competitor-selection] failed:', err.message);
+    return null;
+  }
+}
+
 async function scoreWithClaude(evidence) {
+  // Dedicated competitor selection first; its decision is injected as fact.
+  try {
+    var compDecision = await selectDominantCompetitor(evidence);
+    if (compDecision) {
+      evidence.competitorDecision = compDecision;
+      console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
+        + ' | AI names: ' + (compDecision.aiRecommends || 'none')
+        + ' (' + compDecision.source + (compDecision.categoryUnowned ? ', category unowned' : '') + ') \u2014 ' + compDecision.reason);
+    }
+  } catch (err) {
+    console.warn('[competitor-selection] stage error:', err.message);
+  }
   var prompt     = buildPrompt(evidence);
   var controller = new AbortController();
   var timeout    = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
