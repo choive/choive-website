@@ -194,6 +194,9 @@ function buildPrompt(evidence) {
         + (evidence.competitorDecision.aiRecommends && evidence.competitorDecision.aiRecommends !== evidence.competitorDecision.realCompetitor
             ? ' competitors[1] MUST be: ' + evidence.competitorDecision.aiRecommends + ' \u2014 the business AI actually recommends for these queries today; label its queryContext accordingly and ground its entry in the AI SELECTION GROUND TRUTH.'
             : '')
+        + (evidence.competitorDecision.globalBenchmark && evidence.competitorDecision.globalBenchmark !== evidence.competitorDecision.realCompetitor
+            ? ' competitors[2] MAY be: ' + evidence.competitorDecision.globalBenchmark + ' \u2014 the international category leader; label it explicitly as a global benchmark that does NOT serve this market: a playbook to study, not a rival taking these customers.'
+            : '')
         + (evidence.competitorDecision.categoryUnowned
             ? ' The ground truth names no true same-category player \u2014 the category answer is UNOWNED; state this as an opportunity in the competitor narrative.'
             : '')
@@ -390,7 +393,8 @@ function buildPrompt(evidence) {
     + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\n'
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
-    + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n\n'
+    + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
+    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n\n'
     + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
     + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
     + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
@@ -559,6 +563,7 @@ async function selectDominantCompetitor(evidence) {
   var known      = String(evidence.knownCompetitors || '').trim();
   var summary    = String((evidence.summaries || {}).businessSummary || '').slice(0, 600);
   var website    = String(evidence.website || '').trim();
+  var city       = String(evidence.city || '').trim();
 
   var simBefore = evidence.aiSimulationBefore || null;
   var groundTruth = '';
@@ -575,16 +580,18 @@ async function selectDominantCompetitor(evidence) {
   var prompt = 'You identify competitors for a business diagnostic. Respond ONLY with a JSON object, no markdown, no preamble.\n\n'
     + 'SUBJECT BUSINESS: ' + name + (website ? ' (' + website + ')' : '') + '\n'
     + 'CATEGORY: ' + inferred + '\n'
+    + (city ? 'MARKET / LOCATION: ' + city + '\n' : '')
     + (summary ? 'WHAT IT DOES: ' + summary + '\n' : '')
     + (known ? 'COMPETITORS NAMED BY THE OWNER (highest-truth source): ' + known + '\n' : '')
     + (previous ? 'PREVIOUS RUN COMPETITOR (continuity hint only \u2014 NOT verified truth; discard if it fails the tests): ' + previous + '\n' : '')
     + (groundTruth ? '\nAI SELECTION GROUND TRUTH \u2014 what AI actually recommended when asked for this category:\n' + groundTruth + '\n' : '')
     + (searchComps ? '\nCOMPETITORS FOUND IN SEARCH EVIDENCE: ' + searchComps + '\n' : '')
     + '\nProduce TWO answers:\n\n'
-    + 'ANSWER A \u2014 realCompetitor: the subject\u2019s TRUE head-to-head market rival \u2014 the company a knowledgeable buyer or the owner would name as the direct alternative in a deal. Source priority: (1) owner-named competitors, (2) your own industry knowledge of this niche \u2014 you MAY use it here; direct-competitor relationships are stable public facts and this is the one place prior knowledge is required, (3) names in the evidence. Requirements: same category, same buyer type, comparable deal size; a real, currently operating company you are confident exists; never a directory, aggregator, or adjacent giant from another industry (e.g. a data-labeling company is NOT a rival to an AI-visibility tool); never the subject or a name variant. CONTINUITY: if the previous run competitor passes these tests, keep it. If you cannot name a real head-to-head rival with confidence, return null rather than guessing.\n\n'
+    + 'ANSWER A \u2014 realCompetitor: the subject\u2019s TRUE head-to-head market rival \u2014 the company a knowledgeable buyer or the owner would name as the direct alternative in a deal. Source priority: (1) owner-named competitors, (2) your own industry knowledge of this niche \u2014 you MAY use it here; direct-competitor relationships are stable public facts and this is the one place prior knowledge is required, (3) names in the evidence. Requirements: same category, same buyer type, comparable deal size, AND SAME SERVICEABLE MARKET \u2014 a business the subject\u2019s own customers could actually buy from instead. A company that does not sell, ship, or operate where the subject\u2019s customers are FAILS this test no matter how similar the product (a US-only meat brand is NOT the rival of a Germany-only meat brand). A real, currently operating company you are confident exists; never a directory, aggregator, or adjacent giant from another industry (e.g. a data-labeling company is NOT a rival to an AI-visibility tool); never the subject or a name variant. CONTINUITY: if the previous run competitor passes these tests, keep it. If you cannot name a real head-to-head rival with confidence, return null rather than guessing.\n\n'
     + 'ANSWER B \u2014 aiRecommends: from the AI SELECTION GROUND TRUTH only \u2014 the real business AI recommended most prominently (top pick > list mention; more mentions > fewer), excluding the subject. This is a factual reading of the responses, NOT a judgment of fair rivalry. null if no ground truth or no real business is named.\n\n'
+    + 'ANSWER C \u2014 globalBenchmark: only if realCompetitor is regional and a clearly larger INTERNATIONAL category leader exists that does NOT serve the subject\u2019s market \u2014 name it as the global benchmark worth studying. Otherwise null.\n\n'
     + 'Also report categoryUnowned: true if NO business in the ground truth is genuinely in the subject\u2019s category (AI answered with adjacent players) \u2014 meaning the category answer is unowned.\n\n'
-    + 'Respond with exactly: {"realCompetitor": <name or null>, "aiRecommends": <name or null>, "source": "owner" | "industry_knowledge" | "evidence" | "continuity" | "none", "categoryUnowned": <true|false>, "reason": "<one sentence on why realCompetitor is the true rival>"}';
+    + 'Respond with exactly: {"realCompetitor": <name or null>, "aiRecommends": <name or null>, "globalBenchmark": <name or null>, "source": "owner" | "industry_knowledge" | "evidence" | "continuity" | "none", "categoryUnowned": <true|false>, "reason": "<one sentence on why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 40000);
@@ -620,6 +627,7 @@ async function selectDominantCompetitor(evidence) {
     return {
       realCompetitor:  cleanName(parsed.realCompetitor),
       aiRecommends:    cleanName(parsed.aiRecommends),
+      globalBenchmark: cleanName(parsed.globalBenchmark),
       source:          String(parsed.source || 'none'),
       categoryUnowned: parsed.categoryUnowned === true,
       reason:          String(parsed.reason || '').slice(0, 300)
@@ -652,6 +660,7 @@ async function scoreWithClaudeOnce(evidence) {
       evidence.competitorDecision = compDecision;
       console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
         + ' | AI names: ' + (compDecision.aiRecommends || 'none')
+        + ' | global benchmark: ' + (compDecision.globalBenchmark || 'none')
         + ' (' + compDecision.source + (compDecision.categoryUnowned ? ', category unowned' : '') + ') \u2014 ' + compDecision.reason);
     }
   } catch (err) {
