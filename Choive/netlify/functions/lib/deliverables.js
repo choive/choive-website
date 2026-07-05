@@ -1,6 +1,12 @@
 // lib/deliverables.js — v3 cityDisplay scope fix
 
 // Helper: capitalise city name
+function firstSentence(s) {
+  var t = String(s || '').trim();
+  var m = t.match(/^[^.!?]*[.!?]/);
+  return m ? m[0].trim() : t.slice(0, 140);
+}
+
 function capitaliseCity(city) {
   if (!city) return '';
   return city.split(' ').map(function(w) {
@@ -362,7 +368,7 @@ function generateActionPlan(evidence, result) {
     markUsed(w2act.title);
     week2.tasks.push({
       task:   w2act.title,
-      how:    w2act.body,
+      how:    firstSentence(w2act.body) + ' Full brief in Priority Actions.',
       impact: w2act.explanation || 'Improves selection confidence',
       owner:  taskOwner(w2act)
     });
@@ -391,7 +397,7 @@ function generateActionPlan(evidence, result) {
     markUsed(w3act.title);
     week3.tasks.push({
       task:   w3act.title,
-      how:    w3act.body,
+      how:    firstSentence(w3act.body) + ' Full brief in Priority Actions.',
       impact: w3act.explanation || 'Critical for AI selection',
       owner:  taskOwner(w3act)
     });
@@ -402,7 +408,7 @@ function generateActionPlan(evidence, result) {
   var week4 = { week: 4, title: 'Measure your progress', tasks: [] };
   week4.tasks.push({
     task:   'Run a new CHOIVE diagnostic',
-    how:    'Go to choive.com and run the diagnostic again for ' + name + '. Your score should improve by 8-15 points.',
+    how:    'Go to choive.com and run the diagnostic again for ' + name + '. The Verified Progress block will confirm — mechanically — exactly which fixes registered and how far the score moved.',
     impact: 'See exactly what changed and what gaps remain',
     owner:  'you'
   });
