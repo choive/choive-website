@@ -2742,7 +2742,7 @@ function buildGapBlock(r) {
     '  <div class="gap-delta">',
     '    <div class="gap-delta-pts">' + pts + '-POINT ' + ptLabel + '</div>',
     '    <div class="gap-copy">' + mainCopy + '</div>',
-    '    <div class="gap-copy-sub">This gap determines whether you are selected — or replaced.</div>',
+    '    <div class="gap-copy-sub">' + (String(ptLabel).toUpperCase().indexOf('ADVANTAGE') !== -1 ? 'This lead is yours to protect — and to extend.' : 'This gap determines whether you are selected — or replaced.') + '</div>',
     '  </div>',
     '</div>'
   ].join('\n');
@@ -3044,7 +3044,7 @@ function showResults(r, jobId) {
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
     + [].concat(buildPillarCards(r)).join('')
-    + [].concat(buildShareBlock(jobId)).join('')
+    + (isPaid ? '' : [].concat(buildShareBlock(jobId)).join(''))
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
         + '<div class="lead-capture-inner">'
         + '<div class="lead-capture-eyebrow">Save your result</div>'
@@ -3143,11 +3143,7 @@ function showResults(r, jobId) {
   }).join('');
 
   var paidSections = isPaid ? (function() {
-    return '<div class="pay-section deliv-section" id="delivSection">'
-      + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
-      + '<div id="delivContent"></div></div>'
-      + '<div class="pay-section sim-section" id="simSection">'
+    return '<div class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
@@ -3164,6 +3160,10 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
+      + '<div class="pay-section deliv-section" id="delivSection">'
+      + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
+      + '<div id="delivContent"></div></div>'
       + '<div class="pay-section" style="border-bottom:none;"><div class="pay-eyebrow">Your Report</div>'
       + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your results</div>'
       + '<div class="pay-cta-body">Download a PDF copy of this diagnostic for your records.</div>'
@@ -3173,7 +3173,7 @@ function showResults(r, jobId) {
   })() : '';
 
   console.log('[CHOIVE] isPaid:', isPaid, '| paidSections length:', paidSections.length);
-  zone.innerHTML += paidSections
+  zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId)).join('') : '')
     + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
@@ -3457,13 +3457,14 @@ async function runAISimulation(r) {
     if (hasBefore && data.after) {
       results.innerHTML = renderQSet(data.before.results, 'Current state')
         + '<div style="margin:20px 0;padding:16px;background:var(--dk-3);border:1px solid var(--rule-d);">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">After implementing top fixes</div>'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">After implementing top fixes — projected</div>'
         + '<div style="font-size:13px;color:var(--tb);line-height:1.65;">'
         + (ac >= 0
           ? 'With improved positioning: mentioned in <strong style="color:var(--ac);">' + ac + ' of 3</strong> queries'
           + (ac > bc ? ' \u2014 up from ' + bc + '.' : (ac === bc ? ' \u2014 same as before.' : '.')) : '')
-        + '</div></div>'
-        + renderQSet(data.after.results, 'After optimisation')
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--ac);margin-top:10px;line-height:1.6;letter-spacing:0.03em;"><strong>PROJECTED</strong> — modeled responses showing how AI would answer once these fixes are live. Not real transcripts yet: implement the fixes, re-run the diagnostic, and the Verified Progress block confirms what changed.</div></div>'
+        + renderQSet(data.after.results, 'After optimisation — projected')
         
     } else {
       results.innerHTML = renderQSet(flatResults, '')
