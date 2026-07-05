@@ -1417,6 +1417,7 @@ footer::before {
   margin-bottom: 36px;
 }
 h1.hero-kicker { margin-top:0; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .hero-kicker-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--ac);
@@ -2003,13 +2004,12 @@ h1.hero-kicker { margin-top:0; }
     <!-- Kicker -->
     <h1 class="hero-kicker">
       <span class="hero-kicker-dot"></span>
-      CHOIVE· — the AI selection diagnostic for any business. AI doesn't rank. It selects.
+      <span class="sr-only">CHOIVE· — the AI selection diagnostic for any business. </span>AI doesn't rank. It selects.
     </h1>
 
     <!-- Headline — the confrontation -->
     <div class="hero-h1">
-      AI doesn't recommend<br>
-      every business.<br>
+      AI doesn't recommend every business.<br>
       It recommends one.<br>
       <em>Right now, it isn't yours.</em>
     </div>
