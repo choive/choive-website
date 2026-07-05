@@ -7,7 +7,7 @@
 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const TIMEOUT_MS      = 90000;
+const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
 const MAX_TOKENS      = 4500;
 
 function truncate(text, max) {
@@ -632,9 +632,22 @@ async function selectDominantCompetitor(evidence) {
 }
 
 async function scoreWithClaude(evidence) {
-  // Dedicated competitor selection first; its decision is injected as fact.
   try {
-    var compDecision = await selectDominantCompetitor(evidence);
+    return await scoreWithClaudeOnce(evidence);
+  } catch (err) {
+    if (String(err.message || '').indexOf('timed out') !== -1) {
+      console.warn('[scoring] timed out once — retrying (transient model latency)');
+      return await scoreWithClaudeOnce(evidence);
+    }
+    throw err;
+  }
+}
+
+async function scoreWithClaudeOnce(evidence) {
+  // Dedicated competitor selection first; its decision is injected as fact.
+  // Idempotent: on a scoring retry the existing decision is reused, not recomputed.
+  try {
+    var compDecision = evidence.competitorDecision || await selectDominantCompetitor(evidence);
     if (compDecision) {
       evidence.competitorDecision = compDecision;
       console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
