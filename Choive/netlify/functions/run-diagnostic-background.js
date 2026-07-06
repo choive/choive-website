@@ -343,6 +343,7 @@ exports.handler = async function (event) {
             name:             name,
             category:         category,
             city:             city,
+            description:      description,
             inferredCategory: evidence['inferredCategory'] || category
           });
           if (simBefore && simBefore.before) {
