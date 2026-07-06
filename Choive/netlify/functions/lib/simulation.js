@@ -72,17 +72,35 @@ function cleanResponse(response) {
 // words in the name to appear, not just any single word. A single shared
 // word (e.g. "Panorama" appearing in an unrelated sentence about scenery)
 // must not register as a false positive "appearance."
+// Hardened mention detection: folds diacritics (Täurbull → taurbull), strips
+// legal suffixes (GmbH, Ltd, Inc…) and possessives, matches on word boundaries,
+// and tolerates spacing variants (TaurBull vs Taur Bull). The old scatter-match
+// (every word anywhere in the text) is gone — it produced false positives for
+// generic names like Casa Verde.
+var LEGAL_SUFFIX_RE = /\b(gmbh|ag|kg|ug|ohg|gbr|ek|inc|llc|llp|ltd|limited|corp|corporation|co|company|s\s?a\s?r\s?l|sarl|sas|sa|bv|nv|srl|spa|oy|ab|as|aps|plc|pty|kft|sro|doo|kk|gk)\b/g;
+
+function normalizeForMatch(s) {
+  s = String(s || '').toLowerCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+  s = s.replace(/\u00df/g, 'ss');
+  s = s.replace(/['\u2019]s\b/g, '');
+  s = s.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function businessMentioned(response, name) {
   if (!response || !name) return false;
-  var respLower = response.toLowerCase();
-  var nameLower = name.toLowerCase().trim();
-
-  if (respLower.includes(nameLower)) return true;
-
-  var words = nameLower.split(/\s+/).filter(function(w) { return w.length > 2; });
-  if (words.length === 0) return false;
-  if (words.length === 1) return respLower.includes(words[0]);
-  return words.every(function(w) { return respLower.includes(w); });
+  var resp = ' ' + normalizeForMatch(response) + ' ';
+  var respNoSpace = resp.replace(/ /g, '');
+  var full = normalizeForMatch(name);
+  var core = full.replace(LEGAL_SUFFIX_RE, ' ').replace(/\s+/g, ' ').trim();
+  var candidates = [full, core].filter(function(v, i, a) { return v && a.indexOf(v) === i; });
+  for (var i = 0; i < candidates.length; i++) {
+    var cand = candidates[i];
+    if (resp.indexOf(' ' + cand + ' ') !== -1) return true;
+    if (cand.indexOf(' ') !== -1 && respNoSpace.indexOf(cand.replace(/ /g, '')) !== -1) return true;
+  }
+  return false;
 }
 
 function buildQueries(catClean, city, name) {
@@ -200,6 +218,81 @@ async function runQuerySet(queries, name) {
 // ── PUBLIC API ────────────────────────────────────────────────────────────────
 // Runs the full before/after simulation and returns the same payload shape
 // the ai-simulation endpoint returns: { name, category, before, after }.
+
+// ── MARKET LANGUAGE ─────────────────────────────────────────────────
+// German buyers ask AI in German. Ground truth measured in the wrong language
+// is the wrong ground truth. Deterministic keyword table (no extra call); the
+// three queries are translated once per run via a small model call, cached
+// with the evidence. Any failure falls back to English silently.
+var MARKET_LANGS = [
+  ['de', /\b(german(y)?|deutschland|berlin|m[u\u00fc]nchen|munich|stuttgart|hamburg|frankfurt|k[o\u00f6]ln|cologne|d[u\u00fc]sseldorf|austria|\u00f6sterreich|wien|vienna|schweiz|switzerland|z[u\u00fc]rich|zurich)\b/],
+  ['es', /\b(spain|espa[n\u00f1]a|madrid|barcelona|marbella|valencia|sevilla|m[e\u00e9]xico|mexico|bogot[a\u00e1]|argentina|buenos aires|colombia|chile|per[u\u00fa])\b/],
+  ['fr', /\b(france|paris|lyon|marseille|bordeaux|belgi(um|que)|bruxelles|montreal|montr[e\u00e9]al|qu[e\u00e9]bec)\b/],
+  ['it', /\b(ital(y|ia)|roma|rome|milan(o)?|torino|napoli)\b/],
+  ['nl', /\b(netherlands|nederland|amsterdam|rotterdam|utrecht|den haag)\b/],
+  ['pt', /\b(portugal|lisbo[an]|porto|brasil|brazil|s[a\u00e3]o paulo|rio de janeiro)\b/],
+  ['pl', /\b(poland|polska|warsaw|warszawa|krak[o\u00f3]w)\b/],
+  ['tr', /\b(turkey|t[u\u00fc]rkiye|istanbul|ankara|izmir)\b/],
+  ['sv', /\b(sweden|sverige|stockholm|g[o\u00f6]teborg)\b/],
+  ['da', /\b(denmark|danmark|copenhagen|k[o\u00f8]benhavn)\b/],
+  ['ja', /\b(japan|tokyo|osaka|kyoto)\b/],
+  ['ko', /\b(korea|seoul|busan)\b/],
+  ['zh', /\b(china|beijing|shanghai|shenzhen|taiwan|taipei)\b/]
+];
+var LANG_NAMES = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese' };
+
+function detectMarketLanguage(city) {
+  var c = String(city || '').toLowerCase();
+  if (!c || c === 'global' || c === 'worldwide') return 'en';
+  for (var i = 0; i < MARKET_LANGS.length; i++) {
+    if (MARKET_LANGS[i][1].test(c)) return MARKET_LANGS[i][0];
+  }
+  return 'en';
+}
+
+async function localizeQueries(queries, lang) {
+  var langName = LANG_NAMES[lang];
+  if (!langName) return null;
+  var prompt = 'Translate these three buyer search queries into natural, native ' + langName
+    + ' \u2014 phrased exactly as a local customer would type them to an AI assistant. Keep meaning and specificity. '
+    + 'Respond ONLY with a JSON array of exactly 3 strings, no markdown.\n\n'
+    + JSON.stringify(queries.map(function(q) { return q.query; }));
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 25000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    var data = await res.json();
+    var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
+    var arr = JSON.parse(text);
+    if (!Array.isArray(arr) || arr.length !== 3) return null;
+    return arr.map(String);
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[simulation] query localization failed, using English:', err.message);
+    return null;
+  }
+}
+
+async function applyMarketLanguage(queries, city, forcedLang) {
+  var lang = forcedLang || detectMarketLanguage(city);
+  if (lang === 'en') return { queries: queries, language: 'en' };
+  var localized = await localizeQueries(queries, lang);
+  if (!localized) return { queries: queries, language: 'en' };
+  var out = queries.map(function(q, i) {
+    return { label: q.label, intent: q.intent,
+      system: q.system + ' Answer in the same language as the question.',
+      query: localized[i] };
+  });
+  return { queries: out, language: lang };
+}
+
 // Shared input normalization — one place for the category-cleaning rules.
 function normalizeSimInput(input) {
   var name             = String(input.name             || '').trim();
@@ -241,12 +334,14 @@ function afterSummary(name, count) {
 // businesses AI actually recommends today, which drive competitor selection.
 async function runBeforeSimulation(input) {
   var n = normalizeSimInput(input);
-  var results = await runQuerySet(buildQueries(n.catClean, n.city, n.name), n.name);
+  var loc = await applyMarketLanguage(buildQueries(n.catClean, n.city, n.name), n.city, input.language);
+  var results = await runQuerySet(loc.queries, n.name);
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
     name:     n.name,
     category: n.catClean,
     before: {
+      language:      loc.language,
       results:       results,
       appearedCount: count,
       totalQueries:  3,
@@ -261,13 +356,15 @@ async function runAfterSimulation(input) {
   var n = normalizeSimInput(input);
   var differentiator = String(input.differentiator || '').trim();
   var trustSignal    = String(input.trustSignal    || '').trim();
-  var results = await runQuerySet(
-    buildAfterQueries(n.catClean, n.city, n.name, differentiator, trustSignal), n.name);
+  var locA = await applyMarketLanguage(
+    buildAfterQueries(n.catClean, n.city, n.name, differentiator, trustSignal), n.city, input.language);
+  var results = await runQuerySet(locA.queries, n.name);
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
     name:     n.name,
     category: n.catClean,
     after: {
+      language:      locA.language,
       results:       results,
       appearedCount: count,
       totalQueries:  3,
