@@ -114,7 +114,9 @@ async function generateBuyerQueries(n, templates) {
     + (n.description ? 'Description: ' + String(n.description).slice(0, 300) + '\n' : '')
     + '\nWrite the 3 questions a REAL potential buyer of this kind of offering would type into an AI assistant when looking for help \u2014 before knowing any vendor names.\n'
     + 'Rules:\n'
-    + '- Use the words buyers use for their PROBLEM, not the vendor\u2019s own category label if that label is coined or unusual. A buyer of an \u201cAI selection diagnostic\u201d actually asks about getting recommended by ChatGPT, not about \u201cselection diagnostics\u201d.\n'
+    + '- FIRST identify who PAYS for this offering and what outcome they want. Write every query from THAT person\u2019s seat.\n'
+    + '- Use the words buyers use for their PROBLEM, not the vendor\u2019s own category label if that label is coined or unusual.\n'
+    + '- DIRECTION CHECK: if the offering helps businesses get discovered, recommended, visible, or chosen (a marketing-side tool), the buyer is a business owner asking how to make THEIR OWN business get recommended \u2014 e.g. \u201cHow do I get my business recommended by ChatGPT?\u201d or \u201cWhy doesn\u2019t AI mention my company?\u201d \u2014 NOT someone shopping for software to choose things with. Do not invert the transaction.\n'
     + '- Query 1: discovery (looking for options, wants 3-5 recommendations). Query 2: comparison (evaluating the main players). Query 3: decision (wants one pick).\n'
     + '- Never mention ' + n.name + ' or any specific vendor.\n'
     + '- Natural buyer phrasing, one sentence each.\n'
