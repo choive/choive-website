@@ -422,6 +422,7 @@ exports.handler = async function (event) {
       var cdX = evidence['competitorDecision'];
       if (cdX) {
         finalResult['competitorDecision'] = {
+          selectionVersion: cdX.selectionVersion || null,
           realCompetitor:  cdX.realCompetitor  || null,
           aiRecommends:    cdX.aiRecommends    || null,
           globalBenchmark: cdX.globalBenchmark || null,
