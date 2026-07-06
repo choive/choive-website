@@ -58,6 +58,10 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
       return null;
     }
     var data = await res.json();
+    if (useSearch) {
+      var usedSearch = (data.content || []).some(function(b) { return b.type === 'server_tool_use' || b.type === 'web_search_tool_result'; });
+      console.log('[ai-simulation] web search ' + (usedSearch ? 'USED \u2014 ground truth is live-grounded' : 'GRANTED but model answered from memory without searching'));
+    }
     // Response interleaves text with server_tool_use / web_search_tool_result
     // blocks; only text blocks are the model's actual answer.
     return (data.content || []).filter(function(b) { return b.type === 'text'; })
@@ -228,26 +232,47 @@ async function generateBuyerQueries(n, templates) {
   }
 }
 
+// Some coined SaaS category words collide with an entirely different,
+// much older industry (a "diagnostic platform" is medical/health-tech to
+// most of the web and to a model's training data long before "AI selection
+// diagnostic" existed as a category \u2014 confirmed live: CHOIVE's own ground
+// truth returned healthcare-diagnostics companies). This disambiguates the
+// SYSTEM prompt only \u2014 the query text shown to the user in the UI is
+// untouched \u2014 so search and the model are steered to the right industry.
+var INDUSTRY_COLLISION_HINTS = [
+  [/\bdiagnostic/i, 'Note: in this context "diagnostic" refers to a business/marketing tool that assesses how AI systems recommend companies \u2014 NOT a medical or clinical diagnostic product. Only answer with business/marketing/SaaS tools; ignore any healthcare, medical device, or clinical diagnostics companies entirely.'],
+  [/\bassessment\b/i, 'Note: "assessment" here means a business/marketing evaluation tool, not a psychological, medical, or educational assessment.'],
+  [/\btherapy|\btreatment\b/i, 'Note: this is a business/software context, not a healthcare or clinical context.']
+];
+
+function collisionHint(catClean) {
+  for (var i = 0; i < INDUSTRY_COLLISION_HINTS.length; i++) {
+    if (INDUSTRY_COLLISION_HINTS[i][0].test(catClean)) return ' ' + INDUSTRY_COLLISION_HINTS[i][1];
+  }
+  return '';
+}
+
 function buildQueries(catClean, city, name) {
+  var hint = collisionHint(catClean);
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
   return [
     {
       label: 'Discovery query',
       intent: 'A potential buyer searching for options',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.',
+      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
       query: 'What are the best ' + catClean + ' options' + locationStr + '? I need 3-5 recommendations with a brief reason for each.'
     },
     {
       label: 'Comparison query',
       intent: 'A buyer evaluating alternatives',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.',
+      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
       query: 'I am comparing ' + catClean + ' options. Who are the main players and what makes each one stand out?'
     },
     {
       label: 'Direct recommendation',
       intent: 'A buyer ready to decide',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.',
+      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
       query: 'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your top pick and why.'
     }
   ];
