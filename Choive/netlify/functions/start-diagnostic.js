@@ -109,7 +109,7 @@ exports.handler = async function (event) {
     description: String(body['description'] || '').trim(),
     knownCompetitors: String(body['knownCompetitors'] || '').trim(),
     // Customer-market language override; '' = auto-detect from location
-    language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
+    language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
       ? String(body['language']).trim().toLowerCase() : ''
   };
 
