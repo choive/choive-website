@@ -107,6 +107,7 @@ exports.handler = async function (event) {
     const website          = safeStr(input.website);
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
+    const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
@@ -307,9 +308,12 @@ exports.handler = async function (event) {
       // today — not from whoever happens to SEO-rank in search evidence.
       // Saved inside evidence so it caches with the fingerprint: competitor
       // identity stays stable across runs within the cache window.
-      if (!evidence['aiSimulationBefore']) {
+      var cachedSimLang = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before
+        && evidence['aiSimulationBefore'].before.language;
+      if (!evidence['aiSimulationBefore'] || (languagePref && cachedSimLang !== languagePref)) {
         try {
           var simBefore = await runBeforeSimulation({
+            language:         languagePref || undefined,
             name:             name,
             category:         category,
             city:             city,
