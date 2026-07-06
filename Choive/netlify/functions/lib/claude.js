@@ -626,6 +626,7 @@ async function selectDominantCompetitor(evidence) {
       return s;
     }
     return {
+      selectionVersion: 3,
       realCompetitor:  cleanName(parsed.realCompetitor),
       aiRecommends:    cleanName(parsed.aiRecommends),
       globalBenchmark: cleanName(parsed.globalBenchmark),
