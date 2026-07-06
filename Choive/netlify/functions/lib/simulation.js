@@ -266,8 +266,8 @@ function buildQueries(catClean, city, name) {
     {
       label: 'Comparison query',
       intent: 'A buyer evaluating alternatives',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
-      query: 'I am comparing ' + catClean + ' options. Who are the main players and what makes each one stand out?'
+      system: 'You are a helpful AI assistant with live web search. Search for current rankings, comparison articles, and reviews before answering \u2014 do not rely on memory alone. Name the specific companies that recent authoritative sources (review sites, comparison guides, industry rankings) most consistently cite as leaders. Be specific and name real companies.' + hint,
+      query: 'Who are the leading, most frequently recommended ' + catClean + ' providers' + locationStr + ' according to current rankings and reviews? Name the specific companies.'
     },
     {
       label: 'Direct recommendation',
