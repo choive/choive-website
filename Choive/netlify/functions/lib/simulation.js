@@ -103,6 +103,49 @@ function businessMentioned(response, name) {
   return false;
 }
 
+async function generateBuyerQueries(n, templates) {
+  // Template queries echo the vendor's category label — which breaks for
+  // category creators: "best AI selection diagnostic" reads as HR tech to the
+  // answering model (the Pymetrics bug). Real buyers ask about their PROBLEM.
+  var prompt = 'A business:\n'
+    + 'Name: ' + n.name + '\n'
+    + 'Category: ' + n.catClean + '\n'
+    + (n.city ? 'Market: ' + n.city + '\n' : '')
+    + (n.description ? 'Description: ' + String(n.description).slice(0, 300) + '\n' : '')
+    + '\nWrite the 3 questions a REAL potential buyer of this kind of offering would type into an AI assistant when looking for help \u2014 before knowing any vendor names.\n'
+    + 'Rules:\n'
+    + '- Use the words buyers use for their PROBLEM, not the vendor\u2019s own category label if that label is coined or unusual. A buyer of an \u201cAI selection diagnostic\u201d actually asks about getting recommended by ChatGPT, not about \u201cselection diagnostics\u201d.\n'
+    + '- Query 1: discovery (looking for options, wants 3-5 recommendations). Query 2: comparison (evaluating the main players). Query 3: decision (wants one pick).\n'
+    + '- Never mention ' + n.name + ' or any specific vendor.\n'
+    + '- Natural buyer phrasing, one sentence each.\n'
+    + 'Respond ONLY with a JSON array of exactly 3 strings. No markdown.';
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 25000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return templates;
+    var data = await res.json();
+    var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
+    var arr = JSON.parse(text);
+    if (!Array.isArray(arr) || arr.length !== 3) return templates;
+    var nameLc = n.name.toLowerCase();
+    if (arr.some(function(q) { return String(q).toLowerCase().indexOf(nameLc) !== -1; })) return templates;
+    return templates.map(function(t, i) {
+      return { label: t.label, intent: t.intent, system: t.system, query: String(arr[i]).trim() };
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[simulation] buyer-query generation failed, using templates:', err.message);
+    return templates;
+  }
+}
+
 function buildQueries(catClean, city, name) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
@@ -302,6 +345,7 @@ function normalizeSimInput(input) {
   var category         = String(input.category         || '').trim();
   var city             = String(input.city             || '').trim();
   var inferredCategory = String(input.inferredCategory || category).trim();
+  var description      = String(input.description      || '').trim();
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -313,7 +357,7 @@ function normalizeSimInput(input) {
     .replace(/\s+platform(s)?$/i, ' platform').replace(/\s+direct-to-consumer$/i, '')
     .trim();
 
-  return { name: name, category: category, city: city, catClean: catClean };
+  return { name: name, category: category, city: city, catClean: catClean, description: description };
 }
 
 function beforeSummary(name, count) {
@@ -337,7 +381,8 @@ function afterSummary(name, count) {
 // businesses AI actually recommends today, which drive competitor selection.
 async function runBeforeSimulation(input) {
   var n = normalizeSimInput(input);
-  var loc = await applyMarketLanguage(buildQueries(n.catClean, n.city, n.name), n.city, input.language);
+  var buyerQueries = await generateBuyerQueries(n, buildQueries(n.catClean, n.city, n.name));
+  var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name);
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
