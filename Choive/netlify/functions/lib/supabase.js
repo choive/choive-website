@@ -133,10 +133,13 @@ async function getPreviousCompetitor(fingerprint) {
     console.log('[continuity] previous competitor predates selection v3 — discarded, selecting fresh');
     return null;
   }
-  // Check competitors array first
-  var competitors = Array.isArray(result.competitors) ? result.competitors : [];
-  if (competitors.length > 0 && competitors[0] && competitors[0].name) {
-    return String(competitors[0].name).trim() || null;
+  // Source continuity from the DEDICATED STAGE'S OWN verified decision
+  // (cd.realCompetitor), never from competitors[0].name generically \u2014 that
+  // array can hold the raw scoring model's unchallenged guess whenever the
+  // dedicated stage abstained (returned null), and trusting it let an
+  // unverified name get v3-stamped and poison the very next run's lineage.
+  if (cd.realCompetitor && String(cd.realCompetitor).trim()) {
+    return String(cd.realCompetitor).trim();
   }
   // Fallback: check displacement object
   var disp = (result.displacement && typeof result.displacement === 'object') ? result.displacement : {};
