@@ -412,6 +412,19 @@ exports.handler = async function (event) {
     } catch (err) {
       console.warn('[' + jobId + '] Competitor enforcement failed:', err.message);
     }
+    // Expose the selection decision so the result page can label each name by
+    // its true source — the AI-displacement banner may only show aiRecommends.
+    try {
+      var cdX = evidence['competitorDecision'];
+      if (cdX) {
+        finalResult['competitorDecision'] = {
+          realCompetitor:  cdX.realCompetitor  || null,
+          aiRecommends:    cdX.aiRecommends    || null,
+          globalBenchmark: cdX.globalBenchmark || null,
+          categoryUnowned: cdX.categoryUnowned === true
+        };
+      }
+    } catch (e) {}
     // Merge evidence-level fields not returned by Claude into final result
     if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
       finalResult['socialSignals'] = evidence['socialSignals'];
