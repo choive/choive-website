@@ -1672,6 +1672,8 @@ h1.hero-kicker { margin-top:0; }
 }
 .diag-input::placeholder { color: var(--ghost-3); }
 .diag-input:focus { background: var(--void-3); }
+select.diag-input { appearance:none; -webkit-appearance:none; cursor:pointer; }
+select.diag-input option { background:var(--void); color:var(--ghost); }
 .diag-btn {
   width: 100%;
   background: var(--ac);
@@ -2191,6 +2193,23 @@ h1.hero-kicker { margin-top:0; }
         <input id="bW" type="text" class="diag-input" placeholder="Your website  (e.g. yourcompany.com)" autocomplete="off"/>
         <input id="bD" type="text" class="diag-input" placeholder="One line about you  (optional)" autocomplete="off"/>
         <input id="bComp" type="text" class="diag-input" placeholder="Known competitors  (optional)" autocomplete="off"/>
+        <select id="bLang" class="diag-input" aria-label="Language your customers search in">
+          <option value="" selected>Customer language — Auto (recommended)</option>
+          <option value="en">English</option>
+          <option value="de">German — Deutsch</option>
+          <option value="es">Spanish — Español</option>
+          <option value="fr">French — Français</option>
+          <option value="it">Italian — Italiano</option>
+          <option value="nl">Dutch — Nederlands</option>
+          <option value="pt">Portuguese — Português</option>
+          <option value="pl">Polish — Polski</option>
+          <option value="tr">Turkish — Türkçe</option>
+          <option value="sv">Swedish — Svenska</option>
+          <option value="da">Danish — Dansk</option>
+          <option value="ja">Japanese — 日本語</option>
+          <option value="ko">Korean — 한국어</option>
+          <option value="zh">Chinese — 中文</option>
+        </select>
       </div>
       <button class="diag-btn" id="diagBtn" onclick="runDiagnostic()">
         Find out what AI says about you →
@@ -2482,7 +2501,8 @@ function runDiagnostic() {
     website = 'https://' + website;
   }
 
-  bizData = { name, category, city, website, knownCompetitors, description };
+  const language = document.getElementById('bLang') ? document.getElementById('bLang').value : '';
+  bizData = { name, category, city, website, knownCompetitors, description, language };
 
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').classList.add('active');
@@ -2513,7 +2533,8 @@ async function startDiagnostic(biz) {
         city:             biz.city,
         website:          biz.website          || '',
         description:      biz.description      || '',
-        knownCompetitors: biz.knownCompetitors || ''
+        knownCompetitors: biz.knownCompetitors || '',
+        language:         biz.language         || ''
       })
     });
 
@@ -3184,7 +3205,7 @@ function showResults(r, jobId) {
   var paidSections = isPaid ? (function() {
     return '<div class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Business Intelligence</div>'
