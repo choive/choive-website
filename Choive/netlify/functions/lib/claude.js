@@ -197,6 +197,7 @@ function buildPrompt(evidence) {
         + (evidence.competitorDecision.globalBenchmark && evidence.competitorDecision.globalBenchmark !== evidence.competitorDecision.realCompetitor
             ? ' competitors[2] MAY be: ' + evidence.competitorDecision.globalBenchmark + ' \u2014 the international category leader; label it explicitly as a global benchmark that does NOT serve this market: a playbook to study, not a rival taking these customers.'
             : '')
+        + ' If the owner named competitors in their input and none of them appears in the competitors array, one slot (preferring [2] over the global benchmark) MUST address the most significant owner-named competitor honestly: state plainly whether the AI SELECTION GROUND TRUTH mentions them, and how their confirmed signals compare to the subject\u2019s. The owner asked about this business \u2014 the report must answer.'
         + (evidence.competitorDecision.categoryUnowned
             ? ' The ground truth names no true same-category player \u2014 the category answer is UNOWNED; state this as an opportunity in the competitor narrative.'
             : '')
