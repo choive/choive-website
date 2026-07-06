@@ -48,6 +48,7 @@ async function inferCategory(name, category, websiteText, searchText) {
     + 'Be specific. Examples:\n'
     + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
     + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
+    + 'CATEGORY FIDELITY \u2014 CRITICAL: when the business explicitly names its own category (in its title, H1, or self-description), USE ITS EXACT WORDS as the core of the category. Never substitute an adjacent industry\u2019s vocabulary: a business calling itself an "AI selection diagnostic" is NOT an "AI evaluation and benchmarking platform" \u2014 those are different markets with different buyers. Paraphrasing the category into a neighboring industry poisons every downstream measurement.\n'
     + 'Return only raw JSON. No markdown. No explanation.';
   try {
     var response = await fetch('https://api.anthropic.com/v1/messages', {
