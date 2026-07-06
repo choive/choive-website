@@ -501,8 +501,30 @@ exports.handler = async function (event) {
     try {
       var cdV = evidence['competitorDecision'];
       if (cdV) {
+        // An unowned category can never simultaneously carry a displacer name.
+        if (cdV.categoryUnowned === true && cdV.aiRecommends) {
+          console.warn('[' + jobId + '] [competitor-validation] categoryUnowned yet aiRecommends "' + cdV.aiRecommends + '" — contradiction; clearing the banner name');
+          cdV.aiRecommends = null;
+          if (finalResult['competitorDecision']) finalResult['competitorDecision'].aiRecommends = null;
+        }
+        // A platform in the AI-answer slot means AI named a venue, not a rival:
+        // the truthful reading is that the category answer is UNOWNED.
+        if (cdV.aiRecommends && isPlatformName(cdV.aiRecommends)) {
+          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is a platform — a venue, not a rival; treating the category as unowned');
+          cdV.aiRecommends = null;
+          cdV.categoryUnowned = true;
+          if (finalResult['competitorDecision']) {
+            finalResult['competitorDecision'].aiRecommends = null;
+            finalResult['competitorDecision'].categoryUnowned = true;
+          }
+        }
         var ownerFirst = String(knownCompetitors || '').split(',')[0].trim();
         var declaredFirst = (evidence['declaredCompetitors'] || [])[0] || '';
+        if (cdV.aiRecommends && isPlatformName(cdV.aiRecommends)) {
+          console.warn('[' + jobId + '] [competitor-validation] banner name "' + cdV.aiRecommends + '" is a platform \u2014 nulled; category treated as unowned');
+          cdV.aiRecommends = null;
+          cdV.categoryUnowned = true;
+        }
         if (cdV.realCompetitor && isPlatformName(cdV.realCompetitor)) {
           var replacement = (ownerFirst && !isPlatformName(ownerFirst) && ownerFirst) || (declaredFirst && !isPlatformName(declaredFirst) && declaredFirst) || null;
           console.warn('[' + jobId + '] [competitor-validation] "' + cdV.realCompetitor + '" is a platform, not a rival — replaced with ' + (replacement || 'null'));
@@ -516,6 +538,14 @@ exports.handler = async function (event) {
               finalResult['competitors'].sort(function(a, b) { return (normV(b.name) === normV(replacement)) - (normV(a.name) === normV(replacement)); });
             }
           }
+        }
+      }
+      // Platform cards never render as competitors, whichever slot wrote them.
+      if (Array.isArray(finalResult['competitors'])) {
+        var beforeN = finalResult['competitors'].length;
+        finalResult['competitors'] = finalResult['competitors'].filter(function(cc) { return !(cc && isPlatformName(cc.name)); });
+        if (finalResult['competitors'].length !== beforeN) {
+          console.warn('[' + jobId + '] [competitor-validation] purged ' + (beforeN - finalResult['competitors'].length) + ' platform card(s) from the competitor list');
         }
       }
     } catch (e) {
