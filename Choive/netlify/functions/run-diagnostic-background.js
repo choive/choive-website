@@ -114,6 +114,42 @@ function categoryFaithful(ownerCategory, inferred) {
   return false;
 }
 
+// ── DETERMINISTIC COMPETITOR LAYER ─────────────────────────────────
+// Pure code. The model may reason however it likes; these mechanisms make the
+// final head-to-head slot correct regardless.
+
+// Marketplaces, hubs, and infrastructure are channels, never rivals.
+var PLATFORM_BLACKLIST_RE = /^(g2|g2\.com|trustpilot|capterra|clutch|yelp|tripadvisor|google|google maps|bing|amazon|ebay|etsy|facebook|meta|instagram|linkedin|x|twitter|youtube|tiktok|reddit|quora|wikipedia|hugging\s?face|github|gitlab|product\s?hunt|app\s?store|play\s?store|shopify app store|chatgpt|openai|claude|anthropic|gemini|perplexity)$/i;
+
+function isPlatformName(n) {
+  return PLATFORM_BLACKLIST_RE.test(String(n || '').trim().toLowerCase().replace(/\s+/g, ' '));
+}
+
+// A business that publishes "X vs Y", "/compare/y", or "alternative to Y" on
+// its own site has DECLARED its rival. Extracted mechanically from site text.
+function extractDeclaredCompetitors(siteText, subjectName) {
+  var text = String(siteText || '');
+  var found = [];
+  var seen = {};
+  var subject = String(subjectName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  var push = function(raw) {
+    var n = String(raw || '').trim().replace(/[.,;:!?)\]]+$/, '');
+    if (!n || n.length < 2 || n.length > 40) return;
+    var key = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key || key === subject || seen[key] || isPlatformName(n)) return;
+    seen[key] = 1;
+    found.push(n);
+  };
+  var m;
+  var reVs = /\bvs\.?\s+([A-Z][A-Za-z0-9&-]{1,30}(?:\s+[A-Z][A-Za-z0-9&-]{1,20})?)/g;
+  while ((m = reVs.exec(text)) !== null) push(m[1]);
+  var reCompare = /\/compare\/([a-z0-9-]{2,30})/gi;
+  while ((m = reCompare.exec(text)) !== null) push(m[1].replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
+  var reAlt = /\balternative(?:s)?\s+to\s+([A-Z][A-Za-z0-9&-]{1,30})/g;
+  while ((m = reAlt.exec(text)) !== null) push(m[1]);
+  return found.slice(0, 3);
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -380,6 +416,23 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Previous competitor lookup failed:', err.message);
     }
 
+    // Declared rivals from the subject's own site → owner-named priority.
+    try {
+      var declared = extractDeclaredCompetitors(evidence['websiteText'], name);
+      if (declared.length) {
+        console.log('[' + jobId + '] Website-declared competitors: ' + declared.join(', '));
+        var kc = String(evidence['knownCompetitors'] || knownCompetitors || '').trim();
+        var kcLc = kc.toLowerCase();
+        var additions = declared.filter(function(d) { return kcLc.indexOf(d.toLowerCase()) === -1; });
+        if (additions.length) {
+          evidence['knownCompetitors'] = (kc ? kc + ', ' : '') + additions.join(', ');
+        }
+        evidence['declaredCompetitors'] = declared;
+      }
+    } catch (e) {
+      console.warn('[' + jobId + '] Declared-competitor extraction failed:', e.message);
+    }
+
     // ── STAGE 2: SCORING ──────────────────────────────────────────────────────
     await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
     let rawOutput;
@@ -442,6 +495,31 @@ exports.handler = async function (event) {
       }
     } catch (err) {
       console.warn('[' + jobId + '] Competitor enforcement failed:', err.message);
+    }
+    // DETERMINISTIC VALIDATION: the head-to-head slot may never hold a
+    // platform. Rejected or empty → owner-typed → website-declared → null.
+    try {
+      var cdV = evidence['competitorDecision'];
+      if (cdV) {
+        var ownerFirst = String(knownCompetitors || '').split(',')[0].trim();
+        var declaredFirst = (evidence['declaredCompetitors'] || [])[0] || '';
+        if (cdV.realCompetitor && isPlatformName(cdV.realCompetitor)) {
+          var replacement = (ownerFirst && !isPlatformName(ownerFirst) && ownerFirst) || (declaredFirst && !isPlatformName(declaredFirst) && declaredFirst) || null;
+          console.warn('[' + jobId + '] [competitor-validation] "' + cdV.realCompetitor + '" is a platform, not a rival — replaced with ' + (replacement || 'null'));
+          cdV.realCompetitor = replacement;
+          if (Array.isArray(finalResult['competitors']) && replacement) {
+            var normV = function(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+            var already = finalResult['competitors'].some(function(cc) { return normV(cc && cc.name) === normV(replacement); });
+            if (!already) {
+              finalResult['competitors'].unshift({ name: replacement, queryContext: 'head-to-head', why: 'Named by the business itself as its direct comparison.' });
+            } else {
+              finalResult['competitors'].sort(function(a, b) { return (normV(b.name) === normV(replacement)) - (normV(a.name) === normV(replacement)); });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[' + jobId + '] Competitor validation failed:', e.message);
     }
     // Expose the selection decision so the result page can label each name by
     // its true source — the AI-displacement banner may only show aiRecommends.
