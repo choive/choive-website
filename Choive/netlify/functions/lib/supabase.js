@@ -124,6 +124,15 @@ async function getPreviousCompetitor(fingerprint) {
   }
   if (!data || !data.result) return null;
   var result = data.result;
+  // VERSION GATE: only a decision made by the market-test-era selection engine
+  // (selectionVersion >= 3) may seed continuity. Older crowns — chosen before
+  // the market/confidence rules existed — are poisoned priors and are dropped
+  // mechanically, so the next run selects fresh under the current rules.
+  var cd = result.competitorDecision || {};
+  if (!cd.selectionVersion || cd.selectionVersion < 3) {
+    console.log('[continuity] previous competitor predates selection v3 — discarded, selecting fresh');
+    return null;
+  }
   // Check competitors array first
   var competitors = Array.isArray(result.competitors) ? result.competitors : [];
   if (competitors.length > 0 && competitors[0] && competitors[0].name) {
