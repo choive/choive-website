@@ -237,9 +237,12 @@ var MARKET_LANGS = [
   ['da', /\b(denmark|danmark|copenhagen|k[o\u00f8]benhavn)\b/],
   ['ja', /\b(japan|tokyo|osaka|kyoto)\b/],
   ['ko', /\b(korea|seoul|busan)\b/],
-  ['zh', /\b(china|beijing|shanghai|shenzhen|taiwan|taipei)\b/]
+  ['zh', /\b(china|beijing|shanghai|shenzhen|taiwan|taipei)\b/],
+  ['ar', /\b(saudi|riyadh|jeddah|egypt|cairo|jordan|amman|kuwait|qatar|doha|bahrain|oman|muscat|morocco|casablanca|rabat|tunisia|tunis|algeria|iraq|baghdad|lebanon|beirut)\b/],
+  ['ru', /\b(russia|moscow|st\.? petersburg|kazakhstan|almaty|belarus|minsk)\b/],
+  ['id', /\b(indonesia|jakarta|surabaya|bali)\b/]
 ];
-var LANG_NAMES = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese' };
+var LANG_NAMES = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' };
 
 function detectMarketLanguage(city) {
   var c = String(city || '').toLowerCase();
