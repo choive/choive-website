@@ -1672,7 +1672,14 @@ h1.hero-kicker { margin-top:0; }
 }
 .diag-input::placeholder { color: var(--ghost-3); }
 .diag-input:focus { background: var(--void-3); }
-select.diag-input { appearance:none; -webkit-appearance:none; cursor:pointer; }
+select.diag-input {
+  appearance:none; -webkit-appearance:none; cursor:pointer;
+  grid-column: 1 / -1; /* full-width row — no orphan cell beside it */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23C9A86A' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  padding-right: 44px;
+}
 select.diag-input option { background:var(--void); color:var(--ghost); }
 .diag-btn {
   width: 100%;
@@ -2209,6 +2216,10 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
           <option value="ja">Japanese — 日本語</option>
           <option value="ko">Korean — 한국어</option>
           <option value="zh">Chinese — 中文</option>
+          <option value="ar">Arabic — العربية</option>
+          <option value="ru">Russian — Русский</option>
+          <option value="hi">Hindi — हिन्दी</option>
+          <option value="id">Indonesian — Bahasa Indonesia</option>
         </select>
       </div>
       <button class="diag-btn" id="diagBtn" onclick="runDiagnostic()">
@@ -2874,6 +2885,10 @@ function buildPillarCards(r) {
 }
 
 function showResults(r, jobId) {
+  // The diagnosed business's display name. bizData is populated on both paths:
+  // fresh runs set it in runDiagnostic; shared links hydrate it from data.input.
+  // Without this local, `name` silently resolves to the empty window.name global.
+  var name = (typeof bizData !== 'undefined' && bizData && bizData.name) ? String(bizData.name).trim() : '';
   document.getElementById('dS').classList.remove('active');
   const zone = document.getElementById('dR');
   zone.style.display = 'block';
@@ -2996,8 +3011,10 @@ function showResults(r, jobId) {
   }
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:16px;">' + esc(name) + '</div>';
+      + (name
+        ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:16px;">' + esc(name) + '</div>'
+        : '');
   var competitorBanner;
   if (aiComp) {
     competitorBanner = bannerHead
@@ -3025,7 +3042,7 @@ function showResults(r, jobId) {
 
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
     + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
-    + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--tp);margin:2px 0 8px;">' + esc(name) + '</div>'
+    + (name ? '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--tp);margin:2px 0 8px;">' + esc(name) + '</div>' : '')
     + inferredCat
     + '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px;">'
     + '<div class="mono-score-num" id="scoreNum">0</div>'
@@ -3205,7 +3222,7 @@ function showResults(r, jobId) {
   var paidSections = isPaid ? (function() {
     return '<div class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Business Intelligence</div>'
