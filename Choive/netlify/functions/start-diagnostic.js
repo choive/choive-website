@@ -113,10 +113,46 @@ exports.handler = async function (event) {
       ? String(body['language']).trim().toLowerCase() : ''
   };
 
+  // ── DURABLE RATE CAPS (Supabase-backed; the in-memory limiter above only
+  // guards a single warm instance). Per-IP daily cap + global daily ceiling.
+  // Fails open, bypassed in dev mode, IPs stored only as salted hashes.
+  var ipHash = null;
+  try {
+    var rawIp = getClientIP(event);
+    if (rawIp && rawIp !== 'unknown') {
+      ipHash = crypto.createHash('sha256')
+        .update(rawIp + (process.env.RATE_SALT || 'choive-rate'))
+        .digest('hex');
+    }
+  } catch (e) {}
+
+  if (process.env.CHOIVE_DEV_MODE !== 'true') {
+    var ipCap     = parseInt(process.env.RATE_IP_CAP     || '5', 10);
+    var globalCap = parseInt(process.env.RATE_GLOBAL_CAP || '300', 10);
+    var globalCount = await supabase.countDiagnosticsToday(null);
+    if (globalCount >= globalCap) {
+      return {
+        statusCode: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'CHOIVE is at full capacity today — the diagnostic queue reopens tomorrow. Email hello@choive.com if it\u2019s urgent.' })
+      };
+    }
+    if (ipHash) {
+      var ipCount = await supabase.countDiagnosticsToday(ipHash);
+      if (ipCount >= ipCap) {
+        return {
+          statusCode: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Daily limit reached — ' + ipCap + ' diagnostics per day per connection. Try again tomorrow, or email hello@choive.com if you need more.' })
+        };
+      }
+    }
+  }
+
   var jobId = crypto.randomUUID();
 
   try {
-    await supabase.createDiagnostic(jobId, input);
+    await supabase.createDiagnostic(jobId, input, ipHash);
   } catch (err) {
     console.error('start-diagnostic: Supabase create failed:', err.message);
     return {
