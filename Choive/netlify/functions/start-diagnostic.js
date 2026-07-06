@@ -107,7 +107,10 @@ exports.handler = async function (event) {
     city: String(body['city'] || '').trim(),
     website: String(body['website'] || '').trim(),
     description: String(body['description'] || '').trim(),
-    knownCompetitors: String(body['knownCompetitors'] || '').trim()
+    knownCompetitors: String(body['knownCompetitors'] || '').trim(),
+    // Customer-market language override; '' = auto-detect from location
+    language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
+      ? String(body['language']).trim().toLowerCase() : ''
   };
 
   var jobId = crypto.randomUUID();
