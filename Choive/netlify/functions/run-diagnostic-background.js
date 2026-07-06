@@ -107,7 +107,7 @@ exports.handler = async function (event) {
     const website          = safeStr(input.website);
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
-    const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
+    const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
