@@ -92,6 +92,28 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
   return delta;
 }
 
+// Category fidelity guard: an inferred category that shares no distinctive
+// word with the owner's own words has drifted into a different industry —
+// the CHOIVE→"AI evaluation platform" bug. Owner's words win on zero overlap.
+function categoryFaithful(ownerCategory, inferred) {
+  var stop = { the:1, and:1, for:1, with:1, from:1, into:1, that:1, this:1, b2b:1, b2c:1, online:1, platform:1, service:1, services:1, company:1, business:1, tool:1, agency:1, provider:1, global:1 };
+  var toks = function(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+      .filter(function(w) { return w.length > 2 && !stop[w]; });
+  };
+  var own = toks(ownerCategory);
+  if (!own.length) return true;
+  var inf = {};
+  toks(inferred).forEach(function(w) { inf[w] = 1; });
+  for (var i = 0; i < own.length; i++) {
+    var w = own[i];
+    if (inf[w]) return true;
+    // simple stem tolerance: diagnostic/diagnostics, roaster/roasters
+    for (var k in inf) { if (k.indexOf(w) === 0 || w.indexOf(k) === 0) return true; }
+  }
+  return false;
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -277,6 +299,10 @@ exports.handler = async function (event) {
       var inferredCat = category;
       try {
         var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
+        if (catResult && !categoryFaithful(category, catResult)) {
+          console.warn('[' + jobId + '] Inferred category "' + catResult + '" shares no distinctive word with owner category "' + category + '" — industry drift, keeping owner\u2019s words');
+          catResult = category;
+        }
         if (catResult) {
           inferredCat = catResult;
           if (catResult !== category) {
