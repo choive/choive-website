@@ -12,11 +12,29 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const TIMEOUT_MS = 25000;
+const SEARCH_TIMEOUT_MS = 45000; // web search round-trips take longer
 
-async function runQuery(systemPrompt, userQuery) {
+// useSearch=true grants the model real web search \u2014 matching what a real
+// user gets from ChatGPT/Perplexity/Claude.ai, all of which browse by default.
+// A no-search completion tests the model's static training memory, which is
+// structurally blind to any category that consolidated its players in the
+// last few months (exactly CHOIVE's own category). Ground-truth ("before")
+// queries MUST search; hypothetical "after" projections stay search-free.
+async function runQuery(systemPrompt, userQuery, useSearch) {
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+  var timeoutMs = useSearch ? SEARCH_TIMEOUT_MS : TIMEOUT_MS;
+  var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
   try {
+    var body = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: useSearch ? 900 : 400,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userQuery }]
+    };
+    if (useSearch) {
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+    }
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -24,22 +42,24 @@ async function runQuery(systemPrompt, userQuery) {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 400,
-        temperature: 0,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userQuery }]
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal
     });
     clearTimeout(timer);
     if (!res.ok) {
       var errText = await res.text().catch(function() { return ''; });
       console.warn('[ai-simulation] API returned', res.status, errText.slice(0, 200));
+      // Search tool unavailable/rejected \u2014 fail soft to a plain completion
+      // rather than losing the query entirely.
+      if (useSearch) {
+        console.warn('[ai-simulation] retrying without web_search');
+        return runQuery(systemPrompt, userQuery, false);
+      }
       return null;
     }
     var data = await res.json();
+    // Response interleaves text with server_tool_use / web_search_tool_result
+    // blocks; only text blocks are the model's actual answer.
     return (data.content || []).filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; }).join('').trim();
   } catch (err) {
@@ -303,9 +323,9 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   ];
 }
 
-async function runQuerySet(queries, name) {
+async function runQuerySet(queries, name, useSearch) {
   var settled = await Promise.allSettled(
-    queries.map(function(q) { return runQuery(q.system, q.query); })
+    queries.map(function(q) { return runQuery(q.system, q.query, !!useSearch); })
   );
   return queries.map(function(q, i) {
     var response = settled[i].status === 'fulfilled' ? settled[i].value : null;
@@ -445,7 +465,7 @@ async function runBeforeSimulation(input) {
   var n = normalizeSimInput(input);
   var buyerQueries = await generateBuyerQueries(n, buildQueries(n.catClean, n.city, n.name));
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
-  var results = await runQuerySet(loc.queries, n.name);
+  var results = await runQuerySet(loc.queries, n.name, true);
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
     name:     n.name,
