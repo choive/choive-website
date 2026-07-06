@@ -3000,92 +3000,57 @@ function showResults(r, jobId) {
   ? topCompQuery
   : 'best ' + (bizData.category || 'businesses in your category');
 
-  // Claim-accurate banner: the "AI is recommending instead" headline may ONLY
-  // carry a name sourced from the AI ground truth. Owner-named or market rivals
-  // are honestly framed as head-to-head — never dressed in AI’s voice.
+  // SINGLE-TIER banner: the head-to-head competitor IS whoever AI is
+  // recommending instead of you \u2014 sourced from the VERIFIED decision
+  // (cd.realCompetitor: continuity-protected, market-tested, category-
+  // faithful), never from a single run's raw one-shot ground truth pick.
+  // A narrow query can surface a noisy, less-prominent name (GreenOx from
+  // one "fast delivery" phrasing); the verified decision is what survives
+  // across runs and real-world checks (Otto Gourmet). One name, one source
+  // of truth \u2014 never a second name shown underneath.
   var cd = r.competitorDecision || {};
-  var aiComp = cd.aiRecommends || null;
-  if (!aiComp && Array.isArray(r.competitors)) {
-    var gtEntry = r.competitors.filter(function(c){ return c && c.queryContext === 'ai-ground-truth'; })[0];
-    if (gtEntry) aiComp = gtEntry.name;
-  }
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
-  // Marketplaces in AI answers mean deflection, not displacement — nobody
-  // owns the answer. Mirror of the backend platform blacklist.
-  var AI_PLATFORM_RE = /^(g2|trustpilot|capterra|clutch|yelp|tripadvisor|google|amazon|facebook|linkedin|youtube|reddit|quora|wikipedia|product\s?hunt|app\s?store)$/i;
-  var aiCompIsPlatform = aiComp && AI_PLATFORM_RE.test(String(aiComp).trim());
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
         ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:16px;">' + esc(name) + '</div>'
         : '');
   var competitorBanner;
-  if (aiComp && aiCompIsPlatform) {
-    competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI deflects buyers to a marketplace</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:30px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">No provider owns this answer yet.</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Asked <em>"' + esc(simQuery) + '"</em>, AI pointed to ' + esc(aiComp) + ' — a directory, not a recommendation. The answer is unowned. First mover takes it.</div>'
-      + (topComp && topComp !== aiComp
-        ? '<div style="border-top:1px solid rgba(245,242,238,0.12);margin-top:18px;padding-top:16px;">'
-          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:6px;">Your head-to-head competitor</div>'
-          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-          + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">AI names neither of you — whoever fixes their signals first takes the answer. Full comparison below.</div>'
-          + '</div>'
-        : '')
-      + '</div>';
-  } else if (aiComp) {
+  if (topComp) {
+    // Transcript-checked honesty: only claim "named in real AI answers" if
+    // THIS run's transcripts actually contain the verified name. Otherwise
+    // state plainly that they weren't named in these specific answers \u2014
+    // the verified identity still stands, the claim about these 3 queries
+    // stays true either way.
+    var named = null;
+    try {
+      var res = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results) || [];
+      if (res.length) {
+        var norm = function(s) {
+          s = String(s || '').toLowerCase();
+          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+          return s.replace(/[^a-z0-9]+/g, ' ').trim();
+        };
+        var target = norm(topComp).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+        named = res.some(function(q) {
+          var body = ' ' + norm(q.response) + ' ';
+          return target && (body.indexOf(' ' + target + ' ') !== -1 || body.replace(/ /g, '').indexOf(target.replace(/ /g, '')) !== -1);
+        });
+      }
+    } catch (e) { named = null; }
+    var line = named === true
+      ? 'Named in real AI answers to: <em>"' + esc(simQuery) + '"</em>'
+      : 'On queries like <em>"' + esc(simQuery) + '"</em>, AI didn\'t surface them in this exact sample \u2014 but this is your verified head-to-head across the market.';
     competitorBanner = bannerHead
       + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">AI is currently recommending instead of you</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(aiComp) + '</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named in real AI answers to: <em>"' + esc(simQuery) + '"</em></div>'
-      + (topComp && topComp !== aiComp
-        ? (function() {
-            // Honesty gate: only claim the rival's absence if the actual
-            // transcripts were checked. Three states, each claim-accurate.
-            var rivalNamed = null; // unknown until transcripts prove otherwise
-            try {
-              var res = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results) || [];
-              if (res.length) {
-                var norm = function(s) {
-                  s = String(s || '').toLowerCase();
-                  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-                  return s.replace(/[^a-z0-9]+/g, ' ').trim();
-                };
-                var target = norm(topComp).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
-                rivalNamed = res.some(function(q) {
-                  var body = ' ' + norm(q.response) + ' ';
-                  return target && (body.indexOf(' ' + target + ' ') !== -1 || body.replace(/ /g, '').indexOf(target.replace(/ /g, '')) !== -1);
-                });
-              }
-            } catch (e) { rivalNamed = null; }
-            var line = rivalNamed === true
-              ? 'AI mentions them too — but the recommendation is currently going to ' + esc(aiComp) + '. Full comparison below.'
-              : rivalNamed === false
-                ? 'AI did not name them in these answers either — the recommendation your rivalry is fighting for is currently going to ' + esc(aiComp) + '. Full comparison below.'
-                : 'The recommendation your rivalry is fighting for is currently going to ' + esc(aiComp) + '. Full comparison below.';
-            return '<div style="border-top:1px solid rgba(245,242,238,0.12);margin-top:18px;padding-top:16px;">'
-              + '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:6px;">Your head-to-head competitor</div>'
-              + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-              + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">' + line + '</div>'
-              + '</div>';
-          })()
-        : '')
-      + '</div>';
-  } else if (topComp && cd.categoryUnowned) {
-    competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your head-to-head competitor</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:14px;">' + esc(topComp) + '</div>'
-      + '<div style="border-top:1px solid rgba(245,242,238,0.12);padding-top:14px;">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">But AI recommends neither of you — yet</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">On queries like <em>"' + esc(simQuery) + '"</em>, AI names no one in this category. The answer is unowned — first mover takes it.</div>'
-      + '</div>'
-      + '</div>';
-  } else if (topComp) {
-    // legacy results without a decision object — honest generic framing
-    competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">Your strongest competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">On queries like: <em>"' + esc(displayQuery) + '"</em></div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">' + line + '</div>'
+      + '</div>';
+  } else if (cd.categoryUnowned) {
+    competitorBanner = bannerHead
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI recommends no one in this category yet</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:30px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">The answer is unowned.</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">On queries like <em>"' + esc(simQuery) + '"</em>, AI names no one in this category. First mover takes it.</div>'
       + '</div>';
   } else {
     competitorBanner = '';
