@@ -20,7 +20,7 @@ function buildFingerprint(input) {
   var raw      = name + '|' + category + '|' + city;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
-async function createDiagnostic(jobId, input) {
+async function createDiagnostic(jobId, input, ipHash) {
   const supabase = getClient();
   const fingerprint = buildFingerprint(input);
   const { error } = await supabase
@@ -29,6 +29,7 @@ async function createDiagnostic(jobId, input) {
       job_id:               jobId,
       status:               'queued',
       stage:                null,
+      ip_hash:              ipHash || null,
       input,
       evidence:             null,
       result:               null,
@@ -235,8 +236,30 @@ async function getPreviousResult(fingerprint) {
   return data || null;
 }
 
+// Daily diagnostic counts for durable rate limiting. ipHash null = global.
+// Fails open: on any error returns 0 so an outage never blocks real users.
+async function countDiagnosticsToday(ipHash) {
+  try {
+    const supabase = getClient();
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    let q = supabase
+      .from('diagnostics')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', dayStart.toISOString());
+    if (ipHash) q = q.eq('ip_hash', ipHash);
+    const { count, error } = await q;
+    if (error) { console.warn('countDiagnosticsToday failed:', error.message); return 0; }
+    return count || 0;
+  } catch (err) {
+    console.warn('countDiagnosticsToday error:', err.message);
+    return 0;
+  }
+}
+
 module.exports = {
   createDiagnostic,
+  countDiagnosticsToday,
   createDiagnosticWithParent,
   getDiagnosticHistory,
   updateStatus,
