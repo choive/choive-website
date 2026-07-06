@@ -456,6 +456,7 @@ exports.handler = async function (event) {
       if (preBefore && preBefore.before) {
         try {
           var afterHalf = await runAfterSimulation({
+            language:         (preBefore.before && preBefore.before.language) || undefined,
             name:             name,
             category:         category,
             city:             city,
