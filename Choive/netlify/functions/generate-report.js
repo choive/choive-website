@@ -1041,7 +1041,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<h2 class="toc-h">Ten sections.<br>One complete picture.</h2>');
   tocItems.forEach(function(item, i) {
     H.push('<div class="toc-row">'
-      + '<div class="toc-num">0' + (i+1) + '</div>'
+      + '<div class="toc-num">' + (i + 1 < 10 ? '0' : '') + (i+1) + '</div>'
       + '<div class="toc-info"><div class="toc-title">' + esc(item[0]) + '</div><div class="toc-sub">' + esc(item[1]) + '</div></div>'
       + '<div class="toc-dots"></div>'
       + '<div class="toc-pg">' + item[2] + '</div></div>');
