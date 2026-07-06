@@ -103,6 +103,45 @@ function businessMentioned(response, name) {
   return false;
 }
 
+// Deterministic relevance guard: a generated "buyer" query must actually be
+// ABOUT the category, not a generic vendor-shopping question that happens to
+// name no one. Same fidelity test used for category-label drift, applied here
+// to catch query-drift — "which vendor is the best fit for my needs" passes
+// no platform filter and looks like buyer language, but it isn't asking about
+// this category at all, so an empty result proves nothing.
+// GENERIC-SHOPPING BLOCKLIST: phrases that mark a query as "help me pick
+// ANY vendor" rather than about a specific category. This is the actual
+// signature of the observed bug — catches it regardless of category wording.
+var GENERIC_SHOPPING_RE = /\b(best fit for my (specific )?business needs|which vendor|which solution is (actually )?the best|help me (figure out |choose |pick )?which (vendor|solution|software|tool) (is|to)|which (software|platform) (should|to) (i )?(use|choose|pick))\b/i;
+
+function queryOnCategory(query, catClean) {
+  var q = String(query || '');
+  if (GENERIC_SHOPPING_RE.test(q)) return false;
+  // Token overlap is a BONUS signal, not a requirement — genuine buyer
+  // language ("how do I get recommended by ChatGPT") legitimately shares no
+  // word with a coined category label like "AI selection diagnostic", and
+  // must not be penalized for using the buyer's words instead of the vendor's.
+  var stop = { the:1, and:1, for:1, with:1, from:1, that:1, this:1, what:1, which:1, who:1, best:1, are:1, can:1, help:1, use:1, need:1, actually:1, specific:1, business:1, needs:1, solution:1, vendor:1, tool:1, tools:1, platform:1, options:1, choose:1, choosing:1, right:1, good:1, way:1, want:1, looking:1, find:1, get:1, should:1, could:1, would:1 };
+  var toks = function(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+      .filter(function(w) { return w.length > 2 && !stop[w]; });
+  };
+  var catToks = toks(catClean);
+  var qToks = {};
+  toks(q).forEach(function(w) { qToks[w] = 1; });
+  var overlaps = catToks.some(function(w) {
+    if (qToks[w]) return true;
+    for (var k in qToks) { if (k.indexOf(w) === 0 || w.indexOf(k) === 0) return true; }
+    return false;
+  });
+  // Pass if EITHER it shares category vocabulary OR it's simply not a
+  // generic-shopping question (already filtered above). Reject only the
+  // narrow, dangerous middle: short, vague queries with zero category
+  // signal that also weren't caught by the explicit pattern.
+  if (overlaps) return true;
+  return q.split(/\s+/).length >= 8; // a full, specific buyer sentence passes; a bare vague fragment does not
+}
+
 async function generateBuyerQueries(n, templates) {
   // Template queries echo the vendor's category label — which breaks for
   // category creators: "best AI selection diagnostic" reads as HR tech to the
@@ -138,8 +177,18 @@ async function generateBuyerQueries(n, templates) {
     if (!Array.isArray(arr) || arr.length !== 3) return templates;
     var nameLc = n.name.toLowerCase();
     if (arr.some(function(q) { return String(q).toLowerCase().indexOf(nameLc) !== -1; })) return templates;
+    var candidates = arr.map(String);
+    // Every query must be verifiably about the category. If even one drifts
+    // off-topic (the G2/Capterra-shopping pattern), reject the WHOLE set —
+    // a mixed set with one bad query still poisons the ground truth — and
+    // fall back to the templates, which contain catClean verbatim by construction.
+    var allOnTopic = candidates.every(function(q) { return queryOnCategory(q, n.catClean); });
+    if (!allOnTopic) {
+      console.warn('[simulation] generated queries drifted off-category, using templates:', JSON.stringify(candidates));
+      return templates;
+    }
     return templates.map(function(t, i) {
-      return { label: t.label, intent: t.intent, system: t.system, query: String(arr[i]).trim() };
+      return { label: t.label, intent: t.intent, system: t.system, query: candidates[i] };
     });
   } catch (err) {
     clearTimeout(timer);
