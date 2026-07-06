@@ -109,14 +109,25 @@ function businessMentioned(response, name) {
 // to catch query-drift — "which vendor is the best fit for my needs" passes
 // no platform filter and looks like buyer language, but it isn't asking about
 // this category at all, so an empty result proves nothing.
-// GENERIC-SHOPPING BLOCKLIST: phrases that mark a query as "help me pick
-// ANY vendor" rather than about a specific category. This is the actual
-// signature of the observed bug — catches it regardless of category wording.
-var GENERIC_SHOPPING_RE = /\b(best fit for my (specific )?business needs|which vendor|which solution is (actually )?the best|help me (figure out |choose |pick )?which (vendor|solution|software|tool) (is|to)|which (software|platform) (should|to) (i )?(use|choose|pick))\b/i;
+// GENERIC-SHOPPING SIGNATURE: rather than matching one bug's exact wording
+// (a rephrase always slips past — "best fit for my needs" vs "best for my
+// business needs" already proved that), detect the SHAPE: a question whose
+// entire subject is a generic stand-in word (vendor/solution/software/
+// platform/tool) with no anchor to the actual category anywhere. Any
+// phrasing of "help me pick [generic word] for my needs" has this shape.
+var GENERIC_SUBJECT_RE = /\b(vendor|solution|software|platform|tool|product|service|provider|company|option)s?\b/i;
+var MY_NEEDS_RE = /\b(my|our)\s+(specific\s+)?(business\s+)?needs?\b|\bbest\s+fit\b|\bright\s+(fit|choice|one)\b/i;
 
 function queryOnCategory(query, catClean) {
   var q = String(query || '');
-  if (GENERIC_SHOPPING_RE.test(q)) return false;
+  var stop = { the:1, and:1, for:1, with:1, from:1, that:1, this:1, what:1, which:1, who:1, best:1, are:1, can:1, help:1, use:1, need:1, actually:1, specific:1, business:1, needs:1, solution:1, vendor:1, tool:1, tools:1, platform:1, options:1, choose:1, choosing:1, right:1, good:1, way:1, want:1, looking:1, find:1, get:1, should:1, could:1, would:1 };
+  var toks = function(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+      .filter(function(w) { return w.length > 2 && !stop[w]; });
+  };
+  var catToks = toks(catClean);
+  var hasCategoryAnchor = catToks.some(function(w) { return q.toLowerCase().indexOf(w) !== -1; });
+  if (!hasCategoryAnchor && GENERIC_SUBJECT_RE.test(q) && MY_NEEDS_RE.test(q)) return false;
   // Token overlap is a BONUS signal, not a requirement — genuine buyer
   // language ("how do I get recommended by ChatGPT") legitimately shares no
   // word with a coined category label like "AI selection diagnostic", and
