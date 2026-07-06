@@ -119,7 +119,48 @@ function categoryFaithful(ownerCategory, inferred) {
 // final head-to-head slot correct regardless.
 
 // Marketplaces, hubs, and infrastructure are channels, never rivals.
+// A competitor must be a NAMED COMPANY, not a generic category description.
+// "Bioland-zertifizierte Direktvermarkter" ("Bioland-certified direct
+// marketers") is a class of seller, not a business — the extraction stage
+// can grab a descriptive phrase out of an AI answer and mistake it for a
+// name. This is a shape check, language-agnostic where possible.
+var GENERIC_COLLECTIVE_RE = /\b(zertifizierte|direktvermarkter|retailers?|producers?|suppliers?|vendors?|sellers?|marketers?|farmers?|companies|businesses|providers?|brands?|stores?|shops?|outlets?|options|alternatives|sources|h\u00e4ndler|anbieter|hersteller|erzeuger|betriebe|gesch\u00e4fte)\b/i;
+
+function isGenericPhrase(n) {
+  var s = String(n || '').trim();
+  if (!s) return false;
+  var words = s.split(/\s+/);
+  // A real brand is almost always short (1-4 words). Longer AND containing a
+  // collective/category noun is the descriptive-phrase signature.
+  if (words.length >= 2 && GENERIC_COLLECTIVE_RE.test(s)) return true;
+  if (words.length >= 5) return true; // no real brand name runs this long
+  return false;
+}
+
 var PLATFORM_BLACKLIST_RE = /^(g2|g2\.com|trustpilot|capterra|clutch|yelp|tripadvisor|google|google maps|bing|amazon|ebay|etsy|facebook|meta|instagram|linkedin|x|twitter|youtube|tiktok|reddit|quora|wikipedia|hugging\s?face|github|gitlab|product\s?hunt|app\s?store|play\s?store|shopify app store|chatgpt|openai|claude|anthropic|gemini|perplexity)$/i;
+
+// A "competitor" that is a generic category description, not a real named
+// business, is not an entity at all — "Bioland-zertifizierte Direktvermarkter"
+// ("Bioland-certified direct marketers") is the AI's answer summarized into a
+// category, not a brand extracted from it. Multi-language generic-noun check:
+// if the candidate is built entirely from category/certification/business-type
+// words with no distinguishing brand token, it is not a real entity.
+var GENERIC_ENTITY_RE = /\b(zertifizierte?|certified|organic|direktvermarkter|direct\s?marketers?|anbieter|providers?|erzeuger|producers?|landwirte|farmers?|bauern|farms?|h[o\u00f6]fe|hersteller|manufacturers?|betriebe|businesses?|vendors?|suppliers?|sellers?|retailers?|options?|companies|brands?|marketplaces?)\b/gi;
+// Certification-scheme modifiers are never themselves a business — "Bioland",
+// "Demeter", "Naturland" name a STANDARD, not a company. Strip the whole
+// "[Scheme]-certified" compound, not just the suffix, or the scheme name
+// survives the strip and is mistaken for a distinguishing brand word.
+var CERT_SCHEME_RE = /\b(bioland|demeter|naturland|eu-?bio|usda|non-?gmo|fairtrade|rainforest\s?alliance)[\s-]?(zertifizierte?r?|certified)?\b/gi;
+
+function isGenericEntity(n) {
+  var name = String(n || '').trim();
+  if (!name) return false;
+  var stripped = name.replace(CERT_SCHEME_RE, ' ').replace(GENERIC_ENTITY_RE, ' ').replace(/[-\u2013\u2014]/g, ' ').replace(/\s+/g, ' ').trim();
+  // If removing every generic/category word leaves nothing (or only 1-2 tiny
+  // leftover characters), the whole name was built from category vocabulary
+  // \u2014 it is a description, not a brand.
+  return stripped.length < 3 || stripped.split(' ').filter(function(w) { return w.length > 2; }).length === 0;
+}
 
 function isPlatformName(n) {
   return PLATFORM_BLACKLIST_RE.test(String(n || '').trim().toLowerCase().replace(/\s+/g, ' '));
@@ -509,6 +550,11 @@ exports.handler = async function (event) {
         }
         // A platform in the AI-answer slot means AI named a venue, not a rival:
         // the truthful reading is that the category answer is UNOWNED.
+        if (cdV.aiRecommends && (isPlatformName(cdV.aiRecommends) || isGenericEntity(cdV.aiRecommends))) {
+          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is not a real named entity — clearing');
+          cdV.aiRecommends = null;
+          if (finalResult['competitorDecision']) finalResult['competitorDecision'].aiRecommends = null;
+        }
         if (cdV.aiRecommends && isPlatformName(cdV.aiRecommends)) {
           console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is a platform — a venue, not a rival; treating the category as unowned');
           cdV.aiRecommends = null;
@@ -518,15 +564,20 @@ exports.handler = async function (event) {
             finalResult['competitorDecision'].categoryUnowned = true;
           }
         }
-        var ownerFirst = String(knownCompetitors || '').split(',')[0].trim();
+        var ownerFirstEarly = String(knownCompetitors || '').split(',')[0].trim();
         var declaredFirst = (evidence['declaredCompetitors'] || [])[0] || '';
-        if (cdV.aiRecommends && isPlatformName(cdV.aiRecommends)) {
-          console.warn('[' + jobId + '] [competitor-validation] banner name "' + cdV.aiRecommends + '" is a platform \u2014 nulled; category treated as unowned');
+        if (cdV.aiRecommends && isGenericPhrase(cdV.aiRecommends)) {
+          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is a generic category phrase, not a named company — clearing');
           cdV.aiRecommends = null;
-          cdV.categoryUnowned = true;
+          if (finalResult['competitorDecision']) finalResult['competitorDecision'].aiRecommends = null;
         }
-        if (cdV.realCompetitor && isPlatformName(cdV.realCompetitor)) {
-          var replacement = (ownerFirst && !isPlatformName(ownerFirst) && ownerFirst) || (declaredFirst && !isPlatformName(declaredFirst) && declaredFirst) || null;
+        if (cdV.realCompetitor && isGenericPhrase(cdV.realCompetitor)) {
+          var repG = (ownerFirstEarly && !isGenericPhrase(ownerFirstEarly) && ownerFirstEarly) || null;
+          console.warn('[' + jobId + '] [competitor-validation] realCompetitor "' + cdV.realCompetitor + '" is a generic category phrase — replaced with ' + (repG || 'null'));
+          cdV.realCompetitor = repG;
+        }
+        if (cdV.realCompetitor && (isPlatformName(cdV.realCompetitor) || isGenericEntity(cdV.realCompetitor))) {
+          var replacement = (ownerFirstEarly && !isPlatformName(ownerFirstEarly) && ownerFirstEarly) || (declaredFirst && !isPlatformName(declaredFirst) && declaredFirst) || null;
           console.warn('[' + jobId + '] [competitor-validation] "' + cdV.realCompetitor + '" is a platform, not a rival — replaced with ' + (replacement || 'null'));
           cdV.realCompetitor = replacement;
           if (Array.isArray(finalResult['competitors']) && replacement) {
