@@ -349,18 +349,44 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
 }
 
 async function runQuerySet(queries, name, useSearch) {
-  var settled = await Promise.allSettled(
+  // Live web search is not deterministic between separate calls \u2014 the exact
+  // pages retrieved can differ run to run, so a single search-grounded shot
+  // can miss a genuinely dominant, well-covered name purely by chance. For
+  // ground-truth queries (useSearch=true), ask each question TWICE,
+  // independently, and trust a business is named if it appears in EITHER
+  // attempt. This turns "one unlucky search" into "two unlucky searches in a
+  // row" \u2014 a real reliability upgrade, not a copy change. "After" queries
+  // (useSearch=false, no search variability to average out) stay single-shot.
+  var settledA = await Promise.allSettled(
     queries.map(function(q) { return runQuery(q.system, q.query, !!useSearch); })
   );
+  var settledB = useSearch
+    ? await Promise.allSettled(queries.map(function(q) { return runQuery(q.system, q.query, true); }))
+    : null;
+
   return queries.map(function(q, i) {
-    var response = settled[i].status === 'fulfilled' ? settled[i].value : null;
-    var cleaned = cleanResponse(response);
+    var respA = settledA[i].status === 'fulfilled' ? settledA[i].value : null;
+    var cleanedA = cleanResponse(respA);
+    var appearedA = businessMentioned(cleanedA, name);
+
+    if (!settledB) {
+      return { label: q.label, intent: q.intent, query: q.query, response: cleanedA, appeared: appearedA };
+    }
+
+    var respB = settledB[i].status === 'fulfilled' ? settledB[i].value : null;
+    var cleanedB = cleanResponse(respB);
+    var appearedB = businessMentioned(cleanedB, name);
+
+    // Trust the pass that actually names the business (fewer false negatives);
+    // if neither does, keep the richer/longer response as the shown evidence.
+    var chosen = appearedA ? cleanedA : (appearedB ? cleanedB : (cleanedA && cleanedA.length >= (cleanedB || '').length ? cleanedA : cleanedB));
     return {
       label: q.label,
       intent: q.intent,
       query: q.query,
-      response: cleaned,
-      appeared: businessMentioned(cleaned, name)
+      response: chosen,
+      appeared: appearedA || appearedB,
+      sampledTwice: true
     };
   });
 }
