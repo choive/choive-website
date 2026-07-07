@@ -271,6 +271,18 @@ exports.handler = async function (event) {
         var webResult   = webSettled.value || {};
         websiteText     = webResult.text    || '';
         websiteSignals  = webResult.signals || {};
+        // AI CRAWLER CHECK \u2014 this line was previously only embedded in the
+        // scoring prompt text, never printed to logs, making it impossible to
+        // actually observe from Netlify. Explicit log line now.
+        if (websiteSignals.botCrawlable === null || websiteSignals.botCrawlable === undefined) {
+          console.log('[' + jobId + '] AI CRAWLER CHECK: skipped (check errored or timed out \u2014 scoring proceeds without this signal)');
+        } else if (websiteSignals.botEmptyShellDetected) {
+          console.log('[' + jobId + '] AI CRAWLER CHECK: FAILED \u2014 empty shell detected for: ' + (websiteSignals.botEmptyShellBots || []).join(', '));
+        } else if (websiteSignals.botCrawlable) {
+          console.log('[' + jobId + '] AI CRAWLER CHECK: PASSED \u2014 real bot user-agents see substantive content');
+        } else {
+          console.log('[' + jobId + '] AI CRAWLER CHECK: all bot fetches failed (blocked or unreachable \u2014 not the same as empty-shell)');
+        }
       } else {
         console.warn('[' + jobId + '] Website fetch failed:', webSettled.reason?.message);
       }
