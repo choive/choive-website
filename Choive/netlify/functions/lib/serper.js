@@ -9,6 +9,9 @@ const RESULTS_PER_Q = 5;
 const PRIORITY_MAP = {
   reviews:    5,
   comparison: 5,
+  community:  5, // real buyer conversations already happening \u2014 the exact
+                 // tactical evidence actions need; must never be silently
+                 // deprioritized behind generic comparison/reputation results
   reputation: 4,
   authority:  4,
   identity:   3
@@ -228,8 +231,14 @@ function buildSummaries(queryResults, competitors, socialSignals) {
  
 // ── Build grouped searchText for Claude ───────────────────────────────────────
 function buildSearchText(queryResults) {
-  var ORDER  = ['reviews', 'comparison', 'reputation', 'authority', 'identity'];
+  // 'community' placed FIRST \u2014 real, already-happening buyer conversations
+  // are the most actionable evidence a report can have, and this category
+  // was previously invisible: correctly gathered and typed, but silently
+  // dropped here because it was missing from ORDER \u2014 it was computed and
+  // then never once reached the model, on every single run.
+  var ORDER  = ['community', 'reviews', 'comparison', 'reputation', 'authority', 'identity'];
   var LABELS = {
+    community:  '=== REAL BUYER CONVERSATIONS (community threads to join, not just monitor) ===',
     reviews:    '=== REVIEW & RATING SIGNALS ===',
     comparison: '=== COMPARISON & COMPETITOR SIGNALS ===',
     reputation: '=== REPUTATION & MENTION SIGNALS ===',
@@ -304,9 +313,18 @@ async function searchSerper(name, category, city) {
     { q: name + ' site:g2.com',                                type: 'reviews'    },
     { q: name + ' site:glassdoor.com',                         type: 'reviews'    },
     { q: name + ' customer reviews rating',                    type: 'reviews'    },
-    // Reputation
+    // Reputation \u2014 monitoring: does the business ALREADY have a presence
     { q: name + ' site:reddit.com',                            type: 'reputation' },
     { q: name + ' complaints OR problems OR issues',           type: 'reputation' },
+    // Community opportunity \u2014 DIFFERENT from the above: not "is the business
+    // already mentioned," but "where are real buyers already asking this
+    // category's question right now" \u2014 the actionable threads a business
+    // could genuinely join. Without this, actions can only ever recommend
+    // institutional fixes (schema, review platforms), never tactical,
+    // human engagement in a conversation that's already happening.
+    { q: 'best ' + category + ' ' + city + ' site:reddit.com',  type: 'community'  },
+    { q: category + ' recommendation site:reddit.com',         type: 'community'  },
+    { q: 'best ' + category + ' forum OR group',                type: 'community'  },
     // Authority
     { q: name + ' news OR press OR announcement',              type: 'authority'  },
     { q: name + ' site:linkedin.com',                          type: 'authority'  },
