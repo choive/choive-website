@@ -2960,7 +2960,15 @@ function showResults(r, jobId) {
   const googleIcon   = hasKg ? '\u2714' : '\u26a0';
 
   // Score label
-  const scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
+  // Trust-aware label: the flat score ladder alone can't tell a genuinely
+  // established-but-flaky business from a brand-new one with zero track
+  // record at all \u2014 both can land at the same overall score, but "not
+  // consistently chosen" wrongly implies the latter has been chosen before.
+  const trustScore = (r.pillars && r.pillars.trust && Number(r.pillars.trust.score)) || 0;
+  const noTrackRecord = trustScore < 8;
+  const scoreLabel = noTrackRecord
+    ? (score >= 56 ? 'Understood by AI. Not yet trusted by anyone else.' : 'Not yet on anyone\'s radar.')
+    : score >= 76 ? 'Chosen. The default option in your category.'
     : score >= 56 ? 'Considered. Not consistently chosen.'
     : score >= 31 ? 'Seen. Not selected.'
     : 'Not seen. Not chosen.';
@@ -3046,7 +3054,7 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">AI hasn\'t named either of you on queries like <em>"' + esc(simQuery) + '"</em> \u2014 which means the next answer is still up for grabs. With ' + esc(topComp) + ' actively competing for the same buyers, whoever closes their trust gap first is the one AI starts naming.</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">' + esc(topComp) + ' is who buyers already compare you against. On queries like <em>"' + esc(simQuery) + '"</em>, AI hasn\'t settled on a default yet \u2014 whoever proves their trust first is the one it starts recommending.</div>'
         + '</div>';
     }
   } else if (cd.categoryUnowned) {
