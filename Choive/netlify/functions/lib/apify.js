@@ -1,8 +1,14 @@
 // lib/apify.js
 // CHOIVE Apify integration — fetches real review and social evidence
 // Actors used:
-//   - Trustpilot scraper: novi~trustpilot-scraper (via Trustpilot search)
-//   - Google Maps reviews: compass~google-maps-reviews-scraper (fallback: nwua9Gu5YkAVuf7GY)
+//   - Trustpilot scraper: novi~trustpilot-scraper (via Trustpilot search) —
+//     UNVERIFIED as of 2026-07-07; confirm exact slug/casing in Apify Store
+//     the same way the Google Maps actor below was confirmed.
+//   - Google Maps reviews: compass~Google-Maps-Reviews-Scraper — CONFIRMED
+//     2026-07-07 against the live Apify Store listing (exact casing matters;
+//     the previous all-lowercase ID was returning 404 on every run).
+//     Fallback: nwua9Gu5YkAVuf7GY (unverified; also 404’d in the same run —
+//     kept only because a dead fallback is harmless, never because it's known-good).
 // Identity guard: results that do not verifiably match the diagnosed business
 // are discarded — wrong-business reviews must never enter the evidence.
 // ENV: APIFY_API_KEY
@@ -145,7 +151,7 @@ async function fetchGoogleReviews(businessName, city) {
 
   // Try multiple actor IDs - Google Maps actors change frequently
   var actors = [
-    { id: 'compass~google-maps-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
+    { id: 'compass~Google-Maps-Reviews-Scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
     { id: 'nwua9Gu5YkAVuf7GY', input: { searchString: query, maxReviews: 10 } }
   ];
 
