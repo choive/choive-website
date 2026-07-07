@@ -106,6 +106,16 @@ function buildConfirmedSignals(websiteSignals) {
   lines.push('llms.txt at domain root: ' + (s.hasLlmsTxt  ? 'YES (verified by direct fetch)' : 'NO'));
   lines.push('sitemap.xml accessible: '  + (s.hasSitemap  ? 'YES' : 'NO'));
   lines.push('robots.txt present: '      + (s.hasRobots   ? 'YES' : 'NO'));
+  if (s.botCrawlable !== null && s.botCrawlable !== undefined) {
+    if (s.botEmptyShellDetected) {
+      lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): FAILED \u2014 ' + (s.botEmptyShellBots || []).join(', ') + ' see a near-empty page despite the static checks above. The site likely renders content client-side (JS), which these crawlers do not execute. This is a REAL crawlability defect, independent of schema/llms.txt.');
+    } else if (s.botCrawlable) {
+      lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): PASSED \u2014 real bot user-agents see substantive content, matching what a normal browser sees.');
+    }
+  }
+  if (s.googleExtendedBlocked) {
+    lines.push('Google-Extended (Gemini AI-training crawler): BLOCKED via robots.txt \u2014 this site has opted out of Gemini training/citation.');
+  }
 
   if (s.trustpilotReviewCount !== undefined) {
     lines.push('Trustpilot reviews (live): ' + s.trustpilotReviewCount + (s.trustpilotRating ? ' — rating ' + s.trustpilotRating : ''));
@@ -296,6 +306,7 @@ function buildPrompt(evidence) {
     + '- HARD CONSTRAINT: confirmed "Schema markup: YES" → score MINIMUM 12\n'
     + '- HARD CONSTRAINT: confirmed "Schema markup: NO" → score MAXIMUM 8\n'
     + '- HARD CONSTRAINT: confirmed "llms.txt: YES" → score MINIMUM 18\n'
+    + '- HARD CONSTRAINT: if the AI CRAWLER CHECK shows FAILED (empty-shell detected) → score MAXIMUM 6, regardless of schema/llms.txt \u2014 metadata files mean nothing if the actual crawlers you\u2019re being diagnosed for cannot read the page.\n'
     + '- Required: state exactly which signals were confirmed and which were absent\n\n'
     + 'COMPETITOR RULE — SOURCE PRIORITY:\n'
     + 'PRIORITY 1 — AI SELECTION GROUND TRUTH: if the evidence contains an AI SELECTION GROUND TRUTH section, the dominant competitor (competitors[0], the business shown as \u201cAI is recommending instead of you\u201d) MUST be a business named in those AI responses THAT ALSO PASSES EVERY exclusion criterion below — same category, same buyer type, same deal size, not a directory, not the subject business, not a measured platform. Among qualifying names, choose the most prominently recommended — a top pick outranks a list mention; more mentions outrank fewer. The qualifying ground truth OUTRANKS the previously verified competitor: if they disagree, follow the ground truth — this is how past mis-identifications are corrected. Additional competitors (competitors[1..2]) MAY come from search evidence as structural benchmarks.\n'
@@ -499,6 +510,12 @@ function applySignalConstraints(rawOutput, websiteSignals) {
     if (s.hasLlmsTxt  && ease < 18) { p.ease.score = Math.max(ease, 18); }
     if (s.hasSchema   && ease < 12) { p.ease.score = Math.max(ease, 12); }
     if (!s.hasSchema  && ease >  8) { p.ease.score = Math.min(ease,  8); }
+    // Empty-shell sites cap at 6 regardless of what the model scored \u2014 a
+    // code-level cap, not just a prompt instruction, because llms.txt/schema
+    // presence has repeatedly proven persuasive enough to override prose
+    // rules alone. Real crawlers seeing a blank page is the actual defect
+    // Ease is supposed to measure; static files are a proxy, not the fact.
+    if (s.botEmptyShellDetected && p.ease.score > 6) { p.ease.score = 6; }
   }
 
   if (p.clarity) {
