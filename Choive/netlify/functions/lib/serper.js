@@ -377,19 +377,30 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
   // Cap at 5 words to keep queries effective
   var catShort = catWords.split(' ').slice(0, 5).join(' ');
  
+  // MARKET ANCHOR: city was accepted as a parameter but never actually used
+  // in query construction \u2014 every search here ran market-agnostic regardless
+  // of the business's real location. This silently biased results toward
+  // whatever content dominates generic search (often US-heavy), independent
+  // of and unrelated to whichever language the AI-simulation portion uses.
+  // Confirmed live: an English-language Taurbull test returned an all-US
+  // competitor list even though Taurbull only serves Germany \u2014 because
+  // NOTHING in this search was ever anchored to Germany to begin with.
+  var marketSuffix = city ? ' ' + city : '';
   var queries = [
     // Direct competitor intent — most reliable signal
     { q: 'who competes with ' + name,                                type: 'competition' },
     { q: name + ' vs',                                               type: 'competition' },
-    { q: name + ' alternative',                                      type: 'competition' },
-    { q: name + ' competitors',                                      type: 'competition' },
-    // Category-level — real businesses not platforms
-    { q: catShort + ' companies',                                    type: 'comparison'  },
-    { q: catShort + ' startups',                                     type: 'comparison'  },
-    { q: 'best ' + catShort + ' tools 2025',                         type: 'comparison'  },
+    { q: name + ' alternative' + marketSuffix,                       type: 'competition' },
+    { q: name + ' competitors' + marketSuffix,                       type: 'competition' },
+    // Category-level — real businesses not platforms — MARKET-ANCHORED so
+    // the candidate pool reflects the business's actual serviceable market,
+    // regardless of the AI-simulation language choice.
+    { q: catShort + ' companies' + marketSuffix,                     type: 'comparison'  },
+    { q: catShort + ' startups' + marketSuffix,                      type: 'comparison'  },
+    { q: 'best ' + catShort + marketSuffix,                          type: 'comparison'  },
     // Press and industry — surfaces real named players
     { q: name + ' news OR press OR announcement',                    type: 'comparison'  },
-    { q: catShort + ' industry players',                             type: 'comparison'  }
+    { q: catShort + ' industry players' + marketSuffix,              type: 'comparison'  }
   ];
   // If the user named specific competitors, search each one directly — this is
   // verified ground truth from the business owner, not a guess, so it deserves
