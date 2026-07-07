@@ -3000,14 +3000,12 @@ function showResults(r, jobId) {
   ? topCompQuery
   : 'best ' + (bizData.category || 'businesses in your category');
 
-  // SINGLE-TIER banner: the head-to-head competitor IS whoever AI is
-  // recommending instead of you \u2014 sourced from the VERIFIED decision
-  // (cd.realCompetitor: continuity-protected, market-tested, category-
-  // faithful), never from a single run's raw one-shot ground truth pick.
-  // A narrow query can surface a noisy, less-prominent name (GreenOx from
-  // one "fast delivery" phrasing); the verified decision is what survives
-  // across runs and real-world checks (Otto Gourmet). One name, one source
-  // of truth \u2014 never a second name shown underneath.
+  // SINGLE-TIER banner: one competitor name, always. But the HEADLINE must
+  // match what's actually proven \u2014 claiming "currently recommending" for a
+  // name absent from this run's own transcripts is a live contradiction
+  // (headline screams urgency, body sentence immediately retracts it). Two
+  // honest states, each with its own headline AND its own path to urgency:
+  // confirmed \u2192 direct threat; unconfirmed \u2192 open contest, stakes still high.
   var cd = r.competitorDecision || {};
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
@@ -3017,11 +3015,6 @@ function showResults(r, jobId) {
         : '');
   var competitorBanner;
   if (topComp) {
-    // Transcript-checked honesty: only claim "named in real AI answers" if
-    // THIS run's transcripts actually contain the verified name. Otherwise
-    // state plainly that they weren't named in these specific answers \u2014
-    // the verified identity still stands, the claim about these 3 queries
-    // stays true either way.
     var named = null;
     try {
       var res = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results) || [];
@@ -3038,14 +3031,24 @@ function showResults(r, jobId) {
         });
       }
     } catch (e) { named = null; }
-    var line = named === true
-      ? 'Named in real AI answers to: <em>"' + esc(simQuery) + '"</em>'
-      : 'On queries like <em>"' + esc(simQuery) + '"</em>, AI didn\'t surface them in this exact sample \u2014 but this is your verified head-to-head across the market.';
-    competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">AI is currently recommending instead of you</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">' + line + '</div>'
-      + '</div>';
+
+    if (named === true) {
+      // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
+      competitorBanner = bannerHead
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">AI is currently recommending instead of you</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named in real AI answers to: <em>"' + esc(simQuery) + '"</em></div>'
+        + '</div>';
+    } else {
+      // UNCONFIRMED this sample: different headline entirely \u2014 an open
+      // contest, not a false alarm. Urgency comes from the stakes being live
+      // and undecided, not from a claim the evidence doesn't support.
+      competitorBanner = bannerHead
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your head-to-head competitor</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">AI hasn\'t named either of you on queries like <em>"' + esc(simQuery) + '"</em> \u2014 which means the next answer is still up for grabs. With ' + esc(topComp) + ' actively competing for the same buyers, whoever closes their trust gap first is the one AI starts naming.</div>'
+        + '</div>';
+    }
   } else if (cd.categoryUnowned) {
     competitorBanner = bannerHead
       + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI recommends no one in this category yet</div>'
