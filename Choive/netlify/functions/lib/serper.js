@@ -46,7 +46,7 @@ const SOCIAL_DOMAINS = {
 };
  
 // ── Fetch single Serper query ─────────────────────────────────────────────────
-async function fetchSerper(query) {
+async function fetchSerper(query, isRetry) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
   try {
@@ -57,7 +57,22 @@ async function fetchSerper(query) {
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!res.ok) { console.warn('Serper ' + res.status + ' for: ' + query); return null; }
+    if (!res.ok) {
+      // 429 (rate limit) is transient and typically clears within a second or
+      // two \u2014 confirmed live: a whole diagnostic's worth of competitor
+      // queries can burst-trigger it together. One short-delay retry recovers
+      // most of these instead of silently losing the search evidence entirely
+      // (which was forcing the selection stage into its noisier fallback path
+      // more often than necessary). Other error codes are not retried \u2014
+      // they're not transient in the same way.
+      if (res.status === 429 && !isRetry) {
+        console.warn('Serper 429 for: ' + query + ' \u2014 retrying once after backoff');
+        await new Promise(function(r) { setTimeout(r, 800 + Math.random() * 400); });
+        return fetchSerper(query, true);
+      }
+      console.warn('Serper ' + res.status + ' for: ' + query);
+      return null;
+    }
     return await res.json();
   } catch (err) {
     clearTimeout(timer);
@@ -414,8 +429,17 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     });
   }
  
+  // Stagger the burst slightly \u2014 with plenty of Serper credit remaining
+  // but real 429s occurring, this is pure concurrency (too many requests in
+  // the same instant), not quota exhaustion. A small, cheap stagger reduces
+  // how often the rate limit fires at all, complementing the retry-on-429
+  // logic in fetchSerper (which handles whatever still slips through).
   var settled = await Promise.allSettled(
-    queries.map(function(item) { return fetchSerper(item.q); })
+    queries.map(function(item, i) {
+      return new Promise(function(resolve) {
+        setTimeout(function() { resolve(fetchSerper(item.q)); }, i * 120);
+      });
+    })
   );
  
   var queryResults = [];
