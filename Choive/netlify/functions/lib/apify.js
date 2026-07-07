@@ -1,10 +1,15 @@
 // lib/apify.js
 // CHOIVE Apify integration — fetches real review and social evidence
 // Actors used:
-//   - Trustpilot scraper: novi~trustpilot-scraper (via Trustpilot search) —
-//     UNVERIFIED as of 2026-07-07; confirm the same way Google Maps was below
-//     (Store display names can differ from the real API id — always pull the
-//     ID from the actor's own "API endpoints" tab, never from the Store URL).
+//   - Trustpilot scraper: TWO confirmed-real IDs, tried in sequence —
+//     automation-lab~trustpilot, then zen-studio~trustpilot-review-scraper.
+//     Both IDs came from each actor's own API endpoint docs (trustworthy;
+//     Store display names cannot be trusted — see the Google Maps note
+//     above). INPUT SCHEMA UNVERIFIED for either: the fields below
+//     (startUrls/maxReviews/reviewsLanguage) are carried over from an older,
+//     different actor and may not match what these expect. If runs start
+//     (no 404) but return no/wrong data, check each actor's own "Input" tab
+//     in Apify Console for its real field names.
 //   - Google Maps reviews: powerai~google-map-reviews-scraper — CONFIRMED
 //     2026-07-07 directly from this actor's own generated API endpoint docs.
 //     Two prior IDs were tried and both 404’d because the Apify Store page
@@ -114,12 +119,19 @@ async function fetchTrustpilot(businessName, website) {
   // Build Trustpilot search URL from business name
   var domain  = (website || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
   var tpQuery = domain || businessName;
-
-  var items = await runActor('novi~trustpilot-scraper', {
+  var tpInput = {
     startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }],
     maxReviews: 10,
     reviewsLanguage: 'en'
-  });
+  };
+
+  var tpActors = ['automation-lab~trustpilot', 'zen-studio~trustpilot-review-scraper'];
+  var items = null;
+  for (var t = 0; t < tpActors.length; t++) {
+    items = await runActor(tpActors[t], tpInput);
+    if (items && Array.isArray(items) && items.length > 0) break;
+    items = null;
+  }
 
   if (!items || !Array.isArray(items) || items.length === 0) return null;
 
