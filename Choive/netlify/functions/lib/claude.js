@@ -400,7 +400,7 @@ function buildPrompt(evidence) {
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
-    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n\n'
+    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'    + '- COMMUNITY OPPORTUNITY: if the evidence contains a REAL BUYER CONVERSATIONS section with an actual thread, forum post, or discussion, ONE action MUST be a tactical, human engagement in that specific conversation \u2014 name the exact platform (e.g. Reddit) and reference what the thread is actually asking, not a generic \u201cengage with your community.\u201d This is a genuinely different KIND of action from institutional fixes (schema, reviews) \u2014 it is immediate, human, and free. Do not substitute a structural fix for this when real community evidence exists; do both. If no real community evidence was found, do not invent a thread \u2014 omit this action type entirely rather than fabricate a plausible-sounding one.\n\n'
     + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
     + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
     + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
@@ -634,6 +634,7 @@ function buildFrequencyTable(evidence, subjectName) {
 }
 
 async function selectDominantCompetitor(evidence) {
+ try {
   var name       = String(evidence.name || '').trim();
   var category   = String(evidence.category || '').trim();
   var inferred   = String(evidence.inferredCategory || category).trim();
@@ -661,7 +662,13 @@ async function selectDominantCompetitor(evidence) {
   // actually appear across every raw ground-truth sample. No name is
   // protected by a prior run anymore; the highest verified frequency wins,
   // recomputed fresh every time.
-  var freq = buildFrequencyTable(evidence, name);
+  var freq;
+  try {
+    freq = buildFrequencyTable(evidence, name);
+  } catch (freqErr) {
+    console.warn('[competitor-selection] buildFrequencyTable failed:', freqErr.message);
+    freq = { table: [], corpusSize: 0 };
+  }
   var freqTableText = freq.table.length
     ? freq.table.map(function(c) { return '- ' + c.name + ': named in ' + c.frequency + ' of ' + c.sampleSize + ' independent AI samples'; }).join('\n')
     : 'No candidates identified from owner input, website declarations, or search evidence.';
@@ -733,6 +740,15 @@ async function selectDominantCompetitor(evidence) {
     console.warn('[competitor-selection] failed:', err.message);
     return null;
   }
+ } catch (outerErr) {
+  // Closes the SILENT-FAILURE gap confirmed live: buildFrequencyTable or the
+  // prompt-construction lines ran completely unguarded before this fix \u2014
+  // any error there rejected the whole function with zero log output at all,
+  // leaving a diagnostic with competitorDecision entirely unset and no trace
+  // of why. Now every failure path, wherever it happens, logs clearly.
+  console.warn('[competitor-selection] outer stage error (before the API call):', outerErr.message);
+  return null;
+ }
 }
 
 async function scoreWithClaude(evidence) {
