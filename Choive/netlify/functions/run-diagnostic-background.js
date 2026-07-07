@@ -234,6 +234,7 @@ exports.handler = async function (event) {
           if (freshTypes !== cachedTypes) changed.push('schemaTypes(' + cachedTypes + '\u2192' + freshTypes + ')');
           if (changed.length > 0) {
             cacheValid = false;
+            evidence['cacheBustedThisRun'] = true;
             console.log('[' + jobId + '] Cache busted \u2014 website changed since cached run: ' + changed.join(', '));
           }
         } catch (err) {
@@ -696,6 +697,42 @@ exports.handler = async function (event) {
       }
     } catch (err) {
       console.warn('[' + jobId + '] Verification delta failed:', err.message);
+    }
+
+    // ONE-LINE RECEIPT: everything worth knowing about this run, in a single
+    // grep-able JSON line, instead of reconstructing the story from a dozen
+    // scattered log lines. This is what should have existed all day \u2014 every
+    // debugging session this session took 10+ minutes of log archaeology that
+    // this one line would have answered in a glance.
+    try {
+      var cdSummary = finalResult['competitorDecision'] || {};
+      var simB = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before;
+      var searchUsed = null;
+      try {
+        if (simB && Array.isArray(simB.results)) {
+          searchUsed = simB.results.some(function(r) { return r && r.sampledTwice; });
+        }
+      } catch (e) {}
+      console.log('[' + jobId + '] SUMMARY ' + JSON.stringify({
+        business:        name,
+        score:           finalResult['overallScore'],
+        competitor: {
+          headToHead:    cdSummary.realCompetitor  || null,
+          aiRecommends:  cdSummary.aiRecommends     || null,
+          categoryUnowned: !!cdSummary.categoryUnowned,
+          source:        cdSummary.source           || null,
+          selectionVersion: cdSummary.selectionVersion || null
+        },
+        groundTruth: {
+          language:      simB && simB.language || 'en',
+          dualSampled:   searchUsed,
+          appearedRate:  simB && simB.results ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.length) : null
+        },
+        cacheBusted:     !!evidence['cacheBustedThisRun'],
+        progressTracked: !!finalResult['progressDelta']
+      }));
+    } catch (e) {
+      console.warn('[' + jobId + '] Summary log failed (non-fatal):', e.message);
     }
 
     await saveResult(jobId, finalResult);
