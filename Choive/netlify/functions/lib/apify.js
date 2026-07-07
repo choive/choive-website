@@ -45,7 +45,17 @@ async function runActor(actorId, input) {
   });
 
   if (!startRes || !startRes.ok) {
-    console.warn('Apify start returned', startRes ? startRes.status : 'no response');
+    var status = startRes ? startRes.status : 'no response';
+    console.warn('Apify start returned', status, 'for actor', actorId);
+    if (startRes && status === 400) {
+      // 400 = the actor address is correct but the INPUT fields are wrong \u2014
+      // a different, more specific problem than 404's wrong-address. Surface
+      // Apify's own error text so the actual bad field is visible in logs.
+      try {
+        var errBody = await startRes.text();
+        console.warn('Apify 400 detail for', actorId + ':', errBody.slice(0, 300));
+      } catch (e) {}
+    }
     return null;
   }
 
