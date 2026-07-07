@@ -8,7 +8,7 @@
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
-const MAX_TOKENS      = 4500;
+const MAX_TOKENS      = 6500; // raised: richer ground-truth + decision context was clipping long responses mid-JSON
 
 function truncate(text, max) {
   max = max || 4000;
@@ -406,7 +406,8 @@ function buildPrompt(evidence) {
     + 'Sentence 1: Quote or directly reference the specific evidence. Name exact numbers, platforms, signals found or missing.\n'
     + 'Sentence 2: State the exact selection consequence — what a buyer experiences because of this score.\n'
     + 'NEVER write generic analysis. Every sentence must be impossible to apply to a different business.\n\n'
-    + 'VERDICT HEADLINE — max 10 words, no punctuation, strategic advisor tone\n\n'
+    + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone. '
+    + 'AVOID AMBIGUOUS NEGATION: never write "not consistently [positive thing]" or "not always [positive thing]" \u2014 a reader can misparse this as mostly-positive-with-exceptions when the true meaning is the opposite. BANNED EXAMPLE: "Not consistently the obvious choice" (reads as usually chosen, sometimes not \u2014 backwards for a weak/absent tier). Instead state the gap plainly and unambiguously: "Overlooked when it matters most", "Not the default choice yet", "Invisible at the moment of comparison".\n\n'
     + 'SUMMARY PARAGRAPH — exactly 3 sentences:\n'
     + '- If tier is dominant or strong: start with "This business is currently chosen because..."\n'
     + '- If tier is upper_mid, mid, weak, absent: start with "This business is not the obvious choice because..."\n'
