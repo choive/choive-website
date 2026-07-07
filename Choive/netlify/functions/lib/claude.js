@@ -423,6 +423,7 @@ function buildPrompt(evidence) {
     + '  Start with the business name. Reference ONLY the concrete fixes from your own actions list\n'
     + '  (e.g. verified reviews on the named platform, llms.txt present, schema confirmed).\n'
     + '  NEVER invent press coverage, publications, client names, awards, or partnerships.\n'
+    + '  CRITICAL COHERENCE RULE: this paragraph must never assert a fact that the Trust pillar\u2019s own evidence contradicts elsewhere in this same output \u2014 if CONFIRMED SIGNALS or the review evidence shows zero Trustpilot/Google presence, this paragraph may NEVER say reviews are "verified" or "confirmed" as if they already exist. Describe the fix as pending, not as already accomplished: e.g. "once verified reviews are live on Trustpilot" not "verified reviews on Trustpilot confirm.\u201d A contradiction between this paragraph and the Trust pillar\u2019s own finding is a critical defect, not a stylistic choice.\n'
     + '  NEVER use bracket placeholders like [platform] or [publication] — name the real platform from your actions or omit it.\n'
     + '  Phrase it as what AI would say once those specific fixes are verifiably in place. Nothing beyond them.\n'
     + '  The contrast between the two paragraphs is the core value of this field.\n\n'
