@@ -349,45 +349,52 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   ];
 }
 
+// GROUND_TRUTH_SAMPLES: how many independent, parallel search-grounded
+// attempts each ground-truth query gets. Raised from 2 \u2192 4 to build a real
+// frequency signal (who gets named, how often) instead of a single yes/no.
+// All samples fire concurrently (Promise.allSettled), so this costs API
+// spend, not wall-clock time \u2014 12 parallel calls take the same time as 3.
+var GROUND_TRUTH_SAMPLES = 4;
+
 async function runQuerySet(queries, name, useSearch) {
-  // Live web search is not deterministic between separate calls \u2014 the exact
-  // pages retrieved can differ run to run, so a single search-grounded shot
-  // can miss a genuinely dominant, well-covered name purely by chance. For
-  // ground-truth queries (useSearch=true), ask each question TWICE,
-  // independently, and trust a business is named if it appears in EITHER
-  // attempt. This turns "one unlucky search" into "two unlucky searches in a
-  // row" \u2014 a real reliability upgrade, not a copy change. "After" queries
-  // (useSearch=false, no search variability to average out) stay single-shot.
-  var settledA = await Promise.allSettled(
-    queries.map(function(q) { return runQuery(q.system, q.query, !!useSearch); })
+  var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
+
+  // Fire every (query \u00d7 sample) combination in one parallel batch.
+  var jobs = [];
+  queries.forEach(function(q, qi) {
+    for (var s = 0; s < sampleCount; s++) jobs.push({ qi: qi, q: q });
+  });
+  var settled = await Promise.allSettled(
+    jobs.map(function(j) { return runQuery(j.q.system, j.q.query, !!useSearch); })
   );
-  var settledB = useSearch
-    ? await Promise.allSettled(queries.map(function(q) { return runQuery(q.system, q.query, true); }))
-    : null;
+
+  // Group raw responses back by query index.
+  var byQuery = queries.map(function() { return []; });
+  settled.forEach(function(res, i) {
+    var qi = jobs[i].qi;
+    var raw = res.status === 'fulfilled' ? res.value : null;
+    var cleaned = cleanResponse(raw);
+    if (cleaned) byQuery[qi].push(cleaned);
+  });
 
   return queries.map(function(q, i) {
-    var respA = settledA[i].status === 'fulfilled' ? settledA[i].value : null;
-    var cleanedA = cleanResponse(respA);
-    var appearedA = businessMentioned(cleanedA, name);
-
-    if (!settledB) {
-      return { label: q.label, intent: q.intent, query: q.query, response: cleanedA, appeared: appearedA };
-    }
-
-    var respB = settledB[i].status === 'fulfilled' ? settledB[i].value : null;
-    var cleanedB = cleanResponse(respB);
-    var appearedB = businessMentioned(cleanedB, name);
-
-    // Trust the pass that actually names the business (fewer false negatives);
-    // if neither does, keep the richer/longer response as the shown evidence.
-    var chosen = appearedA ? cleanedA : (appearedB ? cleanedB : (cleanedA && cleanedA.length >= (cleanedB || '').length ? cleanedA : cleanedB));
+    var responses = byQuery[i];
+    var appearances = responses.filter(function(r) { return businessMentioned(r, name); });
+    // Representative text shown in the UI: prefer a response that actually
+    // named the business; otherwise the longest/richest raw response.
+    var shown = appearances[0] || responses.slice().sort(function(a, b) { return (b || '').length - (a || '').length; })[0] || '';
     return {
       label: q.label,
       intent: q.intent,
       query: q.query,
-      response: chosen,
-      appeared: appearedA || appearedB,
-      sampledTwice: true
+      response: shown,
+      appeared: appearances.length > 0,
+      sampleCount: responses.length,
+      appearedCount: appearances.length,
+      // Full raw corpus \u2014 every independent response, not just the shown
+      // one \u2014 so competitor frequency can be counted across ALL of them,
+      // not just a single representative sample per query.
+      allResponses: responses
     };
   });
 }
