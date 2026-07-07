@@ -13,11 +13,39 @@ function getClient() {
 }
 // Creates a fingerprint from business name + category + city
 // Used to link diagnostics for the same business over time
+// Identity for continuity/caching. A website domain is a far more stable key
+// than free-text category/city wording \u2014 two different people describing
+// the identical business ("premium grass-fed beef" vs "direct-to-consumer
+// beef delivery") produce different hashes under text-only matching, silently
+// losing all continuity (competitor identity, evidence cache, progress
+// tracking) even though it's obviously the same business. When a website is
+// provided, the normalized domain IS the fingerprint; text matching is only
+// the fallback for businesses with no site at all.
+function normalizeDomain(url) {
+  var u = String(url || '').trim().toLowerCase();
+  if (!u) return '';
+  u = u.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  u = u.split('/')[0].split('?')[0].split('#')[0];
+  return u;
+}
+
 function buildFingerprint(input) {
-  var name     = String(input.name     || '').toLowerCase().trim().replace(/\s+/g, '');
-  var category = String(input.category || '').toLowerCase().trim().replace(/\s+/g, '');
-  var city     = String(input.city     || '').toLowerCase().trim().replace(/\s+/g, '');
-  var raw      = name + '|' + category + '|' + city;
+  var domain = normalizeDomain(input.website);
+  if (domain) {
+    return crypto.createHash('sha256').update('domain:' + domain).digest('hex').slice(0, 32);
+  }
+  // Category is deliberately EXCLUDED from the fallback identity: it's free
+  // text, and two different people describing the same business (or the same
+  // person on different days) will phrase it differently \u2014 "premium beef
+  // delivery" vs "Direct-to-consumer grass-fed beef" fractures what should be
+  // one continuous identity into two disconnected ones, each internally
+  // consistent but silently unaware of the other (confirmed live: Taurbull
+  // run by two people landed on two different, independently-locked
+  // competitors). Name + city alone is a far more stable proxy for "is this
+  // the same real-world business" than any free-text category ever will be.
+  var name = String(input.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
+  var city = String(input.city || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
+  var raw  = name + '|' + city;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
 async function createDiagnostic(jobId, input, ipHash) {
