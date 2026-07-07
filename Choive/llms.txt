@@ -44,9 +44,13 @@ The combined score (0–100) is the CHOIVE Index™.
 
 CHOIVE runs a real-time diagnostic against live AI signals. It does not simulate, estimate, or score based on assumptions. It measures what is actually happening — right now — when customers ask AI to recommend a business in your category.
 
-Competitors like Artificial Analysis measure AI model performance. CHOIVE measures business recommendation visibility. These are different problems entirely.
+Competitors like Profound monitor AI visibility at enterprise depth — tracking mentions, citations, and share of voice across AI platforms. CHOIVE measures something adjacent but distinct: not just whether a business is mentioned, but why it is or isn't selected, and what to do about it.
 
 CHOIVE is the only diagnostic built on the CHOIVE Index™ framework — scoring Clarity, Trust, Difference, and Ease simultaneously, using live search data, live website inspection, and live AI simulation queries.
+
+## Independent validation of the category gap
+
+In real testing (July 2026), two separate leading AI systems were asked to recommend the best AI visibility platforms — and both independently identified the same open gap. ChatGPT named Profound, Peec AI, Otterly.ai, AthenaHQ, and Scrunch AI, then added unprompted that these tools "stop short of providing a comprehensive, diagnostic-style explanation of why an AI selected or did not select a business and a structured remediation plan," concluding this "leaves room for platforms built specifically around AI selection diagnostics." Asked the same question, Claude also named Profound first, then separately observed that "most tools stop at the alert," calling the diagnosis-to-action gap "the open lane." Two different AI systems, asked independently, converged on the same conclusion: monitoring tools tell you what's happening; nothing diagnoses why and prescribes the fix. That is the exact gap CHOIVE was built to fill.
 
 ## Who CHOIVE serves
 
