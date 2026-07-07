@@ -39,6 +39,78 @@ async function safeFetch(url, maxChars) {
   }
 }
 
+
+// ── AI crawler visibility check ───────────────────────────────────────────────
+// Real bot user-agents fetching the homepage the same way GPTBot/PerplexityBot/
+// ClaudeBot actually do (plain HTTP, no JS execution \u2014 which is exactly what
+// these crawlers do too). Compares visible text length against a normal fetch
+// to catch the "empty shell" problem: sites that pass every static check
+// (schema, llms.txt, meta tags) but serve a near-blank page to non-JS crawlers
+// because their content is rendered client-side (common on Shopify/SPA builds).
+// Google-Extended has no real distinct fetch identity \u2014 it's a robots.txt
+// directive, not a crawler UA \u2014 so it's checked there instead of faked here.
+var BOT_USER_AGENTS = [
+  { key: 'gptbot',        label: 'GPTBot (OpenAI)',       ua: 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.1; +https://openai.com/gptbot' },
+  { key: 'perplexitybot', label: 'PerplexityBot',          ua: 'Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)' },
+  { key: 'claudebot',     label: 'ClaudeBot (Anthropic)',  ua: 'Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)' }
+];
+
+async function fetchAsBot(url, userAgent) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+  try {
+    var res = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': userAgent, 'Accept': 'text/html,application/xhtml+xml' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return { ok: false, textLength: 0 };
+    var html = await res.text();
+    var text = extractText(html, MAX_CHARS_PAGE);
+    return { ok: true, textLength: text.trim().length };
+  } catch (err) {
+    clearTimeout(timer);
+    return { ok: false, textLength: 0 };
+  }
+}
+
+async function checkBotCrawlability(baseUrl, browserContentLength, robotsText) {
+  var settled = await Promise.allSettled(
+    BOT_USER_AGENTS.map(function(bot) { return fetchAsBot(baseUrl, bot.ua); })
+  );
+
+  var results = BOT_USER_AGENTS.map(function(bot, i) {
+    var r = settled[i].status === 'fulfilled' ? settled[i].value : { ok: false, textLength: 0 };
+    return { key: bot.key, label: bot.label, ok: r.ok, textLength: r.textLength };
+  });
+
+  // Google-Extended: check robots.txt directive, not a fake fetch identity.
+  var googleExtendedBlocked = false;
+  try {
+    var rt = String(robotsText || '');
+    var ge = rt.match(/User-agent:\s*Google-Extended[\s\S]*?(?=User-agent:|$)/i);
+    if (ge && /Disallow:\s*\/\s*$/im.test(ge[0])) googleExtendedBlocked = true;
+  } catch (e) {}
+
+  // "Empty shell" detection: any bot that loaded successfully but saw under
+  // 15% of what a normal fetch sees (or under 100 chars absolute) is getting
+  // a near-blank page \u2014 the exact Shopify/SPA problem, a real Ease defect
+  // that llms.txt/schema presence alone cannot reveal.
+  var threshold = Math.max(100, browserContentLength * 0.15);
+  var emptyShellBots = results.filter(function(r) { return r.ok && r.textLength < threshold; }).map(function(r) { return r.label; });
+  var allBotsFailed   = results.every(function(r) { return !r.ok; });
+
+  return {
+    results: results,
+    browserContentLength: browserContentLength,
+    googleExtendedBlocked: googleExtendedBlocked,
+    emptyShellDetected: emptyShellBots.length > 0,
+    emptyShellBots: emptyShellBots,
+    allBotsFailed: allBotsFailed
+  };
+}
+
 // ── Fetch raw HTML ────────────────────────────────────────────────────────────
 async function fetchHtml(url) {
   if (!url) return '';
@@ -280,6 +352,7 @@ async function fetchWebsiteText(url) {
     checkLlmsTxtExists(base),                 // [3] llms.txt
     checkSitemapExists(base),                 // [4] sitemap.xml
     checkRobotsExists(base),                  // [5] robots.txt
+    fetchHtml(base + '/robots.txt'),          // [6] raw robots.txt text, for Google-Extended check
   ]);
 
   var homepageHtml  = settled[0].status === 'fulfilled' ? settled[0].value : '';
@@ -289,10 +362,21 @@ async function fetchWebsiteText(url) {
   var llmsTxtExists = settled[3].status === 'fulfilled' ? settled[3].value : false;
   var sitemapExists = settled[4].status === 'fulfilled' ? settled[4].value : false;
   var robotsExists  = settled[5].status === 'fulfilled' ? settled[5].value : false;
+  var robotsRawText = settled[6].status === 'fulfilled' ? settled[6].value : '';
 
   var meta          = extractMeta(homepageHtml);
   var schema        = extractSchema(homepageHtml);
   var homepageText  = extractText(homepageHtml, MAX_CHARS_PAGE);
+
+  // AI crawler visibility \u2014 real bot user-agents, compared against the
+  // normal fetch above. Runs after the main batch since it needs
+  // homepageText's length as the comparison baseline.
+  var botCrawl = null;
+  try {
+    botCrawl = await checkBotCrawlability(base, homepageText.trim().length, robotsRawText);
+  } catch (e) {
+    botCrawl = null;
+  }
 
   // Specific schema types that are meaningful for AI selection
   var SPECIFIC_SCHEMA_TYPES = [
@@ -330,6 +414,12 @@ async function fetchWebsiteText(url) {
     // Raw for Claude's use
     h2s:                meta.h2s || [],
     ogTitle:            meta.ogTitle || '',
+    // AI crawler visibility \u2014 real bot fetches, not just static file checks
+    botCrawlable:          botCrawl ? !botCrawl.allBotsFailed : null,
+    botEmptyShellDetected: botCrawl ? botCrawl.emptyShellDetected : null,
+    botEmptyShellBots:     botCrawl ? botCrawl.emptyShellBots : [],
+    botCrawlResults:       botCrawl ? botCrawl.results : [],
+    googleExtendedBlocked: botCrawl ? botCrawl.googleExtendedBlocked : null,
   };
 
   var text = buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists);
