@@ -126,19 +126,24 @@ function looksLikeSameBusiness(candidateName, candidateUrl, businessName, domain
 
 // ── Fetch Trustpilot reviews ──────────────────────────────────────────────────
 async function fetchTrustpilot(businessName, website) {
-  // Build Trustpilot search URL from business name
-  var domain  = (website || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
-  var tpQuery = domain || businessName;
-  var tpInput = {
-    startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }],
-    maxReviews: 10,
-    reviewsLanguage: 'en'
-  };
+  // Both actors' own live error messages confirmed neither accepts a search
+  // query \u2014 both want a direct Trustpilot company-page URL, just under
+  // different field names: automation-lab wants "companyUrls" (an array;
+  // pluralized, so following Apify convention of one-URL-per-array-slot),
+  // zen-studio wants a single "businessUrl" string. Standard Trustpilot
+  // company-page pattern: trustpilot.com/review/{domain}. Only attempted
+  // when a domain is actually known \u2014 neither actor works from a name alone.
+  var domain = (website || '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  if (!domain) return null;
+  var tpUrl = 'https://www.trustpilot.com/review/' + domain;
 
-  var tpActors = ['automation-lab~trustpilot', 'zen-studio~trustpilot-review-scraper'];
+  var tpAttempts = [
+    { id: 'automation-lab~trustpilot',              input: { companyUrls: [tpUrl], maxReviews: 10 } },
+    { id: 'zen-studio~trustpilot-review-scraper',   input: { businessUrl: tpUrl,   maxReviews: 10 } }
+  ];
   var items = null;
-  for (var t = 0; t < tpActors.length; t++) {
-    items = await runActor(tpActors[t], tpInput);
+  for (var t = 0; t < tpAttempts.length; t++) {
+    items = await runActor(tpAttempts[t].id, tpAttempts[t].input);
     if (items && Array.isArray(items) && items.length > 0) break;
     items = null;
   }
@@ -173,10 +178,10 @@ async function fetchTrustpilot(businessName, website) {
 async function fetchGoogleReviews(businessName, city) {
   var query = businessName + (city ? ' ' + city : '');
 
-  // Try multiple actor IDs - Google Maps actors change frequently
+  // Confirmed working actor \u2014 the raw-ID fallback that used to sit here
+  // 404'd on every single test today; removed as dead weight, not a safety net.
   var actors = [
-    { id: 'powerai~google-map-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
-    { id: 'nwua9Gu5YkAVuf7GY', input: { searchString: query, maxReviews: 10 } }
+    { id: 'powerai~google-map-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } }
   ];
 
   var items = null;
