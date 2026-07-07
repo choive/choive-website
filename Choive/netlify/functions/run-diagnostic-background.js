@@ -722,7 +722,7 @@ exports.handler = async function (event) {
       var searchUsed = null;
       try {
         if (simB && Array.isArray(simB.results)) {
-          searchUsed = simB.results.some(function(r) { return r && r.sampledTwice; });
+          searchUsed = simB.results.some(function(r) { return r && r.sampleCount && r.sampleCount > 1; });
         }
       } catch (e) {}
       console.log('[' + jobId + '] SUMMARY ' + JSON.stringify({
@@ -737,7 +737,7 @@ exports.handler = async function (event) {
         },
         groundTruth: {
           language:      simB && simB.language || 'en',
-          dualSampled:   searchUsed,
+          multiSampled:  searchUsed, // renamed from dualSampled: the redesign samples 4x per query, not 2x \u2014 old field name/value were stale after the frequency-architecture rewrite
           appearedRate:  simB && simB.results ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.length) : null
         },
         cacheBusted:     !!evidence['cacheBustedThisRun'],
