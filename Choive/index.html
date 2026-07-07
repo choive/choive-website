@@ -2743,6 +2743,35 @@ function buildGapBlock(r) {
   var tier       = (r && r.marketPosition && r.marketPosition.tier) ? r.marketPosition.tier : 'unknown';
   var likelihood = typeof tierMap[tier] === 'number' ? tierMap[tier] : 0;
   var readability = Number(r && r.overallScore) || 0;
+
+  // COHERENCE GUARD: marketPosition.tier and the banner's confirmed-threat
+  // status are two independently-reasoned signals that can contradict each
+  // other on the same page (proven live: Taurbull showed a red "AI recommends
+  // Gourmetfleisch.de instead of you" banner alongside a green "22-point
+  // ADVANTAGE" gap block — opposite stories, same result). If a real
+  // competitor is confirmed active in this run's own transcripts, the gap
+  // block may never claim an ADVANTAGE — that would contradict a fact the
+  // page is simultaneously asserting elsewhere.
+  var activeThreatName = null;
+  try {
+    var aiRec = r && r.competitorDecision && r.competitorDecision.aiRecommends;
+    if (aiRec) {
+      var simRes = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results;
+      if (Array.isArray(simRes)) {
+        var normG = function(s) {
+          s = String(s || '').toLowerCase();
+          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+          return s.replace(/[^a-z0-9]+/g, ' ').trim();
+        };
+        var targetG = normG(aiRec).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+        var confirmed = simRes.some(function(q) {
+          var body = ' ' + normG(q.response) + ' ';
+          return targetG && (body.indexOf(' ' + targetG + ' ') !== -1 || body.replace(/ /g, '').indexOf(targetG.replace(/ /g, '')) !== -1);
+        });
+        if (confirmed) activeThreatName = aiRec;
+      }
+    }
+  } catch (e) {}
   var gap = likelihood - readability;
 
   var likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 55 ? 'MID'  : 'LOW';
@@ -2755,12 +2784,22 @@ function buildGapBlock(r) {
   // a large ADVANTAGE was silently falling through to the generic near-zero
   // "aligned" line, contradicting the large number shown right next to it.
   var pts = Math.abs(gap);
-  var ptLabel = gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
 
-  var gapLabel  = pts >= 30 ? (gap > 0 ? 'CRITICAL' : 'STRUCTURAL LEAD') : pts >= 15 ? (gap > 0 ? 'MEANINGFUL' : 'CLEAR LEAD') : pts >= 1 ? 'MINOR' : 'ALIGNED';
-  var gapClass  = pts >= 30 ? (gap > 0 ? 'critical' : 'advantage') : pts >= 15 ? (gap > 0 ? 'meaningful' : 'advantage') : pts >= 1 ? 'minor' : 'aligned';
+  // An active confirmed threat overrides ADVANTAGE framing entirely \u2014
+  // never contradict the banner. The gap's size still matters (it's real
+  // data), but its DIRECTION gets forced to exposure language when someone
+  // is confirmed actively winning the AI recommendation right now.
+  // MUST be computed before ptLabel/gapLabel/gapClass below use it.
+  var forceExposure = !!activeThreatName && gap < 0;
+  var ptLabel = forceExposure ? 'EXPOSURE' : gap > 0 ? 'EXPOSURE' : gap < 0 ? 'ADVANTAGE' : 'ALIGNMENT';
+  var gapLabel  = forceExposure ? (pts >= 30 ? 'CRITICAL' : pts >= 15 ? 'MEANINGFUL' : 'MINOR')
+    : pts >= 30 ? (gap > 0 ? 'CRITICAL' : 'STRUCTURAL LEAD') : pts >= 15 ? (gap > 0 ? 'MEANINGFUL' : 'CLEAR LEAD') : pts >= 1 ? 'MINOR' : 'ALIGNED';
+  var gapClass  = forceExposure ? (pts >= 30 ? 'critical' : pts >= 15 ? 'meaningful' : 'minor')
+    : pts >= 30 ? (gap > 0 ? 'critical' : 'advantage') : pts >= 15 ? (gap > 0 ? 'meaningful' : 'advantage') : pts >= 1 ? 'minor' : 'aligned';
 
-  var mainCopy = pts >= 30
+  var mainCopy = forceExposure
+    ? 'Your structure is ahead of the market \u2014 but ' + activeThreatName + ' is winning the AI recommendation right now. That gap closes the moment your trust signals catch up.'
+    : pts >= 30
     ? (gap > 0
         ? 'A better-structured competitor will be selected instead of you.'
         : 'Your structure already outperforms how the market currently sees you \u2014 trust signals are the only thing between you and a much higher recommendation rate.')
