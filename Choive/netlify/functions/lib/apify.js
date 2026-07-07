@@ -2,13 +2,15 @@
 // CHOIVE Apify integration — fetches real review and social evidence
 // Actors used:
 //   - Trustpilot scraper: novi~trustpilot-scraper (via Trustpilot search) —
-//     UNVERIFIED as of 2026-07-07; confirm exact slug/casing in Apify Store
-//     the same way the Google Maps actor below was confirmed.
-//   - Google Maps reviews: compass~Google-Maps-Reviews-Scraper — CONFIRMED
-//     2026-07-07 against the live Apify Store listing (exact casing matters;
-//     the previous all-lowercase ID was returning 404 on every run).
-//     Fallback: nwua9Gu5YkAVuf7GY (unverified; also 404’d in the same run —
-//     kept only because a dead fallback is harmless, never because it's known-good).
+//     UNVERIFIED as of 2026-07-07; confirm the same way Google Maps was below
+//     (Store display names can differ from the real API id — always pull the
+//     ID from the actor's own "API endpoints" tab, never from the Store URL).
+//   - Google Maps reviews: powerai~google-map-reviews-scraper — CONFIRMED
+//     2026-07-07 directly from this actor's own generated API endpoint docs.
+//     Two prior IDs were tried and both 404’d because the Apify Store page
+//     displays "Crafted by Compass" as a maintainer/brand label — the actual
+//     API owner username is "powerai", an entirely different string that no
+//     amount of reading the Store page's URL or copy-icon could have revealed.
 // Identity guard: results that do not verifiably match the diagnosed business
 // are discarded — wrong-business reviews must never enter the evidence.
 // ENV: APIFY_API_KEY
@@ -151,7 +153,7 @@ async function fetchGoogleReviews(businessName, city) {
 
   // Try multiple actor IDs - Google Maps actors change frequently
   var actors = [
-    { id: 'compass~Google-Maps-Reviews-Scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
+    { id: 'powerai~google-map-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } },
     { id: 'nwua9Gu5YkAVuf7GY', input: { searchString: query, maxReviews: 10 } }
   ];
 
