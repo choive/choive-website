@@ -72,7 +72,7 @@ exports.handler = async function(event) {
     category:    'AI selection diagnostic',
     city:        'Global',
     website:     'https://choive.com',
-    description: 'The world\'s first AI selection diagnostic for businesses'
+    description: 'A diagnostic that identifies why AI is not recommending your business and delivers an instant verdict on exactly what to fix'
   };
 
   try {
