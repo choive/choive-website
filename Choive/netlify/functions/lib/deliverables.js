@@ -247,7 +247,20 @@ function generateReviewAction(evidence, result) {
   var catLower = category.toLowerCase();
   var platform, targetCount, platformUrl, instruction;
 
-  if (/software|saas|platform|crm/i.test(catLower)) {
+  // Model-reasoned platform takes priority \u2014 it can reason about ANY
+  // category, not just the ~4 hardcoded below. The regex table becomes a
+  // fallback for older cached results that predate this field, not the
+  // primary path. This closes the real gap: most real businesses (fitness,
+  // construction, real estate, manufacturing, consulting...) previously fell
+  // through every regex and got a generic "go to Trustpilot" regardless of
+  // whether that platform actually matters to their buyers.
+  var modelPlatform = result.recommendedPlatform;
+  if (modelPlatform && modelPlatform.name) {
+    platform    = modelPlatform.name;
+    platformUrl = modelPlatform.url || '';
+    instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
+    targetCount = 25;
+  } else if (/software|saas|platform|crm/i.test(catLower)) {
     platform    = 'G2';
     targetCount = 25;
     platformUrl = 'g2.com/products/';
@@ -274,6 +287,7 @@ function generateReviewAction(evidence, result) {
     instruction = 'Go to ' + platformUrl + ' and create a free business account today. Add your Trustpilot review link to your order confirmation email. This one change alone will build your review count within weeks.';
   }
 
+  targetCount = targetCount || 25;
   var gap = Math.max(0, targetCount - currentCount);
 
   return {
