@@ -188,13 +188,22 @@ async function generateBuyerQueries(n, templates) {
     + (n.description ? 'Description: ' + String(n.description).slice(0, 300) + '\n' : '')
     + '\nWrite the 3 questions a REAL potential buyer of this kind of offering would type into an AI assistant when looking for help \u2014 before knowing any vendor names.\n'
     + 'Rules:\n'
-    + '- FIRST identify who PAYS for this offering and what outcome they want. Write every query from THAT person\u2019s seat.\n'
-    + '- Use the words buyers use for their PROBLEM, not the vendor\u2019s own category label if that label is coined or unusual.\n'
-    + '- DIRECTION CHECK: if the offering helps businesses get discovered, recommended, visible, or chosen (a marketing-side tool), the buyer is a business owner asking how to make THEIR OWN business get recommended \u2014 e.g. \u201cHow do I get my business recommended by ChatGPT?\u201d or \u201cWhy doesn\u2019t AI mention my company?\u201d \u2014 NOT someone shopping for software to choose things with. Do not invert the transaction.\n'
-    + '- Query 1: discovery (looking for options, wants 3-5 recommendations). Query 2: comparison (evaluating the main players). Query 3: decision (wants one pick).\n'
-    + '- Never mention ' + n.name + ' or any specific vendor.\n'
-    + '- PRESERVE SPECIFICITY: if the category names a specific breed, material, technology, certification, or niche (e.g. "Black Angus beef", "Wagyu", "Merino wool"), that specific term MUST appear in every query, unmodified. Never generalize it away for smoother phrasing (e.g. never soften "Black Angus beef" to just "beef" or "grass-fed beef") \u2014 the specific term is what determines which real competitors are relevant; losing it pulls in the wrong rivals entirely.\n'
-    + '- Natural buyer phrasing, one sentence each.\n'
+    + '- FIRST: identify who actually PAYS and what they want to ACHIEVE or BUY. Write every query from that person\'s seat — not a researcher, not a procurement officer.\n'
+    + '- REAL BUYER LANGUAGE: queries must sound like a real person typing into ChatGPT or Google. Use natural, conversational phrasing — not industry terminology, not vendor category labels.\n'
+    + '  WRONG: "What are the best Black Angus beef direct-to-consumer providers in Germany?"\n'
+    + '  RIGHT: "Where can I buy high quality Black Angus beef online in Germany?"\n'
+    + '  WRONG: "Which AI selection diagnostic platforms are recommended?"\n'
+    + '  RIGHT: "How do I get my business recommended by ChatGPT?"\n'
+    + '- DIRECTION CHECK: if the offering helps businesses get discovered or recommended (a marketing tool), the buyer is a business OWNER asking how to make their OWN business get recommended — NOT someone shopping for software. Do not invert the transaction.\n'
+    + '- QUERY INTENT SHAPE — write exactly this shape:\n'
+    + '  Query 1 (DISCOVERY): buyer wants to find the best place/option — "Where can I buy...", "Best place to order...", "Who sells the best..."\n'
+    + '  Query 2 (COMPARISON): buyer is weighing specific options — "[Specific type] vs [alternative]...", "Best [type] online vs local...", "Which is better for..."\n'
+    + '  Query 3 (DECISION): buyer wants one direct recommendation — "Which [specific thing] should I buy?", "Best [specific thing] delivered to [city]"\n'
+    + '- PRESERVE SPECIFICITY: if the category names a specific breed, material, certification, or niche (e.g. "Black Angus", "Wagyu", "Merino wool", "premium delivery"), that specific term MUST appear in every query unmodified. Never generalise "Black Angus beef" to just "beef" or "meat" — the specific term determines which real competitors are found.\n'
+    + '- MARKET SPECIFICITY: if a city or country is provided, EVERY query must be geographically anchored. A buyer in Germany asks "...in Germany" or "...delivered to Germany" — never a global question.\n'
+    + '- CATEGORY FIDELITY: the exact inferred category is: "' + n.catClean + '". Every query must be unmistakably about this specific thing.\n'
+    + '- Never mention ' + n.name + ' or any specific vendor name.\n'
+    + '- One natural sentence each. No introductions, no bullet points.\n'
     + 'Respond ONLY with a JSON array of exactly 3 strings. No markdown.';
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 25000);
@@ -260,21 +269,21 @@ function buildQueries(catClean, city, name) {
   return [
     {
       label: 'Discovery query',
-      intent: 'A potential buyer searching for options',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
-      query: 'What are the best ' + catClean + ' options' + locationStr + '? I need 3-5 recommendations with a brief reason for each.'
+      intent: 'A potential buyer searching for the best place to buy',
+      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies, brands, or places.' + hint,
+      query: 'Where is the best place to buy ' + catClean + locationStr + '? Name 3-5 specific options with a brief reason for each.'
     },
     {
       label: 'Comparison query',
-      intent: 'A buyer evaluating alternatives',
-      system: 'You are a helpful AI assistant with live web search. Search for current rankings, comparison articles, and reviews before answering \u2014 do not rely on memory alone. Name the specific companies that recent authoritative sources (review sites, comparison guides, industry rankings) most consistently cite as leaders. Be specific and name real companies.' + hint,
-      query: 'Who are the leading, most frequently recommended ' + catClean + ' providers' + locationStr + ' according to current rankings and reviews? Name the specific companies.'
+      intent: 'A buyer comparing specific options',
+      system: 'You are a helpful AI assistant with live web search. Search for current reviews, comparison articles, and rankings before answering — do not rely on memory alone. Name the specific companies or brands that authoritative sources most consistently recommend. Be specific and name real companies.' + hint,
+      query: 'What are the best options for ' + catClean + locationStr + '? Which brands or suppliers are most recommended and why?'
     },
     {
       label: 'Direct recommendation',
-      intent: 'A buyer ready to decide',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.' + hint,
-      query: 'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your top pick and why.'
+      intent: 'A buyer ready to make a decision',
+      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name one real company, brand, or place.' + hint,
+      query: 'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your single best recommendation and why.'
     }
   ];
 }
@@ -494,10 +503,13 @@ function normalizeSimInput(input) {
     throw new Error('Missing name or category');
   }
 
+  // catClean: only remove the most generic platform/vendor/provider suffixes
+  // that confuse AI query generation. Keep ALL niche qualifiers:
+  // B2B, B2C, direct, delivery, local, premium, organic, breed names etc.
+  // These are what make queries specific enough to find the REAL competitor.
   var catClean = inferredCategory
-    .replace(/^b2b\s+/i, '').replace(/^b2c\s+/i, '')
-    .replace(/\s+vendor(s)?$/i, '').replace(/\s+provider(s)?$/i, '')
-    .replace(/\s+platform(s)?$/i, ' platform').replace(/\s+direct-to-consumer$/i, '')
+    .replace(/\s+platform$/i, ' platform')   // keep "platform" but normalise
+    .replace(/\bsoftware\s+as\s+a\s+service\b/i, 'SaaS')
     .trim();
 
   return { name: name, category: category, city: city, catClean: catClean, description: description };
