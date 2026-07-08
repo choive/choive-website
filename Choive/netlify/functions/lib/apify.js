@@ -38,7 +38,7 @@ async function runActor(actorId, input) {
   var startRes = await fetch(startUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: input })
+    body: JSON.stringify(input)
   }).catch(function(err) {
     console.warn('Apify start failed:', err.message);
     return null;
