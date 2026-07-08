@@ -285,6 +285,7 @@ function buildPrompt(evidence) {
     + '1. Exactly what was found\n'
     + '2. The number needed to be credible in this category\n'
     + '3. The specific platform that matters most for this buyer type\n\n'
+    + 'RECOMMENDED PLATFORM \u2014 CRITICAL: name the SINGLE real review or credibility platform that actually matters most for buyers in THIS SPECIFIC inferred category \u2014 reason from the real business type, never default to a generic answer. Examples of the reasoning expected: a B2B software company \u2014 G2 or Capterra; a restaurant \u2014 Google Reviews; a law firm \u2014 Chambers or Legal 500; a hotel \u2014 TripAdvisor and Google; a construction contractor \u2014 Google Business Profile and Houzz; a real estate agency \u2014 Zillow or a local realtor platform; a fitness studio \u2014 Google and ClassPass; a manufacturer or B2B supplier \u2014 industry-specific directories or Clutch; a consumer product brand with no single obvious platform \u2014 Trustpilot is a legitimate default, but only after genuinely considering whether a more specific, category-relevant platform exists first. Trustpilot must never be the reflexive default \u2014 it is correct only when it is truly the platform this buyer type actually checks.\n\n'
     + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
     + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
     + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
@@ -446,6 +447,7 @@ function buildPrompt(evidence) {
     + '  "inferredCategory": "",\n'
     + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
     + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
+    + '  "recommendedPlatform": { "name": "", "url": "", "reason": "" },\n'
     + '  "pillars": {\n'
     + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
     + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
@@ -549,6 +551,7 @@ function safeOutput(raw) {
     marketPosition:        r.marketPosition       || { tier: 'unknown', reasoning: '' },
     platformCoverage:      r.platformCoverage     || { chatgpt: 'weak', perplexity: 'weak', gemini: 'weak', claude: 'weak' },
     selectionGap:          r.selectionGap         || 0,
+    recommendedPlatform:   (r.recommendedPlatform && r.recommendedPlatform.name) ? r.recommendedPlatform : null,
     pillars: {
       clarity:    safePillar(pillars.clarity),
       trust:      safePillar(pillars.trust),
