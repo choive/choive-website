@@ -433,7 +433,16 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     { q: 'best ' + catShort + marketSuffix,                          type: 'comparison'  },
     // Press and industry — surfaces real named players
     { q: name + ' news OR press OR announcement',                    type: 'comparison'  },
-    { q: catShort + ' industry players' + marketSuffix,              type: 'comparison'  }
+    { q: catShort + ' industry players' + marketSuffix,              type: 'comparison'  },
+    // RESTORED \u2014 present in an earlier version of this file, absent from
+    // what was actually live when this session began (a prior deploy appears
+    // to have been silently overwritten by an older version somewhere before
+    // today). These surface real, human, contextual evidence \u2014 industry
+    // events, partnerships, press \u2014 that generic "best X" listicle queries
+    // miss, and are a genuine, different kind of evidence than the community
+    // buyer-conversation queries added above them.
+    { q: name + ' industry panel OR conference OR webinar',          type: 'comparison'  },
+    { q: name + ' partnership OR announcement OR news',              type: 'comparison'  }
   ];
   // If the user named specific competitors, search each one directly — this is
   // verified ground truth from the business owner, not a guess, so it deserves
