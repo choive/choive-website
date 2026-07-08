@@ -252,7 +252,8 @@ async function generateBuyerQueries(n, templates) {
 var INDUSTRY_COLLISION_HINTS = [
   [/\bdiagnostic/i, 'Note: in this context "diagnostic" refers to a business/marketing tool that assesses how AI systems recommend companies \u2014 NOT a medical or clinical diagnostic product. Only answer with business/marketing/SaaS tools; ignore any healthcare, medical device, or clinical diagnostics companies entirely.'],
   [/\bassessment\b/i, 'Note: "assessment" here means a business/marketing evaluation tool, not a psychological, medical, or educational assessment.'],
-  [/\btherapy|\btreatment\b/i, 'Note: this is a business/software context, not a healthcare or clinical context.']
+  [/\btherapy|\btreatment\b/i, 'Note: this is a business/software context, not a healthcare or clinical context.'],
+  [/farm.brand|farm.to|direct.from.farm|eigene.farm|direkt.von.der.farm|vertically.integrat/i, 'CRITICAL: the buyer is looking for a BRAND that owns its own farm or production and sells direct \u2014 NOT a retailer, marketplace, or shop that resells beef from multiple farms. Only name brands that control their own production chain. A retailer selling beef from many farms (e.g. an online butcher shop with multiple origins) is NOT the correct answer here, even if it sells the same type of product.']
 ];
 
 function collisionHint(catClean) {
@@ -262,10 +263,39 @@ function collisionHint(catClean) {
   return '';
 }
 
-function buildQueries(catClean, city, name) {
+function buildQueries(catClean, city, name, businessModel) {
   var hint = collisionHint(catClean);
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
+
+  // Farm/DTC brands need a different query shape — the buyer is choosing a brand
+  // that owns its production, not a retailer with the widest selection.
+  // Generic "where to buy" queries surface retailers. Brand-origin queries
+  // surface the real competitors: other farm brands selling direct.
+  if (businessModel === 'farm_brand_dtc') {
+    return [
+      {
+        label: 'Discovery query',
+        intent: 'A buyer looking for a farm brand that sells direct',
+        system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real farm brands or producers that sell directly to consumers.' + hint,
+        query: 'Which brands or farms sell their own ' + catClean + ' directly to customers' + locationStr + '? I want to buy from the producer, not a shop. Name 3-5 real options.'
+      },
+      {
+        label: 'Comparison query',
+        intent: 'A buyer comparing farm brands by origin and quality',
+        system: 'You are a helpful AI assistant with live web search. Search for current information before answering. Name only brands that own their own production — not retailers or shops that resell from multiple farms.' + hint,
+        query: 'What are the best farm-direct ' + catClean + ' brands' + locationStr + '? Which ones own their own herd or production and sell online?'
+      },
+      {
+        label: 'Direct recommendation',
+        intent: 'A buyer ready to choose one farm brand',
+        system: 'You are a helpful AI assistant. Answer naturally and directly. Name one specific farm brand that owns its own production and sells direct.' + hint,
+        query: 'Which farm brand would you recommend for buying ' + catClean + ' online' + (city ? ' delivered to ' + city : '') + '? Just give me your single best recommendation.'
+      }
+    ];
+  }
+
+  // Standard buyer queries — correct for retailers, marketplaces, services
   return [
     {
       label: 'Discovery query',
@@ -512,7 +542,29 @@ function normalizeSimInput(input) {
     .replace(/\bsoftware\s+as\s+a\s+service\b/i, 'SaaS')
     .trim();
 
-  return { name: name, category: category, city: city, catClean: catClean, description: description };
+  // Business model detection — determines the BUYER INTENT behind the query.
+  // A buyer choosing a vertically-integrated farm brand is asking a fundamentally
+  // different question than a buyer choosing a retailer or marketplace.
+  // Farm/DTC brands: the buyer wants to know the animal's origin, the producer's
+  // story, and the brand's own production — NOT which shop has the widest range.
+  // Getting this wrong means the simulation asks the wrong buyer question and
+  // surfaces retailers instead of farm brands as competitors.
+  var businessModel = 'standard';
+  var catLower = catClean.toLowerCase();
+  var descLower = description.toLowerCase();
+  var combined = catLower + ' ' + descLower;
+  if (
+    /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|direct.to.consumer|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined) ||
+    (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined))
+  ) {
+    businessModel = 'farm_brand_dtc';
+  } else if (/b2b|wholesale|distributor|supplier.*business|business.*supplier/i.test(combined)) {
+    businessModel = 'b2b';
+  } else if (/marketplace|platform|aggregator|multi.brand|curates|resell/i.test(combined)) {
+    businessModel = 'marketplace';
+  }
+
+  return { name: name, category: category, city: city, catClean: catClean, description: description, businessModel: businessModel };
 }
 
 function beforeSummary(name, count) {
@@ -536,7 +588,7 @@ function afterSummary(name, count) {
 // businesses AI actually recommends today, which drive competitor selection.
 async function runBeforeSimulation(input) {
   var n = normalizeSimInput(input);
-  var buyerQueries = await generateBuyerQueries(n, buildQueries(n.catClean, n.city, n.name));
+  var buyerQueries = await generateBuyerQueries(n, buildQueries(n.catClean, n.city, n.name, n.businessModel));
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, true);
   var count = results.filter(function(r) { return r.appeared; }).length;
