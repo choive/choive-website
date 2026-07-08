@@ -180,7 +180,14 @@ function buildSafeOutput(output) {
     ['upper_mid', 'mid', 'weak', 'absent', 'unknown'].includes(marketTier)
   ) {
     safe.verdictLevel    = 'weak';
-    safe.verdictHeadline = 'Not consistently the obvious choice — losing opportunities';
+    // This exact phrase was independently banned at the MODEL level in
+    // claude.js's prompt (AVOID AMBIGUOUS NEGATION rule) \u2014 but this hardcoded
+    // override in buildSafeOutput runs AFTER the model responds and was
+    // silently replacing whatever headline the model correctly wrote,
+    // completely bypassing that fix for every result landing in this score
+    // range. "Not consistently X" reads as "usually X, sometimes not" \u2014
+    // backwards for a weak-tier business that is not the default choice.
+    safe.verdictHeadline = 'Overlooked when it matters most';
   } else {
     safe.verdictLevel    = 'present';
     safe.verdictHeadline = 'The obvious choice — winning decisions';
