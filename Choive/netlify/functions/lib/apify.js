@@ -137,9 +137,17 @@ async function fetchTrustpilot(businessName, website) {
   if (!domain) return null;
   var tpUrl = 'https://www.trustpilot.com/review/' + domain;
 
+  // Search-style query, for the third candidate specifically \u2014 an OLDER
+  // actor from an earlier disabled version of this file used a search URL,
+  // not a direct company page. Different actors have proven to want
+  // genuinely different schemas every single time today; this is real prior
+  // information about THIS specific actor, not a guess.
+  var tpQuery = businessName || domain;
+
   var tpAttempts = [
-    { id: 'automation-lab~trustpilot',              input: { companyUrls: [tpUrl], maxReviews: 10 } },
-    { id: 'zen-studio~trustpilot-review-scraper',   input: { businessUrl: tpUrl,   maxReviews: 10 } }
+    { id: 'automation-lab~trustpilot',              input: { companyUrls: [{ url: tpUrl }], maxReviews: 10 } },
+    { id: 'zen-studio~trustpilot-review-scraper',   input: { businessUrl: tpUrl,             maxReviews: 10 } },
+    { id: 'easyapify~trustpilot-scraper',           input: { startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }], maxReviews: 10, reviewsLanguage: 'en' } }
   ];
   var items = null;
   for (var t = 0; t < tpAttempts.length; t++) {
