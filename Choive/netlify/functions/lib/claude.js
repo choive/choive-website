@@ -511,6 +511,7 @@ function applySignalConstraints(rawOutput, websiteSignals) {
     // rules alone. Real crawlers seeing a blank page is the actual defect
     // Ease is supposed to measure; static files are a proxy, not the fact.
     if (s.botEmptyShellDetected && p.ease.score > 6) { p.ease.score = 6; }
+    if (s.allBotsFailed && p.ease.score > 3) { p.ease.score = 3; }
   }
 
   if (p.clarity) {
