@@ -2752,9 +2752,15 @@ function buildGapBlock(r) {
   // competitor is confirmed active in this run's own transcripts, the gap
   // block may never claim an ADVANTAGE — that would contradict a fact the
   // page is simultaneously asserting elsewhere.
+  // Use realCompetitor \u2014 the SAME name the banner (topComp) shows \u2014 not
+  // aiRecommends, a separate field from a separate reasoning stage with no
+  // requirement to agree with it. Confirmed live: a single result page showed
+  // "Angus-Rindfleisch-kaufen.de" in the banner and "The Meatlovers" here,
+  // two different real companies both presented as \u201cthe competitor.\u201d One
+  // page, one authoritative name, everywhere.
   var activeThreatName = null;
   try {
-    var aiRec = r && r.competitorDecision && r.competitorDecision.aiRecommends;
+    var aiRec = r && r.competitorDecision && r.competitorDecision.realCompetitor;
     if (aiRec) {
       var simRes = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results;
       if (Array.isArray(simRes)) {
