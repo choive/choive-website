@@ -3035,9 +3035,6 @@ function showResults(r, jobId) {
   // 3. After payment, verifyAndLoad() calls /.netlify/functions/verify-payment
   //    which retrieves the Stripe session and reads client_reference_id as jobId.
   // ENV required: STRIPE_SECRET_KEY in Netlify environment variables.
-  const stripeBase   = 'https://buy.stripe.com/test_cNi14m5LL0md5wE08XbMQ00';
-  const stripeParams = new URLSearchParams({ client_reference_id: jobId || '' });
-  const STRIPE_LINK  = stripeBase + '?' + stripeParams.toString();
 
   // ── BUILD FREE RESULT HTML ──────────────────────────────────────────────────
   var inferredCat = r.inferredCategory && r.inferredCategory !== bizData.category
