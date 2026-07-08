@@ -748,6 +748,28 @@ exports.handler = async function (event) {
     }
 
     await saveResult(jobId, finalResult);
+
+    // When the diagnosed site is choive.com, write result to self_diagnostic
+    // table so the homepage live score display works correctly.
+    if (website && website.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '') === 'choive.com') {
+      try {
+        var { createClient: _createClient } = require('@supabase/supabase-js');
+        var _ws = require('ws');
+        var _sb = _createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: _ws } });
+        await _sb.from('self_diagnostic').insert({
+          job_id:        jobId,
+          overall_score: finalResult.overallScore   || 0,
+          pillars:       finalResult.pillars         || {},
+          verdict:       finalResult.verdictHeadline || '',
+          summary:       finalResult.summaryParagraph || '',
+          actions:       finalResult.actions          || [],
+          created_at:    new Date().toISOString()
+        });
+        console.log('[' + jobId + '] Self-diagnostic written to self_diagnostic table.');
+      } catch (e) {
+        console.warn('[' + jobId + '] self_diagnostic write failed (non-fatal):', e.message);
+      }
+    }
     console.log('[' + jobId + '] Diagnostic complete.');
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
   } catch (err) {
