@@ -91,13 +91,26 @@ exports.handler = async function(event) {
       version:              1
     });
 
-    // Trigger the background engine
+    // Fire the background engine and return immediately — do NOT poll here.
+    // Regular Netlify functions timeout at 10s; the background engine takes
+    // 60-120s. The background function writes the result to self_diagnostic
+    // when it finishes; the GET handler above reads from there.
     var bgUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
-    await fetch(bgUrl, {
+    fetch(bgUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobId, input })
+    }).catch(function(err) {
+      console.warn('[self-diagnostic] Background trigger failed (non-fatal):', err.message);
     });
+
+    console.log('[self-diagnostic] Queued jobId:', jobId);
+
+    return {
+      statusCode: 202,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ok: true, jobId, status: 'queued' })
+    };
 
     console.log('[self-diagnostic] Started jobId:', jobId);
 
