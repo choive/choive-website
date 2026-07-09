@@ -506,10 +506,17 @@ function buildLetter(bizName, score, weakest, compName, input) {
     middle = 'I want to be honest with you about what we found for <strong>' + esc(bizName) + '</strong>. A score of ' + score + ' means AI platforms are not finding you when someone asks for your category. That is a hard thing to read. But it is also the most actionable position to be in \u2014 because every gap we found has a clear fix, and none of them require rebuilding what you have built. ' + weakestLine + ' That is where we start. Section 8 tells you exactly what to do first.';
   }
 
-  // Closing — honest, respectful, direct.
-  var closing = 'What you are holding is the honest picture. Not softened, not dressed up. I would rather you read something real and act on it than receive something comfortable and file it away.'
+  // Closing — specific to this business: names their category and city.
+  var inputCategory = input && input.category ? String(input.category) : '';
+  var inputCity     = input && input.city     ? String(input.city)     : '';
+  var closingContext = inputCategory
+    ? ' for <strong>' + esc(bizName) + '</strong>'
+      + ' — a ' + esc(inputCategory) + ' business'
+      + (inputCity ? ' in ' + esc(inputCity) : '')
+    : ' for <strong>' + esc(bizName) + '</strong>';
+  var closing = 'What you are holding is the honest picture' + closingContext + '. Not softened, not dressed up. I would rather give you something real to act on than something comfortable to file away.'
     + '<br><br>'
-    + 'Start with Section 8. Do the first action. Then come back and do the second. The sequence is ordered by what unlocks what \u2014 do not skip ahead. And if anything in this report is unclear, or you want to talk through what you found, write to us at <strong>hello@choive.com</strong>. Every message gets read personally.';
+    + 'Start with <strong>Section 8</strong>. The actions are sequenced — each one unlocks what comes next. Do not skip ahead. And if anything in this report is unclear, or you want to talk through what you found, write to us at <strong>hello@choive.com</strong>. Every message gets read personally.';
 
   return '<div class="letter">'
     + '<div class="letter-eyebrow">A note from the founder</div>'
@@ -530,18 +537,18 @@ function buildLetter(bizName, score, weakest, compName, input) {
 var CSS = [
   '*{margin:0;padding:0;box-sizing:border-box;}',
   'html{background:#E8E4DE;}',
-  'body{font-family:Inter,sans-serif;background:#fff;color:#0C0C0E;max-width:900px;margin:0 auto;font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;}',
+  'body{font-family:Inter,sans-serif;background:#fff;color:#0C0C0E;max-width:900px;margin:0 auto;font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased;}',
   '.print-btn{position:fixed;top:20px;right:20px;z-index:9999;background:#C9A86A;color:#0C0C0E;border:none;font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:14px 22px;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 20px rgba(0,0,0,0.2);}',
   '.print-btn:hover{background:#B8935A;}',
   /* PAGE FOOTER */
   '.pf{display:flex;justify-content:space-between;align-items:center;height:18px;padding:14px 48px;box-sizing:content-box;background:#F5F2EE;border-top:1px solid rgba(12,12,14,0.06);}',
-  '.pf-logo{font-size:11px;font-weight:700;letter-spacing:0.14em;color:rgba(12,12,14,0.2);}',
-  '.pf-logo span{color:#C9A86A;}',
+  '.pf-logo{font-size:11px;font-weight:700;letter-spacing:0.14em;color:rgba(12,12,14,0.18);}',
+  '.pf-logo span{color:rgba(12,12,14,0.25);}',
   '.pf-biz{font-size:10px;color:#BBBBC2;}',
   '.pf-pg{font-size:10px;color:#BBBBC2;font-family:Georgia,serif;}',
   /* COVER */
-  '.cover{background:#F5F2EE;padding:36px 56px 32px;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}',
-  '.cover-accent{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}',
+  '.cover{background:#0C0C0E;padding:44px 56px 36px;position:relative;display:flex;flex-direction:column;height:297mm;box-sizing:border-box;}',
+  '.cover-accent{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,#C9A86A 8%,#C9A86A 92%,transparent 100%);}',
   '.cover-logo-block{margin-bottom:0;padding-bottom:0;}',
   '.cover-body{padding:28px 0 24px;}',
   '.cover-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:rgba(201,168,106,0.65);margin-bottom:20px;}',
@@ -558,7 +565,7 @@ var CSS = [
   /* LETTER */
   '.letter{padding:60px 56px 60px 64px;border-left:4px solid #C9A86A;margin:0;position:relative;}',
   '.letter::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;background:linear-gradient(180deg,transparent,#C9A86A 8%,#C9A86A 92%,transparent);}',
-  '.letter-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#C9A86A;margin-bottom:32px;opacity:0.7;}',
+  '.letter-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(12,12,14,0.35);margin-bottom:32px;}',
   '.letter-salutation{font-family:Georgia,serif;font-size:22px;font-weight:400;color:#0C0C0E;margin-bottom:28px;letter-spacing:-0.01em;}',
   '.letter-p{font-size:14px;color:#3A3A42;line-height:2.0;margin-bottom:22px;max-width:620px;}',
   '.letter-p strong{color:#0C0C0E;font-weight:600;}',
@@ -579,17 +586,17 @@ var CSS = [
   '.toc-dots{border-bottom:1px dotted rgba(12,12,14,0.12);flex:1;margin:0 14px;position:relative;top:10px;min-width:20px;}',
   '.toc-pg{font-size:12px;color:#BBBBC2;font-family:Georgia,serif;flex-shrink:0;padding-top:2px;}',
   /* SECTION DIVIDER PAGE */
-  '.sdp{background:#F5F2EE;padding:44px 56px 36px;position:relative;border-top:1px solid rgba(12,12,14,0.06);border-bottom:1px solid rgba(12,12,14,0.06);}',
-  '.sdp::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 15%,#C9A86A 85%,transparent);}',
-  '.sdp-num{font-family:Georgia,serif;font-size:100px;font-weight:700;color:rgba(201,168,106,0.18);line-height:1;letter-spacing:-0.04em;position:absolute;top:16px;right:48px;}',
-  '.sdp-title{font-family:Georgia,serif;font-size:36px;font-weight:400;color:#0C0C0E;line-height:1.1;letter-spacing:-0.02em;margin-bottom:10px;}',
-  '.sdp-sub{font-size:12px;color:rgba(12,12,14,0.5);line-height:1.8;max-width:520px;}',
+  '.sdp{background:#0C0C0E;padding:44px 56px 36px;position:relative;}',
+  '.sdp::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9A86A 10%,#C9A86A 90%,transparent);}',
+  '.sdp-num{font-family:Georgia,serif;font-size:110px;font-weight:700;color:rgba(201,168,106,0.1);line-height:1;letter-spacing:-0.04em;position:absolute;top:12px;right:48px;}',
+  '.sdp-title{font-family:Georgia,serif;font-size:36px;font-weight:400;color:#F5F2EE;line-height:1.1;letter-spacing:-0.02em;margin-bottom:10px;}',
+  '.sdp-sub{font-size:12px;color:rgba(245,242,238,0.4);line-height:1.8;max-width:520px;}',
   /* SECTION */
-  '.section{padding:56px;}',
-  '.eyebrow{font-size:9px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#BBBBC2;margin-bottom:24px;display:flex;align-items:center;gap:12px;}',
-  '.eyebrow::after{content:"";flex:1;height:1px;background:rgba(12,12,14,0.06);}',
+  '.section{padding:60px 56px 52px;}',
+  '.eyebrow{font-size:9px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#BBBBC2;margin-bottom:28px;display:flex;align-items:center;gap:14px;}',
+  '.eyebrow::after{content:"";flex:1;height:1px;background:rgba(12,12,14,0.07);}',
   /* SCORE LAYOUT */
-  '.score-layout{display:grid;grid-template-columns:290px 1fr;gap:44px;align-items:start;margin-bottom:36px;}',
+  '.score-layout{display:grid;grid-template-columns:290px 1fr;gap:56px;align-items:start;margin-bottom:44px;}',
   '.score-verdict-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:6px 14px;border:1px solid rgba(12,12,14,0.15);color:#48484F;margin-bottom:14px;}',
   '.score-verdict-h{font-family:Georgia,serif;font-size:26px;font-weight:400;color:#0C0C0E;line-height:1.18;margin-bottom:16px;letter-spacing:-0.02em;}',
   '.score-summary{font-size:14px;color:#48484F;line-height:1.88;}',
@@ -599,11 +606,11 @@ var CSS = [
   '.score-bar-labels{display:flex;justify-content:space-between;}',
   '.sbl{font-size:10px;color:#BBBBC2;}',
   /* RINGS */
-  '.rings-row{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:36px;text-align:center;}',
+  '.rings-row{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-bottom:48px;text-align:center;}',
   /* AI PERCEPTION */
   '.aip{background:#F5F2EE;padding:30px 34px;margin-bottom:0;position:relative;border:1px solid rgba(12,12,14,0.06);}',
-  '.aip::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#C9A86A 20%,#C9A86A 80%,transparent);opacity:0.4;}',
-  '.aip-label{font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#9A6A14;margin-bottom:10px;}',
+  '.aip::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:rgba(12,12,14,0.08);}',
+  '.aip-label{font-size:9px;font-weight:700;letter-spacing:0.24em;text-transform:uppercase;color:#BBBBC2;margin-bottom:10px;}',
   '.aip-text{font-size:14px;color:#48484F;line-height:1.88;font-style:italic;}',
   /* PROJECTION */
   '.proj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-bottom:8px;}',
@@ -626,7 +633,7 @@ var CSS = [
   '.pd-bar{height:2px;background:rgba(12,12,14,0.06);margin-bottom:14px;}',
   '.pd-fill{height:100%;background:#C9A86A;}',
   '.pd-analysis{font-size:14px;color:#48484F;line-height:1.85;margin-bottom:12px;}',
-  '.pd-evidence{font-size:12px;color:#67676E;line-height:1.7;padding:13px 17px;background:#F5F2EE;border-left:3px solid #C9A86A;font-style:italic;}',
+  '.pd-evidence{font-size:12px;color:#67676E;line-height:1.7;padding:14px 20px;background:#F5F2EE;border-left:2px solid rgba(12,12,14,0.1);font-style:italic;}',
   /* SIMULATION */
   '.sim-q{margin-bottom:3px;}',
   '.sim-inner{padding:24px 28px;background:#F5F2EE;}',
@@ -729,26 +736,46 @@ var CSS = [
   '.plan-task-how{font-size:12px;color:#48484F;line-height:1.75;margin-bottom:5px;}',
   '.plan-task-impact{font-size:11px;color:#67676E;font-style:italic;}',
   /* FINAL PAGE */
-  '.final{background:#F5F2EE;padding:60px 56px 46px;position:relative;border-top:1px solid rgba(12,12,14,0.06);}',
-  '.final::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}',
-  '.final-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#9A6A14;margin-bottom:14px;}',
-  '.final-score{font-family:Georgia,serif;font-size:140px;font-weight:700;color:#0C0C0E;line-height:0.88;letter-spacing:-0.04em;margin-bottom:12px;}',
-  '.final-score span{font-size:26px;color:rgba(12,12,14,0.25);}',
-  '.final-verdict{font-family:Georgia,serif;font-size:21px;font-weight:400;font-style:italic;color:#48484F;margin-bottom:52px;line-height:1.3;}',
-  '.final-one-label{font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(12,12,14,0.4);margin-bottom:11px;}',
-  '.final-one-action{font-family:Georgia,serif;font-size:26px;font-weight:400;color:#C9A86A;line-height:1.35;max-width:560px;margin-bottom:11px;}',
-  '.final-one-sub{font-size:13px;color:rgba(12,12,14,0.45);line-height:1.75;max-width:480px;margin-bottom:64px;}',
-  '.final-footer{display:grid;grid-template-columns:1fr auto auto;gap:28px;align-items:end;border-top:1px solid rgba(12,12,14,0.08);padding-top:22px;}',
+  '.final{background:#0C0C0E;padding:60px 56px 46px;position:relative;}',
+  /* EXECUTIVE TEAROUT */
+  '.tearout{background:#0C0C0E;padding:52px 56px;position:relative;height:297mm;box-sizing:border-box;display:flex;flex-direction:column;}',
+  '.tearout-accent{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9A86A 10%,#C9A86A 90%,transparent);}',
+  '.tearout-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:rgba(201,168,106,0.5);margin-bottom:28px;}',
+  '.tearout-score-row{display:flex;align-items:flex-end;gap:20px;margin-bottom:6px;}',
+  '.tearout-score{font-family:Georgia,serif;font-size:110px;font-weight:700;color:#C9A86A;line-height:0.9;letter-spacing:-0.04em;}',
+  '.tearout-score-meta{padding-bottom:14px;}',
+  '.tearout-score-den{font-size:18px;color:rgba(201,168,106,0.35);font-family:Georgia,serif;}',
+  '.tearout-tier{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-top:6px;}',
+  '.tearout-biz{font-family:Georgia,serif;font-size:28px;font-weight:400;color:#F5F2EE;line-height:1.15;letter-spacing:-0.01em;margin-bottom:5px;margin-top:16px;}',
+  '.tearout-meta{font-size:12px;color:rgba(245,242,238,0.35);line-height:1.7;margin-bottom:36px;}',
+  '.tearout-divider{height:1px;background:rgba(245,242,238,0.08);margin-bottom:32px;}',
+  '.tearout-actions-label{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(245,242,238,0.3);margin-bottom:18px;}',
+  '.tearout-action{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px;}',
+  '.tearout-action-num{font-family:Georgia,serif;font-size:32px;font-weight:700;color:rgba(201,168,106,0.2);line-height:1;flex-shrink:0;width:36px;}',
+  '.tearout-action-body{}',
+  '.tearout-action-title{font-size:14px;font-weight:700;color:#F5F2EE;margin-bottom:3px;}',
+  '.tearout-action-exp{font-size:12px;color:rgba(245,242,238,0.45);line-height:1.6;}',
+  '.tearout-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;padding-top:28px;border-top:1px solid rgba(245,242,238,0.06);}',
+  '.tearout-footer-note{font-size:10px;color:rgba(245,242,238,0.25);line-height:1.7;}',
+  '.final::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9A86A 10%,#C9A86A 90%,transparent);}',
+  '.final-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(201,168,106,0.55);margin-bottom:14px;}',
+  '.final-score{font-family:Georgia,serif;font-size:140px;font-weight:700;color:#C9A86A;line-height:0.88;letter-spacing:-0.04em;margin-bottom:12px;}',
+  '.final-score span{font-size:26px;color:rgba(201,168,106,0.25);}',
+  '.final-verdict{font-family:Georgia,serif;font-size:21px;font-weight:400;font-style:italic;color:rgba(245,242,238,0.55);margin-bottom:52px;line-height:1.3;}',
+  '.final-one-label{font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(245,242,238,0.3);margin-bottom:11px;}',
+  '.final-one-action{font-family:Georgia,serif;font-size:26px;font-weight:400;color:#F5F2EE;line-height:1.35;max-width:560px;margin-bottom:11px;}',
+  '.final-one-sub{font-size:13px;color:rgba(245,242,238,0.38);line-height:1.75;max-width:480px;margin-bottom:64px;}',
+  '.final-footer{display:grid;grid-template-columns:1fr auto auto;gap:28px;align-items:end;border-top:1px solid rgba(245,242,238,0.1);padding-top:22px;}',
   '.final-logo{display:flex;align-items:center;}',
-  '.final-qr-box{width:76px;height:76px;border:1px solid rgba(12,12,14,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(12,12,14,0.02);padding:4px;}',
-  '.final-qr-label{font-size:8px;color:rgba(12,12,14,0.3);letter-spacing:0.1em;text-transform:uppercase;text-align:center;line-height:1.4;}',
-  '.final-meta{font-size:11px;color:rgba(12,12,14,0.3);text-align:right;line-height:1.8;}',
+  '.final-qr-box{width:76px;height:76px;border:1px solid rgba(245,242,238,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(245,242,238,0.03);padding:4px;}',
+  '.final-qr-label{font-size:8px;color:rgba(245,242,238,0.25);letter-spacing:0.1em;text-transform:uppercase;text-align:center;line-height:1.4;}',
+  '.final-meta{font-size:11px;color:rgba(245,242,238,0.25);text-align:right;line-height:1.8;}',
   '.letter .pf{margin:40px -56px -60px -64px;}',
   '.eb .pf{margin:18px -56px -32px;}',
   '.toc .pf{margin:40px -56px -60px;}',
   '.section .pf{margin:40px -56px -56px;}',
   '@page{size:A4;margin:0;}',
-  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;display:flex;flex-direction:column;} .letter .pf{margin-top:auto;margin-bottom:-36px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:297mm;box-sizing:border-box;overflow:hidden;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;} .sdp{height:180px;box-sizing:border-box;overflow:hidden;} .section{min-height:calc(297mm - 180px);display:flex;flex-direction:column;box-sizing:border-box;} .section .pf{margin:auto -56px -56px;} .letter>*{flex-shrink:0;} .eb>*{flex-shrink:0;} .toc{min-height:297mm;display:flex;flex-direction:column;box-sizing:border-box;page-break-after:always;break-after:page;} .toc .pf{margin:auto -56px -60px;}}'
+  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;padding:36px 56px 36px 64px;display:flex;flex-direction:column;} .letter .pf{margin-top:auto;margin-bottom:-36px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:297mm;box-sizing:border-box;overflow:hidden;} .toc{} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;}  .final{page-break-before:always;break-before:page;} .tearout{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;height:297mm;box-sizing:border-box;overflow:hidden;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd{page-break-inside:avoid;break-inside:avoid;} .sim-q{page-break-inside:avoid;break-inside:avoid;} .action-row{page-break-inside:avoid;break-inside:avoid;} .plan-week{page-break-inside:avoid;break-inside:avoid;} .plat-grid{page-break-inside:avoid;break-inside:avoid;} .comp-dark{page-break-inside:avoid;break-inside:avoid;} .proj-grid{page-break-inside:avoid;break-inside:avoid;} .rings-row{page-break-inside:avoid;break-inside:avoid;} .score-layout{page-break-inside:avoid;break-inside:avoid;} .asset-block{page-break-inside:avoid;break-inside:avoid;} .aip{page-break-inside:avoid;break-inside:avoid;} .sim-verdict{page-break-inside:avoid;break-inside:avoid;} table{page-break-inside:avoid;break-inside:avoid;} .sdp{height:180px;box-sizing:border-box;overflow:hidden;} .section{min-height:calc(297mm - 180px);display:flex;flex-direction:column;box-sizing:border-box;} .section .pf{margin:auto -56px -56px;} .letter>*{flex-shrink:0;} .eb>*{flex-shrink:0;} .toc{min-height:297mm;display:flex;flex-direction:column;box-sizing:border-box;page-break-after:always;break-after:page;} .toc .pf{margin:auto -56px -60px;}}'
   +'.eb{background:#F5F2EE;padding:36px 56px 32px;position:relative;display:flex;flex-direction:column;min-height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}'
   +'.eb::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}'
   +'.eb-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:24px;}'
@@ -781,7 +808,166 @@ var CSS = [
   +'.eb-footer-label{font-size:11px;font-weight:700;color:#BBBBC2;margin-bottom:3px;}'
   +'.eb-footer-sub{font-size:11px;color:#BBBBC2;}'
   +'.eb-qr-label{font-size:8px;text-align:center;color:#BBBBC2;letter-spacing:0.1em;text-transform:uppercase;margin-top:3px;}'
+  /* DIAGRAM CONTAINERS */
+  +'.diag-wrap{margin:20px 0 28px;overflow:hidden;}'
+  +'.diag-label{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#BBBBC2;margin-bottom:10px;}'
+  +'.eb-radar-grid{display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:center;padding:18px 0;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:20px;}'
+  +'.eb-radar-pillars{display:flex;flex-direction:column;gap:10px;}'
   ].join('');
+  // ── SVG DIAGRAM BUILDERS ─────────────────────────────────────────────────────
+  // All return SVG/HTML strings. Pure functions — no side effects.
+  // Built for Puppeteer + A4 PDF: no canvas, no external scripts.
+
+  // Radar / spider chart: 4 axes (Clarity N, Trust E, Difference S, Ease W)
+  function buildRadarSVG(cl, tr, di, ea, compCl, compTr, compDi, compEa) {
+    var cx = 130, cy = 130, maxR = 92, sc = maxR / 25;
+    var yourPts = [[cx, cy - cl*sc], [cx + tr*sc, cy], [cx, cy + di*sc], [cx - ea*sc, cy]];
+    var hasComp = compCl || compTr || compDi || compEa;
+    var compPts = hasComp ? [[cx, cy - compCl*sc], [cx + compTr*sc, cy], [cx, cy + compDi*sc], [cx - compEa*sc, cy]] : null;
+    function poly(pts, fill, stroke, sw, dash) {
+      var p = pts.map(function(pt) { return pt[0].toFixed(1) + ',' + pt[1].toFixed(1); }).join(' ');
+      return '<polygon points="' + p + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + sw + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+    }
+    // Diamond grid rings at 6.25 / 12.5 / 18.75 / 25
+    var rings = [6.25, 12.5, 18.75, 25].map(function(s) {
+      var r = s * sc;
+      return '<polygon points="' + cx + ',' + (cy-r).toFixed(1) + ' ' + (cx+r).toFixed(1) + ',' + cy + ' ' + cx + ',' + (cy+r).toFixed(1) + ' ' + (cx-r).toFixed(1) + ',' + cy + '" fill="none" stroke="#EDEAE5" stroke-width="1"/>';
+    }).join('');
+    var axes = '<line x1="130" y1="38" x2="130" y2="222" stroke="#EDEAE5" stroke-width="1"/><line x1="38" y1="130" x2="222" y2="130" stroke="#EDEAE5" stroke-width="1"/>';
+    var ticks = '<text x="134" y="' + (cy - 6.25*sc + 4).toFixed(0) + '" font-size="7" font-family="Inter,sans-serif" fill="#ccc">6</text>'
+      + '<text x="134" y="' + (cy - 12.5*sc + 4).toFixed(0) + '" font-size="7" font-family="Inter,sans-serif" fill="#ccc">13</text>'
+      + '<text x="134" y="' + (cy - 18.75*sc + 4).toFixed(0) + '" font-size="7" font-family="Inter,sans-serif" fill="#ccc">19</text>'
+      + '<text x="134" y="' + (cy - 25*sc + 4).toFixed(0) + '" font-size="7" font-family="Inter,sans-serif" fill="#ccc">25</text>';
+    var compShape = compPts ? poly(compPts, 'rgba(184,50,50,0.08)', '#B83232', 1.5, '4,3') : '';
+    var yourShape = poly(yourPts, 'rgba(201,168,106,0.18)', '#C9A86A', 2.5, '');
+    var yourDots  = yourPts.map(function(p) {
+      return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4.5" fill="#C9A86A" stroke="white" stroke-width="1.5"/>';
+    }).join('');
+    var labels = '<text x="130" y="20" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="#48484F" text-anchor="middle" letter-spacing="0.14em">CLARITY</text>'
+      + '<text x="248" y="134" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="#48484F" text-anchor="start" letter-spacing="0.14em">TRUST</text>'
+      + '<text x="130" y="252" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="#48484F" text-anchor="middle" letter-spacing="0.14em">DIFFERENCE</text>'
+      + '<text x="12" y="134" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="#48484F" text-anchor="end" letter-spacing="0.14em">EASE</text>';
+    return '<svg width="264" height="264" viewBox="0 0 264 264" xmlns="http://www.w3.org/2000/svg">'
+      + rings + axes + ticks + compShape + yourShape + yourDots + labels + '</svg>';
+  }
+
+  // Horizontal spectrum showing your score pin vs competitor pin across 4 decision zones
+  function buildPositionMapSVG(score, compScore) {
+    var W = 680, H = 76;
+    var zones = [
+      { label: 'NOT SEEN',    from: 0,  to: 30, fill: '#FBE9E9' },
+      { label: 'SEEN',        from: 30, to: 55, fill: '#FFF3DC' },
+      { label: 'CONSIDERED',  from: 55, to: 75, fill: '#E8F4EE' },
+      { label: 'CHOSEN',      from: 75, to: 100, fill: '#D0EDDB' },
+    ];
+    var tx = function(s) { return ((s / 100) * W).toFixed(1); };
+    var zoneSVG = zones.map(function(z) {
+      var x = tx(z.from), w = (parseFloat(tx(z.to)) - parseFloat(x)).toFixed(1);
+      var mid = ((parseFloat(x) + parseFloat(x) + parseFloat(w)) / 2).toFixed(1);
+      return '<rect x="' + x + '" y="0" width="' + w + '" height="48" fill="' + z.fill + '"/>'
+        + '<text x="' + mid + '" y="64" font-size="8" font-weight="700" font-family="Inter,sans-serif" fill="#aaa" text-anchor="middle" letter-spacing="0.12em">' + z.label + '</text>';
+    }).join('');
+    var dividers = [30, 55, 75].map(function(s) {
+      return '<line x1="' + tx(s) + '" y1="0" x2="' + tx(s) + '" y2="48" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>';
+    }).join('');
+    var compPin = (compScore && compScore !== score) ? (function() {
+      var cx = tx(compScore);
+      return '<circle cx="' + cx + '" cy="24" r="8" fill="#B83232" stroke="white" stroke-width="2"/>'
+        + '<text x="' + cx + '" y="28" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="white" text-anchor="middle">' + compScore + '</text>';
+    })() : '';
+    var ycx = tx(score);
+    var yourPin = '<circle cx="' + ycx + '" cy="24" r="11" fill="#C9A86A" stroke="white" stroke-width="2.5"/>'
+      + '<text x="' + ycx + '" y="28.5" font-size="10" font-weight="700" font-family="Inter,sans-serif" fill="white" text-anchor="middle">' + score + '</text>';
+    return '<div style="overflow:hidden;margin-bottom:6px;">'
+      + '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;max-width:' + W + 'px;">'
+      + zoneSVG + dividers + compPin + yourPin + '</svg></div>';
+  }
+
+  // Smooth curve showing score trajectory: today → 30 → 60 → 90 days
+  function buildTrajectoryChartSVG(score, proj30, proj60, proj90) {
+    var W = 660, H = 150;
+    var padL = 44, padR = 24, padT = 28, padB = 36;
+    var chartW = W - padL - padR, chartH = H - padT - padB;
+    var pts = [score, proj30, proj60, proj90];
+    var minV = Math.max(0,   Math.min.apply(null, pts) - 8);
+    var maxV = Math.min(100, Math.max.apply(null, pts) + 10);
+    var rng  = maxV - minV || 1;
+    function tx(i) { return (padL + (i / 3) * chartW).toFixed(1); }
+    function ty(v) { return (padT + chartH - ((v - minV) / rng) * chartH).toFixed(1); }
+    var coords = pts.map(function(v, i) { return [parseFloat(tx(i)), parseFloat(ty(v))]; });
+    // Bezier through 4 points
+    function bezierPath(cs) {
+      var d = 'M' + cs[0][0] + ',' + cs[0][1];
+      for (var i = 1; i < cs.length; i++) {
+        var cpx = ((cs[i-1][0] + cs[i][0]) / 2).toFixed(1);
+        d += ' C' + cpx + ',' + cs[i-1][1].toFixed(1) + ' ' + cpx + ',' + cs[i][1].toFixed(1) + ' ' + cs[i][0].toFixed(1) + ',' + cs[i][1].toFixed(1);
+      }
+      return d;
+    }
+    var line = bezierPath(coords);
+    var area = line + ' L' + coords[3][0] + ',' + (padT + chartH) + ' L' + coords[0][0] + ',' + (padT + chartH) + ' Z';
+    // Grid
+    var gridStep = rng <= 20 ? 5 : 10;
+    var gridStart = Math.ceil(minV / gridStep) * gridStep;
+    var gridLines = '';
+    for (var gv = gridStart; gv <= maxV; gv += gridStep) {
+      var gy = ty(gv);
+      gridLines += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="#F0EDE8" stroke-width="1"/>'
+        + '<text x="' + (padL - 6) + '" y="' + (parseFloat(gy) + 4) + '" font-size="9" font-family="Inter,sans-serif" fill="#bbb" text-anchor="end">' + gv + '</text>';
+    }
+    // X labels
+    var xLabels = ['Today', '30 days', '60 days', '90 days'].map(function(lab, i) {
+      return '<text x="' + tx(i) + '" y="' + (H - 8) + '" font-size="9" font-family="Inter,sans-serif" fill="#999" text-anchor="middle">' + lab + '</text>';
+    }).join('');
+    // Dots + score labels
+    var dots = coords.map(function(p, i) {
+      var v = pts[i], col = i === 0 ? '#B83232' : '#2A7A48';
+      return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="5" fill="' + col + '" stroke="white" stroke-width="2"/>'
+        + '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 11).toFixed(1) + '" font-size="11" font-weight="700" font-family="Inter,sans-serif" fill="' + col + '" text-anchor="middle">' + v + '</text>';
+    }).join('');
+    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;max-width:' + W + 'px;">'
+      + '<defs><linearGradient id="trajGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2A7A48" stop-opacity="0.14"/><stop offset="100%" stop-color="#2A7A48" stop-opacity="0"/></linearGradient></defs>'
+      + gridLines + '<path d="' + area + '" fill="url(#trajGrad)"/>'
+      + '<path d="' + line + '" fill="none" stroke="#2A7A48" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      + dots + xLabels + '</svg>';
+  }
+
+  // Side-by-side horizontal bars per pillar — your score vs competitor score
+  function buildGapChartSVG(cl, tr, di, ea, compCl, compTr, compDi, compEa, bizNameStr, compNameStr) {
+    var pillars = [
+      { label: 'CLARITY',    you: cl, them: compCl || 0 },
+      { label: 'TRUST',      you: tr, them: compTr || 0 },
+      { label: 'DIFFERENCE', you: di, them: compDi || 0 },
+      { label: 'EASE',       you: ea, them: compEa || 0 },
+    ];
+    var W = 640, rowH = 52, padL = 102, padR = 50, padT = 30, padB = 8;
+    var H = padT + pillars.length * rowH + padB;
+    var trackW = W - padL - padR;
+    function toPx(v) { return ((v / 25) * trackW).toFixed(1); }
+    function sCol(v)  { return v >= 18 ? '#2A7A48' : v >= 12 ? '#C9A86A' : '#B83232'; }
+    // Legend
+    var legend = '<rect x="' + padL + '" y="10" width="10" height="8" fill="#C9A86A" rx="1"/>'
+      + '<text x="' + (padL + 14) + '" y="18" font-size="9" font-weight="600" font-family="Inter,sans-serif" fill="#48484F">' + (bizNameStr || 'You').slice(0, 22) + '</text>'
+      + '<rect x="' + (padL + 160) + '" y="10" width="10" height="8" fill="#B83232" rx="1" opacity="0.45"/>'
+      + '<text x="' + (padL + 174) + '" y="18" font-size="9" font-family="Inter,sans-serif" fill="#B83232" opacity="0.75">' + (compNameStr || 'Competitor').slice(0, 22) + '</text>';
+    var rows = pillars.map(function(p, i) {
+      var y = padT + i * rowH;
+      var youW = toPx(p.you), themW = toPx(p.them);
+      var col = sCol(p.you);
+      var t1y = (y + 4).toFixed(1), t2y = (y + 26).toFixed(1);
+      var lbl = '<text x="' + (padL - 8) + '" y="' + (y + rowH/2 + 4).toFixed(1) + '" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="#67676E" text-anchor="end" letter-spacing="0.1em">' + p.label + '</text>';
+      return lbl
+        + '<rect x="' + padL + '" y="' + t1y + '" width="' + trackW + '" height="18" fill="#F5F2EE" rx="2"/>'
+        + '<rect x="' + padL + '" y="' + t2y + '" width="' + trackW + '" height="18" fill="#F5F2EE" rx="2"/>'
+        + '<rect x="' + padL + '" y="' + t1y + '" width="' + youW + '" height="18" fill="' + col + '" rx="2"/>'
+        + '<rect x="' + padL + '" y="' + t2y + '" width="' + themW + '" height="18" fill="#B83232" rx="2" opacity="0.45"/>'
+        + '<text x="' + (parseFloat(padL) + parseFloat(youW)  + 5) + '" y="' + (parseFloat(t1y) + 13) + '" font-size="10" font-weight="700" font-family="Inter,sans-serif" fill="' + col + '">' + p.you + '</text>'
+        + '<text x="' + (parseFloat(padL) + parseFloat(themW) + 5) + '" y="' + (parseFloat(t2y) + 13) + '" font-size="10" font-family="Inter,sans-serif" fill="#B83232" opacity="0.7">' + p.them + '</text>';
+    }).join('');
+    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;max-width:' + W + 'px;">'
+      + legend + rows + '</svg>';
+  }
+
   // ── BUILD FULL GOLD REPORT HTML ───────────────────────────────────────────────
   function buildReportHTML(diagnostic, jobId) {
   var input = safeObj(diagnostic.input);
@@ -812,10 +998,26 @@ var CSS = [
     : score >= 31 ? 'Seen. Not selected.'
     : 'Not seen. Not chosen.';
 
-  // Projection
-  var proj30 = Math.min(95, score + 14);
-  var proj60 = Math.min(97, score + 22);
-  var proj90 = Math.min(99, score + 29);
+  // Projection — weighted by actual pillar headroom so each business gets
+  // numbers that reflect their specific starting position, not a flat formula.
+  // Clarity responds fastest (content rewrite); Trust takes longer but has
+  // the highest ceiling; Difference and Ease are moderate.
+  var hrCl = 25 - cl, hrTr = 25 - tr, hrDi = 25 - di, hrEa = 25 - ea;
+  var gain30 = Math.round(hrCl * 0.35 + hrTr * 0.20 + hrDi * 0.15 + hrEa * 0.12);
+  var gain60 = Math.round(hrCl * 0.65 + hrTr * 0.45 + hrDi * 0.30 + hrEa * 0.25);
+  var gain90 = Math.round(hrCl * 0.85 + hrTr * 0.70 + hrDi * 0.55 + hrEa * 0.45);
+  var proj30 = Math.min(95, score + Math.max(gain30, 6));
+  var proj60 = Math.min(97, score + Math.max(gain60, 12));
+  var proj90 = Math.min(99, score + Math.max(gain90, 18));
+
+  // Primary improvement driver — the weakest pillar with the most headroom
+  var pillarDrivers = [
+    { name: 'Clarity',    score: cl, hr: hrCl, action: 'Rewritten H1, structured schema, and llms.txt', rate: 0.35 },
+    { name: 'Trust',      score: tr, hr: hrTr, action: 'Independent reviews, press mention, and a published case study', rate: 0.20 },
+    { name: 'Difference', score: di, hr: hrDi, action: 'A verified, named case study and a press-confirmed category claim', rate: 0.15 },
+    { name: 'Ease',       score: ea, hr: hrEa, action: 'FAQ schema, updated llms.txt, and response-ready content blocks', rate: 0.12 }
+  ].sort(function(a, b) { return (b.hr * b.rate) - (a.hr * a.rate); });
+  var mainDriver = pillarDrivers[0];
 
   // Competitor
   var disp     = safeObj(r.displacement);
@@ -881,6 +1083,26 @@ var CSS = [
   // Evidence
   var evidence = safeStr(r.evidenceNarrative, '');
 
+  // Real review data from Apify (if collected during diagnostic)
+  var tpData   = safeObj(r.trustpilot     || {});
+  var gData    = safeObj(r.googleReviews  || {});
+  var tpRating = tpData.rating      ? Number(tpData.rating)      : null;
+  var tpCount  = tpData.reviewCount ? Number(tpData.reviewCount) : 0;
+  var tpLabel  = safeStr(tpData.ratingLabel, '');
+  var gRating  = gData.rating       ? Number(gData.rating)       : null;
+  var gCount   = gData.reviewCount  ? Number(gData.reviewCount)  : 0;
+  var hasRealReviews = !!(tpRating || gRating);
+
+  // Real competitor review data from Apify (if collected during diagnostic)
+  var compApify   = safeObj(r.competitorApify   || {});
+  var compTpData  = safeObj(compApify.trustpilot  || {});
+  var compGData   = safeObj(compApify.googleReviews || {});
+  var compTpRating = compTpData.rating      ? Number(compTpData.rating)      : null;
+  var compTpCount  = compTpData.reviewCount ? Number(compTpData.reviewCount) : 0;
+  var compGRating  = compGData.rating       ? Number(compGData.rating)       : null;
+  var compGCount   = compGData.reviewCount  ? Number(compGData.reviewCount)  : 0;
+  var hasRealCompReviews = !!(compTpRating || compGRating);
+
   // Summary
   var verdict  = safeStr(r.verdictHeadline,   '');
   var summary  = safeStr(r.summaryParagraph,  '');
@@ -943,11 +1165,15 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '<div class="eb-bar-labels"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>'
     + '</div>'
     + '</div>'
-    + '<div class="eb-pillars">'
+    // Radar + pillar grid layout
+    + '<div class="eb-radar-grid">'
+    + '<div>' + buildRadarSVG(cl, tr, di, ea, 0, 0, 0, 0) + '</div>'
+    + '<div class="eb-radar-pillars">'
     + pillarRow('Clarity', cl)
     + pillarRow('Trust', tr)
     + pillarRow('Difference', di)
     + pillarRow('Ease', ea)
+    + '</div>'
     + '</div>'
     + '<div class="eb-body">'
     + '<div class="eb-panel">'
@@ -1000,29 +1226,114 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
 
   H.push('<button class="print-btn" onclick="if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){window.print();})}else{setTimeout(function(){window.print();},1400)}">↓ Save as PDF</button>');
 
-  // ── COVER ──────────────────────────────────────────────────────────────────
+  // ── COVER (dark premium) ──────────────────────────────────────────────────
+  var coverTierCol = score >= 76 ? '#4ADE80' : score >= 56 ? '#C9A86A' : score >= 31 ? '#E09A30' : '#E05252';
   H.push('<div class="cover">');
   H.push('<div class="cover-accent"></div>');
-  H.push('<div class="cover-logo-block"><img src="' + LOGO_URL + '" style="height:40px;width:auto;" alt="CHOIVE"></div>');
-  H.push('<div class="cover-body">');
-  H.push('<div class="cover-eyebrow">AI Selection Report · ' + esc(bizName) + '</div>');
-  H.push('<h1 class="cover-h1">Your business.<br><em>Chosen by AI.</em></h1>');
-  H.push('<p class="cover-intro">A complete diagnostic of your AI selection position. Scored, evidenced, and precisely actioned. Ten sections. Real queries. Exact findings. Everything you need to become the business AI recommends when your customers ask.</p>');
+  // Top row: logo + confidential label
+  H.push('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">');
+  H.push('<img src="' + LOGO_URL + '" style="height:28px;width:auto;filter:brightness(0) invert(1);opacity:0.75;" alt="CHOIVE"/>');
+  H.push('<span style="font-size:9px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:rgba(245,242,238,0.18);">Confidential</span>');
   H.push('</div>');
-  H.push('<div class="cover-footer">');
-  H.push('<div><div class="cover-biz-name">' + esc(bizName) + '</div>');
-  H.push('<div class="cover-biz-meta">' + esc(category) + (city ? ' · ' + esc(city) : '') + (website ? ' · ' + esc(website) : '') + '<br>Prepared ' + date + ' · Confidential</div></div>');
-  H.push('<div class="cover-score-col">');
-  H.push('<img src="' + qrDataUrl + '" style="width:64px;height:64px;" alt="Scan for live result"/>');
-  H.push('<div class="cover-score-tag">CHOIVE Index™</div>');
-  H.push('<div class="cover-score-num">' + score + '</div>');
-  H.push('<div class="cover-score-den">/ 100</div>');
-  H.push('</div></div>');
+  // Hero block: score + business name
+  H.push('<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:36px 0 24px;">');
+  // Score hero
+  H.push('<div style="margin-bottom:6px;"><span style="font-size:9px;font-weight:700;letter-spacing:0.34em;text-transform:uppercase;color:rgba(201,168,106,0.55);">CHOIVE INDEX™</span></div>');
+  H.push('<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:20px;line-height:1;">');
+  H.push('<span style="font-family:Georgia,serif;font-size:156px;font-weight:700;color:#C9A86A;letter-spacing:-0.05em;line-height:0.88;">' + score + '</span>');
+  H.push('<span style="font-family:Georgia,serif;font-size:30px;color:rgba(201,168,106,0.3);padding-bottom:20px;">/100</span>');
+  H.push('</div>');
+  // Gold rule
+  H.push('<div style="width:72px;height:2px;background:linear-gradient(90deg,#C9A86A,rgba(201,168,106,0.2));margin-bottom:24px;"></div>');
+  // Business name
+  H.push('<div style="font-family:Georgia,serif;font-size:42px;font-weight:400;color:#F5F2EE;line-height:1.08;letter-spacing:-0.02em;margin-bottom:16px;">' + esc(bizName) + '</div>');
+  // Tier badge + meta
+  H.push('<div style="display:flex;align-items:center;gap:14px;margin-bottom:22px;">');
+  H.push('<span style="font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border:1px solid ' + coverTierCol + ';color:' + coverTierCol + ';flex-shrink:0;">' + esc(tier) + '</span>');
+  if (category || city) H.push('<span style="font-size:12px;color:rgba(245,242,238,0.35);">' + esc(category) + (city ? ' · ' + esc(city) : '') + '</span>');
+  H.push('</div>');
+  // Brief description
+  H.push('<p style="font-size:12px;color:rgba(245,242,238,0.42);line-height:1.8;max-width:480px;margin:0;">Ten sections. Real queries. Exact findings. Everything required to become the business AI recommends when your customers ask.</p>');
+  H.push('</div>');
+  // Footer: date/website left, QR right
+  H.push('<div style="border-top:1px solid rgba(245,242,238,0.1);padding-top:20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:end;">');
+  H.push('<div>');
+  if (website) H.push('<div style="font-size:12px;color:rgba(245,242,238,0.5);margin-bottom:3px;">' + esc(website) + '</div>');
+  H.push('<div style="font-size:11px;color:rgba(245,242,238,0.3);line-height:1.6;">AI Selection Report · Prepared ' + date + '</div>');
+  H.push('</div>');
+  H.push('<div style="text-align:center;">');
+  H.push('<img src="' + qrDataUrl + '" style="width:54px;height:54px;display:block;filter:invert(1);opacity:0.5;" alt="Live result"/>');
+  H.push('<div style="font-size:8px;color:rgba(245,242,238,0.2);letter-spacing:0.12em;text-transform:uppercase;margin-top:5px;">Live result</div>');
+  H.push('</div>');
+  H.push('</div>');
   H.push('</div>');
   
 
   // ── LETTER ──────────────────────────────────────────────────────────────────
   H.push(letter.replace(/<\/div>$/, pageFt('2') + '</div>'));
+
+  // ── EXECUTIVE TEAR-OUT ───────────────────────────────────────────────────────
+  // One-page standalone summary — CEO can print or forward without the full report.
+  (function() {
+    var topActions = actions.slice(0, 3);
+    var tearoutTierCol = score >= 76 ? '#4ADE80' : score >= 56 ? '#C9A86A' : score >= 31 ? '#E09A30' : '#E05252';
+    H.push('<div class="tearout">');
+    H.push('<div class="tearout-accent"></div>');
+    H.push('<div class="tearout-eyebrow">Decision Intelligence Report · Executive Summary</div>');
+
+    // Score + tier
+    H.push('<div class="tearout-score-row">');
+    H.push('<div class="tearout-score">' + score + '</div>');
+    H.push('<div class="tearout-score-meta">');
+    H.push('<div class="tearout-score-den">/100</div>');
+    H.push('<div class="tearout-tier" style="color:' + tearoutTierCol + '">' + esc(tier) + '</div>');
+    H.push('</div>');
+    H.push('</div>');
+
+    // Business identity
+    H.push('<div class="tearout-biz">' + esc(bizName) + '</div>');
+    var metaParts = [];
+    if (category) metaParts.push(esc(category));
+    if (city)     metaParts.push(esc(city));
+    metaParts.push(date);
+    H.push('<div class="tearout-meta">' + metaParts.join(' · ') + '</div>');
+
+    H.push('<div class="tearout-divider"></div>');
+
+    // Top 3 priority actions
+    H.push('<div class="tearout-actions-label">Three actions that change this score</div>');
+    if (topActions.length > 0) {
+      topActions.forEach(function(act, idx) {
+        var t = safeStr(safeObj(act).title,       '');
+        var e = safeStr(safeObj(act).explanation || safeObj(act).body, '');
+        if (!t) return;
+        H.push('<div class="tearout-action">');
+        H.push('<div class="tearout-action-num">' + (idx + 1) + '</div>');
+        H.push('<div class="tearout-action-body">');
+        H.push('<div class="tearout-action-title">' + esc(t) + '</div>');
+        if (e) H.push('<div class="tearout-action-exp">' + esc(e.slice(0, 120)) + (e.length > 120 ? '…' : '') + '</div>');
+        H.push('</div>');
+        H.push('</div>');
+      });
+    } else {
+      H.push('<div style="font-size:13px;color:rgba(245,242,238,0.4);font-style:italic;">See Section 8 for the full priority action plan.</div>');
+    }
+
+    // Footer
+    H.push('<div class="tearout-footer">');
+    H.push('<div class="tearout-footer-note">');
+    H.push('<div style="margin-bottom:4px;">Full analysis on the following pages.</div>');
+    if (compName) H.push('<div>Primary competitor identified: <strong style="color:rgba(245,242,238,0.55);">' + esc(compName) + '</strong></div>');
+    H.push('<div style="margin-top:4px;">90-day projection: <strong style="color:' + tearoutTierCol + ';">' + proj90 + '/100</strong></div>');
+    H.push('</div>');
+    H.push('<div>');
+    H.push('<img src="' + qrDataUrl + '" style="width:56px;height:56px;display:block;filter:invert(1);opacity:0.4;" alt="Live result"/>');
+    H.push('<div style="font-size:8px;color:rgba(245,242,238,0.2);text-align:center;margin-top:4px;letter-spacing:0.08em;">LIVE RESULT</div>');
+    H.push('</div>');
+    H.push('</div>');
+    H.push('</div>');
+  })();
+
   H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl).replace(/<\/div>$/, pageFt('3') + '</div>'));
 
   // ── TOC ──────────────────────────────────────────────────────────────────────
@@ -1059,8 +1370,11 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div><div class="score-verdict-pill">' + tier + '</div>');
   H.push('<div class="score-verdict-h">' + esc(verdict) + '</div>');
   H.push('<div class="score-summary">' + esc(summary) + '</div></div></div>');
-  H.push('<div class="score-bar"><div class="score-bar-fill" style="width:100%"></div><div class="score-bar-marker" style="left:' + score + '%"></div></div>');
-  H.push('<div class="score-bar-labels"><span class="sbl">0 — Not seen</span><span class="sbl">25 — Seen</span><span class="sbl">50 — Considered</span><span class="sbl">75 — Chosen</span><span class="sbl">100 — Dominant</span></div>');
+  // Position map SVG replaces the flat score bar — shows zone spectrum with pin
+  var compOverallScore = (compCl || compTr || compDi || compEa) ? Math.round((compCl + compTr + compDi + compEa) * 4) : 0;
+  H.push('<div class="diag-wrap"><div class="diag-label">Decision zone position</div>');
+  H.push(buildPositionMapSVG(score, compOverallScore));
+  H.push('</div>');
   H.push('<div style="margin-top:44px;"><div class="eyebrow">Score breakdown</div>');
   H.push('<div class="rings-row">');
   [['clarity','Clarity'],['trust','Trust'],['difference','Difference'],['ease','Ease']].forEach(function(pair) {
@@ -1078,6 +1392,9 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="sdp"><div class="sdp-num">02</div><div class="sdp-title">Score Projection</div><div class="sdp-sub">Where your score will be at 30, 60, and 90 days if you implement the plan in this report.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Projected trajectory — 90 days</div>');
+  H.push('<div class="diag-wrap">');
+  H.push(buildTrajectoryChartSVG(score, proj30, proj60, proj90));
+  H.push('</div>');
   H.push('<div class="proj-grid">');
   [{cls:'pc0',label:'Today',   s:score,  note:'Baseline'},
    {cls:'pc1',label:'30 days', s:proj30, note:'G2 reviews + named client result'},
@@ -1087,10 +1404,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="proj-cell ' + p.cls + '"><div class="proj-label">' + p.label + '</div><div class="proj-score">' + p.s + '</div><div class="proj-note">' + esc(p.note) + '</div></div>');
   });
   H.push('</div>');
-  H.push('<div style="padding:18px 22px;background:#F5F2EE;border-left:3px solid #C9A86A;margin-bottom:36px;">');
-  H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:5px;">What drives the improvement</div>');
-  var trustGrowth = Math.min(25, tr + 16);
-  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">Trust is the primary driver of your projected improvement. Moving your Trust score from ' + tr + ' to ' + trustGrowth + ' over 90 days accounts for the majority of the trajectory above. This is achievable through three specific actions: independent review citations, a press mention, and a published case study. Section 8 sequences all three in the right order.</div>');
+  H.push('<div style="padding:20px 24px;background:#F5F2EE;border-left:2px solid rgba(12,12,14,0.12);margin-bottom:36px;">');
+  H.push('<div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#BBBBC2;margin-bottom:8px;">What drives the improvement</div>');
+  var driverGrowth = Math.min(25, mainDriver.score + Math.round(mainDriver.hr * 0.70));
+  H.push('<div style="font-size:14px;color:#48484F;line-height:1.8;"><strong style="color:#0C0C0E;">' + mainDriver.name + '</strong> is the primary lever for ' + esc(bizName) + '. Moving it from ' + mainDriver.score + ' to ' + driverGrowth + ' over 90 days accounts for the majority of the trajectory above. This is achievable through: ' + mainDriver.action + '. Section 8 sequences these in the order that unlocks the fastest score movement.</div>');
   H.push('</div>');
   // Pillar projection table
   H.push('<div class="eyebrow">Pillar-by-pillar projection</div>');
@@ -1101,10 +1418,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       }).join('')
     + '</tr></thead><tbody>');
   [
-    ['Clarity',    cl,    Math.min(25,cl+2),    Math.min(25,cl+5),    'Rewritten H1 + meta description'],
-    ['Trust',      tr,    Math.min(25,tr+10),   Math.min(25,tr+16),   'G2 reviews + press mention + case study'],
-    ['Difference', di,    Math.min(25,di+2),    Math.min(25,di+5),    'Verified case study + press-confirmed category claim'],
-    ['Ease',       ea,    Math.min(25,ea+1),    Math.min(25,ea+3),    'FAQ schema + updated llms.txt'],
+    ['Clarity',    cl,    Math.min(25, cl + Math.max(1, Math.round(hrCl * 0.35))),  Math.min(25, cl + Math.max(2, Math.round(hrCl * 0.85))),  'Rewritten H1 + meta description + schema markup'],
+    ['Trust',      tr,    Math.min(25, tr + Math.max(1, Math.round(hrTr * 0.20))),  Math.min(25, tr + Math.max(3, Math.round(hrTr * 0.70))),  'Independent reviews + press mention + case study'],
+    ['Difference', di,    Math.min(25, di + Math.max(1, Math.round(hrDi * 0.15))),  Math.min(25, di + Math.max(2, Math.round(hrDi * 0.55))),  'Named case study + category differentiation claim'],
+    ['Ease',       ea,    Math.min(25, ea + Math.max(1, Math.round(hrEa * 0.12))),  Math.min(25, ea + Math.max(1, Math.round(hrEa * 0.45))),  'FAQ schema + llms.txt + response-ready content'],
   ].forEach(function(row) {
     var todayCol = row[1] < 8 ? '#B83232' : row[1] < 14 ? '#9A6A14' : '#2A7A48';
     H.push('<tr>'
@@ -1161,6 +1478,33 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="pd-bar"><div class="pd-fill" style="width:' + pct(sc, 25) + '%;background:' + col + ';opacity:0.7;"></div></div>');
     if (an) H.push('<div class="pd-analysis">' + esc(an) + '</div>');
     if (ev) H.push('<div class="pd-evidence">' + esc(ev) + '</div>');
+    // For Trust pillar only: inject real Apify review data as live evidence
+    if (key === 'trust' && hasRealReviews) {
+      H.push('<div style="margin-top:14px;padding:14px 18px;background:#F0EDE8;border-left:3px solid #2A7A48;">');
+      H.push('<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#2A7A48;margin-bottom:8px;">Live verification data</div>');
+      if (tpRating) {
+        var tpBar = Math.round((tpRating / 5) * 100);
+        H.push('<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">');
+        H.push('<div style="font-size:11px;font-weight:600;color:#0C0C0E;width:88px;flex-shrink:0;">Trustpilot</div>');
+        H.push('<div style="flex:1;height:6px;background:rgba(12,12,14,0.08);border-radius:3px;overflow:hidden;"><div style="width:' + tpBar + '%;height:100%;background:#2A7A48;border-radius:3px;"></div></div>');
+        H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;width:30px;text-align:right;">' + tpRating.toFixed(1) + '</div>');
+        H.push('<div style="font-size:11px;color:#67676E;">/ 5</div>');
+        if (tpCount) H.push('<div style="font-size:10px;color:#BBBBC2;">(' + tpCount + ' reviews)</div>');
+        H.push('</div>');
+      }
+      if (gRating) {
+        var gBar = Math.round((gRating / 5) * 100);
+        H.push('<div style="display:flex;align-items:center;gap:12px;">');
+        H.push('<div style="font-size:11px;font-weight:600;color:#0C0C0E;width:88px;flex-shrink:0;">Google</div>');
+        H.push('<div style="flex:1;height:6px;background:rgba(12,12,14,0.08);border-radius:3px;overflow:hidden;"><div style="width:' + gBar + '%;height:100%;background:#2A7A48;border-radius:3px;"></div></div>');
+        H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;width:30px;text-align:right;">' + gRating.toFixed(1) + '</div>');
+        H.push('<div style="font-size:11px;color:#67676E;">/ 5</div>');
+        if (gCount) H.push('<div style="font-size:10px;color:#BBBBC2;">(' + gCount + ' reviews)</div>');
+        H.push('</div>');
+      }
+      H.push('<div style="font-size:11px;color:#67676E;margin-top:10px;line-height:1.6;">Verified at time of diagnostic. These ratings represent live public signals that AI uses when assessing trust for your category.</div>');
+      H.push('</div>');
+    }
     H.push('</div>');
   });
   H.push(pageFt('8'));
@@ -1263,6 +1607,38 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     var compFix = safeStr(comp0.closeGap, '');
     if (compGap) H.push('<div style="font-size:12px;color:#BBBBC2;line-height:1.7;margin-top:10px;"><strong style="color:#F5F2EE;">Where they beat you:</strong> ' + esc(compGap) + '</div>');
     if (compFix) H.push('<div style="font-size:12px;color:#BBBBC2;line-height:1.7;margin-top:4px;"><strong style="color:#C9A86A;">How to close it:</strong> ' + esc(compFix) + '</div>');
+    // Real competitor review data — shown only when Apify returned verifiable results
+    if (hasRealCompReviews) {
+      H.push('<div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(12,12,14,0.08);">');
+      H.push('<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#B83232;margin-bottom:10px;">Verified competitor review data</div>');
+      if (compTpRating) {
+        H.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">');
+        H.push('<div style="font-size:11px;color:#67676E;width:80px;flex-shrink:0;">Trustpilot</div>');
+        H.push('<div style="font-size:14px;font-weight:700;color:#0C0C0E;">' + compTpRating.toFixed(1) + '/5</div>');
+        if (compTpCount) H.push('<div style="font-size:11px;color:#BBBBC2;">(' + compTpCount + ' reviews)</div>');
+        if (tpRating) {
+          var tpDiff = (compTpRating - tpRating).toFixed(1);
+          var tpDiffCol = compTpRating > tpRating ? '#B83232' : '#2A7A48';
+          var tpDiffSign = compTpRating > tpRating ? '+' : '';
+          H.push('<div style="font-size:11px;font-weight:600;color:' + tpDiffCol + ';">' + tpDiffSign + tpDiff + ' vs you</div>');
+        }
+        H.push('</div>');
+      }
+      if (compGRating) {
+        H.push('<div style="display:flex;align-items:center;gap:10px;">');
+        H.push('<div style="font-size:11px;color:#67676E;width:80px;flex-shrink:0;">Google</div>');
+        H.push('<div style="font-size:14px;font-weight:700;color:#0C0C0E;">' + compGRating.toFixed(1) + '/5</div>');
+        if (compGCount) H.push('<div style="font-size:11px;color:#BBBBC2;">(' + compGCount + ' reviews)</div>');
+        if (gRating) {
+          var gDiff = (compGRating - gRating).toFixed(1);
+          var gDiffCol = compGRating > gRating ? '#B83232' : '#2A7A48';
+          var gDiffSign = compGRating > gRating ? '+' : '';
+          H.push('<div style="font-size:11px;font-weight:600;color:' + gDiffCol + ';">' + gDiffSign + gDiff + ' vs you</div>');
+        }
+        H.push('</div>');
+      }
+      H.push('</div>');
+    }
     H.push('</div>');
     // Signal table if available
     if (signals.length > 0) {
@@ -1288,26 +1664,24 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       });
       H.push('</tbody></table>');
     }
-    // Pillar comparison if scores available
+    // Pillar gap chart if scores available
     if (compCl || compTr || compDi || compEa) {
-      H.push('<div class="eyebrow">Pillar comparison</div>');
-      H.push('<div class="pillar-cmp">');
-      [['clarity','Clarity'],['trust','Trust'],['difference','Difference'],['ease','Ease']].forEach(function(pair) {
-        var ys = pillarScore(r, pair[0]);
-        var ts = safeNum(compScores[pair[0]], 0);
-        var col = ys > ts ? '#4ADE80' : ys < ts ? '#E05252' : '#F5F2EE';
-        H.push('<div class="pcmp pcmp-dk"><div class="pcmp-name">' + pair[1] + '</div><div class="pcmp-score" style="color:' + col + '">' + ys + '</div></div>');
-        H.push('<div class="pcmp pcmp-lt"><div class="pcmp-name">' + pair[1] + '</div><div class="pcmp-score">' + ts + '</div></div>');
-      });
-      H.push('</div>');
-      H.push('<div style="display:flex;gap:16px;font-size:11px;color:#BBBBC2;margin-bottom:24px;">');
-      H.push('<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#0C0C0E;display:inline-block;"></span>' + esc(bizName) + '</div>');
-      H.push('<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#F5F2EE;border:1px solid rgba(12,12,14,0.15);display:inline-block;"></span>' + esc(compName) + '</div>');
+      H.push('<div class="eyebrow">Pillar-by-pillar gap</div>');
+      H.push('<div class="diag-wrap">');
+      H.push(buildGapChartSVG(cl, tr, di, ea, compCl, compTr, compDi, compEa, bizName, compName));
       H.push('</div>');
     }
     H.push('<div style="padding:22px 26px;background:#F5F2EE;border-left:3px solid #C9A86A;">');
     H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">The bottom line</div>');
-    H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">You are not being outperformed — you are being out-verified. The gap is almost entirely in Trust. Close it and the selection position reverses. This is winnable.</div>');
+    var btmDriver = pillarDrivers[0];
+    var btmText = compName
+      ? esc(bizName) + ' is not being outperformed — it is being out-verified. '
+        + esc(compName) + ' holds the position because they have closed the <strong>' + btmDriver.name + '</strong> gap (' + btmDriver.score + '/25). '
+        + 'Close it here and the selection position reverses. This is winnable.'
+      : esc(bizName) + ' is not invisible — it is under-verified. '
+        + 'The primary gap is <strong>' + btmDriver.name + '</strong> (' + btmDriver.score + '/25). '
+        + 'Closing it changes how AI positions this business. This is actionable.';
+    H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">' + btmText + '</div>');
     H.push('</div>');
     // Additional competitors — the engine returns up to 3 (local + international target shape)
     var moreComps = compList.slice(1).filter(function(c) { return c && c.name; }).slice(0, 2);
@@ -1450,8 +1824,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="final-one-action">' + esc(firstAction) + '</div>');
   H.push('<div class="final-one-sub">Start here. This single action creates the foundation everything else builds on. When it is done, move to action two. Do not skip the sequence — it is ordered by what unlocks what.</div>');
   H.push('<div class="final-footer">');
-  H.push('<div class="final-logo"><img src="' + LOGO_URL + '" style="height:32px;width:auto;opacity:0.85;" alt="CHOIVE"></div>');
-  H.push('<div class="final-qr-box"><img src="' + qrDataUrl + '" style="width:64px;height:64px;display:block;" alt="Scan for live result"/><div class="final-qr-label">Scan for<br>live result</div></div>');
+  H.push('<div class="final-logo"><img src="' + LOGO_URL + '" style="height:32px;width:auto;filter:brightness(0) invert(1);opacity:0.55;" alt="CHOIVE"></div>');
+  H.push('<div class="final-qr-box"><img src="' + qrDataUrl + '" style="width:64px;height:64px;display:block;filter:invert(1);opacity:0.45;" alt="Scan for live result"/><div class="final-qr-label">Scan for<br>live result</div></div>');
   H.push('<div class="final-meta">' + esc(bizName) + ' · ' + date + '<br>choive.com · Confidential<br>AI Selection Report</div>');
   H.push('</div></div>');
 
