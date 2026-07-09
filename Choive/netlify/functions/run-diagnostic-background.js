@@ -317,73 +317,100 @@ exports.handler = async function (event) {
       await saveEvidence(jobId, evidence).catch(err =>
         console.warn('[' + jobId + '] saveEvidence failed:', err.message)
       );
-      // ── Social media pages ────────────────────────────────────────────────────
+      // ── PARALLEL EVIDENCE FETCHING ────────────────────────────────────────────
+      // Social, reviews, Apify, and competitor homepage are fully independent —
+      // run them concurrently with Promise.allSettled instead of sequentially.
+      // Before: worst-case ~135 s (Apify alone) + social + reviews + competitor.
+      // After:  wall-clock = slowest single leg, typically 15-20 s.
+      var topCompDomain = (serperPayload.competitors && serperPayload.competitors.length > 0 &&
+        serperPayload.competitors[0] && serperPayload.competitors[0]['domain'])
+        ? serperPayload.competitors[0]['domain'] : null;
+      var parallelResults = await Promise.allSettled([
+        fetchSocialEvidence(serperPayload.results || [], name),       // [0]
+        fetchReviewPages(serperPayload.results || []),                 // [1]
+        fetchApifyEvidence(name, city, website),                       // [2]
+        topCompDomain ? fetchCompetitorText(topCompDomain) : Promise.resolve('') // [3]
+      ]);
+      // ── [0] Social media pages ────────────────────────────────────────────────
       var socialEvidence = {};
       var socialText     = 'No social media pages found.';
-      try {
-        socialEvidence = await fetchSocialEvidence(serperPayload.results || [], name);
-        socialText     = buildSocialText(socialEvidence);
-        evidence['socialEvidence'] = socialEvidence;
-        evidence['socialText']     = socialText;
-        console.log('[' + jobId + '] Social platforms fetched:', Object.keys(socialEvidence).join(', ') || 'none');
-      } catch (err) {
-        console.warn('[' + jobId + '] Social fetch failed:', err.message);
+      if (parallelResults[0].status === 'fulfilled') {
+        try {
+          socialEvidence = parallelResults[0].value || {};
+          socialText     = buildSocialText(socialEvidence);
+          evidence['socialEvidence'] = socialEvidence;
+          evidence['socialText']     = socialText;
+          console.log('[' + jobId + '] Social platforms fetched:', Object.keys(socialEvidence).join(', ') || 'none');
+        } catch (err) {
+          console.warn('[' + jobId + '] Social processing failed:', err.message);
+        }
+      } else {
+        console.warn('[' + jobId + '] Social fetch failed:', (parallelResults[0].reason || {}).message || parallelResults[0].reason);
       }
-      // ── Review platform pages ─────────────────────────────────────────────────
+      // ── [1] Review platform pages ─────────────────────────────────────────────
       var reviewPages = {};
       var reviewText  = 'No review platform pages found.';
-      try {
-        reviewPages = await fetchReviewPages(serperPayload.results || []);
-        reviewText  = buildReviewText(reviewPages);
-        evidence['reviewPages'] = reviewPages;
-        evidence['reviewText']  = reviewText;
-        var reviewKeys = Object.keys(reviewPages);
-        if (reviewKeys.length > 0) {
-          console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
-          // Signal: review platform presence confirmed by actual page fetch
-          if (!websiteSignals.confirmedReviewPlatforms) {
-            websiteSignals.confirmedReviewPlatforms = reviewKeys;
-            evidence.websiteSignals = websiteSignals;
+      if (parallelResults[1].status === 'fulfilled') {
+        try {
+          reviewPages = parallelResults[1].value || {};
+          reviewText  = buildReviewText(reviewPages);
+          evidence['reviewPages'] = reviewPages;
+          evidence['reviewText']  = reviewText;
+          var reviewKeys = Object.keys(reviewPages);
+          if (reviewKeys.length > 0) {
+            console.log('[' + jobId + '] Review pages fetched:', reviewKeys.join(', '));
+            if (!websiteSignals.confirmedReviewPlatforms) {
+              websiteSignals.confirmedReviewPlatforms = reviewKeys;
+              evidence.websiteSignals = websiteSignals;
+            }
           }
+        } catch (err) {
+          console.warn('[' + jobId + '] Review processing failed:', err.message);
         }
-      } catch (err) {
-        console.warn('[' + jobId + '] Review fetch failed:', err.message);
+      } else {
+        console.warn('[' + jobId + '] Review fetch failed:', (parallelResults[1].reason || {}).message || parallelResults[1].reason);
       }
-      // ── Apify review evidence ─────────────────────────────────────────────────
+      // ── [2] Apify review evidence ─────────────────────────────────────────────
       var apifyResult = { apifyText: '', trustpilot: null, googleReviews: null };
-      try {
-        apifyResult = await fetchApifyEvidence(name, city, website);
-        if (apifyResult.apifyText) {
-          evidence['apifyText']     = apifyResult.apifyText;
-          evidence['trustpilot']    = apifyResult.trustpilot;
-          evidence['googleReviews'] = apifyResult.googleReviews;
-          // Attach confirmed review data to signals for deterministic use
-          if (apifyResult.trustpilot) {
-            websiteSignals.trustpilotRating      = apifyResult.trustpilot.rating      || null;
-            websiteSignals.trustpilotReviewCount = apifyResult.trustpilot.reviewCount || 0;
+      if (parallelResults[2].status === 'fulfilled') {
+        try {
+          apifyResult = parallelResults[2].value || apifyResult;
+          if (apifyResult.apifyText) {
+            evidence['apifyText']     = apifyResult.apifyText;
+            evidence['trustpilot']    = apifyResult.trustpilot;
+            evidence['googleReviews'] = apifyResult.googleReviews;
+            if (apifyResult.trustpilot) {
+              websiteSignals.trustpilotRating      = apifyResult.trustpilot.rating      || null;
+              websiteSignals.trustpilotReviewCount = apifyResult.trustpilot.reviewCount || 0;
+            }
+            if (apifyResult.googleReviews) {
+              websiteSignals.googleRating      = apifyResult.googleReviews.rating      || null;
+              websiteSignals.googleReviewCount = apifyResult.googleReviews.reviewCount || 0;
+            }
+            evidence.websiteSignals = websiteSignals;
+            console.log('[' + jobId + '] Apify evidence collected');
           }
-          if (apifyResult.googleReviews) {
-            websiteSignals.googleRating      = apifyResult.googleReviews.rating      || null;
-            websiteSignals.googleReviewCount = apifyResult.googleReviews.reviewCount || 0;
-          }
-          evidence.websiteSignals = websiteSignals;
-          console.log('[' + jobId + '] Apify evidence collected');
+        } catch (err) {
+          console.warn('[' + jobId + '] Apify processing failed:', err.message);
         }
-      } catch (err) {
-        console.warn('[' + jobId + '] Apify failed:', err.message);
+      } else {
+        console.warn('[' + jobId + '] Apify failed:', (parallelResults[2].reason || {}).message || parallelResults[2].reason);
       }
-      // ── Competitor homepage fetch ─────────────────────────────────────────────
+      // ── [3] Competitor homepage fetch ─────────────────────────────────────────
       var competitorPageText = '';
-      if (serperPayload.competitors && serperPayload.competitors.length > 0) {
-        var topComp = serperPayload.competitors[0];
-        if (topComp && topComp['domain']) {
-          competitorPageText = await fetchCompetitorText(topComp['domain']).catch(function() { return ''; });
-          if (competitorPageText) {
+      if (parallelResults[3].status === 'fulfilled') {
+        try {
+          competitorPageText = parallelResults[3].value || '';
+          if (competitorPageText && topCompDomain) {
             evidence['competitorPageText'] = competitorPageText;
-            evidence['competitorDomain']   = topComp['domain'];
-            console.log('[' + jobId + '] Fetched competitor: ' + topComp['domain']);
+            evidence['competitorDomain']   = topCompDomain;
+            console.log('[' + jobId + '] Fetched competitor: ' + topCompDomain);
           }
+        } catch (err) {
+          console.warn('[' + jobId + '] Competitor homepage processing failed:', err.message);
         }
+      } else {
+        console.warn('[' + jobId + '] Competitor homepage fetch failed:', (parallelResults[3].reason || {}).message || parallelResults[3].reason);
       }
       // ── STAGE 1b: CATEGORY INFERENCE + SECOND-PASS COMPETITOR SEARCH ─────────
       var inferredCat = category;
@@ -439,6 +466,61 @@ exports.handler = async function (event) {
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
             console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount + '/3');
+            // ── COMPETITOR FREQUENCY — derive competitorDecision from AI ground truth
+            // Count how many simulation responses mention each known competitor.
+            // The most-mentioned non-platform name becomes realCompetitor, which
+            // the enforcement block at lines 509-519 uses to lock the final result.
+            // This is what was previously "dead code" — the enforcement code was
+            // always ready but evidence.competitorDecision was never populated.
+            try {
+              var allSimResponses = [];
+              (simBefore.before.results || []).forEach(function(r) {
+                (r.allResponses || []).forEach(function(txt) {
+                  if (txt) allSimResponses.push(txt.toLowerCase());
+                });
+              });
+              if (allSimResponses.length > 0) {
+                // Build candidate list from Serper competitors + knownCompetitors input
+                var compCandidates = (evidence['competitors'] || []).map(function(c) { return c && c.name; }).filter(Boolean);
+                var kcNames = String(evidence['knownCompetitors'] || knownCompetitors || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+                var allCandidates = compCandidates.concat(kcNames);
+                // Deduplicate by normalized key; exclude platforms, generics, and the subject itself
+                var normSelf = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                var seenKeys = {};
+                var uniqueCandidates = allCandidates.filter(function(n) {
+                  if (!n) return false;
+                  var key = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (key === normSelf) return false;
+                  if (isPlatformName(n) || isGenericEntity(n) || isGenericPhrase(n)) return false;
+                  if (seenKeys[key]) return false;
+                  seenKeys[key] = true;
+                  return true;
+                });
+                // Count mentions across ALL simulation response texts
+                var bestName = null, bestCount = 0;
+                uniqueCandidates.forEach(function(n) {
+                  var needle = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (!needle) return;
+                  var cnt = allSimResponses.filter(function(r) {
+                    return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
+                  }).length;
+                  if (cnt > bestCount) { bestCount = cnt; bestName = n; }
+                });
+                evidence['competitorDecision'] = {
+                  realCompetitor:   bestName   || null,
+                  aiRecommends:     bestName   || null,
+                  source:           'ai-ground-truth',
+                  selectionVersion: 3,
+                  mentionCount:     bestCount,
+                  totalResponses:   allSimResponses.length,
+                  categoryUnowned:  !bestName || bestCount === 0
+                };
+                console.log('[' + jobId + '] competitorDecision: ' +
+                  (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned'));
+              }
+            } catch (freqErr) {
+              console.warn('[' + jobId + '] Competitor frequency count failed:', freqErr.message);
+            }
           }
         } catch (err) {
           console.warn('[' + jobId + '] Before-simulation failed:', err.message);
@@ -749,8 +831,10 @@ exports.handler = async function (event) {
 
     await saveResult(jobId, finalResult);
 
-    // When the diagnosed site is choive.com, write result to self_diagnostic
-    // table so the homepage live score display works correctly.
+    // ── SELF-DIAGNOSTIC WRITE ───────────────────────────────────────────────────
+    // When the diagnosed business is CHOIVE itself, write the result to the
+    // dedicated self_diagnostic table so the homepage can display it live.
+    // Keyed on domain so it works regardless of how the description is phrased.
     if (website && website.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '') === 'choive.com') {
       try {
         var { createClient: _createClient } = require('@supabase/supabase-js');
@@ -758,11 +842,11 @@ exports.handler = async function (event) {
         var _sb = _createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: _ws } });
         await _sb.from('self_diagnostic').insert({
           job_id:        jobId,
-          overall_score: finalResult.overallScore   || 0,
-          pillars:       finalResult.pillars         || {},
+          overall_score: finalResult.overallScore  || 0,
+          pillars:       finalResult.pillars        || {},
           verdict:       finalResult.verdictHeadline || '',
           summary:       finalResult.summaryParagraph || '',
-          actions:       finalResult.actions          || [],
+          actions:       finalResult.actions         || [],
           created_at:    new Date().toISOString()
         });
         console.log('[' + jobId + '] Self-diagnostic written to self_diagnostic table.');
@@ -770,6 +854,7 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] self_diagnostic write failed (non-fatal):', e.message);
       }
     }
+
     console.log('[' + jobId + '] Diagnostic complete.');
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId }) };
   } catch (err) {
