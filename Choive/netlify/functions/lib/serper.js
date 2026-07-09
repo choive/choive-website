@@ -35,7 +35,22 @@ const DIRECTORY_DOMAINS = [
   'bbb.org', 'foursquare.com', 'angieslist.com', 'houzz.com',
   'clutch.co', 'goodfirms.co',
   'alternativeto.net', 'comparably.com', 'glassdoor.com', 'indeed.com',
-  'wikipedia.org', 'wikimedia.org', 'wikidata.org'
+  'wikipedia.org', 'wikimedia.org', 'wikidata.org',
+  // Business registry, company data, and commercial databases
+  // These are data aggregators — never real competitors
+  'companydata.com', 'ensun.io', 'handelsregister.ai', 'handelsregister.de',
+  'northdata.de', 'northdata.com', 'firmenwissen.de', 'unternehmensregister.de',
+  'bundesanzeiger.de', 'creditreform.de', 'dnb.com', 'dun-bradstreet.com',
+  'crunchbase.com', 'pitchbook.com', 'owler.com', 'zoominfo.com',
+  'similarsites.com', 'similarweb.com', 'semrush.com', 'ahrefs.com',
+  'builtwith.com', 'wappalyzer.com', 'datanyze.com',
+  // Food/recipe/taste content sites — not beef brands
+  'tasteatlas.com', 'allrecipes.com', 'bbcgoodfood.com', 'seriouseats.com',
+  'epicurious.com', 'chefkoch.de', 'eat.de', 'kochbar.de',
+  // General business/legal directories
+  'companies-house.gov.uk', 'opencorporates.com', 'gleif.org',
+  'sec.gov', 'europages.com', 'kompass.com', 'wlw.de', 'wer-liefert-was.de',
+  'unternehmensverzeichnis.org', 'gelbeseiten.de', 'dasoertliche.de'
 ];
  
 const SOCIAL_DOMAINS = {
@@ -434,6 +449,15 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
     // Press and industry — surfaces real named players
     { q: name + ' news OR press OR announcement',                    type: 'comparison'  },
     { q: catShort + ' industry players' + marketSuffix,              type: 'comparison'  },
+    // Category-first brand searches — find market leaders independently of how
+    // the subject describes itself. Uses both English and German so businesses
+    // like Taurbull (Germany, German category) surface brands like Otto Gourmet
+    // that dominate category-level searches even when they never appear in
+    // subject-anchored queries ("who competes with Taurbull").
+    { q: 'best ' + catShort + ' brand' + marketSuffix,              type: 'comparison'  },
+    { q: 'top ' + catShort + ' brands' + marketSuffix,              type: 'comparison'  },
+    { q: catShort + ' Marke' + marketSuffix,                        type: 'comparison'  },
+    { q: catShort + ' Hersteller' + marketSuffix,                   type: 'comparison'  },
     // RESTORED \u2014 present in an earlier version of this file, absent from
     // what was actually live when this session began (a prior deploy appears
     // to have been silently overwritten by an older version somewhere before
