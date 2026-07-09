@@ -175,7 +175,7 @@ exports.handler = async function (event) {
   // Check if this is a Report payment ($499) — trigger report generation
   var productType = (session.metadata && session.metadata.product_type) || '';
   var amountTotal = session.amount_total || 0;
-  var isReportPayment = productType === 'report' || amountTotal >= 49900;
+  var isReportPayment = productType === 'report';
 
   if (isReportPayment && customerEmail) {
     console.log('stripe-webhook: Report payment detected — triggering generate-report');
