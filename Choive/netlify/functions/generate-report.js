@@ -1526,7 +1526,12 @@ exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
+  
+// Internal auth — only stripe-webhook may call this
+  var internalToken = process.env.INTERNAL_REPORT_SECRET;
+  if (internalToken && event.headers['x-internal-token'] !== internalToken) {
+    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
   var body;
   try { body = JSON.parse(event.body || '{}'); }
   catch (_) { return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
