@@ -1564,6 +1564,10 @@ exports.handler = async function(event) {
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Diagnostic not complete. Status: ' + diagnostic.status }) };
   }
 
+  if (!diagnostic.paid) {
+    return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Payment not confirmed for this diagnostic' }) };
+  }
+
   // 2. Build gold report HTML
   var reportHTML;
   try {
