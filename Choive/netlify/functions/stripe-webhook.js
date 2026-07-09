@@ -183,23 +183,16 @@ exports.handler = async function (event) {
     // returns — a fire-and-forget fetch is killed before it is ever sent,
     // which meant paying customers never received their report.
     // On failure we return 500 so Stripe retries the webhook automatically.
-    try {
-      var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-      var generateUrl = siteUrl + '/.netlify/functions/generate-report';
-      var gr = await fetch(generateUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-Token': process.env.INTERNAL_REPORT_SECRET || '' },
-        body: JSON.stringify({ jobId: jobId, email: customerEmail })
-      });
-      var gd = await gr.json().catch(function() { return {}; });
-      console.log('stripe-webhook: generate-report response:', gr.status, JSON.stringify(gd));
-      if (!gr.ok) {
-        return {
-          statusCode: 500,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Report generation failed: ' + (gd.error || gr.status) })
-        };
-      }
+    var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
+    var generateUrl = siteUrl + '/.netlify/functions/generate-report-background';
+    fetch(generateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Token': process.env.INTERNAL_REPORT_SECRET || '' },
+      body: JSON.stringify({ jobId: jobId, email: customerEmail })
+    }).catch(function(err) {
+      console.warn('stripe-webhook: generate-report-background trigger failed:', err.message);
+    });
+    console.log('stripe-webhook: Report generation queued for jobId', jobId);
     } catch (err) {
       console.error('stripe-webhook: generate-report trigger failed:', err.message);
       return {
