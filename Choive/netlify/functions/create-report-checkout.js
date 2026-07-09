@@ -69,7 +69,7 @@ exports.handler = async function(event) {
         'payment_intent_data[metadata][product_type]': 'report',
         'line_items[0][price_data][currency]':              'usd',
         'line_items[0][price_data][product_data][name]':    'CHOIVE· Report',
-        'line_items[0][price_data][product_data][description]': 'Complete AI selection report — scored across Clarity, Trust, Difference, and Ease. Competitor intelligence, AI simulation, 30-day action plan, and ready-to-use assets. Delivered as a branded PDF instantly after payment.',
+        'line_items[0][price_data][product_data][description]': 'Complete AI selection report — scored across Clarity, Trust, Difference, and Ease. Competitor intelligence, AI simulation, 30-day action plan, and ready-to-use assets. Delivered as an interactive report instantly after payment — open in Chrome and save as PDF.',
         'line_items[0][price_data][unit_amount]':           '49900',
         'line_items[0][quantity]':                          '1',
       }).toString()
