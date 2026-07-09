@@ -1495,22 +1495,29 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
     '</p></div>'
   ].join('');
   
-  var res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'CHOIVE· <hello@choive.com>',
-      to: [customerEmail],
-      subject: 'Your CHOIVE· Report — ' + bizName,
-      html: emailHtml,
-      attachments: [{
-        filename: `CHOIVE-Report-${safeFileName}.html`,
-        content: Buffer.from(reportHTML).toString('base64'),
-        contentType: 'text/html'
-      }]
-    })
-  });
-
+  var controller = new AbortController();
+  var abortTimer = setTimeout(function() { controller.abort(); }, 15000);
+  var res;
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        from: 'CHOIVE· <hello@choive.com>',
+        to: [customerEmail],
+        subject: 'Your CHOIVE· Report — ' + bizName,
+        html: emailHtml,
+        attachments: [{
+          filename: `CHOIVE-Report-${safeFileName}.html`,
+          content: Buffer.from(reportHTML).toString('base64'),
+          contentType: 'application/octet-stream'
+        }]
+      })
+    });
+  } finally {
+    clearTimeout(abortTimer);
+  }
   if (!res.ok) {
     var err = await res.json().catch(function() { return {}; });
     throw new Error('Resend failed: ' + (err.message || res.status));
