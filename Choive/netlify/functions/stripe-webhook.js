@@ -198,8 +198,14 @@ exports.handler = async function (event) {
       console.error('stripe-webhook: RESEND_API_KEY not set — confirmation email skipped for', customerEmail);
     } else {
       try {
-        var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-        var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
+        // Sanitize jobId — strip null bytes and any non-UUID character before embedding in URL.
+        // Stripe sometimes delivers client_reference_id with a leading null byte ( )
+        // which encodeURIComponent would encode as %00, making the link dead in email clients.
+        var safeJobId = jobId.trim().replace(/[^a-zA-Z0-9\-]/g, '');
+        // Use hardcoded domain — process.env.URL can have encoding artifacts in Netlify Functions
+        var resultUrl = 'https://choive.com/?jobId=' + safeJobId;
+
+        console.log('stripe-webhook: sending confirmation email, resultUrl =', resultUrl);
 
         var emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -210,18 +216,20 @@ exports.handler = async function (event) {
           body: JSON.stringify({
             from: 'CHOIVE <hello@choive.com>',
             to: [customerEmail],
-            subject: 'Your CHOIVE Analysis is ready',
+            subject: 'Your CHOIVE Analysis is unlocked',
             html: [
               '<div style=”font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#0C0C0E;”>',
               '<div style=”font-size:18px;font-weight:700;letter-spacing:0.08em;margin-bottom:32px;”>CHOIVE<span style=”color:#C9A86A;”>·</span></div>',
-              '<h1 style=”font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;”>Your full analysis is ready.</h1>',
+              '<h1 style=”font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;”>Your Analysis is unlocked.</h1>',
               '<p style=”font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 32px;”>',
-              'Thank you for unlocking your CHOIVE Analysis. Your complete diagnostic — including competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets — is waiting for you.',
+              'Your CHOIVE Analysis is ready — competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets. Click below to view everything.',
               '</p>',
-              '<a href=”' + resultUrl + '” style=”display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:14px 28px;”>',
-              'View Your Full Analysis →',
+              '<div style=”text-align:center;margin:0 0 40px;”>',
+              '<a href=”' + resultUrl + '” style=”display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:16px 36px;”>',
+              'View Your Analysis &rarr;',
               '</a>',
-              '<p style=”font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;”>',
+              '</div>',
+              '<p style=”font-size:12px;color:#BBBBC2;margin:0 0 8px;line-height:1.7;”>',
               'This link is unique to your diagnostic. Keep it to return to your results at any time.<br>',
               'Questions? Reply to this email or contact <a href=”mailto:hello@choive.com” style=”color:#C9A86A;”>hello@choive.com</a>',
               '</p>',
