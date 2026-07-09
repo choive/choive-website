@@ -268,29 +268,58 @@ function buildQueries(catClean, city, name, businessModel) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
 
-  // Farm/DTC brands need a different query shape — the buyer is choosing a brand
-  // that owns its production, not a retailer with the widest selection.
-  // Generic "where to buy" queries surface retailers. Brand-origin queries
-  // surface the real competitors: other farm brands selling direct.
+  // Farm/DTC brands compete in THREE overlapping contexts simultaneously:
+  // (1) the specific niche — buyers searching for their exact product/breed/origin
+  // (2) the online/DTC channel — buyers searching where to buy this category online
+  // (3) the premium/quality tier — buyers searching for the best in the category
+  // Running all three identical farm-direct queries missed contexts 2 and 3,
+  // which is where established brands like Otto Gourmet dominate and where
+  // the business is also invisible. Each query surfaces different competitors
+  // and a different mention/no-mention result for the subject.
   if (businessModel === 'farm_brand_dtc') {
+    // Extract the core product from the full inferred category string.
+    // "Vertically-integrated Black Angus beef brand with owned farm production..."
+    // → coreProduct = "Black Angus beef"
+    var coreExtract = catClean
+      .replace(/^vertically[\s-]integrated\s+/i, '')
+      .replace(/^(farm[\s-]?owned|farm[\s-]?direct|farm[\s-]?brand)\s+/i, '')
+      .replace(/\s+(brand|producer|farm|herd|ranch|company|business)\b.*/i, '')
+      .replace(/\s+with\s+.*/i, '')
+      .replace(/,\s*.*/i, '')
+      .trim();
+    var coreProduct = coreExtract.split(/\s+/).slice(0, 4).join(' ') || catClean;
+    // generalCat strips breed/qualifier to get the base product word.
+    // "Black Angus beef" → "beef" / "grass-fed lamb" → "lamb" / "specialty coffee" → "coffee"
+    var generalWords = coreProduct.split(/\s+/);
+    var generalCat = generalWords[generalWords.length - 1] || coreProduct;
+
     return [
       {
-        label: 'Discovery query',
-        intent: 'A buyer looking for a farm brand that sells direct',
-        system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real farm brands or producers that sell directly to consumers.' + hint,
-        query: 'Which brands or farms sell their own ' + catClean + ' directly to customers' + locationStr + '? I want to buy from the producer, not a shop. Name 3-5 real options.'
+        // Context 1 — SPECIFIC NICHE: finds who AI recommends in the exact
+        // product niche. Uses the full coreProduct term and the farm-ownership
+        // hint so only same-model brands (not retailers) are named.
+        label: 'Niche brand query',
+        intent: 'A buyer looking for a specific type of farm-owned brand that sells direct',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only brands that own their own production and sell directly to consumers — not retailers that resell from multiple farms. Be specific and name real brands.' + hint,
+        query: 'What are the best ' + coreProduct + ' brands' + locationStr + '? Which ones produce their own product and sell directly to customers online?'
       },
       {
-        label: 'Comparison query',
-        intent: 'A buyer comparing farm brands by origin and quality',
-        system: 'You are a helpful AI assistant with live web search. Search for current information before answering. Name only brands that own their own production — not retailers or shops that resell from multiple farms.' + hint,
-        query: 'What are the best farm-direct ' + catClean + ' brands' + locationStr + '? Which ones own their own herd or production and sell online?'
+        // Context 2 — ONLINE/DTC CHANNEL: open to ALL online sources in the
+        // general category. This is where established DTC brands and premium
+        // online shops appear — including competitors the niche query misses.
+        label: 'Online channel query',
+        intent: 'A buyer searching for the best place to buy this product category online',
+        system: 'You are a helpful AI assistant with live web search. Search for current recommendations before answering. Name specific brands or online shops — include both producers that sell direct and established online specialists. Be concrete and specific.',
+        query: 'Where is the best place to buy ' + generalCat + ' online' + locationStr + '? Name 3-5 specific brands or shops with a brief reason for each.'
       },
       {
-        label: 'Direct recommendation',
-        intent: 'A buyer ready to choose one farm brand',
-        system: 'You are a helpful AI assistant. Answer naturally and directly. Name one specific farm brand that owns its own production and sells direct.' + hint,
-        query: 'Which farm brand would you recommend for buying ' + catClean + ' online' + (city ? ' delivered to ' + city : '') + '? Just give me your single best recommendation.'
+        // Context 3 — PREMIUM/QUALITY TIER: open to the full premium segment.
+        // Finds who AI names when a buyer simply wants the best, regardless
+        // of business model. Often where category leaders are most visible.
+        label: 'Premium category query',
+        intent: 'A buyer wanting the best premium option in the category',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name the specific brand or producer consistently rated as the best quality option. Be direct and specific.',
+        query: 'What is the best premium ' + generalCat + locationStr + '? Which brand would you recommend and why? Just give me your single best answer.'
       }
     ];
   }
