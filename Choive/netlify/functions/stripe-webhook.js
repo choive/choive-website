@@ -201,9 +201,10 @@ exports.handler = async function (event) {
         // Sanitize jobId — strip null bytes and any non-UUID character before embedding in URL.
         // Stripe sometimes delivers client_reference_id with a leading null byte ( )
         // which encodeURIComponent would encode as %00, making the link dead in email clients.
+        // Use path-based URL — Resend strips = from href query params, corrupting ?jobId=UUID.
+        // /results/UUID has no = sign. A Netlify redirect rule converts it to /?jobId=UUID.
         var safeJobId = jobId.trim().replace(/[^a-zA-Z0-9\-]/g, '');
-        // Use hardcoded domain — process.env.URL can have encoding artifacts in Netlify Functions
-        var resultUrl = 'https://choive.com/?jobId=' + safeJobId;
+        var resultUrl = 'https://choive.com/results/' + safeJobId;
 
         console.log('stripe-webhook: sending confirmation email, resultUrl =', resultUrl);
 
