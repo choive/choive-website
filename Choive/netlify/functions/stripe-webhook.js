@@ -12,7 +12,7 @@
 //
 // ENV: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
-const { markDiagnosticPaid, saveLead } = require('./lib/supabase');
+const { markDiagnosticPaid, markReportSent, saveLead } = require('./lib/supabase');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -179,10 +179,6 @@ exports.handler = async function (event) {
 
   if (isReportPayment && customerEmail) {
     console.log('stripe-webhook: Report payment detected — triggering generate-report');
-    // MUST be awaited. Serverless functions freeze the moment the handler
-    // returns — a fire-and-forget fetch is killed before it is ever sent,
-    // which meant paying customers never received their report.
-    // On failure we return 500 so Stripe retries the webhook automatically.
     var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
     var generateUrl = siteUrl + '/.netlify/functions/generate-report-background';
     fetch(generateUrl, {
@@ -193,59 +189,62 @@ exports.handler = async function (event) {
       console.warn('stripe-webhook: generate-report-background trigger failed:', err.message);
     });
     console.log('stripe-webhook: Report generation queued for jobId', jobId);
-    } catch (err) {
-      console.error('stripe-webhook: generate-report trigger failed:', err.message);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Report generation failed: ' + err.message })
-      };
-    }
   }
 
-  // Send confirmation email (best-effort, does not block response)
-  // Report buyers are excluded — they receive the report email from
-  // generate-report. Sending both meant every $499 customer got a
-  // duplicate “Analysis is ready” email that did not match what they bought.
-  if (!isReportPayment && customerEmail && process.env.RESEND_API_KEY) {
-    try {
-      var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-      var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
+  // Send confirmation email for $99 Analysis payments
+  // Report buyers ($499) receive the report email from generate-report instead.
+  if (!isReportPayment && customerEmail) {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('stripe-webhook: RESEND_API_KEY not set — confirmation email skipped for', customerEmail);
+    } else {
+      try {
+        var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
+        var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
 
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'CHOIVE <hello@choive.com>',
-          to: [customerEmail],
-          subject: 'Your CHOIVE Analysis is ready',
-          html: [
-            '<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#0C0C0E;">',
-            '<div style="font-size:18px;font-weight:700;letter-spacing:0.08em;margin-bottom:32px;">CHOIVE<span style="color:#C9A86A;">·</span></div>',
-            '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;">Your full analysis is ready.</h1>',
-            '<p style="font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 32px;">',
-            'Thank you for unlocking your CHOIVE Analysis. Your complete diagnostic — including competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets — is waiting for you.',
-            '</p>',
-            '<a href="' + resultUrl + '" style="display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:14px 28px;">',
-            'View Your Full Analysis →',
-            '</a>',
-            '<p style="font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;">',
-            'This link is unique to your diagnostic. Keep it to return to your results at any time.<br>',
-            'Questions? Reply to this email or contact <a href="mailto:hello@choive.com" style="color:#C9A86A;">hello@choive.com</a>',
-            '</p>',
-            '<div style="margin-top:32px;padding-top:24px;border-top:1px solid #F5F2EE;font-size:11px;color:#BBBBC2;">',
-            'CHOIVE· — Be the answer. Not the alternative.',
-            '</div>',
-            '</div>'
-          ].join('')
-        })
-      });
-      console.log('stripe-webhook: confirmation email sent to', customerEmail);
-    } catch (err) {
-      console.warn('stripe-webhook: email send failed (non-critical):', err.message);
+        var emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'CHOIVE <hello@choive.com>',
+            to: [customerEmail],
+            subject: 'Your CHOIVE Analysis is ready',
+            html: [
+              '<div style=”font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#0C0C0E;”>',
+              '<div style=”font-size:18px;font-weight:700;letter-spacing:0.08em;margin-bottom:32px;”>CHOIVE<span style=”color:#C9A86A;”>·</span></div>',
+              '<h1 style=”font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;”>Your full analysis is ready.</h1>',
+              '<p style=”font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 32px;”>',
+              'Thank you for unlocking your CHOIVE Analysis. Your complete diagnostic — including competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets — is waiting for you.',
+              '</p>',
+              '<a href=”' + resultUrl + '” style=”display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:14px 28px;”>',
+              'View Your Full Analysis →',
+              '</a>',
+              '<p style=”font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;”>',
+              'This link is unique to your diagnostic. Keep it to return to your results at any time.<br>',
+              'Questions? Reply to this email or contact <a href=”mailto:hello@choive.com” style=”color:#C9A86A;”>hello@choive.com</a>',
+              '</p>',
+              '<div style=”margin-top:32px;padding-top:24px;border-top:1px solid #F5F2EE;font-size:11px;color:#BBBBC2;”>',
+              'CHOIVE· — Be the answer. Not the alternative.',
+              '</div>',
+              '</div>'
+            ].join('')
+          })
+        });
+
+        if (emailRes.ok) {
+          console.log('stripe-webhook: confirmation email sent to', customerEmail);
+          try { await markReportSent(jobId); } catch (e) {
+            console.warn('stripe-webhook: markReportSent failed (non-critical):', e.message);
+          }
+        } else {
+          var errBody = await emailRes.text();
+          console.error('stripe-webhook: Resend API error', emailRes.status, errBody);
+        }
+      } catch (err) {
+        console.warn('stripe-webhook: email send failed (non-critical):', err.message);
+      }
     }
   }
 
