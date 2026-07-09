@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { getDiagnostic } = require('./lib/supabase');
+const { getDiagnostic, markReportSent } = require('./lib/supabase');
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const CORS = {
@@ -1567,6 +1567,10 @@ exports.handler = async function(event) {
   if (!diagnostic.paid) {
     return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Payment not confirmed for this diagnostic' }) };
   }
+  if (diagnostic.report_sent_at) {
+    console.log('[generate-report] already sent for jobId', jobId, '— skipping duplicate');
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, message: 'Report already sent' }) };
+  }
 
   // 2. Build gold report HTML
   var reportHTML;
@@ -1584,6 +1588,7 @@ exports.handler = async function(event) {
   try {
     await sendReportEmail(customerEmail, bizName, reportHTML, jobId, score);
     console.log('[generate-report] emailed to', customerEmail);
+    try { await markReportSent(jobId); } catch (e) { console.warn('[generate-report] markReportSent failed (non-fatal):', e.message); }
   } catch (err) {
     console.error('[generate-report] email error:', err.message);
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Failed to send email: ' + err.message }) };
