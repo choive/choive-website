@@ -21,7 +21,7 @@
 // ENV: APIFY_API_KEY
 
 const APIFY_BASE  = 'https://api.apify.com/v2';
-const TIMEOUT_MS  = 45000; // Apify runs can take 20-40s
+const TIMEOUT_MS  = 15000; // Apify runs can take 20-40s
 const POLL_MS     = 3000;  // Poll every 3s for result
 
 // ── Run an Apify actor and wait for result ────────────────────────────────────
