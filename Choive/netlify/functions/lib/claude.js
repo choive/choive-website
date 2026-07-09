@@ -881,7 +881,14 @@ async function scoreWithClaudeOnce(evidence) {
   // Dedicated competitor selection first; its decision is injected as fact.
   // Idempotent: on a scoring retry the existing decision is reused, not recomputed.
   try {
-    var compDecision = evidence.competitorDecision || await selectDominantCompetitor(evidence);
+    // Only skip selectDominantCompetitor if a real competitor was already found.
+    // A truthy competitorDecision object with realCompetitor: null (categoryUnowned)
+    // must NOT block this stage — the sophisticated selection reads raw simulation
+    // text for brand names that never made it into the pre-built candidate list.
+    var existingDecision = evidence.competitorDecision;
+    var compDecision = (existingDecision && existingDecision.realCompetitor)
+      ? existingDecision
+      : await selectDominantCompetitor(evidence);
     if (compDecision) {
       evidence.competitorDecision = compDecision;
       console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
