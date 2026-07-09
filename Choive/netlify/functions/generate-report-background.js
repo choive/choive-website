@@ -1,4 +1,4 @@
-// generate-report.js
+// generate-report-background.js
 // CHOIVE· — Gold Report Generator
 // Triggered by stripe-webhook.js on $499 Report payment
 // Builds full gold-standard 10-section PDF report with:
