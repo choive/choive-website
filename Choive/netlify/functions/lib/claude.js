@@ -436,6 +436,29 @@ function buildPrompt(evidence) {
     + 'Write exactly what was found and what was not found. Name specific search queries that returned zero results.\n'
     + 'Name specific signals that were confirmed. Name the exact gap between what exists and what is needed.\n'
     + 'Do not summarise. Do not soften. Do not generalise. Every sentence must be evidence-backed.\n\n'
+    + 'SIGNAL AUDIT — populate signalAudit with EXACTLY the signals below per pillar. Use ONLY these three status values: "pass", "fail", "partial".\n'
+    + 'For each signal, detail must be a short specific phrase (max 12 words) — name the exact value found, or state exactly what was missing.\n'
+    + 'NEVER leave detail blank on a "pass". NEVER write "N/A" or "none". NEVER invent data not in the evidence.\n\n'
+    + 'CLARITY signals (check in order):\n'
+    + '1. "H1 headline names the service" — pass if H1 text contains the specific product/service category; fail if generic or absent\n'
+    + '2. "Meta description present" — pass if confirmed; fail if missing\n'
+    + '3. "Business name consistent across sources" — pass if search results show consistent name; partial if variation found; fail if conflicting\n'
+    + '4. "Homepage category immediately clear" — pass if first content clearly states what business does; partial if vague; fail if absent\n\n'
+    + 'TRUST signals (check in order):\n'
+    + '1. "Google reviews" — pass if rating + count found; partial if profile exists but low volume (<5); fail if none\n'
+    + '2. "Trustpilot presence" — pass if found with rating; fail if not found\n'
+    + '3. "Press or media mention" — pass if named publication found in search evidence; fail if none found\n'
+    + '4. "Case study or named client result" — pass if specific result with named client found; partial if result exists but no name; fail if none\n\n'
+    + 'DIFFERENCE signals (check in order):\n'
+    + '1. "Named differentiator stated" — pass if a specific unique claim exists (not "best" or "quality"); partial if vague claim only; fail if none\n'
+    + '2. "Named client or partner referenced" — pass if a specific company/person is named; fail if none\n'
+    + '3. "Niche or category ownership claim" — pass if business explicitly owns a defined niche; partial if implied; fail if absent\n'
+    + '4. "Proof of outcome stated" — pass if a measurable result is cited (number, %, time); fail if none\n\n'
+    + 'EASE signals (check in order):\n'
+    + '1. "Schema markup present" — pass if detected; fail if none found\n'
+    + '2. "llms.txt file present" — pass if confirmed; fail if absent\n'
+    + '3. "AI crawlers can read page" — pass if bots see substantive content; partial if thin; fail if blocked or empty shell\n'
+    + '4. "Structured FAQ or explainer content" — pass if clear question/answer format found; partial if present but thin; fail if absent\n\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
 
   var jsonSchema = '{\n'
@@ -453,6 +476,12 @@ function buildPrompt(evidence) {
     + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
     + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
     + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
+    + '  },\n'
+    + '  "signalAudit": {\n'
+    + '    "clarity":    [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "trust":      [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "difference": [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "ease":       [ { "name": "", "status": "pass", "detail": "" } ]\n'
     + '  },\n'
     + (evidence.competitorDecision && evidence.competitorDecision.realCompetitor ? '  REMINDER: competitors[0].name must be exactly "' + evidence.competitorDecision.realCompetitor + '".\n' : '')
     + '  "competitors": [\n'
@@ -530,6 +559,86 @@ function applySignalConstraints(rawOutput, websiteSignals) {
   var es = Number(p.ease       && p.ease.score)       || 0;
   rawOutput.overallScore = cs + ts + ds + es;
 
+  // ── Signal audit overrides ────────────────────────────────────────────────
+  // Replace Claude's generated statuses for signals we can verify
+  // programmatically from websiteSignals. Non-technical signals (press,
+  // case studies, differentiators) stay as Claude assessed them.
+  var sa = rawOutput.signalAudit;
+  if (sa && typeof sa === 'object') {
+    // Helper: find a signal entry by name prefix (case-insensitive)
+    function overrideSignal(pillar, namePrefix, status, detail) {
+      var arr = sa[pillar];
+      if (!Array.isArray(arr)) return;
+      var idx = -1;
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i] && String(arr[i].name || '').toLowerCase().indexOf(namePrefix.toLowerCase()) === 0) {
+          idx = i; break;
+        }
+      }
+      if (idx !== -1) {
+        arr[idx].status = status;
+        arr[idx].detail = detail;
+      } else {
+        // Signal wasn't generated by Claude — add it anyway so it's always shown
+        arr.push({ name: namePrefix, status: status, detail: detail });
+      }
+    }
+
+    // CLARITY — H1 and meta description
+    if (s.hasH1) {
+      var h1Detail = s.h1Text ? ('"' + String(s.h1Text).slice(0, 60) + '"') : 'H1 present';
+      overrideSignal('clarity', 'H1 headline', 'pass', h1Detail);
+    } else {
+      overrideSignal('clarity', 'H1 headline', 'fail', 'No H1 tag detected on page');
+    }
+    if (s.hasMetaDescription) {
+      var metaSnip = s.metaDescriptionText ? ('"' + String(s.metaDescriptionText).slice(0, 60) + '"') : 'Meta description present';
+      overrideSignal('clarity', 'Meta description', 'pass', metaSnip);
+    } else {
+      overrideSignal('clarity', 'Meta description', 'fail', 'No meta description found');
+    }
+
+    // TRUST — Google reviews and Trustpilot
+    if (s.googleRating && s.googleReviewCount) {
+      overrideSignal('trust', 'Google reviews', 'pass', s.googleRating + '★ · ' + s.googleReviewCount + ' reviews');
+    } else if (s.googleRating) {
+      overrideSignal('trust', 'Google reviews', 'partial', s.googleRating + '★ · review count not confirmed');
+    } else {
+      overrideSignal('trust', 'Google reviews', 'fail', 'No Google profile found');
+    }
+    if (s.trustpilotRating && s.trustpilotReviewCount) {
+      overrideSignal('trust', 'Trustpilot', 'pass', s.trustpilotRating + '/5 · ' + s.trustpilotReviewCount + ' reviews');
+    } else if (s.trustpilotRating) {
+      overrideSignal('trust', 'Trustpilot', 'partial', s.trustpilotRating + '/5 · review count not confirmed');
+    } else {
+      overrideSignal('trust', 'Trustpilot', 'fail', 'No Trustpilot profile found');
+    }
+
+    // EASE — schema, llms.txt, bot crawlability
+    if (s.hasSchema) {
+      var schemaDetail = (s.schemaCount && s.schemaCount > 0)
+        ? (s.schemaCount + ' schema type' + (s.schemaCount > 1 ? 's' : '') + (s.schemaTypes && s.schemaTypes.length ? ': ' + s.schemaTypes.slice(0, 2).join(', ') : ''))
+        : 'Schema markup detected';
+      overrideSignal('ease', 'Schema markup', 'pass', schemaDetail);
+    } else {
+      overrideSignal('ease', 'Schema markup', 'fail', 'No JSON-LD or schema detected');
+    }
+    if (s.hasLlmsTxt) {
+      overrideSignal('ease', 'llms.txt file', 'pass', 'llms.txt confirmed at root');
+    } else {
+      overrideSignal('ease', 'llms.txt file', 'fail', 'No llms.txt found');
+    }
+    if (s.botEmptyShellDetected) {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Bots see empty shell — JS-only render');
+    } else if (s.allBotsFailed) {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'All bot fetches blocked or failed');
+    } else if (s.botCrawlable === false) {
+      overrideSignal('ease', 'AI crawlers can read page', 'partial', 'Partial content visible to bots');
+    } else {
+      overrideSignal('ease', 'AI crawlers can read page', 'pass', 'Bots see substantive page content');
+    }
+  }
+
   return rawOutput;
 }
 
@@ -559,6 +668,7 @@ function safeOutput(raw) {
       difference: safePillar(pillars.difference),
       ease:       safePillar(pillars.ease)
     },
+    signalAudit: (r.signalAudit && typeof r.signalAudit === 'object') ? r.signalAudit : { clarity: [], trust: [], difference: [], ease: [] },
     competitors:  Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
     competitor:   r.competitor  || null,
     actions:      Array.isArray(r.actions) ? r.actions : [],
