@@ -219,6 +219,14 @@ async function getDiagnostic(jobId) {
   if (error) throw new Error('Supabase fetch failed: ' + error.message);
   return data;
 }
+async function markReportSent(jobId) {
+  const supabase = getClient();
+  const { error } = await supabase
+    .from('diagnostics')
+    .update({ report_sent_at: new Date().toISOString() })
+    .eq('job_id', jobId);
+  if (error) throw new Error('Supabase markReportSent failed: ' + error.message);
+}
 async function markDiagnosticPaid(jobId) {
   if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
     throw new Error('markDiagnosticPaid: jobId is missing or malformed');
@@ -307,6 +315,7 @@ module.exports = {
   saveResult,
   saveError,
   getDiagnostic,
+  markReportSent,
   markDiagnosticPaid,
   saveLead,
   buildFingerprint,
