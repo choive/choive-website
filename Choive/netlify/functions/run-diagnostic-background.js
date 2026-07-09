@@ -329,7 +329,11 @@ exports.handler = async function (event) {
         fetchSocialEvidence(serperPayload.results || [], name),       // [0]
         fetchReviewPages(serperPayload.results || []),                 // [1]
         fetchApifyEvidence(name, city, website),                       // [2]
-        topCompDomain ? fetchCompetitorText(topCompDomain) : Promise.resolve('') // [3]
+        topCompDomain ? fetchCompetitorText(topCompDomain) : Promise.resolve(''), // [3]
+        // [4] Competitor real review data — uses domain as the "name" since
+        // the actual company name is not yet known at this stage. Runs in
+        // parallel with [2] so no additional wall-clock cost.
+        topCompDomain ? fetchApifyEvidence(topCompDomain, '', 'https://' + topCompDomain) : Promise.resolve(null) // [4]
       ]);
       // ── [0] Social media pages ────────────────────────────────────────────────
       var socialEvidence = {};
@@ -411,6 +415,21 @@ exports.handler = async function (event) {
         }
       } else {
         console.warn('[' + jobId + '] Competitor homepage fetch failed:', (parallelResults[3].reason || {}).message || parallelResults[3].reason);
+      }
+      // ── [4] Competitor real review data (Apify) ───────────────────────────────
+      if (parallelResults[4] && parallelResults[4].status === 'fulfilled' && parallelResults[4].value) {
+        try {
+          var compApify = parallelResults[4].value;
+          if (compApify && (compApify.trustpilot || compApify.googleReviews)) {
+            evidence['competitorApify'] = {
+              trustpilot:   compApify.trustpilot   || null,
+              googleReviews: compApify.googleReviews || null
+            };
+            console.log('[' + jobId + '] Competitor Apify data collected for: ' + topCompDomain);
+          }
+        } catch (err) {
+          console.warn('[' + jobId + '] Competitor Apify processing failed:', err.message);
+        }
       }
       // ── STAGE 1b: CATEGORY INFERENCE + SECOND-PASS COMPETITOR SEARCH ─────────
       var inferredCat = category;
@@ -720,6 +739,9 @@ exports.handler = async function (event) {
     }
     if (evidence['reviewText'])       finalResult['reviewText']       = evidence['reviewText'];
     if (evidence['apifyText'])        finalResult['apifyText']        = evidence['apifyText'];
+    if (evidence['trustpilot'])       finalResult['trustpilot']       = evidence['trustpilot'];
+    if (evidence['googleReviews'])    finalResult['googleReviews']    = evidence['googleReviews'];
+    if (evidence['competitorApify'])  finalResult['competitorApify']  = evidence['competitorApify'];
     if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
     // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
