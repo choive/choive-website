@@ -16,6 +16,8 @@
 
 'use strict';
 
+const chromium = require('@sparticuz/chromium-min');
+const puppeteer = require('puppeteer-core');
 const { getDiagnostic, markReportSent } = require('./lib/supabase');
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -1457,8 +1459,34 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   return H.join('\n');
 }
 
+// ── PDF GENERATION ────────────────────────────────────────────────────────────
+async function generatePDF(html) {
+  var executablePath = await chromium.executablePath(
+    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+  );
+  var browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: { width: 1240, height: 1754 },
+    executablePath: executablePath,
+    headless: true,
+  });
+  try {
+    var page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
+    var pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
+      preferCSSPageSize: true,
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close();
+  }
+}
+
 // ── SEND EMAIL ────────────────────────────────────────────────────────────────
-async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score) {
+async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) {
   var resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) throw new Error('RESEND_API_KEY not configured');
 
@@ -1471,7 +1499,7 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
     '<div style="margin-bottom:36px;"><img src="' + 'https://choive.com/choive-logo.png' + '" style="height:36px;width:auto;" alt="CHOIVE"/></div>',
     '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 14px;line-height:1.2;color:#0C0C0E;">Your AI Selection Report is ready.</h1>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">Your complete CHOIVE Report for <strong>' + esc(bizName) + '</strong> is attached to this email.</p>',
-    '<p style="font-size:13px;line-height:1.7;color:#67676E;margin:0 0 8px;padding:10px 14px;background:#F5F2EE;border-left:3px solid #C9A86A;"><strong style="color:#0C0C0E;">To open your report:</strong> download the attached file and open it in Chrome or Safari. Your report includes a <em>Save as PDF</em> button in the top right corner so you can save a permanent copy.</p>',
+    '<p style="font-size:13px;line-height:1.7;color:#67676E;margin:0 0 8px;padding:10px 14px;background:#F5F2EE;border-left:3px solid #C9A86A;"><strong style="color:#0C0C0E;">Your report is attached as a PDF.</strong> Open it in any PDF viewer. Every page is formatted and ready to read, share, or print.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">This is your confidential analysis. Do not share it publicly — it contains your exact competitive gaps.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 28px;">Your score: <strong style="font-size:18px;font-family:Georgia,serif;color:#0C0C0E;">' + score + '/100</strong></p>',
     '<div style="background:#F5F2EE;padding:22px 26px;margin-bottom:28px;border-left:3px solid #C9A86A;">',
@@ -1509,9 +1537,9 @@ async function sendReportEmail(customerEmail, bizName, reportHTML, jobId, score)
         subject: 'Your CHOIVE· Report — ' + bizName,
         html: emailHtml,
         attachments: [{
-          filename: `CHOIVE-Report-${safeFileName}.html`,
-          content: Buffer.from(reportHTML).toString('base64'),
-          contentType: 'application/octet-stream'
+          filename: `CHOIVE-Report-${safeFileName}.pdf`,
+          content: pdfBuffer.toString('base64'),
+          contentType: 'application/pdf'
         }]
       })
     });
@@ -1589,11 +1617,21 @@ exports.handler = async function(event) {
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Failed to build report: ' + err.message }) };
   }
 
+  // 2b. Generate PDF
+  var pdfBuffer;
+  try {
+    pdfBuffer = await generatePDF(reportHTML);
+    console.log('[generate-report] PDF generated, bytes:', pdfBuffer.length);
+  } catch (err) {
+    console.error('[generate-report] PDF generation error:', err.message);
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'PDF generation failed: ' + err.message }) };
+  }
+
   // 3. Email report
   var bizName = safeStr(safeObj(diagnostic.input).name, 'Your Business');
   var score   = safeNum(safeObj(diagnostic.result).overallScore, 0);
   try {
-    await sendReportEmail(customerEmail, bizName, reportHTML, jobId, score);
+    await sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score);
     console.log('[generate-report] emailed to', customerEmail);
     try { await markReportSent(jobId); } catch (e) { console.warn('[generate-report] markReportSent failed (non-fatal):', e.message); }
   } catch (err) {
