@@ -23,6 +23,13 @@
   to = "/index.html"
   status = 200
 
+# Email link redirect — avoids raw = in email href (Resend strips = from query params)
+# Email links point to /results/UUID, Netlify rewrites to /?jobId=UUID for the browser
+[[redirects]]
+  from = "/results/:jobId"
+  to = "/?jobId=:jobId"
+  status = 301
+
 [[redirects]]
   from = "/report"
   to = "/report.html"
