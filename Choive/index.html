@@ -171,7 +171,7 @@
   --void-3:  #18181E;
   --ghost:   #F5F2EE;
   --ghost-2: #BBBBC2;
-  --ghost-3: #6E6E76;
+  --ghost-3: #8A8A96;
   --rd:      rgba(245,242,238,0.07);
   --rd2:     rgba(245,242,238,0.03);
   /* Signals */
@@ -801,6 +801,14 @@ nav {
 .pillar-bar { height:1px; background:var(--rule); margin-bottom:16px; }
 .pillar-bar-fill { height:100%; background:var(--ink); width:0; transition:width 1.8s var(--settle); }
 .pillar-finding { font-size:13px; font-weight:400; line-height:1.8; color:var(--body); }
+.pillar-finding--locked {
+  font-size:12px; font-weight:600; letter-spacing:0.04em;
+  color:var(--ac); opacity:0.75; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.pillar-finding--locked::before {
+  content:'🔒'; font-size:11px;
+}
 
 /* Platform coverage */
 .platform-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--rule); margin-bottom:2px; }
@@ -883,6 +891,25 @@ nav {
 .lead-msg { font-size:13px; margin-top:12px; min-height:18px; }
 .lead-msg.ok  { color:var(--green); }
 .lead-msg.err { color:var(--red); }
+
+/* Urgency bridge */
+.urgency-bridge {
+  padding: 36px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin: 2px 0;
+}
+.urgency-sentence {
+  font-family: 'Libre Baskerville', serif;
+  font-size: clamp(17px, 2vw, 21px);
+  font-weight: 400; font-style: italic;
+  color: var(--ink); line-height: 1.5;
+  margin-bottom: 10px;
+}
+.urgency-sub {
+  font-size: 14px; font-weight: 400;
+  color: var(--muted); line-height: 1.6;
+}
 
 /* Paywall */
 .paywall-block {
@@ -1432,7 +1459,7 @@ h1.hero-kicker { margin-top:0; }
 .hero-h1 {
   font-family: 'Libre Baskerville', serif;
   font-size: clamp(40px, 6.5vw, 80px);
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -1645,12 +1672,12 @@ h1.hero-kicker { margin-top:0; }
 .diag-h2 {
   font-family: 'Libre Baskerville', serif;
   font-size: clamp(32px, 5vw, 58px);
-  font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+  font-weight: 400; line-height: 1.1; letter-spacing: -0.02em;
   color: var(--ghost);
   margin-bottom: 20px;
 }
 .diag-h2 em { font-style: italic; color: var(--ac); }
-.diag-sub { font-size: 16px; color: var(--ghost-3); line-height: 1.7; max-width: 600px; margin-bottom: 48px; }
+.diag-sub { font-size: 16px; color: var(--ghost-2); line-height: 1.7; max-width: 600px; margin-bottom: 48px; }
 .diag-form-panel {}
 .diag-form-grid {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -1658,6 +1685,18 @@ h1.hero-kicker { margin-top:0; }
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.06);
   margin-bottom: 1px;
+}
+.diag-field {
+  display: flex; flex-direction: column;
+  background: var(--void-2);
+  transition: background 0.15s;
+}
+.diag-field:focus-within { background: var(--void-3); }
+.diag-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ghost-3);
+  padding: 14px 20px 0;
+  line-height: 1; pointer-events: none; user-select: none;
 }
 .diag-input {
   background: var(--void-2);
@@ -1670,8 +1709,15 @@ h1.hero-kicker { margin-top:0; }
   transition: background 0.15s;
   letter-spacing: 0.01em;
 }
-.diag-input::placeholder { color: var(--ghost-3); }
+.diag-field .diag-input {
+  background: transparent;
+  padding-top: 6px;
+  padding-bottom: 16px;
+}
+.diag-field:focus-within .diag-input { background: transparent; }
+.diag-input::placeholder { color: var(--ghost-3); font-size: 13px; }
 .diag-input:focus { background: var(--void-3); }
+.diag-field .diag-input:focus { background: transparent; }
 select.diag-input {
   appearance:none; -webkit-appearance:none; cursor:pointer;
   grid-column: 1 / -1; /* full-width row — no orphan cell beside it */
@@ -1685,15 +1731,15 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
   width: 100%;
   background: var(--ac);
   border: none; cursor: pointer;
-  font-family: 'Libre Baskerville', serif;
-  font-size: 18px; font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; font-weight: 700;
   color: var(--void);
   padding: 24px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   transition: background 0.2s var(--settle), transform 0.2s var(--settle), box-shadow 0.2s var(--settle);
   margin-bottom: 1px;
   box-shadow: 0 0 0 0 rgba(201,168,106,0.5);
-  animation: cta-pulse 2.6s var(--settle) infinite;
+  animation: cta-pulse 2.6s var(--settle) 1;
 }
 .diag-btn:hover { background: var(--ac-d); transform: translateY(-1px); box-shadow: 0 8px 28px rgba(201,168,106,0.25); animation: none; }
 @keyframes cta-pulse {
@@ -1704,7 +1750,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 @media (prefers-reduced-motion: reduce) { .diag-btn { animation: none; } }
 .diag-btn:disabled { background: rgba(201,168,106,0.4); cursor: not-allowed; }
 .diag-note {
-  font-size: 11px; color: var(--ghost-3); letter-spacing: 0.08em;
+  font-size: 12px; color: var(--ghost-3); letter-spacing: 0.08em;
   padding: 14px 0;
 }
 .diag-header { margin-bottom: 48px; }
@@ -1722,7 +1768,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 .process-h2 {
   font-family: 'Libre Baskerville', serif;
   font-size: clamp(32px, 4.5vw, 52px);
-  font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+  font-weight: 400; line-height: 1.1; letter-spacing: -0.02em;
   color: var(--ink);
   margin-bottom: 64px;
 }
@@ -1744,7 +1790,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 }
 .process-step-title {
   font-family: 'Libre Baskerville', serif;
-  font-size: 22px; font-weight: 700;
+  font-size: 22px; font-weight: 400;
   color: var(--ink);
   margin-bottom: 12px;
 }
@@ -1799,7 +1845,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 .diff-h2 {
   font-family: 'Libre Baskerville', serif;
   font-size: clamp(36px, 5.5vw, 64px);
-  font-weight: 700; line-height: 1.05; letter-spacing: -0.025em;
+  font-weight: 400; line-height: 1.05; letter-spacing: -0.025em;
   color: var(--ink); margin-bottom: 20px;
 }
 .diff-h2 em { font-style: italic; color: var(--ac); }
@@ -1851,7 +1897,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 .bottom-cta-line {
   font-family: 'Libre Baskerville', serif;
   font-size: clamp(28px, 4vw, 48px);
-  font-weight: 700; line-height: 1.15; letter-spacing: -0.02em;
+  font-weight: 400; line-height: 1.15; letter-spacing: -0.02em;
   color: var(--ghost);
   margin-bottom: 36px;
 }
@@ -1891,6 +1937,24 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 .footer-legal { display: flex; gap: 20px; }
 .footer-legal-link { font-size: 12px; color: var(--ghost-3); text-decoration: none; }
 .footer-legal-link:hover { color: var(--ghost); }
+
+/* ── OPTIONAL FIELD DIVIDER ───────────────────────────────────── */
+.diag-opt-divider {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ghost-3); padding: 11px 20px;
+  background: var(--void-3);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 1px;
+}
+
+/* ── PRICING SIGNAL ───────────────────────────────────────────── */
+.bottom-cta-pricing {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ghost-3); margin-bottom: 28px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.bottom-cta-pricing-sep { color: rgba(201,168,106,0.4); }
+.bottom-cta-pricing-highlight { color: var(--ac); }
 
 /* ── REVEAL ANIMATION ─────────────────────────────────────────── */
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
@@ -2068,30 +2132,27 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
     <div class="hero-card-wrap">
       <div class="hero-card-eyebrow">
         <span class="hero-card-live-dot"></span>
-        CHOIVE diagnosing itself
+        Example diagnostic result
       </div>
       <div class="hero-card">
         <div class="hero-card-top">
           <div class="hero-card-biz">
-            <div class="hero-card-name">CHOIVE</div>
-            <div class="hero-card-meta">AI selection diagnostic · Global</div>
+            <div class="hero-card-name">The Corner Table</div>
+            <div class="hero-card-meta">Family restaurant</div>
           </div>
-          <div class="hero-card-badge">Not yet known<br>to AI systems</div>
+          <div class="hero-card-badge">Not recommended<br>by AI</div>
         </div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(184,50,50,0.5);margin-bottom:8px;">AI is recommending instead</div>
-        <div style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:20px;">Profound</div>
-        <a href="/compare/profound" style="display:inline-block;font-size:12px;font-weight:600;letter-spacing:0.06em;color:#C9A86A;text-decoration:none;border-bottom:1px solid rgba(201,168,106,0.4);padding-bottom:2px;margin-bottom:16px;">See the full CHOIVE vs Profound comparison →</a>
         <div class="hero-card-score-row">
-          <div class="hero-card-score">62</div>
+          <div class="hero-card-score">41</div>
           <div class="hero-card-denom">/ 100</div>
-          <div class="hero-card-label">AI selection diagnostic platform.<br>Trust score: 4 of 25.</div>
+          <div class="hero-card-label">Good kitchen.<br>AI sends people next door.</div>
         </div>
-        <div class="hero-card-sub">Full technical foundation confirmed — schema, llms.txt, sitemap, H1, meta. But no independent verification exists anywhere. No reviews, no press, no named clients. Lost at the exact moment a buyer searches "has anyone used CHOIVE?" and finds nothing.</div>
+        <div class="hero-card-sub">Good food, loyal regulars, fair prices — but no third-party source mentions them online. When someone asks AI for the best restaurant nearby, it recommends a competitor instead.</div>
         <div class="hero-card-pillars">
           <div class="hero-card-pillar">
             <div class="hero-card-pillar-name">Clarity</div>
-            <div class="hero-card-pillar-score">20<span>/25</span></div>
-            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:80%"></div></div>
+            <div class="hero-card-pillar-score">18<span>/25</span></div>
+            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:72%"></div></div>
           </div>
           <div class="hero-card-pillar">
             <div class="hero-card-pillar-name">Trust</div>
@@ -2100,25 +2161,25 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
           </div>
           <div class="hero-card-pillar">
             <div class="hero-card-pillar-name">Difference</div>
-            <div class="hero-card-pillar-score">16<span>/25</span></div>
-            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:64%"></div></div>
+            <div class="hero-card-pillar-score">12<span>/25</span></div>
+            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:48%"></div></div>
           </div>
           <div class="hero-card-pillar">
             <div class="hero-card-pillar-name">Ease</div>
-            <div class="hero-card-pillar-score">22<span>/25</span></div>
-            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:88%"></div></div>
+            <div class="hero-card-pillar-score">7<span>/25</span></div>
+            <div class="hero-card-pillar-bar"><div class="hero-card-pillar-fill" style="width:28%"></div></div>
           </div>
         </div>
         <div class="hero-card-before-after">
           <div class="hero-card-ba hero-card-ba--before">
-            <div class="hero-card-ba-label">The problem</div>
+            <div class="hero-card-ba-label">The gap</div>
             <div class="hero-card-ba-score">Trust: 4 of 25</div>
-            <div class="hero-card-ba-desc">No reviews. No press. No named clients. Invisible to AI at the verification stage.</div>
+            <div class="hero-card-ba-desc">No reviews on Google. No food directory listings. AI can't verify this restaurant exists.</div>
           </div>
           <div class="hero-card-ba hero-card-ba--after">
-            <div class="hero-card-ba-label">The fix</div>
-            <div class="hero-card-ba-score">Independent verification</div>
-            <div class="hero-card-ba-desc">Three G2 reviews and one press mention would close the gap entirely.</div>
+            <div class="hero-card-ba-label">What fixes it</div>
+            <div class="hero-card-ba-score">3 verified sources</div>
+            <div class="hero-card-ba-desc">Two Google reviews and one Yelp listing — that's all it takes to get recommended.</div>
           </div>
         </div>
       </div>
@@ -2127,33 +2188,33 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
   </div>
 </section>
 
-<!-- TICKER — industries, continuous -->
+<!-- TICKER — works for any business -->
 <div class="ticker-wrap">
   <div class="ticker-track">
     <span>Restaurants</span><span class="ticker-sep">·</span>
     <span>Law firms</span><span class="ticker-sep">·</span>
-    <span>SaaS companies</span><span class="ticker-sep">·</span>
-    <span>Consultants</span><span class="ticker-sep">·</span>
-    <span>Agencies</span><span class="ticker-sep">·</span>
+    <span>Accountants</span><span class="ticker-sep">·</span>
     <span>Hotels</span><span class="ticker-sep">·</span>
-    <span>E-commerce</span><span class="ticker-sep">·</span>
+    <span>Consultants</span><span class="ticker-sep">·</span>
+    <span>Clinics</span><span class="ticker-sep">·</span>
     <span>Real estate</span><span class="ticker-sep">·</span>
-    <span>Healthcare</span><span class="ticker-sep">·</span>
-    <span>Finance</span><span class="ticker-sep">·</span>
-    <span>Manufacturers</span><span class="ticker-sep">·</span>
+    <span>E-commerce brands</span><span class="ticker-sep">·</span>
     <span>Architects</span><span class="ticker-sep">·</span>
+    <span>SaaS companies</span><span class="ticker-sep">·</span>
     <span>Recruiters</span><span class="ticker-sep">·</span>
+    <span>Financial advisers</span><span class="ticker-sep">·</span>
+    <span>Manufacturers</span><span class="ticker-sep">·</span>
     <span>Coaches</span><span class="ticker-sep">·</span>
-    <span>Retailers</span><span class="ticker-sep">·</span>
+    <span>Agencies</span><span class="ticker-sep">·</span>
     <span>Restaurants</span><span class="ticker-sep">·</span>
     <span>Law firms</span><span class="ticker-sep">·</span>
-    <span>SaaS companies</span><span class="ticker-sep">·</span>
-    <span>Consultants</span><span class="ticker-sep">·</span>
-    <span>Agencies</span><span class="ticker-sep">·</span>
+    <span>Accountants</span><span class="ticker-sep">·</span>
     <span>Hotels</span><span class="ticker-sep">·</span>
-    <span>E-commerce</span><span class="ticker-sep">·</span>
+    <span>Consultants</span><span class="ticker-sep">·</span>
+    <span>Clinics</span><span class="ticker-sep">·</span>
     <span>Real estate</span><span class="ticker-sep">·</span>
-    <span>Healthcare</span><span class="ticker-sep">·</span>
+    <span>E-commerce brands</span><span class="ticker-sep">·</span>
+    <span>Architects</span><span class="ticker-sep">·</span>
   </div>
 </div>
 
@@ -2188,18 +2249,38 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 <section class="diag-section" id="diagnostic">
   <div class="diag-inner">
     <div class="diag-header">
-      <div class="diag-eyebrow">Free Diagnostic — No signup required</div>
       <h2 class="diag-h2">The verdict on your business.<br><em>In 45 seconds.</em></h2>
       <p class="diag-sub">Enter your business details below. We check across ChatGPT, Perplexity, and Google AI to see whether your business gets recommended — and exactly why it might not be. Free. No signup. 45 seconds.</p>
     </div>
     <div id="dI" class="diag-form-panel">
       <div class="diag-form-grid">
-        <input id="bN" type="text" class="diag-input" placeholder="Business name" autocomplete="off"/>
-        <input id="bC" type="text" class="diag-input" placeholder="What you do  (e.g. luxury real estate agency)" autocomplete="off"/>
-        <input id="bL" type="text" class="diag-input" placeholder="City / country  (e.g. Marbella, Spain)" autocomplete="off"/>
-        <input id="bW" type="text" class="diag-input" placeholder="Your website  (e.g. yourcompany.com)" autocomplete="off"/>
-        <input id="bD" type="text" class="diag-input" placeholder="What makes you different  (optional)" autocomplete="off"/>
-        <input id="bComp" type="text" class="diag-input" placeholder="A competitor you know  (optional)" autocomplete="off"/>
+        <div class="diag-field">
+          <label class="diag-label" for="bN">Business name</label>
+          <input id="bN" type="text" class="diag-input" placeholder="e.g. The Corner Table" autocomplete="off"/>
+        </div>
+        <div class="diag-field">
+          <label class="diag-label" for="bC">What you do</label>
+          <input id="bC" type="text" class="diag-input" placeholder="e.g. family restaurant" autocomplete="off"/>
+        </div>
+        <div class="diag-field">
+          <label class="diag-label" for="bL">City &amp; country</label>
+          <input id="bL" type="text" class="diag-input" placeholder="e.g. London, UK" autocomplete="off"/>
+        </div>
+        <div class="diag-field">
+          <label class="diag-label" for="bW">Your website</label>
+          <input id="bW" type="text" class="diag-input" placeholder="e.g. thecornertable.com" autocomplete="off"/>
+        </div>
+      </div>
+      <div class="diag-opt-divider">Optional — helps us go deeper</div>
+      <div class="diag-form-grid">
+        <div class="diag-field">
+          <label class="diag-label" for="bD">What makes you different</label>
+          <input id="bD" type="text" class="diag-input" placeholder="e.g. family recipes, open since 1987" autocomplete="off"/>
+        </div>
+        <div class="diag-field">
+          <label class="diag-label" for="bComp">A competitor you know</label>
+          <input id="bComp" type="text" class="diag-input" placeholder="e.g. their name or website" autocomplete="off"/>
+        </div>
         <select id="bLang" class="diag-input" aria-label="Language your customers search in">
           <option value="" selected>Customer language — Auto (recommended)</option>
           <option value="en">English</option>
@@ -2234,7 +2315,6 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 <section class="process-section" id="how">
   <div class="process-inner">
     <div class="process-header">
-      <div class="process-eyebrow">How it works</div>
       <h2 class="process-h2">Three minutes.<br><em>A verdict no agency will give you.</em></h2>
     </div>
     <div class="process-steps">
@@ -2261,61 +2341,6 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
       </div>
     </div>
 
-    <!-- Product preview -->
-    <div class="process-preview reveal">
-      <div class="process-preview-label">What a CHOIVE result looks like</div>
-      <div class="process-preview-card">
-        <div class="ppc-header">
-          <div class="ppc-biz">
-            <div class="ppc-name">Your Business</div>
-            <div class="ppc-meta">Your category · Your city</div>
-          </div>
-          <div class="ppc-score-wrap">
-            <div class="ppc-score">67</div>
-            <div class="ppc-denom">/ 100</div>
-          </div>
-        </div>
-        <div class="ppc-verdict">Not the obvious choice — yet</div>
-        <div class="ppc-pillars">
-          <div class="ppc-pillar">
-            <div class="ppc-pillar-label">Clarity</div>
-            <div class="ppc-pillar-bar"><div class="ppc-pillar-fill" style="width:52%"></div></div>
-            <div class="ppc-pillar-num">13/25</div>
-          </div>
-          <div class="ppc-pillar">
-            <div class="ppc-pillar-label">Trust</div>
-            <div class="ppc-pillar-bar"><div class="ppc-pillar-fill" style="width:72%"></div></div>
-            <div class="ppc-pillar-num">18/25</div>
-          </div>
-          <div class="ppc-pillar">
-            <div class="ppc-pillar-label">Difference</div>
-            <div class="ppc-pillar-bar"><div class="ppc-pillar-fill" style="width:60%"></div></div>
-            <div class="ppc-pillar-num">15/25</div>
-          </div>
-          <div class="ppc-pillar">
-            <div class="ppc-pillar-label">Ease</div>
-            <div class="ppc-pillar-bar"><div class="ppc-pillar-fill" style="width:24%"></div></div>
-            <div class="ppc-pillar-num">6/25</div>
-          </div>
-        </div>
-        <div class="ppc-actions">
-          <div class="ppc-action ppc-action--critical">
-            <div class="ppc-action-badge">Critical</div>
-            <div class="ppc-action-text">Define your business for AI systems — no machine-readable identity detected</div>
-          </div>
-          <div class="ppc-action ppc-action--high">
-            <div class="ppc-action-badge">High</div>
-            <div class="ppc-action-text">Close the comparison gap — competitor has 3× more citation coverage</div>
-          </div>
-        </div>
-        <div class="ppc-unlock">
-          <span class="ppc-unlock-icon">🔒</span>
-          Full analysis · Competitor breakdown · 4 priority actions
-          <span class="ppc-unlock-cta">Unlock full analysis →</span>
-        </div>
-      </div>
-    </div>
-
   </div>
 </section>
 
@@ -2323,7 +2348,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 <section class="number-section reveal">
   <div class="number-inner">
     <div class="number-big">37<span class="number-pct">%</span></div>
-    <div class="number-label">of purchase decisions now begin with an AI query.<br>That number reaches 70% within three years.</div>
+    <div class="number-label">of purchase decisions now begin with an AI query.<br>Already past 50% for service and local business searches.</div>
     <div class="number-sub">Every business that doesn't know whether AI recommends them is already losing customers they will never see, never count, and never recover. The loss is invisible. The damage is real.</div>
     <div class="number-platforms">
       <span>Measured across</span>
@@ -2375,8 +2400,8 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
         <div class="diff-comp-desc">Monitors AI visibility at enterprise depth — dashboards and citation data for brands with dedicated teams. Shows what is happening; the fixing is left to you. <a href="/compare/profound" style="color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(154,106,20,0.35);">Full comparison →</a></div>
       </div>
       <div class="diff-comp diff-comp--other">
-        <div class="diff-comp-name">BrightEdge</div>
-        <div class="diff-comp-desc">Optimises search engine rankings. Built for a world where AI gives a list, not one answer.</div>
+        <div class="diff-comp-name">Otterly.ai</div>
+        <div class="diff-comp-desc">Tracks when your brand appears in AI responses. Shows mentions — but doesn't diagnose why you're missing or what to fix.</div>
       </div>
       <div class="diff-comp diff-comp--choive">
         <div class="diff-comp-name">CHOIVE</div>
@@ -2392,6 +2417,13 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
   <div class="bottom-cta-line">
     One business gets recommended.<br>
     <em>Make it yours.</em>
+  </div>
+  <div class="bottom-cta-pricing">
+    <span>Free diagnostic</span>
+    <span class="bottom-cta-pricing-sep">·</span>
+    <span>$99 full analysis</span>
+    <span class="bottom-cta-pricing-sep">·</span>
+    <span class="bottom-cta-pricing-highlight">$499 complete report</span>
   </div>
     <a href="/#diagnostic" class="bottom-cta-btn">Run my diagnostic →</a>
   </div>
@@ -2902,7 +2934,7 @@ function buildWhnBlock(r, gap) {
       <div class="whn-section">
         <div class="whn-cta">
           <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
-            Unlock Your CHOIVE Analysis™
+            Unlock full CHOIVE™ Analysis — $99
           </button>
           <span class="whn-cta-micro">${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
             ? 'Strengthen your position before a competitor closes the gap.'
@@ -2913,7 +2945,7 @@ function buildWhnBlock(r, gap) {
 }
 
 
-function buildPillarCards(r) {
+function buildPillarCards(r, isPaid) {
   var pD = {
     clarity:    { n:'01', name:'Clarity' },
     trust:      { n:'02', name:'Trust' },
@@ -2927,12 +2959,15 @@ function buildPillarCards(r) {
     var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
     var finding = raw.finding || '';
     var pct = score / 25 * 100;
+    var findingHtml = isPaid
+      ? '<div class="pillar-finding">' + esc(finding) + '</div>'
+      : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock to see why</div>';
     return '<div class="pillar-card">'
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
       + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
       + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
-      + '<div class="pillar-finding">' + esc(finding) + '</div>'
+      + findingHtml
       + '</div>';
   }).join('');
   return '<div class="pillars-grid">' + cards + '</div>';
@@ -3191,6 +3226,17 @@ function showResults(r, jobId) {
       + '</div>';
   }
 
+  function buildUrgencyBridge(topComp, bName, bCat) {
+    var comp = topComp ? topComp : 'a competitor';
+    var name = bName  ? bName  : 'your business';
+    var cat  = bCat   ? bCat   : 'your category';
+    return '<div class="urgency-bridge">'
+      + '<div class="urgency-sentence">Every day this stays unfixed, someone searching for '
+      + cat + ' finds ' + comp + ' instead of ' + name + '.</div>'
+      + '<div class="urgency-sub">The Analysis shows exactly what to change — and in what order.</div>'
+      + '</div>';
+  }
+
   zone.innerHTML =
     competitorBanner
     + scoreHeader
@@ -3198,7 +3244,8 @@ function showResults(r, jobId) {
     + buildProgressDelta(r)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
-    + [].concat(buildPillarCards(r)).join('')
+    + [].concat(buildPillarCards(r, isPaid)).join('')
+    + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
     + (isPaid ? '' : [].concat(buildShareBlock(jobId)).join(''))
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
         + '<div class="lead-capture-inner">'
@@ -3214,10 +3261,10 @@ function showResults(r, jobId) {
         + '</div>')
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
-        + '<div class="paywall-eyebrow">Full analysis</div>'
-        + '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You are losing selection events you cannot see.') + '</div>'
-        + '<div class="paywall-body">' + (topComp ? 'Find out exactly what ' + esc(topComp) + ' has built that AI rewards — and the precise fixes that close the gap.' : 'Unlock the complete analysis: what is costing you AI recommendations, who is winning instead, and exactly what to fix first.') + '</div>'
-        + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock Full Analysis — $99 →</button>'
+        + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
+        + '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
+        + '<div class="paywall-body">' + (topComp ? 'Your scores show the gap. The Analysis shows exactly how to close it — ranked steps for each pillar, specific actions, and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.' : 'The Analysis contains ranked actions for each pillar — specific, sequenced steps and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.') + '</div>'
+        + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
   // Animate score
@@ -3762,7 +3809,7 @@ async function initiateCheckout(jobId) {
       throw new Error(data.error || 'Could not create checkout');
     }
   } catch (err) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Analysis — $99 →'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock full CHOIVE™ Analysis — $99 →'; }
     alert('Could not start checkout. Please try again.');
     console.error('initiateCheckout error:', err);
   }
