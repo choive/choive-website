@@ -188,7 +188,7 @@ exports.handler = async function (event) {
       var generateUrl = siteUrl + '/.netlify/functions/generate-report';
       var gr = await fetch(generateUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Token': process.env.INTERNAL_REPORT_SECRET || '' },
         body: JSON.stringify({ jobId: jobId, email: customerEmail })
       });
       var gd = await gr.json().catch(function() { return {}; });
