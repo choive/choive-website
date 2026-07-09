@@ -15,8 +15,8 @@
 [functions."ai-simulation"]
   timeout = 60
 
-  [functions."generate-report"]
-  timeout = 26
+[functions."generate-report-background"]
+  timeout = 120
 
 [[redirects]]
   from = "/result"
