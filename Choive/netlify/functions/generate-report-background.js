@@ -1478,6 +1478,26 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="pd-bar"><div class="pd-fill" style="width:' + pct(sc, 25) + '%;background:' + col + ';opacity:0.7;"></div></div>');
     if (an) H.push('<div class="pd-analysis">' + esc(an) + '</div>');
     if (ev) H.push('<div class="pd-evidence">' + esc(ev) + '</div>');
+    // Signal checklist — programmatic signals checked for this pillar
+    var saObj = safeObj(r.signalAudit || {});
+    var saSignals = safeArr(saObj[key] || []).filter(function(sig) { return sig && sig.name; });
+    if (saSignals.length > 0) {
+      H.push('<div style="margin-top:16px;border-top:1px solid rgba(12,12,14,0.08);padding-top:14px;">');
+      H.push('<div style="font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;margin-bottom:10px;">Signals checked</div>');
+      saSignals.forEach(function(sig) {
+        var st = sig.status || 'fail';
+        var icon = st === 'pass' ? '✓' : st === 'partial' ? '~' : '✗';
+        var iconCol = st === 'pass' ? '#2A7A48' : st === 'partial' ? '#C9A86A' : '#B83232';
+        var bgCol   = st === 'pass' ? 'rgba(42,122,72,0.05)' : st === 'partial' ? 'rgba(201,168,106,0.08)' : 'rgba(184,50,50,0.05)';
+        H.push('<div style="display:flex;align-items:flex-start;gap:10px;padding:5px 8px;margin-bottom:3px;border-radius:4px;background:' + bgCol + ';">');
+        H.push('<div style="font-size:11px;font-weight:700;color:' + iconCol + ';width:14px;flex-shrink:0;line-height:1.5;">' + icon + '</div>');
+        H.push('<div style="flex:1;min-width:0;">');
+        H.push('<div style="font-size:11px;font-weight:600;color:#0C0C0E;line-height:1.5;">' + esc(sig.name) + '</div>');
+        if (sig.detail) H.push('<div style="font-size:10.5px;color:#67676E;line-height:1.4;margin-top:1px;">' + esc(sig.detail) + '</div>');
+        H.push('</div></div>');
+      });
+      H.push('</div>');
+    }
     // For Trust pillar only: inject real Apify review data as live evidence
     if (key === 'trust' && hasRealReviews) {
       H.push('<div style="margin-top:14px;padding:14px 18px;background:#F0EDE8;border-left:3px solid #2A7A48;">');
