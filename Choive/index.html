@@ -3302,8 +3302,11 @@ function showResults(r, jobId) {
 
   function actionItem(a) {
     if (!a) return '';
+    var arenaTagHtml = a.arenaTag
+      ? '<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);border:1px solid var(--ac);padding:2px 7px;margin-left:8px;vertical-align:middle;opacity:0.8;">' + esc(a.arenaTag) + '</span>'
+      : '';
     return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
-      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + '</div>'
+      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + '</div>'
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
       + '<div class="paid-action-body">' + esc(a.body || '') + '</div>'
       + (a.explanation ? '<div class="paid-action-explanation">' + esc(a.explanation) + '</div>' : '')
@@ -3408,6 +3411,40 @@ function showResults(r, jobId) {
   } catch(e) { console.warn('[CHOIVE] dual-arena display failed:', e.message); }
   // ── END DUAL-ARENA BLOCK ───────────────────────────────────────────────────
 
+  // ── MERGED ACTIONS (with arena tags when dual-arena active) ───────────────
+  var mergedActions = Array.isArray(r.actions) ? r.actions.slice() : [];
+  try {
+    if (r.dualArena && r.dualArena.detected && r.arenaScores) {
+      var _as2 = r.arenaScores;
+      var _da2 = r.dualArena;
+      if (_as2.brand && _as2.brand.priorityAction) {
+        mergedActions.push({
+          priority:   'high',
+          arenaTag:   'Brand Arena',
+          title:      _as2.brand.keyGap
+            ? 'Close the ' + _as2.brand.keyGap + ' gap vs ' + (_da2.brandCompetitor || 'brand competitor')
+            : 'Brand arena priority action',
+          body:       _as2.brand.priorityAction,
+          explanation: '',
+          if_nothing:  ''
+        });
+      }
+      if (_as2.online && _as2.online.priorityAction) {
+        mergedActions.push({
+          priority:   'high',
+          arenaTag:   'Online Arena',
+          title:      _as2.online.keyGap
+            ? 'Close the ' + _as2.online.keyGap + ' gap vs ' + (_da2.onlineCompetitor || 'online competitor')
+            : 'Online arena priority action',
+          body:       _as2.online.priorityAction,
+          explanation: '',
+          if_nothing:  ''
+        });
+      }
+    }
+  } catch(e) {}
+  // ── END MERGED ACTIONS ────────────────────────────────────────────────────
+
   var paidSections = isPaid ? (function() {
     return '<div class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
@@ -3426,7 +3463,7 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</div>'
       + dualArenaBlock
       + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
-      + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
+      + mergedActions.map(actionItem).join('') + '</div></div>'
       + '<div class="pay-section deliv-section" id="delivSection">'
       + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
