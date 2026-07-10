@@ -23,12 +23,14 @@
   to = "/index.html"
   status = 200
 
-# Email link redirect — avoids raw = in email href (Resend strips = from query params)
-# Email links point to /results/UUID, Netlify rewrites to /?jobId=UUID for the browser
+# Email link slug resolver — avoids raw = in email href (Resend strips = from href query params).
+# Email links use /results/nike-sportswear (no = sign).
+# This rewrites to the get-by-slug function which does a 302 to /?jobId=UUID.
 [[redirects]]
-  from = "/results/:jobId"
-  to = "/?jobId=:jobId"
-  status = 301
+  from = "/results/:slug"
+  to = "/.netlify/functions/get-by-slug?slug=:slug"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/report"
