@@ -3379,8 +3379,21 @@ function showResults(r, jobId) {
             + '</div>'
             + '</div>';
         }
+        // Arena competitive position score: how much of the combined pillar weight you hold
+        var _yourSum = _keys.reduce(function(acc, k) { return acc + (Number(_p[k] && _p[k].you) || 0); }, 0);
+        var _compSum = _keys.reduce(function(acc, k) { return acc + (Number(_p[k] && _p[k].competitor) || 0); }, 0);
+        var _arenaScore = (_yourSum + _compSum) > 0 ? Math.round(_yourSum / (_yourSum + _compSum) * 100) : 50;
+        var _arenaScoreColor = _arenaScore >= 55 ? 'var(--ac)' : (_arenaScore <= 45 ? '#C97A6A' : 'var(--body)');
+        var _arenaScoreLabel = _arenaScore >= 55 ? 'Competitive advantage' : (_arenaScore <= 45 ? 'Competitive gap' : 'Competitive parity');
+
         return '<div style="background:var(--paper-2);padding:24px 20px;">'
-          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">' + esc(label) + '</div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
+          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);">' + esc(label) + '</div>'
+          + '<div style="text-align:right;">'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:28px;font-weight:700;color:' + _arenaScoreColor + ';line-height:1;">' + _arenaScore + '</div>'
+          + '<div style="font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">' + _arenaScoreLabel + '</div>'
+          + '</div>'
+          + '</div>'
           + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">' + esc(subtitle) + '</div>'
           + '<div style="font-size:13px;font-weight:600;color:var(--ink);padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule);">vs ' + esc(competitorName) + '</div>'
           + '<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>PILLAR</span><span>YOU / COMP &nbsp; GAP</span></div>'
@@ -3396,6 +3409,45 @@ function showResults(r, jobId) {
       }
       var _brandCard  = _as.brand  ? _arenaCard(_as.brand,  'Brand Arena',  'Specialty · heritage · product', _da.brandCompetitor  || '') : '';
       var _onlineCard = _as.online ? _arenaCard(_as.online, 'Online Arena', 'DTC · delivery · ordering UX',   _da.onlineCompetitor || '') : '';
+
+      // Combined dual score — average of both arena position scores
+      var _combinedHtml = '';
+      if (_as.brand && _as.online) {
+        function _arenaPositionScore(arenaData) {
+          var _pk = ['clarity', 'trust', 'difference', 'ease'];
+          var _p2 = arenaData.pillars || {};
+          var ys = _pk.reduce(function(a, k) { return a + (Number(_p2[k] && _p2[k].you) || 0); }, 0);
+          var cs = _pk.reduce(function(a, k) { return a + (Number(_p2[k] && _p2[k].competitor) || 0); }, 0);
+          return (ys + cs) > 0 ? Math.round(ys / (ys + cs) * 100) : 50;
+        }
+        var _bScore = _arenaPositionScore(_as.brand);
+        var _oScore = _arenaPositionScore(_as.online);
+        var _dual   = Math.round((_bScore + _oScore) / 2);
+        var _dualColor = _dual >= 55 ? 'var(--ac)' : (_dual <= 45 ? '#C97A6A' : 'var(--body)');
+        _combinedHtml = '<div style="background:var(--paper-3);padding:16px 20px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
+          + '<div>'
+          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Combined Arena Score</div>'
+          + '<div style="font-size:12px;color:var(--body);">Average competitive position across both arenas</div>'
+          + '</div>'
+          + '<div style="display:flex;gap:20px;align-items:center;">'
+          + '<div style="text-align:center;">'
+          + '<div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Brand</div>'
+          + '<div style="font-size:18px;font-weight:700;color:var(--body);">' + _bScore + '</div>'
+          + '</div>'
+          + '<div style="font-size:18px;color:var(--muted);">+</div>'
+          + '<div style="text-align:center;">'
+          + '<div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Online</div>'
+          + '<div style="font-size:18px;font-weight:700;color:var(--body);">' + _oScore + '</div>'
+          + '</div>'
+          + '<div style="font-size:18px;color:var(--muted);">÷ 2</div>'
+          + '<div style="text-align:center;padding-left:12px;border-left:1px solid var(--rule);">'
+          + '<div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Combined</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:28px;font-weight:700;color:' + _dualColor + ';line-height:1;">' + _dual + '</div>'
+          + '</div>'
+          + '</div>'
+          + '</div>';
+      }
+
       if (_brandCard || _onlineCard) {
         dualArenaBlock = '<div class="pay-section">'
           + '<div class="pay-eyebrow">Competitive Arenas</div>'
@@ -3405,6 +3457,7 @@ function showResults(r, jobId) {
           + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
           + _brandCard + _onlineCard
           + '</div>'
+          + _combinedHtml
           + '</div>';
       }
     }
