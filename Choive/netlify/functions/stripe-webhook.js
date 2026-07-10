@@ -12,7 +12,7 @@
 //
 // ENV: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
-const { markDiagnosticPaid, markReportSent, saveLead } = require('./lib/supabase');
+const { markDiagnosticPaid, markReportSent, saveLead, getSlugForJob } = require('./lib/supabase');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -201,10 +201,15 @@ exports.handler = async function (event) {
         // Sanitize jobId — strip null bytes and any non-UUID character before embedding in URL.
         // Stripe sometimes delivers client_reference_id with a leading null byte ( )
         // which encodeURIComponent would encode as %00, making the link dead in email clients.
-        // Use path-based URL — Resend strips = from href query params, corrupting ?jobId=UUID.
-        // /results/UUID has no = sign. A Netlify redirect rule converts it to /?jobId=UUID.
+        // Use slug-based URL — Resend strips = from href query params, so ?jobId=UUID breaks.
+        // /results/nike-sportswear has no = sign and is human-readable.
+        // get-by-slug.js resolves slug -> jobId and redirects for the browser.
+        var slug = null;
+        try { slug = await getSlugForJob(jobId.trim()); } catch (e) {}
         var safeJobId = jobId.trim().replace(/[^a-zA-Z0-9\-]/g, '');
-        var resultUrl = 'https://choive.com/results/' + safeJobId;
+        var resultUrl = slug
+          ? 'https://choive.com/results/' + slug
+          : 'https://choive.com/results/' + safeJobId;
 
         console.log('stripe-webhook: sending confirmation email, resultUrl =', resultUrl);
 
