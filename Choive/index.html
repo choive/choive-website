@@ -3344,6 +3344,70 @@ function showResults(r, jobId) {
       + '</div>';
   }).join('');
 
+  // ── DUAL-ARENA BLOCK ──────────────────────────────────────────────────────
+  var dualArenaBlock = '';
+  try {
+    if (r.dualArena && r.dualArena.detected && r.arenaScores) {
+      var _da = r.dualArena;
+      var _as = r.arenaScores;
+      function _arenaCard(arenaData, label, subtitle, competitorName) {
+        if (!arenaData || !arenaData.pillars) return '';
+        var _p = arenaData.pillars;
+        var _keys = ['clarity', 'trust', 'difference', 'ease'];
+        function _pRow(key) {
+          var pd = _p[key] || { you: 0, competitor: 0, gap: 0 };
+          var gap = Number(pd.gap) || 0;
+          var gapStr = (gap > 0 ? '+' : '') + gap;
+          var gapColor = gap > 0 ? 'var(--ac)' : (gap < 0 ? '#C97A6A' : 'var(--muted)');
+          var youPct  = Math.round((Math.min(25, Math.max(0, Number(pd.you) || 0)) / 25) * 100);
+          var compPct = Math.round((Math.min(25, Math.max(0, Number(pd.competitor) || 0)) / 25) * 100);
+          return '<div style="margin-bottom:14px;">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+            + '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">' + key + '</span>'
+            + '<span style="font-size:11px;color:var(--body);"><span style="color:var(--ink);font-weight:600;">' + (Number(pd.you)||0) + '</span>'
+            + '<span style="color:var(--muted);opacity:0.4;"> / </span><span style="color:var(--muted);">' + (Number(pd.competitor)||0) + '</span>'
+            + '<span style="display:inline-block;min-width:30px;text-align:right;font-size:10px;font-weight:700;color:' + gapColor + ';margin-left:6px;">' + gapStr + '</span></span>'
+            + '</div>'
+            + '<div style="position:relative;height:3px;background:var(--rule);margin-bottom:3px;">'
+            + '<div style="position:absolute;left:0;top:0;height:100%;background:var(--ac);width:' + youPct + '%;"></div>'
+            + '</div>'
+            + '<div style="position:relative;height:2px;background:var(--rule);">'
+            + '<div style="position:absolute;left:0;top:0;height:100%;background:var(--ink);opacity:0.22;width:' + compPct + '%;"></div>'
+            + '</div>'
+            + '</div>';
+        }
+        return '<div style="background:var(--paper-2);padding:24px 20px;">'
+          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">' + esc(label) + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">' + esc(subtitle) + '</div>'
+          + '<div style="font-size:13px;font-weight:600;color:var(--ink);padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule);">vs ' + esc(competitorName) + '</div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>PILLAR</span><span>YOU / COMP &nbsp; GAP</span></div>'
+          + _keys.map(_pRow).join('')
+          + (arenaData.keyGap || arenaData.priorityAction
+            ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
+              + (arenaData.keyGap ? '<div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Key gap in this arena</div>'
+                + '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;text-transform:capitalize;">' + esc(arenaData.keyGap) + '</div>' : '')
+              + (arenaData.priorityAction ? '<div style="font-size:12px;color:var(--body);line-height:1.7;">' + esc(arenaData.priorityAction) + '</div>' : '')
+              + '</div>'
+            : '')
+          + '</div>';
+      }
+      var _brandCard  = _as.brand  ? _arenaCard(_as.brand,  'Brand Arena',  'Specialty · heritage · product', _da.brandCompetitor  || '') : '';
+      var _onlineCard = _as.online ? _arenaCard(_as.online, 'Online Arena', 'DTC · delivery · ordering UX',   _da.onlineCompetitor || '') : '';
+      if (_brandCard || _onlineCard) {
+        dualArenaBlock = '<div class="pay-section">'
+          + '<div class="pay-eyebrow">Competitive Arenas</div>'
+          + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">'
+          + 'This business competes in two distinct arenas — each with different buyers, different decision criteria, and a different competitor.'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
+          + _brandCard + _onlineCard
+          + '</div>'
+          + '</div>';
+      }
+    }
+  } catch(e) { console.warn('[CHOIVE] dual-arena display failed:', e.message); }
+  // ── END DUAL-ARENA BLOCK ───────────────────────────────────────────────────
+
   var paidSections = isPaid ? (function() {
     return '<div class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
@@ -3360,6 +3424,7 @@ function showResults(r, jobId) {
       + '</div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Competitor Reality</div>'
       + compBlock + extraCompsHtml + '</div>'
+      + dualArenaBlock
       + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + (Array.isArray(r.actions) ? r.actions.map(actionItem).join('') : '') + '</div></div>'
       + '<div class="pay-section deliv-section" id="delivSection">'
