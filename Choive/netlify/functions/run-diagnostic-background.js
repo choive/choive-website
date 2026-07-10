@@ -191,6 +191,67 @@ function extractDeclaredCompetitors(siteText, subjectName) {
   return found.slice(0, 3);
 }
 
+// ── DUAL-ARENA DETECTION ─────────────────────────────────────────────────────
+// A business qualifies for dual-arena analysis when it has BOTH:
+//   (1) A specialty-product identity: specific breed, origin, craft method, or
+//       certification that creates a brand-level competitive comparison.
+//   (2) A direct online/DTC channel: active e-commerce with physical delivery,
+//       creating a separate channel-level competitive comparison.
+// Generic "quality" or "premium" alone does not qualify — the signal must be
+// a concrete differentiating attribute (breed name, DOP, single-origin, etc.).
+// A restaurant with Deliveroo does NOT qualify — the channel is incidental.
+// A Black Angus beef seller with home delivery DOES — two distinct buyer frames.
+function detectDualArena(websiteText, category, description) {
+  var text = [websiteText || '', category || '', description || ''].join(' ').toLowerCase();
+
+  // Specialty-product signals — concrete differentiating attributes only
+  var SPECIALTY = [
+    // Livestock breeds
+    /\b(black\s+angus|angus|wagyu|kobe|hereford|limousin|charolais|duroc|ib[eé]rico|berkshire|longhorn|galloway|shorthorn)\b/,
+    // Rearing / feeding method
+    /\b(grass[\s-]fed|pasture[\s-]raised|pasture[\s-]fed|free[\s-]range|heritage\s+breed|native\s+breed)\b/,
+    // Agricultural traceability
+    /\b(single[\s-]origin|single[\s-]estate|estate[\s-]grown|farm[\s-]to[\s-](table|door|fork)|direct[\s-]from[\s-](farm|producer))\b/,
+    // Craft and artisan
+    /\b(artisan(al)?|hand[\s-]crafted|hand[\s-]made|small[\s-]batch|craft\s+(beer|gin|whisky|whiskey|rum|spirits|chocolate|coffee|cider))\b/,
+    // Aging and processing
+    /\b(dry[\s-]aged|wet[\s-]aged|cave[\s-]aged|barrel[\s-]aged|cold[\s-]pressed|stone[\s-]milled|slow[\s-]roasted)\b/,
+    // Coffee specifics
+    /\b(single[\s-]origin\s+coffee|specialty\s+coffee|micro[\s-]roast|nano[\s-]roast|third[\s-]wave\s+coffee)\b/,
+    // Wine and spirits terroir
+    /\b(appellation|terroir|grand\s+cru|premier\s+cru|chateau|domaine|bodega|denominaci[oó]n\s+de\s+origen)\b/,
+    // Protected designations (multilingual)
+    /\b(dop|igp|aop|pdo|pgi|doc|docg|aoc|d\.o\.p|d\.o)\b/,
+  ];
+
+  // Online DTC channel signals — active e-commerce with delivery, not just presence
+  var ONLINE_CHANNEL = [
+    /\b(order\s+online|shop\s+online|buy\s+online|online\s+(shop|store|butcher|bakery|deli|fishmonger))\b/,
+    /\b(home\s+delivery|next[\s-]day\s+delivery|same[\s-]day\s+delivery|nationwide\s+delivery|deliver\s+(to\s+your\s+door|across|throughout))\b/,
+    /\b(add\s+to\s+(cart|basket)|place\s+your\s+order|checkout)\b/,
+    /\b(direct[\s-]to[\s-]consumer|d\.t\.c|dtc|d2c)\b/,
+    /\b(subscription\s+box|monthly\s+box|meat\s+box|fish\s+box|veg\s+box|coffee\s+subscription|weekly\s+delivery)\b/,
+    /\b(cold[\s-]chain|vacuum[\s-]pack(ed|aging)?|chilled\s+delivery|refrigerated\s+delivery|insulated\s+packaging)\b/,
+    /\b(free\s+(shipping|delivery)|fast\s+shipping|express\s+delivery|tracked\s+delivery)\b/,
+  ];
+
+  var specialtyHit = SPECIALTY.find(function(re) { return re.test(text); }) || null;
+  var onlineHit    = ONLINE_CHANNEL.find(function(re) { return re.test(text); }) || null;
+
+  if (specialtyHit && onlineHit) {
+    return {
+      dualArena: true,
+      arenas: [
+        { type: 'brand',  label: 'Brand & Product' },
+        { type: 'online', label: 'Online Channel'   }
+      ],
+      _debug: { specialtyPattern: specialtyHit.toString(), onlinePattern: onlineHit.toString() }
+    };
+  }
+
+  return { dualArena: false };
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -586,6 +647,30 @@ exports.handler = async function (event) {
       }
     } catch (e) {
       console.warn('[' + jobId + '] Declared-competitor extraction failed:', e.message);
+    }
+
+    // ── DUAL-ARENA DETECTION ──────────────────────────────────────────────────
+    // Detects whether this business competes in two genuinely separate decision
+    // frames — a specialty-product arena (brand, breed, origin) AND an online
+    // channel arena (ordering experience, delivery trust). Purely code-based,
+    // no AI call. Result stored on evidence so it survives the cache and is
+    // visible to the scoring and display stages.
+    try {
+      var dualArenaResult = detectDualArena(
+        evidence['websiteText'] || '',
+        evidence['inferredCategory'] || category,
+        description
+      );
+      evidence['dualArena'] = dualArenaResult;
+      if (dualArenaResult.dualArena) {
+        console.log('[' + jobId + '] Dual-arena detected: ' +
+          dualArenaResult.arenas.map(function(a) { return a.label; }).join(' + '));
+      } else {
+        console.log('[' + jobId + '] Single-arena business (standard flow)');
+      }
+    } catch (err) {
+      console.warn('[' + jobId + '] Dual-arena detection failed (non-critical):', err.message);
+      evidence['dualArena'] = { dualArena: false };
     }
 
     // ── STAGE 2: SCORING ──────────────────────────────────────────────────────
