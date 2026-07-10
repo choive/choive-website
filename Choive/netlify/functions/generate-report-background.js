@@ -18,7 +18,7 @@
 
 const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
-const { getDiagnostic, markReportSent } = require('./lib/supabase');
+const { getDiagnostic, markReportSent, getSlugForJob } = require('./lib/supabase');
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const CORS = {
@@ -1885,7 +1885,14 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
   if (!resendKey) throw new Error('RESEND_API_KEY not configured');
 
   var siteUrl  = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-  var resultUrl = siteUrl + '/?jobId=' + encodeURIComponent(jobId);
+  // Use slug-based URL — Resend strips = from href query params, so ?jobId=UUID breaks in email.
+  // /results/company-name has no = sign and resolves via get-by-slug → /?jobId=UUID in the browser.
+  var slug = null;
+  try { slug = await getSlugForJob(jobId); } catch (e) {}
+  var safeJobId = String(jobId || '').replace(/[^a-zA-Z0-9\-]/g, '');
+  var resultUrl = slug
+    ? siteUrl + '/results/' + slug
+    : siteUrl + '/results/' + safeJobId;
   var safeFileName = (bizName || 'Report').replace(/[^a-zA-Z0-9\-_]/g, '-').replace(/-+/g, '-').slice(0, 60);
 
   var emailHtml = [
