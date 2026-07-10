@@ -854,15 +854,21 @@ exports.handler = async function (event) {
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
 
     // ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────
-    // Only runs if dual-arena was detected AND an online channel competitor was found.
+    // Only runs if dual-arena was detected. Online competitor = second AI-named competitor
+    // (from real AI answers) when available; falls back to channel search result.
     // Scores each competitor independently in their own arena context.
     // Results stored as finalResult.arenaScores = { brand: {...}, online: {...} }
     try {
       var da = evidence['dualArena'];
-      var onlineComp = evidence['onlineCompetitor'];
       var brandCompName = evidence['competitorDecision'] && evidence['competitorDecision'].realCompetitor;
+      // Prefer the second AI-named competitor (from real AI answers) as the online arena competitor.
+      // Fall back to the channel search result only when no second competitor exists.
+      var secondAiComp = finalResult['competitors'] && finalResult['competitors'][1];
+      var onlineComp = secondAiComp
+        ? { name: secondAiComp.name, domain: null, source: 'ai-competitor' }
+        : evidence['onlineCompetitor'];
       if (da && da.dualArena && onlineComp && onlineComp.name && brandCompName) {
-        console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name);
+        console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name + ' (source:' + (onlineComp.source || 'channel-search') + ')');
         var arenaResults = await Promise.allSettled([
           scoreArena(evidence, finalResult, brandCompName, 'brand'),
           scoreArena(evidence, finalResult, onlineComp.name, 'online')
