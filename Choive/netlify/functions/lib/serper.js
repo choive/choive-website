@@ -539,7 +539,15 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
 // category and market — a different question from "who competes with [name]".
 async function searchOnlineChannelCompetitor(productType, market) {
   if (!productType) return { competitors: [], searchText: '' };
-  var catShort = productType.split(' ').slice(0, 4).join(' ');
+  // Strip channel-descriptor prefixes and location suffixes that make poor search queries
+  // e.g. "Direct-to-consumer premium grass-fed beef delivery — Germany" → "premium grass-fed beef delivery"
+  var STRIP_PREFIX = /^(direct[\s-]to[\s-]consumer|dtc|b2c|online|e[\s-]commerce|subscription)\s+/i;
+  var STRIP_SUFFIX = /\s*[—–\-]+\s*[A-Z][^—–\-]*$/;   // strips "— Germany" style location tags
+  var cleaned = productType
+    .replace(STRIP_SUFFIX, '')
+    .replace(STRIP_PREFIX, '').replace(STRIP_PREFIX, '')
+    .trim();
+  var catShort = cleaned.split(/\s+/).slice(0, 5).join(' ');
   var mkt = market ? ' ' + market : '';
 
   var queries = [
