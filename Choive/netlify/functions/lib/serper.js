@@ -533,9 +533,61 @@ async function searchCompetitors(name, inferredCategory, city, knownCompetitors)
   return { results: results, competitors: competitors, searchText: searchText };
 }
  
+// ── ONLINE CHANNEL COMPETITOR SEARCH ─────────────────────────────────────────
+// Used only when dual-arena is detected. Runs targeted "buy X online" queries
+// to surface the established DTC/e-commerce player in the subject's product
+// category and market — a different question from "who competes with [name]".
+async function searchOnlineChannelCompetitor(productType, market) {
+  if (!productType) return { competitors: [], searchText: '' };
+  var catShort = productType.split(' ').slice(0, 4).join(' ');
+  var mkt = market ? ' ' + market : '';
+
+  var queries = [
+    { q: 'buy ' + catShort + ' online' + mkt,             type: 'comparison' },
+    { q: 'order ' + catShort + ' online delivery' + mkt,  type: 'comparison' },
+    { q: 'online ' + catShort + ' shop' + mkt,            type: 'comparison' },
+    { q: 'best online ' + catShort + mkt,                  type: 'comparison' },
+    { q: catShort + ' home delivery' + mkt,                type: 'comparison' },
+    { q: catShort + ' direct to consumer' + mkt,          type: 'comparison' },
+  ];
+
+  var settled = await Promise.allSettled(
+    queries.map(function(item, i) {
+      return new Promise(function(resolve) {
+        setTimeout(function() { resolve(fetchSerper(item.q)); }, i * 120);
+      });
+    })
+  );
+
+  var queryResults = [];
+  for (var i = 0; i < settled.length; i++) {
+    if (settled[i].status !== 'fulfilled' || !settled[i].value) continue;
+    var data  = settled[i].value;
+    var qDef  = queries[i];
+    var items = (data.organic || []).map(function(r, j) {
+      return {
+        position:    j + 1,
+        title:       r.title   || '',
+        snippet:     r.snippet || '',
+        link:        r.link    || '',
+        sourceQuery: qDef.q,
+        signalType:  'comparison',
+        priority:    5
+      };
+    });
+    queryResults.push({ query: qDef.q, signalType: 'comparison', items: items });
+  }
+
+  return {
+    competitors: extractCompetitors(queryResults, '').slice(0, 6),
+    searchText:  buildSearchText(queryResults)
+  };
+}
+
 module.exports = {
-  searchSerper:      searchSerper,
-  searchCompetitors: searchCompetitors,
-  inferOfficialSite: inferOfficialSite,
-  normalizeUrl:      normalizeUrl
+  searchSerper:                   searchSerper,
+  searchCompetitors:              searchCompetitors,
+  searchOnlineChannelCompetitor:  searchOnlineChannelCompetitor,
+  inferOfficialSite:              inferOfficialSite,
+  normalizeUrl:                   normalizeUrl
 };
