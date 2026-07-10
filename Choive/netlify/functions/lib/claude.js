@@ -1026,7 +1026,7 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
 
   var searchExcerpt = sanitizeExternal(
     String(evidence.searchText || '').slice(0, 1500)
-    + '\n' + String(evidence.competitorText || '').slice(0, 1000)
+    + '\n' + String(evidence.competitorPageText || '').slice(0, 1000)
   );
 
   var arenaLabel = arenaType === 'online'
