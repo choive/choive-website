@@ -942,4 +942,66 @@ async function scoreWithClaudeOnce(evidence) {
   }
 }
 
-module.exports = { scoreWithClaude, inferCategory };
+// ── CHANNEL COMPETITOR SELECTION ─────────────────────────────────────────────
+// Used only when dual-arena is detected. Asks Claude to identify the dominant
+// online/DTC seller for this product category in this market — not the brand
+// peer (which selectDominantCompetitor handles) but the established e-commerce
+// player a buyer would find by searching "buy [product] online [market]".
+async function selectChannelCompetitor(evidence, channelResults) {
+  var name     = String(evidence.name || '').trim();
+  var category = String(evidence.inferredCategory || evidence.category || '').trim();
+  var city     = String(evidence.city || '').trim();
+
+  var candidateLines = (channelResults.competitors || []).map(function(c) {
+    return '- ' + (c.domain || '') + (c.title ? ' ("' + c.title.slice(0, 70) + '")' : '');
+  }).filter(Boolean).slice(0, 8).join('\n');
+
+  var searchExcerpt = sanitizeExternal(String(channelResults.searchText || '')).slice(0, 2000);
+
+  if (!candidateLines && !searchExcerpt) return null;
+
+  var prompt = 'You identify the dominant online/DTC seller in a product category and market. Respond ONLY with valid JSON, no markdown, no explanation outside the JSON.\n\n'
+    + 'SUBJECT BUSINESS: ' + name + '\n'
+    + 'PRODUCT CATEGORY: ' + category + '\n'
+    + (city ? 'MARKET: ' + city + '\n' : '')
+    + (candidateLines ? '\nCANDIDATES FROM "buy online" SEARCH:\n' + candidateLines + '\n' : '')
+    + (searchExcerpt  ? '\nSEARCH RESULTS EXCERPT:\n' + searchExcerpt + '\n' : '')
+    + '\nIdentify the ONE business that most clearly owns the online/e-commerce buying experience for this product in this market — the company a buyer would land on when searching "buy [product] online". '
+    + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the same market/country as ' + name + ', '
+    + '(3) is NOT ' + name + ' itself, (4) is NOT a marketplace or aggregator (Amazon, eBay, Etsy, Google Shopping etc), '
+    + '(5) must appear somewhere in the evidence provided — not from general knowledge alone. '
+    + 'This is the CHANNEL competitor, not the brand peer — ordering experience and delivery dominate this arena, not product quality or heritage.\n\n'
+    + 'Respond with exactly: {"name": <string or null>, "domain": <string or null>, "reason": "<one sentence>"}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 20000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 200, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.warn('[channel-competitor] Anthropic ' + res.status); return null; }
+    var data = await res.json();
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(text);
+    if (!parsed || !parsed.name) return null;
+    return {
+      name:   String(parsed.name).trim(),
+      domain: String(parsed.domain || '').trim(),
+      reason: String(parsed.reason || '').slice(0, 200),
+      source: 'channel-search'
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[channel-competitor] failed:', err.message);
+    return null;
+  }
+}
+
+module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor };
