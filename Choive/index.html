@@ -945,14 +945,15 @@ nav {
 .cta-secondary:hover { color:var(--ghost); border-color:var(--ghost-3); }
 
 /* Pay/paid classes */
-.pay-section { padding:32px 0; border-bottom:1px solid var(--rule); }
-.pay-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+.pay-section { padding:44px 0; border-bottom:1px solid var(--rule); }
+.pay-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:22px; padding-bottom:12px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:12px; }
+.pay-eyebrow::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--rule), transparent); }
 .paid-narrative { font-size:15px; font-weight:400; color:var(--body); line-height:1.9; border-left:2px solid var(--ink); padding-left:18px; }
 .paid-pillars { display:flex; flex-direction:column; gap:1px; }
 .paid-pillar { padding:22px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); border-left:3px solid transparent; transition:background 0.15s, border-left-color 0.2s, box-shadow 0.2s; }
 .paid-pillar:hover { background:var(--paper-3); border-left-color:var(--ac); box-shadow:var(--sh-1); }
 .paid-pillar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--rule); }
-.paid-pillar-name { font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
+.paid-pillar-name { font-size:12px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); }
 .paid-pillar-score { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; color:var(--ink); }
 .paid-pillar-score span { font-size:11px; font-family:'Inter', sans-serif; color:var(--muted); }
 .paid-pillar-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
@@ -969,7 +970,7 @@ nav {
 .paid-action-priority { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
 .paid-action-critical .paid-action-priority { color:var(--red); }
 .paid-action-high     .paid-action-priority { color:var(--amber); }
-.paid-action-title { font-size:14px; font-weight:600; color:var(--ink); margin-bottom:6px; }
+.paid-action-title { font-size:16px; font-weight:600; color:var(--ink); margin-bottom:8px; line-height:1.3; }
 .paid-action-body { font-size:13px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:8px; }
 .paid-action-explanation { font-size:12px; color:var(--muted); line-height:1.65; padding-top:8px; border-top:1px solid var(--rule); }
 .paid-section-header { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; display:flex; align-items:center; gap:10px; }
@@ -3237,6 +3238,32 @@ function showResults(r, jobId) {
       + '</div>';
   }
 
+  // ── FREE COMPETITOR REALITY BLOCK ───────────────────────────────────────────
+  // Shows both AI-named competitors with their analysis in the free result.
+  // Not shown in the paid view because the full Competitor Reality section covers it.
+  function buildFreeCompetitorBlock() {
+    var list = [];
+    if (Array.isArray(r.competitors) && r.competitors.length > 0) {
+      list = r.competitors.filter(function(cp) { return cp && cp.name; });
+    } else if (r.competitor && r.competitor.name) {
+      list = [r.competitor];
+    }
+    if (list.length === 0) return '';
+    return '<div style="margin:2px 0;">'
+      + list.map(function(cp, i) {
+          var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+          var ev = cp.evidence || '';
+          return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
+            + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
+            + (i === 0 ? 'Primary competitor' : 'Also named by AI') + '</div>'
+            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:10px;">' + esc(cp.name) + '</div>'
+            + (an ? '<div style="font-size:13px;color:var(--body);line-height:1.75;margin-bottom:' + (ev ? '10px' : '0') + ';">' + esc(an) + '</div>' : '')
+            + (ev ? '<div style="font-size:12px;color:var(--muted);font-style:italic;line-height:1.6;padding-top:10px;border-top:1px solid var(--rule);">' + esc(ev) + '</div>' : '')
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
   zone.innerHTML =
     competitorBanner
     + scoreHeader
@@ -3244,6 +3271,7 @@ function showResults(r, jobId) {
     + buildProgressDelta(r)
     + [].concat(buildDisplacementBlock(r)).join('')
     + [].concat(buildGapBlock(r)).join('')
+    + (isPaid ? '' : buildFreeCompetitorBlock())
     + [].concat(buildPillarCards(r, isPaid)).join('')
     + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
     + (isPaid ? '' : [].concat(buildShareBlock(jobId)).join(''))
@@ -3292,9 +3320,9 @@ function showResults(r, jobId) {
     return '<div class="paid-pillar">'
       + '<div class="paid-pillar-head"><span class="paid-pillar-name">' + label + '</span>'
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
-      + '<div style="height:2px;background:rgba(255,255,255,0.06);margin-bottom:14px;">'
-      + '<div style="height:100%;width:' + pct + '%;background:var(--ac);"></div></div>'
-      + (p.finding  ? '<div style="font-size:12px;font-weight:600;color:var(--tm);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
+      + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
+      + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
+      + (p.finding  ? '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
       + (p.analysis ? '<div class="paid-pillar-analysis">' + esc(p.analysis) + '</div>' : '')
       + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
       + '</div>';
