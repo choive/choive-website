@@ -48,9 +48,42 @@ function buildFingerprint(input) {
   var raw  = name + '|' + city;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
+// Generates a URL-safe slug from a business name.
+// "Nike Sportswear" -> "nike-sportswear", "Café Paris" -> "cafe-paris"
+function buildSlugBase(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')  // strip diacritics (e.g. é->e)
+    .replace(/[^a-z0-9\s\-]/g, '')                     // keep letters, digits, spaces, hyphens
+    .trim()
+    .replace(/\s+/g, '-')                               // spaces -> hyphens
+    .replace(/-+/g, '-')                                // collapse multiple hyphens
+    .slice(0, 60);                                      // max length
+}
+
+// Returns a unique slug — appends -2, -3 etc. if the base slug is already taken.
+// Returns null if name is empty or generation fails (jobId fallback still works).
+async function generateUniqueSlug(supabase, name) {
+  var base = buildSlugBase(name);
+  if (!base) return null;
+  var { data: existing } = await supabase
+    .from('diagnostics').select('slug').eq('slug', base).maybeSingle();
+  if (!existing) return base;
+  for (var n = 2; n <= 99; n++) {
+    var candidate = base + '-' + n;
+    var { data: taken } = await supabase
+      .from('diagnostics').select('slug').eq('slug', candidate).maybeSingle();
+    if (!taken) return candidate;
+  }
+  return null;
+}
+
 async function createDiagnostic(jobId, input, ipHash) {
   const supabase = getClient();
   const fingerprint = buildFingerprint(input);
+  var slug = null;
+  try { slug = await generateUniqueSlug(supabase, input.name); }
+  catch (e) { console.warn('createDiagnostic: slug generation failed (non-critical):', e.message); }
   const { error } = await supabase
     .from('diagnostics')
     .insert({
@@ -64,7 +97,8 @@ async function createDiagnostic(jobId, input, ipHash) {
       error:                null,
       business_fingerprint: fingerprint,
       parent_job_id:        null,
-      version:              1
+      version:              1,
+      slug:                 slug
     });
   if (error) throw new Error('Supabase insert failed: ' + error.message);
 }
@@ -305,6 +339,30 @@ async function countDiagnosticsToday(ipHash) {
   }
 }
 
+// Look up a diagnostic by its slug (for the /results/:slug email redirect flow).
+async function getDiagnosticBySlug(slug) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .select('job_id, status, paid, slug')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw new Error('Supabase slug lookup failed: ' + error.message);
+  return data || null;
+}
+
+// Get just the slug for a known jobId — used by stripe-webhook when building the email link.
+async function getSlugForJob(jobId) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .select('slug')
+    .eq('job_id', jobId)
+    .maybeSingle();
+  if (error) { console.warn('getSlugForJob failed:', error.message); return null; }
+  return (data && data.slug) || null;
+}
+
 module.exports = {
   createDiagnostic,
   countDiagnosticsToday,
@@ -315,6 +373,8 @@ module.exports = {
   saveResult,
   saveError,
   getDiagnostic,
+  getDiagnosticBySlug,
+  getSlugForJob,
   markReportSent,
   markDiagnosticPaid,
   saveLead,
