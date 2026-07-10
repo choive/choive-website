@@ -5,7 +5,7 @@
 const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude, inferCategory, selectChannelCompetitor } = require('./lib/claude');
+const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
@@ -852,6 +852,53 @@ exports.handler = async function (event) {
     if (evidence['competitorApify'])  finalResult['competitorApify']  = evidence['competitorApify'];
     if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
+
+    // ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────
+    // Only runs if dual-arena was detected AND an online channel competitor was found.
+    // Scores each competitor independently in their own arena context.
+    // Results stored as finalResult.arenaScores = { brand: {...}, online: {...} }
+    try {
+      var da = evidence['dualArena'];
+      var onlineComp = evidence['onlineCompetitor'];
+      var brandCompName = evidence['competitorDecision'] && evidence['competitorDecision'].realCompetitor;
+      if (da && da.dualArena && onlineComp && onlineComp.name && brandCompName) {
+        console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name);
+        var arenaResults = await Promise.allSettled([
+          scoreArena(evidence, finalResult, brandCompName, 'brand'),
+          scoreArena(evidence, finalResult, onlineComp.name, 'online')
+        ]);
+        var brandArena  = (arenaResults[0].status === 'fulfilled') ? arenaResults[0].value : null;
+        var onlineArena = (arenaResults[1].status === 'fulfilled') ? arenaResults[1].value : null;
+        if (brandArena || onlineArena) {
+          finalResult['arenaScores'] = {
+            brand:  brandArena  || null,
+            online: onlineArena || null
+          };
+          finalResult['dualArena'] = {
+            detected:          true,
+            brandCompetitor:   brandCompName,
+            onlineCompetitor:  onlineComp.name,
+            onlineDomain:      onlineComp.domain || null,
+            detectionSignals:  da.signals || {}
+          };
+          console.log('[' + jobId + '] Arena scores saved — brand keyGap:', (brandArena && brandArena.keyGap) || 'n/a',
+            '| online keyGap:', (onlineArena && onlineArena.keyGap) || 'n/a');
+        }
+      } else if (da && da.dualArena) {
+        // Dual-arena detected but missing a competitor for one or both arenas — store metadata only
+        finalResult['dualArena'] = {
+          detected:         true,
+          brandCompetitor:  brandCompName || null,
+          onlineCompetitor: (onlineComp && onlineComp.name) || null,
+          detectionSignals: da.signals || {},
+          scoringSkipped:   'Missing competitor name for one or both arenas'
+        };
+        console.log('[' + jobId + '] Dual-arena metadata saved (scoring skipped — incomplete competitors)');
+      }
+    } catch (arenaErr) {
+      console.warn('[' + jobId + '] Dual-arena scoring failed (non-critical):', arenaErr.message);
+    }
+
     // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
     try {
       var deliverables = generateDeliverables(evidence, finalResult);
