@@ -1004,4 +1004,119 @@ async function selectChannelCompetitor(evidence, channelResults) {
   }
 }
 
-module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor };
+// ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────────
+// Called only when dual-arena is active. Scores the competitor in ONE arena
+// (brand or online) using a lightweight Claude call.
+// Returns: { arenaType, competitorName, pillars: { clarity, trust, difference, ease },
+//            keyGap, priorityAction }
+// Each pillar: { you: <0-25>, competitor: <0-25>, gap: <signed int> }
+// Fails soft — caller catches and ignores.
+async function scoreArena(evidence, mainResult, competitorName, arenaType) {
+  if (!competitorName) return null;
+  var name     = String(evidence.name || '').trim();
+  var category = String(evidence.inferredCategory || evidence.category || '').trim();
+  var city     = String(evidence.city || '').trim();
+
+  var subjectPillars = (mainResult && mainResult.pillars) || {};
+  function s(pillar) { return Number((subjectPillars[pillar] && subjectPillars[pillar].score) || 0); }
+  var youClarity    = s('clarity');
+  var youTrust      = s('trust');
+  var youDifference = s('difference');
+  var youEase       = s('ease');
+
+  var searchExcerpt = sanitizeExternal(
+    String(evidence.searchText || '').slice(0, 1500)
+    + '\n' + String(evidence.competitorText || '').slice(0, 1000)
+  );
+
+  var arenaLabel = arenaType === 'online'
+    ? 'online/DTC channel (ordering experience, delivery, online UX)'
+    : 'brand/product arena (specialty product quality, heritage, breed specificity)';
+
+  var arenaContext = arenaType === 'online'
+    ? 'In this arena, buyers decide based on: ease of ordering online, delivery reliability, website clarity, DTC trust signals (reviews, returns policy), and online brand presence.'
+    : 'In this arena, buyers decide based on: breed/product specificity, source transparency, production method, provenance claims, and specialty positioning.';
+
+  var prompt = 'You compare two businesses on the CHOIVE four pillars within a specific competitive arena. '
+    + 'Respond ONLY with valid JSON, no markdown, no text outside the JSON.\n\n'
+    + 'SUBJECT BUSINESS: ' + name + '\n'
+    + 'COMPETITOR: ' + competitorName + '\n'
+    + 'PRODUCT CATEGORY: ' + category + '\n'
+    + (city ? 'MARKET: ' + city + '\n' : '')
+    + 'ARENA: ' + arenaLabel + '\n'
+    + arenaContext + '\n\n'
+    + 'SUBJECT\'S CONFIRMED PILLAR SCORES (from full diagnostic):\n'
+    + '  Clarity: ' + youClarity + '/25\n'
+    + '  Trust: ' + youTrust + '/25\n'
+    + '  Difference: ' + youDifference + '/25\n'
+    + '  Ease: ' + youEase + '/25\n\n'
+    + 'AVAILABLE EVIDENCE (excerpts):\n' + searchExcerpt + '\n\n'
+    + 'TASK: Estimate ' + competitorName + '\'s pillar scores IN THIS SPECIFIC ARENA ONLY. '
+    + 'Use the same 0-25 scale per pillar. Base estimates on the evidence and your knowledge of this competitor. '
+    + 'Gap = your score minus competitor score (positive = you lead, negative = competitor leads).\n\n'
+    + 'Also identify the single biggest gap (the pillar where the subject is most behind in this arena) '
+    + 'and one specific priority action to close it.\n\n'
+    + 'Respond with exactly this JSON structure:\n'
+    + '{\n'
+    + '  "pillars": {\n'
+    + '    "clarity":    { "you": ' + youClarity    + ', "competitor": 0, "gap": 0 },\n'
+    + '    "trust":      { "you": ' + youTrust      + ', "competitor": 0, "gap": 0 },\n'
+    + '    "difference": { "you": ' + youDifference + ', "competitor": 0, "gap": 0 },\n'
+    + '    "ease":       { "you": ' + youEase       + ', "competitor": 0, "gap": 0 }\n'
+    + '  },\n'
+    + '  "keyGap": "<pillar name where subject is most behind in this arena>",\n'
+    + '  "priorityAction": "<one specific sentence: what to change in this arena>"\n'
+    + '}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 25000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 350, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.warn('[scoreArena] Anthropic ' + res.status); return null; }
+    var data = await res.json();
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(text); } catch (e) {
+      // Try to extract JSON
+      var jStart = text.indexOf('{'); var jEnd = text.lastIndexOf('}');
+      if (jStart !== -1 && jEnd > jStart) { try { parsed = JSON.parse(text.slice(jStart, jEnd + 1)); } catch (_) {} }
+    }
+    if (!parsed || !parsed.pillars) return null;
+
+    // Fill in "you" scores (always use confirmed values from main diagnostic)
+    // and compute gaps deterministically — never trust what the model writes for "you" or "gap"
+    var pillars = parsed.pillars;
+    function fixPillar(key, youScore) {
+      var p = pillars[key] || {};
+      var comp = Math.max(0, Math.min(25, Number(p.competitor) || 0));
+      return { you: youScore, competitor: comp, gap: youScore - comp };
+    }
+    return {
+      arenaType:      arenaType,
+      competitorName: competitorName,
+      pillars: {
+        clarity:    fixPillar('clarity',    youClarity),
+        trust:      fixPillar('trust',      youTrust),
+        difference: fixPillar('difference', youDifference),
+        ease:       fixPillar('ease',       youEase)
+      },
+      keyGap:         String(parsed.keyGap         || '').slice(0, 50),
+      priorityAction: String(parsed.priorityAction || '').slice(0, 300)
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[scoreArena] failed (' + arenaType + '):', err.message);
+    return null;
+  }
+}
+
+module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena };
