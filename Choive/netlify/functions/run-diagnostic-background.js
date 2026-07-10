@@ -3,9 +3,9 @@
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
-const { searchSerper, searchCompetitors, inferOfficialSite, normalizeUrl } = require('./lib/serper');
+const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude, inferCategory } = require('./lib/claude');
+const { scoreWithClaude, inferCategory, selectChannelCompetitor } = require('./lib/claude');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
@@ -665,6 +665,29 @@ exports.handler = async function (event) {
       if (dualArenaResult.dualArena) {
         console.log('[' + jobId + '] Dual-arena detected: ' +
           dualArenaResult.arenas.map(function(a) { return a.label; }).join(' + '));
+
+        // ── ONLINE CHANNEL COMPETITOR SEARCH ───────────────────────────────────
+        // Run a second targeted search ("buy [product] online [market]") to find
+        // the established DTC/e-commerce player — a different question from the
+        // brand competitor search that runs inside selectDominantCompetitor.
+        try {
+          var productType = evidence['inferredCategory'] || category;
+          var market      = city;
+          console.log('[' + jobId + '] Searching online channel competitors for: ' + productType + ' / ' + market);
+          var channelSearchResults = await searchOnlineChannelCompetitor(productType, market);
+          console.log('[' + jobId + '] Channel search found ' + (channelSearchResults.competitors || []).length + ' candidates');
+
+          var channelCompetitor = await selectChannelCompetitor(evidence, channelSearchResults);
+          if (channelCompetitor && channelCompetitor.name) {
+            evidence['onlineCompetitor'] = channelCompetitor;
+            console.log('[' + jobId + '] Online channel competitor: ' + channelCompetitor.name + ' — ' + channelCompetitor.reason);
+          } else {
+            console.log('[' + jobId + '] No online channel competitor identified — dual-arena display will show brand arena only');
+          }
+        } catch (chErr) {
+          console.warn('[' + jobId + '] Online channel competitor search failed (non-critical):', chErr.message);
+        }
+
       } else {
         console.log('[' + jobId + '] Single-arena business (standard flow)');
       }
