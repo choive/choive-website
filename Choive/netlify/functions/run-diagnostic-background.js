@@ -879,7 +879,7 @@ exports.handler = async function (event) {
             brandCompetitor:   brandCompName,
             onlineCompetitor:  onlineComp.name,
             onlineDomain:      onlineComp.domain || null,
-            detectionSignals:  da.signals || {}
+            detectionSignals:  da._debug || {}
           };
           console.log('[' + jobId + '] Arena scores saved — brand keyGap:', (brandArena && brandArena.keyGap) || 'n/a',
             '| online keyGap:', (onlineArena && onlineArena.keyGap) || 'n/a');
@@ -890,7 +890,7 @@ exports.handler = async function (event) {
           detected:         true,
           brandCompetitor:  brandCompName || null,
           onlineCompetitor: (onlineComp && onlineComp.name) || null,
-          detectionSignals: da.signals || {},
+          detectionSignals: da._debug || {},
           scoringSkipped:   'Missing competitor name for one or both arenas'
         };
         console.log('[' + jobId + '] Dual-arena metadata saved (scoring skipped — incomplete competitors)');
