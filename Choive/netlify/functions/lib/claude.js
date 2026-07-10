@@ -969,7 +969,8 @@ async function selectChannelCompetitor(evidence, channelResults) {
     + '\nIdentify the ONE business that most clearly owns the online/e-commerce buying experience for this product in this market — the company a buyer would land on when searching "buy [product] online". '
     + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the same market/country as ' + name + ', '
     + '(3) is NOT ' + name + ' itself, (4) is NOT a marketplace or aggregator (Amazon, eBay, Etsy, Google Shopping etc), '
-    + '(5) must appear somewhere in the evidence provided — not from general knowledge alone. '
+    + '(5) PREFER businesses appearing in the evidence, but if evidence is sparse you MAY use verified general knowledge for well-known markets. '
+    + 'Return null if genuinely uncertain. '
     + 'This is the CHANNEL competitor, not the brand peer — ordering experience and delivery dominate this arena, not product quality or heritage.\n\n'
     + 'Respond with exactly: {"name": <string or null>, "domain": <string or null>, "reason": "<one sentence>"}';
 
