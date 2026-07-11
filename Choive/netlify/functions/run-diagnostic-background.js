@@ -275,6 +275,7 @@ exports.handler = async function (event) {
     const fingerprint = buildFingerprint({ name, category, city });
     const cached = await getCachedEvidence(fingerprint, 24).catch(() => null);
     let evidence = null;
+    let cacheBustedThisRun = false;
 
     if (cached && cached.evidence) {
       // ── REALITY CHECK — the cache is valid only if the website hasn't changed.
@@ -295,7 +296,7 @@ exports.handler = async function (event) {
           if (freshTypes !== cachedTypes) changed.push('schemaTypes(' + cachedTypes + '\u2192' + freshTypes + ')');
           if (changed.length > 0) {
             cacheValid = false;
-            evidence['cacheBustedThisRun'] = true;
+            cacheBustedThisRun = true;
             console.log('[' + jobId + '] Cache busted \u2014 website changed since cached run: ' + changed.join(', '));
           }
         } catch (err) {
@@ -1005,7 +1006,7 @@ exports.handler = async function (event) {
           multiSampled:  searchUsed, // renamed from dualSampled: the redesign samples 4x per query, not 2x \u2014 old field name/value were stale after the frequency-architecture rewrite
           appearedRate:  simB && simB.results ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.length) : null
         },
-        cacheBusted:     !!evidence['cacheBustedThisRun'],
+        cacheBusted:     cacheBustedThisRun,
         progressTracked: !!finalResult['progressDelta']
       }));
     } catch (e) {
