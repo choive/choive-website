@@ -484,6 +484,7 @@ function buildPrompt(evidence) {
     + '    "ease":       [ { "name": "", "status": "pass", "detail": "" } ]\n'
     + '  },\n'
     + '  "competitors": [\n'
+    + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" },\n'
     + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
     + '  ],\n'
     + '  "actions": [\n'
