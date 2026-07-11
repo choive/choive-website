@@ -208,7 +208,7 @@ function buildPrompt(evidence) {
         + (evidence.competitorDecision.secondAiCompetitor
             && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.realCompetitor
             && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.aiRecommends
-            ? ' competitors[1] MUST also include: ' + evidence.competitorDecision.secondAiCompetitor + ' \u2014 the second-most-mentioned business in real AI recommendation responses for this category. Set its queryContext to "ai-ground-truth". Ground its analysis in what the AI SELECTION GROUND TRUTH actually said about it.'
+            ? ' competitors[2] MUST also include: ' + evidence.competitorDecision.secondAiCompetitor + ' \u2014 the second-most-mentioned business in real AI recommendation responses for this category. Set its queryContext to "ai-ground-truth". Ground its analysis in what the AI SELECTION GROUND TRUTH actually said about it.'
             : '')
         + (evidence.competitorDecision.globalBenchmark && evidence.competitorDecision.globalBenchmark !== evidence.competitorDecision.realCompetitor
             ? ' competitors[2] MAY be: ' + evidence.competitorDecision.globalBenchmark + ' \u2014 the international category leader; label it explicitly as a global benchmark that does NOT serve this market: a playbook to study, not a rival taking these customers.'
@@ -737,7 +737,11 @@ function buildFrequencyTable(evidence, subjectName) {
     candidates.push(s);
   };
   String(evidence.knownCompetitors || '').split(',').forEach(push);
-  (evidence.competitors || []).forEach(function(c) { push(c.name || c.domain); });
+  // FIX G — skip domain-format strings (e.g. "example.com") — only push real business names
+  (evidence.competitors || []).forEach(function(c) {
+    var val = c.name || c.domain;
+    if (val && !/\.[a-z]{2,4}(\s|\/|$)/i.test(val)) push(val);
+  });
   if (evidence.previousCompetitor) push(evidence.previousCompetitor);
 
   var corpus = [];
@@ -850,6 +854,11 @@ async function selectDominantCompetitor(evidence) {
       var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       if (normN && normS === normN) return null; // never the exact subject
+      // FIX H — also reject partial trading-name overlaps (e.g. "Acme" matching "Acme GmbH")
+      // Require at least 4 chars of overlap to avoid coincidental short-prefix matches.
+      if (normN && normS && normN.length >= 4 && normS.length >= 4) {
+        if (normS.startsWith(normN) || normN.startsWith(normS)) return null;
+      }
       return s;
     }
     // No stability fallback anymore \u2014 if the model can't name a real,
