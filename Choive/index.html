@@ -3400,10 +3400,16 @@ function showResults(r, jobId) {
       + '</div>'
     : '<div class="paid-comp-none">No established competitor dominates this category in AI — a significant opportunity to be the first business AI consistently recommends.</div>';
 
-  var extraCompsHtml = compList.slice(1).map(function(cp) {
+  var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
     var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+    // For online-arena competitors that were merged in server-side without Claude analysis,
+    // fall back to the arena scoring's priorityAction as the descriptor.
+    if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
+      an = r.arenaScores.online.priorityAction || '';
+    }
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Also named by AI</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
       + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + esc(an) + '</div>' : '')
       + '</div>';
