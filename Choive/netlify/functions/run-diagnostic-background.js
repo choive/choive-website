@@ -555,9 +555,13 @@ exports.handler = async function (event) {
             // always ready but evidence.competitorDecision was never populated.
             try {
               var allSimResponses = [];
+              var allSimResponsesOrig = []; // original-cased for name extraction
               (simBefore.before.results || []).forEach(function(r) {
                 (r.allResponses || []).forEach(function(txt) {
-                  if (txt) allSimResponses.push(txt.toLowerCase());
+                  if (txt) {
+                    allSimResponses.push(txt.toLowerCase());
+                    allSimResponsesOrig.push(txt);
+                  }
                 });
               });
               if (allSimResponses.length > 0) {
@@ -577,6 +581,53 @@ exports.handler = async function (event) {
                   seenKeys[key] = true;
                   return true;
                 });
+                // ── EXTRACT NAMES FROM RAW AI RESPONSE TEXTS ──────────────────────────
+                // The candidate list above only covers names we already know (Serper + owner input).
+                // If AI mentions a competitor not in those sources (e.g. "Riekert"), we'd miss it.
+                // This block extracts proper-noun sequences directly from the AI response texts
+                // and appends them to uniqueCandidates before counting.
+                if (allSimResponsesOrig.length > 0) {
+                  var allCapsRe = /\b([A-Z]{2}[A-Z0-9]*(?:[ \t]+[A-Z][A-Z0-9]+){0,2})\b/g;
+                  var titleRe   = /\b([A-Z][a-z]{1,}(?:[ \t]+[A-Z][a-z]{1,}){1,2})\b/g;
+                  var titleCounts = {};
+                  var titleNames  = {};
+                  allSimResponsesOrig.forEach(function(txt) {
+                    // ALL-CAPS sequences (2+ chars) — very high confidence business names
+                    var m; allCapsRe.lastIndex = 0;
+                    while ((m = allCapsRe.exec(txt)) !== null) {
+                      var word = m[1].trim();
+                      if (word.length >= 3) {
+                        var nk = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (nk && nk !== normSelf && !seenKeys[nk]
+                            && !isPlatformName(word) && !isGenericEntity(word) && !isGenericPhrase(word)) {
+                          seenKeys[nk] = true;
+                          uniqueCandidates.push(word);
+                        }
+                      }
+                    }
+                    // Title-case sequences (2-3 words) — count per response; require 2+ responses
+                    var seenInThisTxt = {};
+                    titleRe.lastIndex = 0;
+                    while ((m = titleRe.exec(txt)) !== null) {
+                      var phrase = m[1].trim();
+                      var tk = phrase.toLowerCase().replace(/[^a-z0-9]/g, '');
+                      if (tk && !seenInThisTxt[tk]) {
+                        seenInThisTxt[tk] = true;
+                        titleCounts[tk] = (titleCounts[tk] || 0) + 1;
+                        if (!titleNames[tk]) titleNames[tk] = phrase;
+                      }
+                    }
+                  });
+                  // Add title-case phrases seen in 2+ response texts
+                  Object.keys(titleCounts).forEach(function(tk) {
+                    if (titleCounts[tk] >= 2 && tk !== normSelf && !seenKeys[tk]
+                        && !isPlatformName(titleNames[tk]) && !isGenericEntity(titleNames[tk]) && !isGenericPhrase(titleNames[tk])) {
+                      seenKeys[tk] = true;
+                      uniqueCandidates.push(titleNames[tk]);
+                    }
+                  });
+                  console.log('[' + jobId + '] Candidate pool after AI-text extraction: ' + uniqueCandidates.length + ' names');
+                }
                 // Count mentions across ALL simulation response texts — track top 2
                 var bestName = null, bestCount = 0;
                 var secondName = null, secondCount = 0;
