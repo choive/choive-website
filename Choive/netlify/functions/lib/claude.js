@@ -59,7 +59,7 @@ async function inferCategory(name, category, websiteText, searchText) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: ANTHROPIC_MODEL,
         max_tokens: 100,
         temperature: 0,
         messages: [{ role: 'user', content: prompt }]
@@ -483,7 +483,6 @@ function buildPrompt(evidence) {
     + '    "difference": [ { "name": "", "status": "pass", "detail": "" } ],\n'
     + '    "ease":       [ { "name": "", "status": "pass", "detail": "" } ]\n'
     + '  },\n'
-    + (evidence.competitorDecision && evidence.competitorDecision.realCompetitor ? '  REMINDER: competitors[0].name must be exactly "' + evidence.competitorDecision.realCompetitor + '".\n' : '')
     + '  "competitors": [\n'
     + '    { "name": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
     + '  ],\n'
@@ -495,7 +494,10 @@ function buildPrompt(evidence) {
     + '  ]\n'
     + '}';
 
-  return prompt + jsonSchema;
+  var competitorReminder = (evidence.competitorDecision && evidence.competitorDecision.realCompetitor)
+    ? 'IMPORTANT: competitors[0].name must be exactly "' + String(evidence.competitorDecision.realCompetitor).replace(/"/g, '\\"') + '". Do not alter it.\n\n'
+    : '';
+  return prompt + competitorReminder + jsonSchema;
 }
 
 // ── Parse Claude response ─────────────────────────────────────────────────────
@@ -531,9 +533,13 @@ function applySignalConstraints(rawOutput, websiteSignals) {
 
   if (p.ease) {
     var ease = Number(p.ease.score) || 0;
-    if (s.hasLlmsTxt  && ease < 18) { p.ease.score = Math.max(ease, 18); }
-    if (s.hasSchema   && ease < 12) { p.ease.score = Math.max(ease, 12); }
-    if (!s.hasSchema  && ease >  8) { p.ease.score = Math.min(ease,  8); }
+    // Apply floors first, then re-read the live score before applying caps
+    // so earlier mutations are visible to later checks.
+    if (s.hasLlmsTxt && ease < 18) { p.ease.score = Math.max(ease, 18); ease = p.ease.score; }
+    if (s.hasSchema  && ease < 12) { p.ease.score = Math.max(ease, 12); ease = p.ease.score; }
+    // No-schema cap only applies when llms.txt is also absent —
+    // having llms.txt is itself a strong AI-readability signal.
+    if (!s.hasSchema && !s.hasLlmsTxt && ease > 8) { p.ease.score = Math.min(ease, 8); ease = p.ease.score; }
     // Empty-shell sites cap at 6 regardless of what the model scored \u2014 a
     // code-level cap, not just a prompt instruction, because llms.txt/schema
     // presence has repeatedly proven persuasive enough to override prose
@@ -654,7 +660,7 @@ function safeOutput(raw) {
     overallScore:          Number(r.overallScore) || 0,
     verdictHeadline:       r.verdictHeadline      || '',
     summaryParagraph:      r.summaryParagraph     || '',
-    businessUnderstanding: r.businessUnderstanding || r.summaryParagraph || '',
+    businessUnderstanding: r.businessUnderstanding || '',
     evidenceNarrative:     r.evidenceNarrative    || '',
     inferredCategory:      r.inferredCategory     || '',
     signatureLine:         r.signatureLine        || '',
@@ -703,7 +709,7 @@ function countCandidateFrequency(candidateName, corpus) {
   var count = 0;
   corpus.forEach(function(text) {
     var body = ' ' + normalizeForCount(text) + ' ';
-    if (body.indexOf(' ' + target + ' ') !== -1 || body.replace(/ /g, '').indexOf(target.replace(/ /g, '')) !== -1) count++;
+    if (body.indexOf(' ' + target + ' ') !== -1) count++;
   });
   return count;
 }
@@ -826,12 +832,18 @@ async function selectDominantCompetitor(evidence) {
     var data = await res.json();
     var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
-    var parsed = JSON.parse(text);
+    var fi = text.indexOf('{'), li = text.lastIndexOf('}');
+    var jsonText = (fi !== -1 && li > fi) ? text.slice(fi, li + 1) : text;
+    var parsed = JSON.parse(jsonText);
     if (!parsed || typeof parsed !== 'object') return null;
     function cleanName(v) {
       var s = v ? String(v).trim() : '';
       if (!s) return null;
-      if (name && s.toLowerCase().indexOf(name.toLowerCase()) !== -1) return null; // never the subject
+      // Exclude only exact matches (after normalization) — substring check was
+      // too broad and silently dropped valid competitors sharing a name prefix.
+      var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (normN && normS === normN) return null; // never the exact subject
       return s;
     }
     // No stability fallback anymore \u2014 if the model can't name a real,
@@ -921,14 +933,14 @@ async function scoreWithClaudeOnce(evidence) {
     });
     clearTimeout(timeout);
 
+    if (!response.ok) {
+      var errBody = '';
+      try { var errJson = await response.json(); errBody = (errJson && errJson.error && errJson.error.message) ? errJson.error.message : ''; } catch (e) {}
+      throw new Error(errBody || 'Anthropic HTTP ' + response.status);
+    }
     var data = await response.json();
     if (data.stop_reason && data.stop_reason !== 'end_turn') {
-      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason);
-    }
-    if (!response.ok) {
-      throw new Error(data && data.error && data.error.message
-        ? data.error.message
-        : 'Anthropic HTTP ' + response.status);
+      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason, '— response may be truncated');
     }
 
     var raw = parseClaudeResponse(data);
@@ -990,7 +1002,9 @@ async function selectChannelCompetitor(evidence, channelResults) {
       .filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; })
       .join('').replace(/```json|```/g, '').trim();
-    var parsed = JSON.parse(text);
+    var fi2 = text.indexOf('{'), li2 = text.lastIndexOf('}');
+    var jsonText2 = (fi2 !== -1 && li2 > fi2) ? text.slice(fi2, li2 + 1) : text;
+    var parsed = JSON.parse(jsonText2);
     if (!parsed || !parsed.name) return null;
     return {
       name:   String(parsed.name).trim(),
