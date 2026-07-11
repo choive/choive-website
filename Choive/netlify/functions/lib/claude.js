@@ -205,6 +205,11 @@ function buildPrompt(evidence) {
         + (evidence.competitorDecision.aiRecommends && evidence.competitorDecision.aiRecommends !== evidence.competitorDecision.realCompetitor
             ? ' competitors[1] MUST be: ' + evidence.competitorDecision.aiRecommends + ' \u2014 the business AI actually recommends for these queries today; label its queryContext accordingly and ground its entry in the AI SELECTION GROUND TRUTH.'
             : '')
+        + (evidence.competitorDecision.secondAiCompetitor
+            && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.realCompetitor
+            && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.aiRecommends
+            ? ' competitors[1] MUST also include: ' + evidence.competitorDecision.secondAiCompetitor + ' \u2014 the second-most-mentioned business in real AI recommendation responses for this category. Set its queryContext to "ai-ground-truth". Ground its analysis in what the AI SELECTION GROUND TRUTH actually said about it.'
+            : '')
         + (evidence.competitorDecision.globalBenchmark && evidence.competitorDecision.globalBenchmark !== evidence.competitorDecision.realCompetitor
             ? ' competitors[2] MAY be: ' + evidence.competitorDecision.globalBenchmark + ' \u2014 the international category leader; label it explicitly as a global benchmark that does NOT serve this market: a playbook to study, not a rival taking these customers.'
             : '')
