@@ -601,16 +601,25 @@ exports.handler = async function (event) {
                   var titleRe   = /\b([A-Z][a-z]{1,}(?:[ \t]+[A-Z][a-z]{1,}){1,2})\b/g;
                   var titleCounts = {};
                   var titleNames  = {};
+                  // FIX C — stopwords for ALL-CAPS single-word extraction (generic adjectives and category terms)
+                  var CAPS_STOPWORDS = { PREMIUM:1, QUALITY:1, FRESH:1, LOCAL:1, DIRECT:1, ONLINE:1, GERMAN:1, FRENCH:1, BEST:1, TOP:1, FIRST:1, FREE:1, FAST:1, NEXT:1, MAIN:1, KEY:1, NEW:1, OLD:1, BIG:1, SMALL:1, HIGH:1, LOW:1, FULL:1, WIDE:1, GOOD:1, REAL:1, TRUE:1, PLUS:1, PRO:1, MAX:1, LIVE:1, OPEN:1, SOFT:1, HARD:1, PURE:1, SMART:1, QUICK:1, CLEAN:1, CLEAR:1, SAFE:1, PRIME:1, SELECT:1, CHOICE:1, EXPERT:1, LEADER:1, GLOBAL:1, EUROPE:1, MARKET:1 };
                   allSimResponsesOrig.forEach(function(txt) {
-                    // ALL-CAPS sequences (2+ chars) — very high confidence business names
+                    // ALL-CAPS sequences — very high confidence business names.
+                    // Single-word acronyms require 6+ chars to exclude technology
+                    // category terms like IPTV (4), OTT (3), DRM (3), CDN (3).
+                    // Multi-word sequences (e.g. "DON CARNE", "CANAL PLUS") keep
+                    // the 3-char minimum since two caps words = almost certainly a brand.
                     var m; allCapsRe.lastIndex = 0;
                     while ((m = allCapsRe.exec(txt)) !== null) {
                       var word = m[1].trim();
-                      if (word.length >= 3) {
+                      var isMultiWord = word.indexOf(' ') !== -1 || word.indexOf('\t') !== -1;
+                      var minLen = isMultiWord ? 3 : 6;
+                      if (word.length >= minLen) {
                         var nk = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        // Skip if this term appears in the business's own category/description
+                        // Skip if this term appears in the business's own category/description/queries
                         if (nk && nk !== normSelf && !seenKeys[nk]
-                            && bizContext.indexOf(word.toLowerCase()) === -1
+                            && (' ' + bizContext + ' ').indexOf(' ' + word.toLowerCase() + ' ') === -1
+                            && !CAPS_STOPWORDS[word]
                             && !isPlatformName(word) && !isGenericEntity(word) && !isGenericPhrase(word)) {
                           seenKeys[nk] = true;
                           uniqueCandidates.push(word);
@@ -630,12 +639,15 @@ exports.handler = async function (event) {
                       }
                     }
                   });
+                  // FIX E — boilerplate stoplist for title-case phrases that AI uses as section headers/qualifiers
+                  var TITLE_STOPWORDS = { 'top recommendations':1, 'first choice':1, 'best known':1, 'key players':1, 'other options':1, 'main competitors':1, 'well known':1, 'widely used':1, 'highly recommended':1, 'good options':1, 'strong choice':1, 'great option':1, 'good choice':1, 'popular choice':1, 'popular option':1, 'also consider':1, 'worth noting':1, 'worth considering':1 };
                   // Add title-case phrases seen in 2+ response texts —
                   // skip any phrase that is a substring of the business's own category/description
                   Object.keys(titleCounts).forEach(function(tk) {
                     var phrase = titleNames[tk];
                     if (titleCounts[tk] >= 2 && tk !== normSelf && !seenKeys[tk]
-                        && bizContext.indexOf(phrase.toLowerCase()) === -1
+                        && (' ' + bizContext + ' ').indexOf(' ' + phrase.toLowerCase() + ' ') === -1
+                        && !TITLE_STOPWORDS[phrase.toLowerCase()]
                         && !isPlatformName(phrase) && !isGenericEntity(phrase) && !isGenericPhrase(phrase)) {
                       seenKeys[tk] = true;
                       uniqueCandidates.push(phrase);
@@ -830,8 +842,7 @@ exports.handler = async function (event) {
           }
         }
       }
-      // Always trim to 3 regardless of which enforcement path ran
-      finalResult.competitors = comps.slice(0, 3);
+      // Trim moved to after second-competitor merge so all sources are included before slicing
     } catch (err) {
       console.warn('[' + jobId + '] Competitor enforcement failed:', err.message);
     }
@@ -949,6 +960,11 @@ exports.handler = async function (event) {
         console.log('[' + jobId + '] Dual-arena skipped — both arenas resolved to same competitor (' + brandCompName + '). Running brand-only.');
         onlineComp = null;
       }
+      // FIX B — channel-search competitors must never appear in dual-arena online slot
+      if (onlineComp && onlineComp.source === 'channel-search') {
+        console.log('[' + jobId + '] Dual-arena online arena skipped — onlineCompetitor source is channel-search, not AI-named.');
+        onlineComp = null;
+      }
       if (da && da.dualArena && onlineComp && onlineComp.name && brandCompName) {
         console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name + ' (source:' + (onlineComp.source || 'channel-search') + ')');
         var arenaResults = await Promise.allSettled([
@@ -1045,6 +1061,8 @@ exports.handler = async function (event) {
     } catch (mergeErr) {
       console.warn('[' + jobId + '] Second competitor merge failed (non-critical):', mergeErr.message);
     }
+    // FIX A — Trim to 3 after all merge sources have been applied (moved from inside enforcement block)
+    finalResult.competitors = (finalResult.competitors || []).slice(0, 3);
 
     // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
     try {
