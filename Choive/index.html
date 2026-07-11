@@ -1022,7 +1022,7 @@ nav {
 .sim-appeared.no  { color:var(--red); background:var(--red-bg); border:1px solid rgba(184,50,50,0.15); }
 .sim-query-text { font-size:13px; font-weight:400; color:var(--ink); margin-bottom:12px; font-style:italic; }
 .sim-response { font-size:13px; font-weight:400; color:var(--body); line-height:1.8; background:var(--paper-3); padding:14px 16px; border-left:2px solid var(--rule); }
-.sim-response.appeared { border-left-color:var(--green); }
+.sim-response.mentioned { border-left-color:var(--green); }
 .sim-summary { padding:16px 0; font-size:14px; font-weight:600; color:var(--ink); border-top:1px solid var(--rule); margin-top:14px; }
 .sim-summary.zero { color:var(--red); }
 .sim-summary.some { color:var(--amber); }
@@ -2481,7 +2481,7 @@ function showError(msg) {
     zone.style.display = 'block';
     zone.innerHTML = '<div style="padding:32px;max-width:760px;">'
       + '<div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:10px;">Diagnostic interrupted</div>'
-      + '<div style="font-size:14px;color:var(--tb);margin-bottom:16px;">' + (msg || 'An error occurred.') + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);margin-bottom:16px;">' + (msg ? msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'An error occurred.') + '</div>'
       + '<button onclick="resetDiagnostic()" style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:10px 20px;background:transparent;border:1px solid var(--rule-d);color:var(--tm);cursor:pointer;">Try again</button>'
       + '</div>';
   }
@@ -2608,6 +2608,7 @@ function pollDiagnostic(jobId) {
     }
     try {
       const res = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
+      if (!res.ok) throw new Error('Poll failed: HTTP ' + res.status);
       const data = await res.json();
       console.log('[CHOIVE poll response]', data);
       updateEngineStage(data.status);
@@ -2695,19 +2696,19 @@ function buildDisplacementBlock(r) {
   if (!d || !d.competitorName) return '';
   return [
     '<div class="disp-block">',
-    '  <div class="disp-query">When someone asks: <span>"' + (d.competitorQuery || '') + '"</span></div>',
-    '  <div class="disp-name">' + (d.competitorName || '') + '</div>',
+    '  <div class="disp-query">When someone asks: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-name">' + esc(d.competitorName || '') + '</div>',
     '  <div class="disp-label">Is being recommended instead</div>',
-    '  <div class="disp-why"><strong>Why:</strong> ' + (d.competitorWhy || '') + '</div>',
+    '  <div class="disp-why"><strong>Why:</strong> ' + esc(d.competitorWhy || '') + '</div>',
     '</div>'
   ].join('\n');
 }
 
 
-function getShareUrl() {
-  var jobId = window.__choiveShareJobId || '';
-  if (!jobId) return '';
-  return window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
+function getShareUrl(jobId) {
+  var id = jobId || window.__choiveShareJobId || '';
+  if (!id) return '';
+  return window.location.origin + '/?jobId=' + encodeURIComponent(id);
 }
 
 function buildShareBlock(jobId) {
@@ -3214,7 +3215,7 @@ function showResults(r, jobId) {
       rateLine = '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
         + '<span style="color:var(--ac);margin-right:8px;">\u25B8</span>'
         + 'AI selection rate: ' + d.selectionRate.previous + '/' + d.selectionRate.total
-        + ' \u2192 <strong style="color:var(--tx);">' + d.selectionRate.current + '/' + d.selectionRate.total + '</strong></div>';
+        + ' \u2192 <strong style="color:var(--ac);">' + d.selectionRate.current + '/' + d.selectionRate.total + '</strong></div>';
     }
 
     var compLine = '';
@@ -3250,7 +3251,7 @@ function showResults(r, jobId) {
     var cat  = bCat   ? bCat   : 'your category';
     return '<div class="urgency-bridge">'
       + '<div class="urgency-sentence">Every day this stays unfixed, someone searching for '
-      + cat + ' finds ' + comp + ' instead of ' + name + '.</div>'
+      + esc(cat) + ' finds ' + esc(comp) + ' instead of ' + esc(name) + '.</div>'
       + '<div class="urgency-sub">The Analysis shows exactly what to change — and in what order.</div>'
       + '</div>';
   }
@@ -3449,19 +3450,19 @@ function showResults(r, jobId) {
 
         return '<div style="background:var(--paper-2);padding:24px 20px;">'
           + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
-          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);">' + esc(label) + '</div>'
+          + '<div style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--ac);">' + esc(label) + '</div>'
           + '<div style="text-align:right;">'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:28px;font-weight:700;color:' + _arenaScoreColor + ';line-height:1;">' + _arenaScore + '</div>'
-          + '<div style="font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">' + _arenaScoreLabel + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">' + _arenaScoreLabel + '</div>'
           + '</div>'
           + '</div>'
           + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">' + esc(subtitle) + '</div>'
           + '<div style="font-size:13px;font-weight:600;color:var(--ink);padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule);">vs ' + esc(competitorName) + '</div>'
-          + '<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>PILLAR</span><span>YOU / COMP &nbsp; GAP</span></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>PILLAR</span><span>YOU / COMP &nbsp; GAP</span></div>'
           + _keys.map(_pRow).join('')
           + (arenaData.keyGap || arenaData.priorityAction
             ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
-              + (arenaData.keyGap ? '<div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Key gap in this arena</div>'
+              + (arenaData.keyGap ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Key gap in this arena</div>'
                 + '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;text-transform:capitalize;">' + esc(arenaData.keyGap) + '</div>' : '')
               + (arenaData.priorityAction ? '<div style="font-size:12px;color:var(--body);line-height:1.7;">' + esc(arenaData.priorityAction) + '</div>' : '')
               + '</div>'
@@ -3487,7 +3488,7 @@ function showResults(r, jobId) {
         var _dualColor = _dual >= 55 ? 'var(--ac)' : (_dual <= 45 ? '#C97A6A' : 'var(--body)');
         _combinedHtml = '<div style="background:var(--paper-3);padding:16px 20px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
           + '<div>'
-          + '<div style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Combined Arena Score</div>'
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Combined Arena Score</div>'
           + '<div style="font-size:12px;color:var(--body);">Average competitive position across both arenas</div>'
           + '</div>'
           + '<div style="display:flex;gap:20px;align-items:center;">'
@@ -4122,9 +4123,7 @@ function openForm(product) {
   window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
 }
 
-function getShareUrl(jobId) {
-  return window.location.origin + '/?jobId=' + jobId;
-}
+// getShareUrl is defined earlier — this duplicate removed
 
 async function fetchSharedResult(jobId) {
   try {
