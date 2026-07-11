@@ -124,7 +124,7 @@ function categoryFaithful(ownerCategory, inferred) {
 // marketers") is a class of seller, not a business — the extraction stage
 // can grab a descriptive phrase out of an AI answer and mistake it for a
 // name. This is a shape check, language-agnostic where possible.
-var GENERIC_COLLECTIVE_RE = /\b(zertifizierte|direktvermarkter|retailers?|producers?|suppliers?|vendors?|sellers?|marketers?|farmers?|companies|businesses|providers?|brands?|stores?|shops?|outlets?|options|alternatives|sources|h\u00e4ndler|anbieter|hersteller|erzeuger|betriebe|gesch\u00e4fte)\b/i;
+var GENERIC_COLLECTIVE_RE = /\b(zertifizierte|direktvermarkter|retailers?|producers?|suppliers?|vendors?|sellers?|marketers?|farmers?|companies|businesses|providers?|brands?|stores?|shops?|outlets?|options|optionen|alternatives|alternativen|m\u00f6glichkeiten|varianten|empfehlungen|angebote|sources|h\u00e4ndler|anbieter|hersteller|erzeuger|betriebe|gesch\u00e4fte)\b/i;
 
 function isGenericPhrase(n) {
   var s = String(n || '').trim();
@@ -567,8 +567,15 @@ exports.handler = async function (event) {
                 });
               });
               if (allSimResponses.length > 0) {
-                // Build candidate list from Serper competitors + knownCompetitors input
-                var compCandidates = (evidence['competitors'] || []).map(function(c) { return c && c.name; }).filter(Boolean);
+                // Build candidate list from Serper competitors + knownCompetitors input.
+                // Serper competitor objects use the field "domain" (not "name") — e.g.
+                // { domain: "doncarne.de", title: "Don Carne | Premium Beef", ... }
+                // c.name was always undefined here, silently emptying the entire Serper
+                // candidate pool. Use domain as the identifier; the needle-building step
+                // below strips the TLD so "doncarne.de" matches AI responses saying "Don Carne".
+                var compCandidates = (evidence['competitors'] || []).map(function(c) {
+                  return c && (c.name || c.domain || '');
+                }).filter(Boolean);
                 var kcNames = String(evidence['knownCompetitors'] || knownCompetitors || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
                 var allCandidates = compCandidates.concat(kcNames);
                 // Deduplicate by normalized key; exclude platforms, generics, and the subject itself
@@ -640,14 +647,44 @@ exports.handler = async function (event) {
                     }
                   });
                   // FIX E — boilerplate stoplist for title-case phrases that AI uses as section headers/qualifiers
-                  var TITLE_STOPWORDS = { 'top recommendations':1, 'first choice':1, 'best known':1, 'key players':1, 'other options':1, 'main competitors':1, 'well known':1, 'widely used':1, 'highly recommended':1, 'good options':1, 'strong choice':1, 'great option':1, 'good choice':1, 'popular choice':1, 'popular option':1, 'also consider':1, 'worth noting':1, 'worth considering':1 };
+                  // Covers English AND German AI response boilerplate patterns.
+                  var TITLE_STOPWORDS = {
+                    // English
+                    'top recommendations':1, 'first choice':1, 'best known':1, 'key players':1,
+                    'other options':1, 'main competitors':1, 'well known':1, 'widely used':1,
+                    'highly recommended':1, 'good options':1, 'strong choice':1, 'great option':1,
+                    'good choice':1, 'popular choice':1, 'popular option':1, 'also consider':1,
+                    'worth noting':1, 'worth considering':1, 'both options':1, 'strong options':1,
+                    // German AI response boilerplate
+                    'beide optionen':1, 'beide anbieter':1, 'beide marken':1, 'beide varianten':1,
+                    'erste wahl':1, 'gute option':1, 'gute wahl':1, 'beste marken':1,
+                    'weitere optionen':1, 'andere marken':1, 'andere anbieter':1,
+                    'sehr empfehlenswert':1, 'gut bekannt':1, 'weit verbreitet':1,
+                    'auch empfohlen':1, 'ebenfalls empfohlen':1, 'ebenfalls erwähnenswert':1
+                  };
                   // Add title-case phrases seen in 2+ response texts —
-                  // skip any phrase that is a substring of the business's own category/description
+                  // skip any phrase that is a substring of the business's own category/description.
+                  // Also reject if any 2-consecutive-word sub-phrase appears in bizContext —
+                  // this catches phrases like "Black Angus Rinder" where "black angus" is a
+                  // category term even though the full 3-word phrase isn't an exact match.
                   Object.keys(titleCounts).forEach(function(tk) {
                     var phrase = titleNames[tk];
+                    var phraseLc = phrase.toLowerCase();
+                    // Whole-phrase exact word-boundary check
+                    var wholeMatch = (' ' + bizContext + ' ').indexOf(' ' + phraseLc + ' ') !== -1;
+                    // Sub-phrase check: any 2 consecutive words of the phrase in bizContext?
+                    var pwds = phraseLc.split(/\s+/);
+                    var subPhraseMatch = false;
+                    for (var wi = 0; wi < pwds.length - 1; wi++) {
+                      var sub2 = pwds[wi] + ' ' + pwds[wi + 1];
+                      if (sub2.length >= 6 && (' ' + bizContext + ' ').indexOf(' ' + sub2 + ' ') !== -1) {
+                        subPhraseMatch = true;
+                        break;
+                      }
+                    }
                     if (titleCounts[tk] >= 2 && tk !== normSelf && !seenKeys[tk]
-                        && (' ' + bizContext + ' ').indexOf(' ' + phrase.toLowerCase() + ' ') === -1
-                        && !TITLE_STOPWORDS[phrase.toLowerCase()]
+                        && !wholeMatch && !subPhraseMatch
+                        && !TITLE_STOPWORDS[phraseLc]
                         && !isPlatformName(phrase) && !isGenericEntity(phrase) && !isGenericPhrase(phrase)) {
                       seenKeys[tk] = true;
                       uniqueCandidates.push(phrase);
@@ -659,7 +696,11 @@ exports.handler = async function (event) {
                 var bestName = null, bestCount = 0;
                 var secondName = null, secondCount = 0;
                 uniqueCandidates.forEach(function(n) {
-                  var needle = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  // Strip domain TLD before normalizing so that "gourmetfleisch.de"
+                  // produces needle "gourmetfleisch" (not "gourmetfleischde") and
+                  // correctly matches an AI response that says "Gourmetfleisch".
+                  var forNeedle = n.replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
+                  var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
                   if (!needle) return;
                   var cnt = allSimResponses.filter(function(r) {
                     return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
