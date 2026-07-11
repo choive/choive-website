@@ -1111,7 +1111,7 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
         ease:       fixPillar('ease',       youEase)
       },
       keyGap:         String(parsed.keyGap         || '').slice(0, 50),
-      priorityAction: String(parsed.priorityAction || '').slice(0, 300)
+      priorityAction: String(parsed.priorityAction || '').slice(0, 600)
     };
   } catch (err) {
     clearTimeout(timer);
