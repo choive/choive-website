@@ -27,7 +27,7 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
   if (!prevRow || !prevRow.result || !finalResult) return null;
   var prev      = prevRow.result;
   var prevScore = Number(prev.score);
-  var curScore  = Number(finalResult.score);
+  var curScore  = Number(finalResult.overallScore);
   if (!isFinite(prevScore) || !isFinite(curScore)) return null;
 
   var delta = {
@@ -288,7 +288,7 @@ exports.handler = async function (event) {
         try {
           var freshSite = await fetchWebsiteText(website);
           var freshSig  = (freshSite && freshSite.signals) || {};
-          var cachedSig = (cached.evidence && cached.evidence.website) || {};
+          var cachedSig = (cached.evidence && cached.evidence.websiteSignals) || {};
           var sigKeys = ['hasSchema','hasLlmsTxt','hasH1','hasTitle','hasMetaDescription','hasCanonical','hasSitemap','hasRobots','hasOgTags'];
           var changed = sigKeys.filter(function(k) { return (freshSig[k] === true) !== (cachedSig[k] === true); });
           var freshTypes  = Array.isArray(freshSig.schemaTypes)  ? freshSig.schemaTypes.length  : 0;
@@ -754,9 +754,10 @@ exports.handler = async function (event) {
               queryContext: 'ai-ground-truth'
             });
           }
-          finalResult.competitors = comps.slice(0, 3);
         }
       }
+      // Always trim to 3 regardless of which enforcement path ran
+      finalResult.competitors = comps.slice(0, 3);
     } catch (err) {
       console.warn('[' + jobId + '] Competitor enforcement failed:', err.message);
     }
@@ -774,19 +775,18 @@ exports.handler = async function (event) {
         // A platform in the AI-answer slot means AI named a venue, not a rival:
         // the truthful reading is that the category answer is UNOWNED.
         if (cdV.aiRecommends && (isPlatformName(cdV.aiRecommends) || isGenericEntity(cdV.aiRecommends))) {
-          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is not a real named entity — clearing');
+          var wasPlatform = isPlatformName(cdV.aiRecommends);
+          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is not a real named entity — clearing' + (wasPlatform ? '; treating category as unowned' : ''));
           cdV.aiRecommends = null;
-          if (finalResult['competitorDecision']) finalResult['competitorDecision'].aiRecommends = null;
-        }
-        if (cdV.aiRecommends && isPlatformName(cdV.aiRecommends)) {
-          console.warn('[' + jobId + '] [competitor-validation] aiRecommends "' + cdV.aiRecommends + '" is a platform — a venue, not a rival; treating the category as unowned');
-          cdV.aiRecommends = null;
-          cdV.categoryUnowned = true;
+          if (wasPlatform) cdV.categoryUnowned = true;
           if (finalResult['competitorDecision']) {
             finalResult['competitorDecision'].aiRecommends = null;
-            finalResult['competitorDecision'].categoryUnowned = true;
+            if (wasPlatform) finalResult['competitorDecision'].categoryUnowned = true;
           }
         }
+        // Dead code removed: the isPlatformName check above (line 776) already
+        // clears cdV.aiRecommends, so a second isPlatformName check here could
+        // never fire. categoryUnowned is now set inside the line-776 block.
         var ownerFirstEarly = String(knownCompetitors || '').split(',')[0].trim();
         var declaredFirst = (evidence['declaredCompetitors'] || [])[0] || '';
         if (cdV.aiRecommends && isGenericPhrase(cdV.aiRecommends)) {
@@ -852,7 +852,7 @@ exports.handler = async function (event) {
     if (evidence['googleReviews'])    finalResult['googleReviews']    = evidence['googleReviews'];
     if (evidence['competitorApify'])  finalResult['competitorApify']  = evidence['competitorApify'];
     if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
-    console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictLevel);
+    console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictHeadline);
 
     // ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────
     // Only runs if dual-arena was detected. Online competitor = second AI-named competitor
@@ -868,6 +868,13 @@ exports.handler = async function (event) {
       var onlineComp = secondAiComp
         ? { name: secondAiComp.name, domain: null, source: 'ai-competitor' }
         : evidence['onlineCompetitor'];
+      // Guard: if both arenas resolved to the same competitor name, scoring the
+      // same entity twice produces meaningless numbers. Collapse to brand-only.
+      var normName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      if (onlineComp && onlineComp.name && brandCompName && normName(onlineComp.name) === normName(brandCompName)) {
+        console.log('[' + jobId + '] Dual-arena skipped — both arenas resolved to same competitor (' + brandCompName + '). Running brand-only.');
+        onlineComp = null;
+      }
       if (da && da.dualArena && onlineComp && onlineComp.name && brandCompName) {
         console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name + ' (source:' + (onlineComp.source || 'channel-search') + ')');
         var arenaResults = await Promise.allSettled([
