@@ -556,7 +556,9 @@ exports.handler = async function (event) {
             try {
               var allSimResponses = [];
               var allSimResponsesOrig = []; // original-cased for name extraction
+              var allSimQueryTexts = []; // query texts — terms here describe the category, not competitors
               (simBefore.before.results || []).forEach(function(r) {
+                if (r.query) allSimQueryTexts.push(String(r.query).toLowerCase());
                 (r.allResponses || []).forEach(function(txt) {
                   if (txt) {
                     allSimResponses.push(txt.toLowerCase());
@@ -587,6 +589,14 @@ exports.handler = async function (event) {
                 // This block extracts proper-noun sequences directly from the AI response texts
                 // and appends them to uniqueCandidates before counting.
                 if (allSimResponsesOrig.length > 0) {
+                  // Build a context string covering the business's own identity AND the
+                  // simulation query texts. Terms that appear in either place describe
+                  // the category being searched for — not competing businesses.
+                  // Example: "Black Angus" appears in both Taurbull's description AND
+                  // every query ("welche Black Angus Rindfleisch Marken...") — it is
+                  // what buyers search FOR, not who AI recommends IN ANSWER.
+                  var bizContext = (name + ' ' + (category || '') + ' ' + (description || '') + ' ' + (evidence['inferredCategory'] || '') + ' ' + allSimQueryTexts.join(' ')).toLowerCase();
+
                   var allCapsRe = /\b([A-Z]{2}[A-Z0-9]*(?:[ \t]+[A-Z][A-Z0-9]+){0,2})\b/g;
                   var titleRe   = /\b([A-Z][a-z]{1,}(?:[ \t]+[A-Z][a-z]{1,}){1,2})\b/g;
                   var titleCounts = {};
@@ -598,7 +608,9 @@ exports.handler = async function (event) {
                       var word = m[1].trim();
                       if (word.length >= 3) {
                         var nk = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        // Skip if this term appears in the business's own category/description
                         if (nk && nk !== normSelf && !seenKeys[nk]
+                            && bizContext.indexOf(word.toLowerCase()) === -1
                             && !isPlatformName(word) && !isGenericEntity(word) && !isGenericPhrase(word)) {
                           seenKeys[nk] = true;
                           uniqueCandidates.push(word);
@@ -618,12 +630,15 @@ exports.handler = async function (event) {
                       }
                     }
                   });
-                  // Add title-case phrases seen in 2+ response texts
+                  // Add title-case phrases seen in 2+ response texts —
+                  // skip any phrase that is a substring of the business's own category/description
                   Object.keys(titleCounts).forEach(function(tk) {
+                    var phrase = titleNames[tk];
                     if (titleCounts[tk] >= 2 && tk !== normSelf && !seenKeys[tk]
-                        && !isPlatformName(titleNames[tk]) && !isGenericEntity(titleNames[tk]) && !isGenericPhrase(titleNames[tk])) {
+                        && bizContext.indexOf(phrase.toLowerCase()) === -1
+                        && !isPlatformName(phrase) && !isGenericEntity(phrase) && !isGenericPhrase(phrase)) {
                       seenKeys[tk] = true;
-                      uniqueCandidates.push(titleNames[tk]);
+                      uniqueCandidates.push(phrase);
                     }
                   });
                   console.log('[' + jobId + '] Candidate pool after AI-text extraction: ' + uniqueCandidates.length + ' names');
