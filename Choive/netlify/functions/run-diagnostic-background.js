@@ -913,6 +913,34 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Dual-arena scoring failed (non-critical):', arenaErr.message);
     }
 
+    // ── MERGE ONLINE ARENA COMPETITOR INTO competitors[] ─────────────────────
+    // The dual-arena block stores the second competitor in dualArena.onlineCompetitor
+    // but never writes it back to finalResult.competitors[]. Without this merge the
+    // frontend's competitor-reality section only ever sees one entry because the
+    // Claude JSON schema only shows a single competitor example to follow.
+    try {
+      var dualMeta = finalResult['dualArena'];
+      if (dualMeta && dualMeta.onlineCompetitor && !dualMeta.scoringSkipped) {
+        var onlineName = dualMeta.onlineCompetitor;
+        var normOnline = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+        if (!Array.isArray(finalResult['competitors'])) finalResult['competitors'] = [];
+        var alreadyIn = finalResult['competitors'].some(function(c) { return normOnline(c && c.name) === normOnline(onlineName); });
+        if (!alreadyIn && !isPlatformName(onlineName) && !isGenericEntity(onlineName)) {
+          finalResult['competitors'].push({
+            name:         onlineName,
+            advantage:    '',
+            gapLocation:  '',
+            closeGap:     '',
+            evidence:     '',
+            queryContext: 'online-arena'
+          });
+          console.log('[' + jobId + '] Dual-arena online competitor "' + onlineName + '" merged into competitors list.');
+        }
+      }
+    } catch (mergeErr) {
+      console.warn('[' + jobId + '] Online competitor merge failed (non-critical):', mergeErr.message);
+    }
+
     // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
     try {
       var deliverables = generateDeliverables(evidence, finalResult);
