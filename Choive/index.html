@@ -2711,10 +2711,12 @@ function getShareUrl(jobId) {
   return window.location.origin + '/?jobId=' + encodeURIComponent(id);
 }
 
-function buildShareBlock(jobId) {
+// FIX P — accepts topComp directly instead of reading window.__choiveTopComp
+function buildShareBlock(jobId, topComp) {
   if (!jobId) return '';
   window.__choiveShareJobId = jobId;
-  var comp = window.__choiveTopComp ? ' — ' + window.__choiveTopComp + ' is winning instead' : '';
+  var _shareTopComp = (topComp !== undefined) ? topComp : window.__choiveTopComp;
+  var comp = _shareTopComp ? ' — ' + _shareTopComp + ' is winning instead' : '';
   var score = (window.__choiveLastResult && window.__choiveLastResult.overallScore) || '?';
   var name = (bizData && bizData.name) ? bizData.name : 'my business';
   var shareText = 'I just ran a CHOIVE diagnostic for ' + name + '. Score: ' + score + '/100' + comp + '. Find out yours:';
@@ -2806,9 +2808,10 @@ function buildGapBlock(r) {
           return s.replace(/[^a-z0-9]+/g, ' ').trim();
         };
         var targetG = normG(aiRec).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+        // FIX K — word-boundary check only; space-stripped fallback removed (caused domain substring false positives)
         var confirmed = simRes.some(function(q) {
           var body = ' ' + normG(q.response) + ' ';
-          return targetG && (body.indexOf(' ' + targetG + ' ') !== -1 || body.replace(/ /g, '').indexOf(targetG.replace(/ /g, '')) !== -1);
+          return targetG && body.indexOf(' ' + targetG + ' ') !== -1;
         });
         if (confirmed) activeThreatName = aiRec;
       }
@@ -2999,8 +3002,12 @@ function showResults(r, jobId) {
     if (!r.pillars[k].finding) r.pillars[k].finding = '';
   });
   if (!r.platformCoverage || typeof r.platformCoverage !== 'object') r.platformCoverage = {};
+  // FIX O — preserve string values ("weak", "present", "absent"); only replace null/undefined/empty
   ['chatgpt','perplexity','gemini','claude'].forEach(function(k) {
-    if (!r.platformCoverage[k] || typeof r.platformCoverage[k] !== 'object') r.platformCoverage[k] = {status:'absent',detail:'Not found'};
+    var v = r.platformCoverage[k];
+    if (v === null || v === undefined || v === '') r.platformCoverage[k] = {status:'absent',detail:'Not found'};
+    else if (typeof v === 'string') { /* keep valid string shorthand as-is */ }
+    else if (typeof v !== 'object') r.platformCoverage[k] = {status:'absent',detail:'Not found'};
   });
   if (!r.marketPosition || typeof r.marketPosition !== 'object') r.marketPosition = {tier:'unknown',label:'',explanation:''};
   if (!r.displacement || typeof r.displacement !== 'object') r.displacement = {competitorName:'',competitorWhy:'',competitorQuery:''};
@@ -3016,11 +3023,9 @@ function showResults(r, jobId) {
   // isPaid sources (in priority order):
   // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
   // 2. r.paid === true             → set by Stripe webhook updating Supabase record
-  // 3. URL ?paid=true              → fallback for testing only
+  // FIX I — URL ?paid=true bypass removed; only backend-verified paths set isPaid
   const isPaid = (window.__choivePaidVerified === true) ||
-                 (r.paid === true) ||
-                 (new URLSearchParams(window.location.search).get('paid') === 'true') ||
-                 (new URLSearchParams(window.location.search).get('paid') === '1');
+                 (r.paid === true);
 
   const score = Number(r.overallScore) || 0;
   const bName = esc(bizData.name || '');
@@ -3080,12 +3085,15 @@ function showResults(r, jobId) {
     ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
     : '';
 
-  // Competitor name — pulled from displacement or competitors array
-  var topComp = (r.displacement && r.displacement.competitorName)
-    ? r.displacement.competitorName
-    : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].name)
-      ? r.competitors[0].name
-      : '';
+  // Competitor name — pulled in priority order so banner and gap block always match
+  // FIX J: prefer realCompetitor (AI-verified), then displacement, then competitors[0]
+  var topComp = (r.competitorDecision && r.competitorDecision.realCompetitor)
+    ? r.competitorDecision.realCompetitor
+    : (r.displacement && r.displacement.competitorName)
+      ? r.displacement.competitorName
+      : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].name)
+        ? r.competitors[0].name
+        : '';
   window.__choiveTopComp = topComp;
   
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
@@ -3128,9 +3136,10 @@ function showResults(r, jobId) {
           return s.replace(/[^a-z0-9]+/g, ' ').trim();
         };
         var target = norm(topComp).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+        // FIX K — word-boundary check only; space-stripped fallback removed (caused domain substring false positives)
         named = res.some(function(q) {
           var body = ' ' + norm(q.response) + ' ';
-          return target && (body.indexOf(' ' + target + ' ') !== -1 || body.replace(/ /g, '').indexOf(target.replace(/ /g, '')) !== -1);
+          return target && body.indexOf(' ' + target + ' ') !== -1;
         });
       }
     } catch (e) { named = null; }
@@ -3267,33 +3276,21 @@ function showResults(r, jobId) {
       list = [r.competitor];
     }
     if (list.length === 0) return '';
+    // FIX N — removed dead isPaid branch; this function is only called in the free path
     return '<div style="margin:2px 0;">'
       + list.map(function(cp, i) {
-          if (isPaid) {
-            // Paid: show full analysis
-            var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
-            var ev = cp.evidence || '';
-            return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
-              + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
-              + (i === 0 ? 'Primary competitor' : 'Also named by AI') + '</div>'
-              + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:10px;">' + esc(cp.name) + '</div>'
-              + (an ? '<div style="font-size:13px;color:var(--body);line-height:1.75;margin-bottom:' + (ev ? '10px' : '0') + ';">' + esc(an) + '</div>' : '')
-              + (ev ? '<div style="font-size:12px;color:var(--muted);font-style:italic;line-height:1.6;padding-top:10px;border-top:1px solid var(--rule);">' + esc(ev) + '</div>' : '')
-              + '</div>';
-          } else {
-            // Free: show name + locked analysis teaser
-            return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
-              + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
-              + (i === 0 ? 'Primary competitor' : 'Also named by AI') + '</div>'
-              + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
-              + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
-              + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
-              + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
-              + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);background:var(--paper-2);padding:6px 14px;border:1px solid var(--rule);">Unlock to read analysis →</div>'
-              + '</div>'
-              + '</div>'
-              + '</div>';
-          }
+          // Free: show name + locked analysis teaser
+          return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
+            + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
+            + (i === 0 ? 'Primary competitor' : 'Also named by AI') + '</div>'
+            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
+            + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
+            + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
+            + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
+            + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);background:var(--paper-2);padding:6px 14px;border:1px solid var(--rule);">Unlock to read analysis →</div>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
         }).join('')
       + '</div>';
   }
@@ -3308,7 +3305,7 @@ function showResults(r, jobId) {
     + (isPaid ? '' : buildFreeCompetitorBlock())
     + [].concat(buildPillarCards(r, isPaid)).join('')
     + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
-    + (isPaid ? '' : [].concat(buildShareBlock(jobId)).join(''))
+    + (isPaid ? '' : [].concat(buildShareBlock(jobId, topComp)).join(''))
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
         + '<div class="lead-capture-inner">'
         + '<div class="lead-capture-eyebrow">Save your result</div>'
@@ -3408,8 +3405,12 @@ function showResults(r, jobId) {
     if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
       an = r.arenaScores.online.priorityAction || '';
     }
+    // FIX M — dynamic label by queryContext
+    var _extraLabel = cp.queryContext === 'ai-ground-truth' ? 'Also named by AI'
+      : cp.queryContext === 'online-arena' ? 'Also competing online'
+      : 'Also in this category';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Also named by AI</div>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
       + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + esc(an) + '</div>' : '')
       + '</div>';
@@ -3476,7 +3477,9 @@ function showResults(r, jobId) {
           + '</div>';
       }
       var _brandCard  = _as.brand  ? _arenaCard(_as.brand,  'Brand Arena',  'Specialty · heritage · product', _da.brandCompetitor  || '') : '';
-      var _onlineCard = _as.online ? _arenaCard(_as.online, 'Online Arena', 'DTC · delivery · ordering UX',   _da.onlineCompetitor || '') : '';
+      // FIX L — only show online competitor name when it is AI-named, not a channel-search domain
+      var _onlineCompName = (_da.onlineCompetitorSource !== 'channel-search') ? (_da.onlineCompetitor || '') : '';
+      var _onlineCard = _as.online ? _arenaCard(_as.online, 'Online Arena', 'DTC · delivery · ordering UX', _onlineCompName) : '';
 
       // Combined dual score — average of both arena position scores
       var _combinedHtml = '';
@@ -3598,7 +3601,7 @@ function showResults(r, jobId) {
   })() : '';
 
   console.log('[CHOIVE] isPaid:', isPaid, '| paidSections length:', paidSections.length);
-  zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId)).join('') : '')
+  zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId, topComp)).join('') : '')
     + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
