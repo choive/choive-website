@@ -577,27 +577,35 @@ exports.handler = async function (event) {
                   seenKeys[key] = true;
                   return true;
                 });
-                // Count mentions across ALL simulation response texts
+                // Count mentions across ALL simulation response texts — track top 2
                 var bestName = null, bestCount = 0;
+                var secondName = null, secondCount = 0;
                 uniqueCandidates.forEach(function(n) {
                   var needle = n.toLowerCase().replace(/[^a-z0-9]/g, '');
                   if (!needle) return;
                   var cnt = allSimResponses.filter(function(r) {
                     return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
                   }).length;
-                  if (cnt > bestCount) { bestCount = cnt; bestName = n; }
+                  if (cnt > bestCount) {
+                    secondName = bestName; secondCount = bestCount;
+                    bestName = n; bestCount = cnt;
+                  } else if (cnt > 0 && cnt > secondCount) {
+                    secondName = n; secondCount = cnt;
+                  }
                 });
                 evidence['competitorDecision'] = {
-                  realCompetitor:   bestName   || null,
-                  aiRecommends:     bestName   || null,
-                  source:           'ai-ground-truth',
-                  selectionVersion: 3,
-                  mentionCount:     bestCount,
-                  totalResponses:   allSimResponses.length,
-                  categoryUnowned:  !bestName || bestCount === 0
+                  realCompetitor:     bestName    || null,
+                  aiRecommends:       bestName    || null,
+                  secondAiCompetitor: secondName  || null,
+                  source:             'ai-ground-truth',
+                  selectionVersion:   3,
+                  mentionCount:       bestCount,
+                  totalResponses:     allSimResponses.length,
+                  categoryUnowned:    !bestName || bestCount === 0
                 };
                 console.log('[' + jobId + '] competitorDecision: ' +
-                  (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned'));
+                  (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
+                  (secondName ? ' | second: ' + secondName + ' (' + secondCount + ')' : ''));
               }
             } catch (freqErr) {
               console.warn('[' + jobId + '] Competitor frequency count failed:', freqErr.message);
@@ -889,11 +897,12 @@ exports.handler = async function (event) {
             online: onlineArena || null
           };
           finalResult['dualArena'] = {
-            detected:          true,
-            brandCompetitor:   brandCompName,
-            onlineCompetitor:  onlineComp.name,
-            onlineDomain:      onlineComp.domain || null,
-            detectionSignals:  da._debug || {}
+            detected:               true,
+            brandCompetitor:        brandCompName,
+            onlineCompetitor:       onlineComp.name,
+            onlineCompetitorSource: onlineComp.source || 'channel-search',
+            onlineDomain:           onlineComp.domain || null,
+            detectionSignals:       da._debug || {}
           };
           console.log('[' + jobId + '] Arena scores saved — brand keyGap:', (brandArena && brandArena.keyGap) || 'n/a',
             '| online keyGap:', (onlineArena && onlineArena.keyGap) || 'n/a');
@@ -913,32 +922,62 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Dual-arena scoring failed (non-critical):', arenaErr.message);
     }
 
-    // ── MERGE ONLINE ARENA COMPETITOR INTO competitors[] ─────────────────────
-    // The dual-arena block stores the second competitor in dualArena.onlineCompetitor
-    // but never writes it back to finalResult.competitors[]. Without this merge the
-    // frontend's competitor-reality section only ever sees one entry because the
-    // Claude JSON schema only shows a single competitor example to follow.
+    // ── MERGE SECOND AI-NAMED COMPETITOR INTO competitors[] ──────────────────
+    // Source of truth: evidence.competitorDecision.secondAiCompetitor — the
+    // second-most-mentioned name across real AI simulation response texts.
+    // This is ground-truth: it is what AI genuinely said, same standard as
+    // the primary competitor. Channel-search domains never enter this slot.
+    // The dual-arena block may also have added a competitor via Claude's JSON
+    // output (source: 'ai-competitor') — that is a secondary fallback only.
     try {
-      var dualMeta = finalResult['dualArena'];
-      if (dualMeta && dualMeta.onlineCompetitor && !dualMeta.scoringSkipped) {
-        var onlineName = dualMeta.onlineCompetitor;
-        var normOnline = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      var normComp = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      var cd2 = evidence['competitorDecision'];
+      var secondAiName = cd2 && cd2.secondAiCompetitor;
+      if (secondAiName && !isPlatformName(secondAiName) && !isGenericEntity(secondAiName)) {
         if (!Array.isArray(finalResult['competitors'])) finalResult['competitors'] = [];
-        var alreadyIn = finalResult['competitors'].some(function(c) { return normOnline(c && c.name) === normOnline(onlineName); });
-        if (!alreadyIn && !isPlatformName(onlineName) && !isGenericEntity(onlineName)) {
+        var alreadyIn2 = finalResult['competitors'].some(function(c) {
+          return normComp(c && c.name) === normComp(secondAiName);
+        });
+        if (!alreadyIn2) {
           finalResult['competitors'].push({
-            name:         onlineName,
+            name:         secondAiName,
             advantage:    '',
             gapLocation:  '',
             closeGap:     '',
-            evidence:     '',
-            queryContext: 'online-arena'
+            evidence:     'Named by AI in real recommendation queries for this category.',
+            queryContext: 'ai-ground-truth'
           });
-          console.log('[' + jobId + '] Dual-arena online competitor "' + onlineName + '" merged into competitors list.');
+          console.log('[' + jobId + '] Second AI-named competitor "' + secondAiName + '" added to competitors list.');
+        }
+      } else {
+        // Fallback: use dual-arena online competitor only if it was AI-named by Claude
+        // (not a channel-search domain). This handles cases where the frequency
+        // shortcut didn't find a second name but Claude's analysis did.
+        var dualMeta = finalResult['dualArena'];
+        if (dualMeta && dualMeta.onlineCompetitor && !dualMeta.scoringSkipped
+            && dualMeta.onlineCompetitorSource === 'ai-competitor') {
+          var onlineName = dualMeta.onlineCompetitor;
+          if (!Array.isArray(finalResult['competitors'])) finalResult['competitors'] = [];
+          var alreadyInOnline = finalResult['competitors'].some(function(c) {
+            return normComp(c && c.name) === normComp(onlineName);
+          });
+          if (!alreadyInOnline && !isPlatformName(onlineName) && !isGenericEntity(onlineName)) {
+            finalResult['competitors'].push({
+              name:         onlineName,
+              advantage:    '',
+              gapLocation:  '',
+              closeGap:     '',
+              evidence:     '',
+              queryContext: 'online-arena'
+            });
+            console.log('[' + jobId + '] AI-named dual-arena competitor "' + onlineName + '" added as fallback second competitor.');
+          }
+        } else if (dualMeta && dualMeta.onlineCompetitor && dualMeta.onlineCompetitorSource !== 'ai-competitor') {
+          console.log('[' + jobId + '] Online competitor "' + dualMeta.onlineCompetitor + '" skipped — source is channel-search, not AI-named.');
         }
       }
     } catch (mergeErr) {
-      console.warn('[' + jobId + '] Online competitor merge failed (non-critical):', mergeErr.message);
+      console.warn('[' + jobId + '] Second competitor merge failed (non-critical):', mergeErr.message);
     }
 
     // ── STAGE 3: DELIVERABLES ─────────────────────────────────────────────────
