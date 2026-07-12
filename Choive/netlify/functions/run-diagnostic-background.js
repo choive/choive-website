@@ -96,7 +96,25 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
 // word with the owner's own words has drifted into a different industry —
 // the CHOIVE→"AI evaluation platform" bug. Owner's words win on zero overlap.
 function categoryFaithful(ownerCategory, inferred) {
-  var stop = { the:1, and:1, for:1, with:1, from:1, into:1, that:1, this:1, b2b:1, b2c:1, online:1, platform:1, service:1, services:1, company:1, business:1, tool:1, agency:1, provider:1, global:1 };
+  // Stop list covers two groups:
+  // 1. Pure connectives (the, and, for…) — never meaningful category words
+  // 2. Generic industry/tech terms a user types when they don't know the right category
+  //    (software, tech, solution, app, system, product…). When ALL of the user's tokens
+  //    fall into this group, own[] is empty → return true → trust the inferred category.
+  //    This prevents generic inputs like "software" or "tech solution" from blocking the
+  //    correct inference (e.g. "B2B OTT middleware platform for telcos") while still
+  //    protecting specific categories (e.g. "AI selection diagnostic") from drifting.
+  var stop = {
+    // connectives
+    the:1, and:1, for:1, with:1, from:1, into:1, that:1, this:1,
+    // generic business/model words
+    b2b:1, b2c:1, online:1, platform:1, service:1, services:1, company:1,
+    business:1, tool:1, agency:1, provider:1, global:1,
+    // generic tech/product words — user typed these when unsure of real category
+    software:1, tech:1, technology:1, technologies:1, solution:1, solutions:1,
+    app:1, application:1, applications:1, system:1, systems:1, product:1, products:1,
+    digital:1, web:1, saas:1, cloud:1, startup:1, startup:1, enterprise:1
+  };
   var toks = function(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
       .filter(function(w) { return w.length > 2 && !stop[w]; });
@@ -607,11 +625,12 @@ exports.handler = async function (event) {
                     var responseSnippets = allSimResponsesOrig.slice(0, 6).map(function(r, i) {
                       return 'Response ' + (i + 1) + ':\n' + String(r).slice(0, 700);
                     }).join('\n\n');
+                    var inferredCatForPrompt = evidence['inferredCategory'] || category || '';
                     var extractPrompt =
-                      'TASK: From the AI recommendation responses below, identify the real business names being recommended.\n\n'
+                      'TASK: From the AI recommendation responses below, identify the real business names being recommended as competitors to the subject business.\n\n'
                       + 'SUBJECT BUSINESS (exclude this from results): ' + name + '\n'
-                      + 'CATEGORY: ' + (category || evidence['inferredCategory'] || '') + '\n\n'
-                      + 'KNOWN COMPETITOR DOMAINS (from search — use as hints if they appear in responses):\n'
+                      + 'SUBJECT CATEGORY: ' + inferredCatForPrompt + '\n\n'
+                      + 'KNOWN COMPETITORS (company names or domains — prioritise these if they appear in responses):\n'
                       + (hintList || 'none') + '\n\n'
                       + 'AI SIMULATION RESPONSES:\n---\n'
                       + responseSnippets
@@ -619,10 +638,11 @@ exports.handler = async function (event) {
                       + 'RULES:\n'
                       + '1. Extract ONLY real business/brand names that AI is actively recommending.\n'
                       + '2. EXCLUDE: the subject business (' + name + '), generic category terms, descriptive phrases (e.g. "Beide Optionen", "Both Options", "Black Angus Rinder"), platform names (Google, Amazon, Trustpilot), adjectives, and section headings.\n'
-                      + '3. Count how many responses mention each business name (case-insensitive).\n'
-                      + '4. Return the top 2 most-mentioned real business names.\n'
-                      + '5. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
-                      + '6. If no real business name appears, use empty string.\n\n'
+                      + '3. CRITICAL — SAME CATEGORY ONLY: Only return competitors that operate in the same category and serve the same type of buyer as the subject. If the subject is B2B, exclude consumer brands even if they are mentioned often. If the subject sells middleware or software to businesses, do not return consumer-facing products or streaming services — those are potential customers, not competitors.\n'
+                      + '4. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
+                      + '5. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
+                      + '6. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
+                      + '7. If no real same-category competitor appears, use empty string.\n\n'
                       + 'Return ONLY this JSON (no markdown, no explanation):\n'
                       + '{"first":"BusinessName","second":"BusinessName","firstCount":3,"secondCount":2}';
 
