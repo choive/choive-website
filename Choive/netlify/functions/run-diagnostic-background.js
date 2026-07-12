@@ -375,6 +375,33 @@ exports.handler = async function (event) {
         websiteText    = fallbackResult.text    || '';
         websiteSignals = fallbackResult.signals || {};
       }
+      // ── WEBSITE IDENTITY CHECK ────────────────────────────────────────────────
+      // If the user submitted a website that fetched successfully but belongs to
+      // a completely different business (e.g. they accidentally pasted a competitor's
+      // URL), the page title and H1 will share no words with the business name.
+      // In that case, switch to the inferred official site derived from search results.
+      if (websiteText && inferredSite) {
+        var titleText   = (websiteSignals && websiteSignals.titleText) || '';
+        var h1Text      = (websiteSignals && websiteSignals.h1Text)    || '';
+        var pageContent = (titleText + ' ' + h1Text).toLowerCase();
+        // Extract meaningful tokens from the business name (3+ chars, not numbers alone)
+        var bizTokens = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+          .filter(function(w) { return w.length >= 3 && !/^\d+$/.test(w); });
+        var pageMatchesName = bizTokens.length === 0 || bizTokens.some(function(tok) {
+          return pageContent.indexOf(tok) !== -1;
+        });
+        if (!pageMatchesName) {
+          console.warn('[' + jobId + '] Website identity mismatch: "' + titleText + '" does not match business "' + name + '" — switching to inferred site: ' + inferredSite);
+          var correctedResult = await fetchWebsiteText(inferredSite).catch(function() {
+            return { text: '', signals: {} };
+          });
+          if (correctedResult.text) {
+            websiteText    = correctedResult.text    || '';
+            websiteSignals = correctedResult.signals || {};
+            console.log('[' + jobId + '] Corrected to inferred site: ' + inferredSite);
+          }
+        }
+      }
       const targetDomain = normalizeUrl(website || '');
       if (targetDomain) {
         visibilityPos = (serperPayload.results || []).findIndex(
