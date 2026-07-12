@@ -3383,7 +3383,7 @@ function showResults(r, jobId) {
     compList = [{ name: r.displacement.competitorName, analysis: r.displacement.competitorWhy, queryContext: r.displacement.competitorQuery }];
   }
   var compName     = compList.length > 0 ? compList[0].name : '';
-  var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
+  var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
   var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
   var compContext  = compList.length > 0 ? (compList[0].queryContext || '') : '';
   var isCatBased   = compContext === 'category-based analysis';
@@ -3399,7 +3399,7 @@ function showResults(r, jobId) {
 
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
-    var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+    var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
     // For online-arena competitors that were merged in server-side without Claude analysis,
     // fall back to the arena scoring's priorityAction as the descriptor.
     if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
@@ -3947,7 +3947,7 @@ function exportPDF() {
   }
   var compHtml = compList.length > 0
     ? compList.map(function(cp) {
-        var an = cp.analysis || [cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
+        var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
         return '<div style="margin-bottom:14px;padding:14px 16px;background:#F4F2EE;">'
           + '<div style="font-size:16px;font-weight:700;font-style:italic;margin-bottom:6px;">' + cp.name + '</div>'
           + (an ? '<div style="font-size:13px;color:#444;line-height:1.65;">' + an + '</div>' : '')
