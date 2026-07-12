@@ -590,148 +590,135 @@ exports.handler = async function (event) {
                   seenKeys[key] = true;
                   return true;
                 });
-                // ── EXTRACT NAMES FROM RAW AI RESPONSE TEXTS ──────────────────────────
-                // The candidate list above only covers names we already know (Serper + owner input).
-                // If AI mentions a competitor not in those sources (e.g. "Riekert"), we'd miss it.
-                // This block extracts proper-noun sequences directly from the AI response texts
-                // and appends them to uniqueCandidates before counting.
+                // ── DIRECT CLAUDE EXTRACTION ──────────────────────────────────────────
+                // Ask Claude to read its own simulation response texts and identify which
+                // specific business names it recommended. This eliminates regex noise
+                // (category terms like "Black Angus Rinder", boilerplate like "Beide Optionen")
+                // by using language understanding instead of pattern matching.
+                // Serper domain candidates are passed as hints.
+                // Falls back to frequency counting if the API call fails.
+                var extractedCompetitors = null;
                 if (allSimResponsesOrig.length > 0) {
-                  // Build a context string covering the business's own identity AND the
-                  // simulation query texts. Terms that appear in either place describe
-                  // the category being searched for — not competing businesses.
-                  // Example: "Black Angus" appears in both Taurbull's description AND
-                  // every query ("welche Black Angus Rindfleisch Marken...") — it is
-                  // what buyers search FOR, not who AI recommends IN ANSWER.
-                  var bizContext = (name + ' ' + (category || '') + ' ' + (description || '') + ' ' + (evidence['inferredCategory'] || '') + ' ' + allSimQueryTexts.join(' ')).toLowerCase();
+                  try {
+                    var hintList = uniqueCandidates.slice(0, 12).map(function(c) {
+                      // Strip TLD for cleaner display (doncarne.de → doncarne.de shown as-is; scoring strips it)
+                      return c;
+                    }).join(', ');
+                    var responseSnippets = allSimResponsesOrig.slice(0, 6).map(function(r, i) {
+                      return 'Response ' + (i + 1) + ':\n' + String(r).slice(0, 700);
+                    }).join('\n\n');
+                    var extractPrompt =
+                      'TASK: From the AI recommendation responses below, identify the real business names being recommended.\n\n'
+                      + 'SUBJECT BUSINESS (exclude this from results): ' + name + '\n'
+                      + 'CATEGORY: ' + (category || evidence['inferredCategory'] || '') + '\n\n'
+                      + 'KNOWN COMPETITOR DOMAINS (from search — use as hints if they appear in responses):\n'
+                      + (hintList || 'none') + '\n\n'
+                      + 'AI SIMULATION RESPONSES:\n---\n'
+                      + responseSnippets
+                      + '\n---\n\n'
+                      + 'RULES:\n'
+                      + '1. Extract ONLY real business/brand names that AI is actively recommending.\n'
+                      + '2. EXCLUDE: the subject business (' + name + '), generic category terms, descriptive phrases (e.g. "Beide Optionen", "Both Options", "Black Angus Rinder"), platform names (Google, Amazon, Trustpilot), adjectives, and section headings.\n'
+                      + '3. Count how many responses mention each business name (case-insensitive).\n'
+                      + '4. Return the top 2 most-mentioned real business names.\n'
+                      + '5. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
+                      + '6. If no real business name appears, use empty string.\n\n'
+                      + 'Return ONLY this JSON (no markdown, no explanation):\n'
+                      + '{"first":"BusinessName","second":"BusinessName","firstCount":3,"secondCount":2}';
 
-                  var allCapsRe = /\b([A-Z]{2}[A-Z0-9]*(?:[ \t]+[A-Z][A-Z0-9]+){0,2})\b/g;
-                  // titleRe includes German lowercase umlaut chars (äöüß) in word continuations
-                  // so brands like "Müller" or "Fleischerei Bauer" are captured correctly.
-                  // \b word-boundary only works for ASCII word chars, so the opening char
-                  // stays [A-Z]. Continuations use [a-zäöüß] (lowercase only) — uppercase
-                  // is deliberately excluded to prevent legal suffixes like GmbH matching.
-                  var titleRe   = /\b([A-Z][a-zäöüß]{1,}(?:[ \t]+[A-Z][a-zäöüß]{1,}){1,2})\b/g;
-                  var titleCounts = {};
-                  var titleNames  = {};
-                  // FIX C — stopwords for ALL-CAPS single-word extraction (generic adjectives and category terms)
-                  var CAPS_STOPWORDS = { PREMIUM:1, QUALITY:1, FRESH:1, LOCAL:1, DIRECT:1, ONLINE:1, GERMAN:1, FRENCH:1, BEST:1, TOP:1, FIRST:1, FREE:1, FAST:1, NEXT:1, MAIN:1, KEY:1, NEW:1, OLD:1, BIG:1, SMALL:1, HIGH:1, LOW:1, FULL:1, WIDE:1, GOOD:1, REAL:1, TRUE:1, PLUS:1, PRO:1, MAX:1, LIVE:1, OPEN:1, SOFT:1, HARD:1, PURE:1, SMART:1, QUICK:1, CLEAN:1, CLEAR:1, SAFE:1, PRIME:1, SELECT:1, CHOICE:1, EXPERT:1, LEADER:1, GLOBAL:1, EUROPE:1, MARKET:1 };
-                  allSimResponsesOrig.forEach(function(txt) {
-                    // ALL-CAPS sequences — very high confidence business names.
-                    // Single-word acronyms require 6+ chars to exclude technology
-                    // category terms like IPTV (4), OTT (3), DRM (3), CDN (3).
-                    // Multi-word sequences (e.g. "DON CARNE", "CANAL PLUS") keep
-                    // the 3-char minimum since two caps words = almost certainly a brand.
-                    var m; allCapsRe.lastIndex = 0;
-                    while ((m = allCapsRe.exec(txt)) !== null) {
-                      var word = m[1].trim();
-                      var isMultiWord = word.indexOf(' ') !== -1 || word.indexOf('\t') !== -1;
-                      var minLen = isMultiWord ? 3 : 6;
-                      if (word.length >= minLen) {
-                        var nk = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        // Skip if this term appears in the business's own category/description/queries
-                        if (nk && nk !== normSelf && !seenKeys[nk]
-                            && (' ' + bizContext + ' ').indexOf(' ' + word.toLowerCase() + ' ') === -1
-                            && !CAPS_STOPWORDS[word]
-                            && !isPlatformName(word) && !isGenericEntity(word) && !isGenericPhrase(word)) {
-                          seenKeys[nk] = true;
-                          uniqueCandidates.push(word);
-                        }
+                    var extractController = new AbortController();
+                    var extractTimer = setTimeout(function() { extractController.abort(); }, 15000);
+                    var extractResp = await fetch('https://api.anthropic.com/v1/messages', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': process.env.ANTHROPIC_API_KEY,
+                        'anthropic-version': '2023-06-01'
+                      },
+                      body: JSON.stringify({
+                        model: 'claude-sonnet-4-6',
+                        max_tokens: 120,
+                        temperature: 0,
+                        messages: [{ role: 'user', content: extractPrompt }]
+                      }),
+                      signal: extractController.signal
+                    });
+                    clearTimeout(extractTimer);
+                    if (extractResp.ok) {
+                      var extractData = await extractResp.json();
+                      var extractText = (extractData.content || [])
+                        .filter(function(b) { return b.type === 'text'; })
+                        .map(function(b) { return b.text || ''; }).join('').trim();
+                      var extractClean = extractText.replace(/```json|```/g, '').trim();
+                      var extractParsed = JSON.parse(extractClean);
+                      if (extractParsed && typeof extractParsed === 'object') {
+                        var f = String(extractParsed.first  || '').trim();
+                        var s = String(extractParsed.second || '').trim();
+                        extractedCompetitors = {
+                          first:        f || null,
+                          second:       s || null,
+                          firstCount:   Number(extractParsed.firstCount)  || 0,
+                          secondCount:  Number(extractParsed.secondCount) || 0
+                        };
+                        console.log('[' + jobId + '] Direct extraction result: first="' + f + '" (' + (extractParsed.firstCount || 0) + ') second="' + s + '" (' + (extractParsed.secondCount || 0) + ')');
                       }
+                    } else {
+                      console.warn('[' + jobId + '] Direct extraction API error: ' + extractResp.status);
                     }
-                    // Title-case sequences (2-3 words) — count per response; require 2+ responses
-                    var seenInThisTxt = {};
-                    titleRe.lastIndex = 0;
-                    while ((m = titleRe.exec(txt)) !== null) {
-                      var phrase = m[1].trim();
-                      var tk = phrase.toLowerCase().replace(/[^a-z0-9]/g, '');
-                      if (tk && !seenInThisTxt[tk]) {
-                        seenInThisTxt[tk] = true;
-                        titleCounts[tk] = (titleCounts[tk] || 0) + 1;
-                        if (!titleNames[tk]) titleNames[tk] = phrase;
-                      }
-                    }
-                  });
-                  // FIX E — boilerplate stoplist for title-case phrases that AI uses as section headers/qualifiers
-                  // Covers English AND German AI response boilerplate patterns.
-                  // German umlaut entries (e.g. 'ebenfalls erwähnenswert') are active because
-                  // titleRe now captures umlaut continuations via [a-zäöüß].
-                  var TITLE_STOPWORDS = {
-                    // English
-                    'top recommendations':1, 'first choice':1, 'best known':1, 'key players':1,
-                    'other options':1, 'main competitors':1, 'well known':1, 'widely used':1,
-                    'highly recommended':1, 'good options':1, 'strong choice':1, 'great option':1,
-                    'good choice':1, 'popular choice':1, 'popular option':1, 'also consider':1,
-                    'worth noting':1, 'worth considering':1, 'both options':1, 'strong options':1,
-                    // German AI response boilerplate
-                    'beide optionen':1, 'beide anbieter':1, 'beide marken':1, 'beide varianten':1,
-                    'erste wahl':1, 'gute option':1, 'gute wahl':1, 'beste marken':1,
-                    'weitere optionen':1, 'andere marken':1, 'andere anbieter':1,
-                    'sehr empfehlenswert':1, 'gut bekannt':1, 'weit verbreitet':1,
-                    'auch empfohlen':1, 'ebenfalls empfohlen':1, 'ebenfalls erwähnenswert':1
-                  };
-                  // Add title-case phrases seen in 2+ response texts —
-                  // skip any phrase that is a substring of the business's own category/description.
-                  // Also reject if any 2-consecutive-word sub-phrase appears in bizContext —
-                  // this catches phrases like "Black Angus Rinder" where "black angus" is a
-                  // category term even though the full 3-word phrase isn't an exact match.
-                  Object.keys(titleCounts).forEach(function(tk) {
-                    var phrase = titleNames[tk];
-                    var phraseLc = phrase.toLowerCase();
-                    // Whole-phrase exact word-boundary check
-                    var wholeMatch = (' ' + bizContext + ' ').indexOf(' ' + phraseLc + ' ') !== -1;
-                    // Sub-phrase check: any 2 consecutive words of the phrase in bizContext?
-                    var pwds = phraseLc.split(/\s+/);
-                    var subPhraseMatch = false;
-                    for (var wi = 0; wi < pwds.length - 1; wi++) {
-                      var sub2 = pwds[wi] + ' ' + pwds[wi + 1];
-                      if (sub2.length >= 6 && (' ' + bizContext + ' ').indexOf(' ' + sub2 + ' ') !== -1) {
-                        subPhraseMatch = true;
-                        break;
-                      }
-                    }
-                    if (titleCounts[tk] >= 2 && tk !== normSelf && !seenKeys[tk]
-                        && !wholeMatch && !subPhraseMatch
-                        && !TITLE_STOPWORDS[phraseLc]
-                        && !isPlatformName(phrase) && !isGenericEntity(phrase) && !isGenericPhrase(phrase)) {
-                      seenKeys[tk] = true;
-                      uniqueCandidates.push(phrase);
-                    }
-                  });
-                  console.log('[' + jobId + '] Candidate pool after AI-text extraction: ' + uniqueCandidates.length + ' names');
-                }
-                // Count mentions across ALL simulation response texts — track top 2
-                var bestName = null, bestCount = 0;
-                var secondName = null, secondCount = 0;
-                uniqueCandidates.forEach(function(n) {
-                  // Strip domain TLD before normalizing so that "gourmetfleisch.de"
-                  // produces needle "gourmetfleisch" (not "gourmetfleischde") and
-                  // correctly matches an AI response that says "Gourmetfleisch".
-                  var forNeedle = n.replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
-                  var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  if (!needle) return;
-                  var cnt = allSimResponses.filter(function(r) {
-                    return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
-                  }).length;
-                  if (cnt > bestCount) {
-                    secondName = bestName; secondCount = bestCount;
-                    bestName = n; bestCount = cnt;
-                  } else if (cnt > 0 && cnt > secondCount) {
-                    secondName = n; secondCount = cnt;
+                  } catch (extractErr) {
+                    console.warn('[' + jobId + '] Direct extraction failed, will use frequency fallback:', extractErr.message);
                   }
-                });
-                evidence['competitorDecision'] = {
-                  realCompetitor:     bestName    || null,
-                  aiRecommends:       bestName    || null,
-                  secondAiCompetitor: secondName  || null,
-                  source:             'ai-ground-truth',
-                  selectionVersion:   3,
-                  mentionCount:       bestCount,
-                  totalResponses:     allSimResponses.length,
-                  categoryUnowned:    !bestName || bestCount === 0
-                };
-                console.log('[' + jobId + '] competitorDecision: ' +
-                  (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
-                  (secondName ? ' | second: ' + secondName + ' (' + secondCount + ')' : ''));
+                }
+
+                // ── SET competitorDecision ─────────────────────────────────────────────
+                if (extractedCompetitors && extractedCompetitors.first) {
+                  // Primary path: Claude read its own responses and named competitors directly
+                  evidence['competitorDecision'] = {
+                    realCompetitor:     extractedCompetitors.first,
+                    aiRecommends:       extractedCompetitors.first,
+                    secondAiCompetitor: extractedCompetitors.second || null,
+                    source:             'ai-direct-extraction',
+                    selectionVersion:   4,
+                    mentionCount:       extractedCompetitors.firstCount,
+                    totalResponses:     allSimResponses.length,
+                    categoryUnowned:    false
+                  };
+                  console.log('[' + jobId + '] competitorDecision (direct): ' + extractedCompetitors.first + ' (' + extractedCompetitors.firstCount + '/' + allSimResponses.length + ')' + (extractedCompetitors.second ? ' | second: ' + extractedCompetitors.second + ' (' + extractedCompetitors.secondCount + ')' : ''));
+                } else {
+                  // Fallback: frequency count mentions of Serper/known candidates across responses
+                  console.log('[' + jobId + '] Direct extraction returned no names — using frequency fallback on ' + uniqueCandidates.length + ' candidates');
+                  var bestName = null, bestCount = 0;
+                  var secondName = null, secondCount = 0;
+                  uniqueCandidates.forEach(function(n) {
+                    // Strip domain TLD so "gourmetfleisch.de" → needle "gourmetfleisch"
+                    // matches AI response that says "Gourmetfleisch".
+                    var forNeedle = n.replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
+                    var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (!needle) return;
+                    var cnt = allSimResponses.filter(function(r) {
+                      return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
+                    }).length;
+                    if (cnt > bestCount) {
+                      secondName = bestName; secondCount = bestCount;
+                      bestName = n; bestCount = cnt;
+                    } else if (cnt > 0 && cnt > secondCount) {
+                      secondName = n; secondCount = cnt;
+                    }
+                  });
+                  evidence['competitorDecision'] = {
+                    realCompetitor:     bestName   || null,
+                    aiRecommends:       bestName   || null,
+                    secondAiCompetitor: secondName || null,
+                    source:             'ai-ground-truth',
+                    selectionVersion:   3,
+                    mentionCount:       bestCount,
+                    totalResponses:     allSimResponses.length,
+                    categoryUnowned:    !bestName || bestCount === 0
+                  };
+                  console.log('[' + jobId + '] competitorDecision (fallback): ' +
+                    (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
+                    (secondName ? ' | second: ' + secondName + ' (' + secondCount + ')' : ''));
+                }
               }
             } catch (freqErr) {
               console.warn('[' + jobId + '] Competitor frequency count failed:', freqErr.message);
