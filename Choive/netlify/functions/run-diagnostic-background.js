@@ -605,7 +605,12 @@ exports.handler = async function (event) {
                   var bizContext = (name + ' ' + (category || '') + ' ' + (description || '') + ' ' + (evidence['inferredCategory'] || '') + ' ' + allSimQueryTexts.join(' ')).toLowerCase();
 
                   var allCapsRe = /\b([A-Z]{2}[A-Z0-9]*(?:[ \t]+[A-Z][A-Z0-9]+){0,2})\b/g;
-                  var titleRe   = /\b([A-Z][a-z]{1,}(?:[ \t]+[A-Z][a-z]{1,}){1,2})\b/g;
+                  // titleRe includes German lowercase umlaut chars (äöüß) in word continuations
+                  // so brands like "Müller" or "Fleischerei Bauer" are captured correctly.
+                  // \b word-boundary only works for ASCII word chars, so the opening char
+                  // stays [A-Z]. Continuations use [a-zäöüß] (lowercase only) — uppercase
+                  // is deliberately excluded to prevent legal suffixes like GmbH matching.
+                  var titleRe   = /\b([A-Z][a-zäöüß]{1,}(?:[ \t]+[A-Z][a-zäöüß]{1,}){1,2})\b/g;
                   var titleCounts = {};
                   var titleNames  = {};
                   // FIX C — stopwords for ALL-CAPS single-word extraction (generic adjectives and category terms)
@@ -648,6 +653,8 @@ exports.handler = async function (event) {
                   });
                   // FIX E — boilerplate stoplist for title-case phrases that AI uses as section headers/qualifiers
                   // Covers English AND German AI response boilerplate patterns.
+                  // German umlaut entries (e.g. 'ebenfalls erwähnenswert') are active because
+                  // titleRe now captures umlaut continuations via [a-zäöüß].
                   var TITLE_STOPWORDS = {
                     // English
                     'top recommendations':1, 'first choice':1, 'best known':1, 'key players':1,
