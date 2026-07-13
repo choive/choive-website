@@ -320,31 +320,34 @@ function buildQueries(catClean, city, name, businessModel) {
 
     return [
       {
-        // Context 1 — SPECIFIC NICHE: finds who AI recommends in the exact
-        // product niche. Uses the full coreProduct term and the farm-ownership
-        // hint so only same-model brands (not retailers) are named.
-        label: 'Niche brand query',
-        intent: 'A buyer looking for a specific type of farm-owned brand that sells direct',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only brands that own their own production and sell directly to consumers — not retailers that resell from multiple farms. Be specific and name real brands.' + hint,
-        query: 'What are the best ' + coreProduct + ' brands' + locationStr + '? Which ones produce their own product and sell directly to customers online?'
+        // Context 1 — BROAD DISCOVERY: open to ALL sources — retailers,
+        // brands, farm-direct, online shops. This is where established
+        // market leaders (Don Carne, Otto Gourmet, Gourmetfleisch) are
+        // most visible. Intentionally broad so the frequency table captures
+        // whoever dominates the widest buyer query.
+        label: 'Discovery query',
+        intent: 'A buyer looking for the best place to buy high quality beef online',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name specific online shops, brands, and retailers — include all types: farm-direct brands, premium retailers, and established online butchers. Be specific and name real options.' + hint,
+        query: 'Where is the best place to buy high quality ' + coreProduct + ' online' + locationStr + '? Name the top 3-5 options with a brief reason for each.'
       },
       {
-        // Context 2 — ONLINE/DTC CHANNEL: open to ALL online sources in the
-        // general category. This is where established DTC brands and premium
-        // online shops appear — including competitors the niche query misses.
-        label: 'Online channel query',
-        intent: 'A buyer searching for the best place to buy this product category online',
-        system: 'You are a helpful AI assistant with live web search. Search for current recommendations before answering. Name specific brands or online shops — include both producers that sell direct and established online specialists. Be concrete and specific.',
-        query: 'Where is the best place to buy ' + generalCat + ' online' + locationStr + '? Name 3-5 specific brands or shops with a brief reason for each.'
+        // Context 2 — QUALITY/NICHE: the buyer knows what they want and is
+        // asking for the best quality in this specific product. Surfaces
+        // both premium retailers AND farm-direct brands that compete for
+        // quality-conscious buyers.
+        label: 'Quality comparison query',
+        intent: 'A buyer comparing quality across all available sources',
+        system: 'You are a helpful AI assistant with live web search. Search for current reviews, comparisons, and recommendations before answering. Name the specific brands or shops most consistently recommended for quality. Include both online shops and farm-direct brands.' + hint,
+        query: 'What are the best options for buying premium quality ' + coreProduct + locationStr + '? Which brands or online shops are most recommended and why?'
       },
       {
-        // Context 3 — PREMIUM/QUALITY TIER: open to the full premium segment.
-        // Finds who AI names when a buyer simply wants the best, regardless
-        // of business model. Often where category leaders are most visible.
-        label: 'Premium category query',
-        intent: 'A buyer wanting the best premium option in the category',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name the specific brand or producer consistently rated as the best quality option. Be direct and specific.',
-        query: 'What is the best premium ' + generalCat + locationStr + '? Which brand would you recommend and why? Just give me your single best answer.'
+        // Context 3 — DIRECT RECOMMENDATION: buyer wants one answer.
+        // Finds who AI names most confidently as the single best option
+        // in this category — often the market leader with most trust signals.
+        label: 'Direct recommendation',
+        intent: 'A buyer ready to decide — wants the single best recommendation',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Give a direct, confident recommendation. Name one specific brand, shop, or online retailer.' + hint,
+        query: 'Which online shop has the best ' + coreProduct + ' delivery' + locationStr + '? Just give me your single best recommendation and why.'
       }
     ];
   }
