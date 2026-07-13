@@ -291,6 +291,11 @@ function buildPrompt(evidence) {
     + '1. Exactly what was found\n'
     + '2. The number needed to be credible in this category\n'
     + '3. The specific platform that matters most for this buyer type\n\n'
+    + 'PRESS AND MEDIA ACTION RULE:\n'
+    + 'When the Trust signal audit shows "Press or media mention: FAIL" (no confirmed press or media coverage found), you MUST include an action addressing how to get the business named in an independent publication, trade outlet, food blog, industry site, or news source relevant to its category. This is a direct trust signal AI systems use — a business mentioned nowhere outside its own website is treated as unverifiable. The action must:\n'
+    + '- Name the specific type of outlet that matters for this business (food media for beef brands, industry press for B2B software, etc.)\n'
+    + '- Suggest one concrete, achievable step (pitch to a named outlet type, submit to a specific directory, contribute to an industry forum or podcast)\n'
+    + '- Not be generic — tie it to the specific product or story the business has that would be newsworthy\n\n'
     + 'RECOMMENDED PLATFORM \u2014 CRITICAL: name the SINGLE real review or credibility platform that actually matters most for buyers in THIS SPECIFIC inferred category \u2014 reason from the real business type, never default to a generic answer. Examples of the reasoning expected: a B2B software company \u2014 G2 or Capterra; a restaurant \u2014 Google Reviews; a law firm \u2014 Chambers or Legal 500; a hotel \u2014 TripAdvisor and Google; a construction contractor \u2014 Google Business Profile and Houzz; a real estate agency \u2014 Zillow or a local realtor platform; a fitness studio \u2014 Google and ClassPass; a manufacturer or B2B supplier \u2014 industry-specific directories or Clutch; a consumer product brand with no single obvious platform \u2014 Trustpilot is a legitimate default, but only after genuinely considering whether a more specific, category-relevant platform exists first. Trustpilot must never be the reflexive default \u2014 it is correct only when it is truly the platform this buyer type actually checks.\n\n'
     + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
     + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
@@ -912,12 +917,20 @@ async function scoreWithClaudeOnce(evidence) {
   // Dedicated competitor selection first; its decision is injected as fact.
   // Idempotent: on a scoring retry the existing decision is reused, not recomputed.
   try {
-    // Only skip selectDominantCompetitor if a real competitor was already found.
-    // A truthy competitorDecision object with realCompetitor: null (categoryUnowned)
-    // must NOT block this stage — the sophisticated selection reads raw simulation
-    // text for brand names that never made it into the pre-built candidate list.
     var existingDecision = evidence.competitorDecision;
-    var compDecision = (existingDecision && existingDecision.realCompetitor)
+    // Skip selectDominantCompetitor ONLY when the prior extraction was high-confidence:
+    //   selectionVersion 4 (direct Claude extraction, not frequency fallback)
+    //   AND mentionCount >= 2 (appeared in at least 2 of 3 simulation responses)
+    //   AND realCompetitor is non-null
+    // In all other cases — no prior decision, low confidence (count=1), frequency
+    // fallback (v3), or empty result — run the full sophisticated selection which has
+    // grounding requirements, same-serviceable-market checks, and geography validation
+    // that the quick background extraction lacks.
+    var highConfidence = existingDecision
+      && existingDecision.realCompetitor
+      && existingDecision.selectionVersion >= 4
+      && (existingDecision.mentionCount || 0) >= 2;
+    var compDecision = highConfidence
       ? existingDecision
       : await selectDominantCompetitor(evidence);
     if (compDecision) {
