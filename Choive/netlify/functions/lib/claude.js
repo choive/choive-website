@@ -775,62 +775,80 @@ function buildFrequencyTable(evidence, subjectName) {
 
 async function selectDominantCompetitor(evidence) {
  try {
-  var name       = String(evidence.name || '').trim();
-  var category   = String(evidence.category || '').trim();
-  var inferred   = String(evidence.inferredCategory || category).trim();
-  var previous   = sanitizeExternal(String(evidence.previousCompetitor || '')).trim();
-  var known      = String(evidence.knownCompetitors || '').trim();
-  var summary    = String((evidence.summaries || {}).businessSummary || '').slice(0, 600);
-  var siteText   = sanitizeExternal(String(evidence.websiteText || '')).slice(0, 900);
-  var website    = String(evidence.website || '').trim();
-  var city       = String(evidence.city || '').trim();
+  var name     = String(evidence.name     || '').trim();
+  var category = String(evidence.category || '').trim();
+  var inferred = String(evidence.inferredCategory || category).trim();
+  var known    = String(evidence.knownCompetitors || '').trim();
+  var siteText = sanitizeExternal(String(evidence.websiteText || '')).slice(0, 1200);
+  var website  = String(evidence.website  || '').trim();
+  var city     = String(evidence.city     || '').trim();
+  var kgText   = sanitizeExternal(String((evidence.kgText || '')).replace(/^None$/i, '')).slice(0, 400);
 
+  // AI SELECTION GROUND TRUTH — who AI actually recommended in buyer queries
   var simBefore = evidence.aiSimulationBefore || null;
   var groundTruth = '';
+  var aiNamedCompetitors = [];
   if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
     groundTruth = simBefore.before.results.map(function(r, i) {
       return 'QUERY ' + (i + 1) + ': "' + String(r.query || '') + '"\nAI ANSWERED: '
-        + sanitizeExternal(String(r.response || '')).slice(0, 900);
+        + sanitizeExternal(String(r.response || '')).slice(0, 800);
     }).join('\n\n');
   }
+
+  // Search evidence competitors — who appeared in Serper results
   var searchComps = (evidence.competitors || []).map(function(c) {
     return String(c.name || c.domain || '');
-  }).filter(Boolean).slice(0, 6).join(', ');
+  }).filter(Boolean).slice(0, 8).join(', ');
 
-  // Deterministic frequency table \u2014 replaces continuity/"protect the
-  // old answer" with real measurement: how often does each real candidate
-  // actually appear across every raw ground-truth sample. No name is
-  // protected by a prior run anymore; the highest verified frequency wins,
-  // recomputed fresh every time.
-  var freq;
-  try {
-    freq = buildFrequencyTable(evidence, name);
-  } catch (freqErr) {
-    console.warn('[competitor-selection] buildFrequencyTable failed:', freqErr.message);
-    freq = { table: [], corpusSize: 0 };
-  }
-  var freqTableText = freq.table.length
-    ? freq.table.map(function(c) { return '- ' + c.name + ': named in ' + c.frequency + ' of ' + c.sampleSize + ' independent AI samples'; }).join('\n')
-    : 'No candidates identified from owner input, website declarations, or search evidence.';
-
-  var prompt = 'You verify and rank real-world competitors for a business diagnostic using OBSERVED FREQUENCY across real AI samples \u2014 not reasoning from scratch. Respond ONLY with a JSON object, no markdown, no preamble.\n\n'
-    + 'SUBJECT BUSINESS: ' + name + (website ? ' (' + website + ')' : '') + '\n'
-    + 'CATEGORY: ' + inferred + '\n'
-    + (city ? 'MARKET / LOCATION: ' + city + '\n' : '')
-    + (siteText ? 'SUBJECT\u2019S OWN WEBSITE (excerpt \u2014 note any competitors it names or compares against): ' + siteText + '\n' : '')
-    + (summary ? 'WHAT IT DOES: ' + summary + '\n' : '')
-    + (known ? 'COMPETITORS NAMED BY THE OWNER (highest-truth source): ' + known + '\n' : '')
-    + '\nOBSERVED FREQUENCY ACROSS ' + freq.corpusSize + ' INDEPENDENT AI SAMPLES (this run\u2019s real ground truth \u2014 no candidate is protected by any previous run):\n' + freqTableText + '\n'
-    + (groundTruth ? '\nAI SELECTION GROUND TRUTH \u2014 what AI actually recommended when asked for this category:\n' + groundTruth + '\n' : '')
-    + (searchComps ? '\nCOMPETITORS FOUND IN SEARCH EVIDENCE: ' + searchComps + '\n' : '')
-    + '\nProduce TWO answers:\n\n'
-   + 'ANSWER A \u2014 realCompetitor: the subject\u2019s TRUE head-to-head market rival \u2014 the company a knowledgeable buyer or the owner would name as the direct alternative in a deal. GROUNDING REQUIREMENT, NO EXCEPTIONS: realCompetitor MUST be a name that actually appears somewhere in the evidence provided \u2014 either (a) in the AI SELECTION GROUND TRUTH text itself (what AI actually answered, even if it is not one of the pre-listed frequency-table candidates), (b) in the frequency table / search evidence, or (c) explicitly owner-named or website-declared. It may NEVER be a name recalled purely from general training knowledge with no supporting evidence anywhere in this prompt \u2014 confirmed live: this produced a fabricated, ungrounded competitor (\u201cBeef Bandits\u201d) that appeared nowhere in any real evidence for the business. A name you \u201cknow\u201d to be a real company in the category is NOT sufficient on its own; it must also be traceable to something actually observed in THIS run\u2019s evidence. Requirements beyond grounding: same category, same buyer type, comparable deal size, AND SAME SERVICEABLE MARKET \u2014 a business the subject\u2019s own customers could actually buy from instead. A company that does not sell, ship, or operate where the subject\u2019s customers are FAILS this test no matter how similar the product (a US-only meat brand is NOT the rival of a Germany-only meat brand; a Switzerland-only delivery service is NOT the rival of a business selling to German customers). PLATFORMS ARE NOT RIVALS: review marketplaces (G2, Trustpilot, Capterra), model hubs, app stores, directories, and general infrastructure are channels a recommendation flows through \u2014 never a head-to-head competitor, unless the subject itself is such a platform. SAME ROLE IN THE TRANSACTION: a true competitor is a company a buyer would put on the SAME SHORTLIST for the SAME purchasing decision. Three tests must all pass: (a) same type of product or service sold, (b) same type of buyer, (c) same commercial model \u2014 e.g. both license software, both sell direct, both offer managed services. A company that buys or uses the product type is a customer, not a competitor. A company in a different part of the value chain \u2014 distributor, infrastructure provider, content owner \u2014 serves a different market even if it appears adjacent. The test is always: would a real buyer choose this company INSTEAD of the subject for the same need? SAME BUYER means the SAME PERSON spends the money: a tool bought by HR teams to screen candidates is NOT the rival of a tool bought by business owners to improve their AI visibility, even when their names share words. MARKET CONFIDENCE RULE: if you are not CONFIDENT a candidate actually sells or delivers to the subject\u2019s market, it FAILS \u2014 uncertainty disqualifies, never the reverse. A real, currently operating NAMED COMPANY \u2014 not a generic category description (\u201ccertified direct marketers\u201d, \u201clocal organic suppliers\u201d are types of seller, not a business); if the ground truth only offers a generic description, treat it as no qualifying name; never a directory, aggregator, or adjacent giant from another industry (e.g. a data-labeling company is NOT a rival to an AI-visibility tool); never the subject or a name variant. RANK BY OBSERVED FREQUENCY, NO PROTECTED PRIOR: verify EVERY candidate in the frequency table above against ALL the requirements listed \u2014 same category, same buyer, same market, real named entity, not a platform, GROUNDED in evidence. Among candidates that PASS, the one with the HIGHEST observed frequency is realCompetitor \u2014 this includes any name from a previous run, which is now just one candidate among equals with no special protection. If the top two qualifying candidates are within 1 sample of each other (a genuine statistical tie, not a clear leader), set contested:true and still name the higher-frequency one \u2014 the report should describe this as a close, active race rather than a settled fact. Do not let low-frequency noise (a candidate named in only 1 of many samples) outrank a name with zero real evidence just because it sounds plausible \u2014 frequency is the tiebreaker between qualifying candidates, not a license to invent one. IF EVERY CANDIDATE IN THE FREQUENCY TABLE FAILS: check the raw AI SELECTION GROUND TRUTH text directly for a qualifying name that simply was not in the pre-built candidate list \u2014 this is not \u201cusing your own knowledge\u201d, it is reading evidence already provided. If NOTHING in the frequency table, the raw ground truth text, or the search evidence qualifies, return null and set categoryUnowned accordingly. This is the honest, correct, publishable answer for a business with genuinely no evidenced rival \u2014 it is never acceptable to substitute a name with no evidentiary basis just to avoid returning null.\n\n'
-    + 'ANSWER B \u2014 aiRecommends: from the AI SELECTION GROUND TRUTH only \u2014 the most prominently recommended business that passes THE SAME TESTS AS ANSWER A: genuinely the subject\u2019s category, the same buyer, the same serviceable market (a local subject\u2019s displacer is local; a global subject\u2019s is global). The owner sees this name under \u201cAI is currently recommending instead of you\u201d \u2014 so it must be a business that could actually take the subject\u2019s customers. NEVER a platform, marketplace, directory, review site, or adjacent-industry player, no matter how prominently AI named it \u2014 those are venues or strangers, not displacers. If every name AI gave fails these tests, aiRecommends = null and categoryUnowned = true: nobody in the category is being recommended, and that is the honest, publishable finding.\n\n'
-    + 'Also report categoryUnowned: true if NO business in the ground truth is genuinely in the subject\u2019s category (AI answered with adjacent players) \u2014 meaning the category answer is unowned.\n\n'
-    + 'Respond with exactly: {"realCompetitor": <name or null>, "aiRecommends": <name or null>, "globalBenchmark": <name or null>, "source": "owner" | "website_declared" | "frequency" | "industry_knowledge" | "none", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence citing the observed frequency, e.g. \\"named in 5 of 8 samples, more than any other qualifying candidate\\">"}';
+  // ── DIRECT COMPETITOR IDENTIFICATION WITH WEB SEARCH ───────────────────
+  // This is the core change: instead of counting frequency of names in AI
+  // buyer query responses (which surfaces whoever ranks in search, not real
+  // competitors), we ask Claude with web search to reason about the business
+  // and identify true head-to-head rivals — the same way a knowledgeable
+  // industry analyst would answer "who does this company compete with?"
+  //
+  // This approach finds:
+  // - Zappware/Leyra for 3SS (same middleware category, same pay-TV buyers)
+  // - Don Carne for Taurbull (same premium online beef market in Germany)
+  // - Profound for CHOIVE (same AI visibility category)
+  //
+  // NOT whoever happened to appear in generic buyer queries.
+  var prompt = 'You are a competitive intelligence analyst. Your task is to identify the TRUE head-to-head competitors of a specific business.\n\n'
+    + 'SUBJECT BUSINESS:\n'
+    + 'Name: ' + name + (website ? ' (' + website + ')' : '') + '\n'
+    + 'Inferred category: ' + inferred + '\n'
+    + (city ? 'Headquarters / primary market: ' + city + '\n' : '')
+    + (siteText ? 'Website content (what they actually sell and who buys it):\n' + siteText + '\n' : '')
+    + (kgText ? 'Knowledge graph: ' + kgText + '\n' : '')
+    + (known ? 'Competitors named by the owner: ' + known + '\n' : '')
+    + (searchComps ? 'Companies appearing in related search evidence: ' + searchComps + '\n' : '')
+    + (groundTruth ? 'What AI currently recommends when buyers search for this category:\n' + groundTruth + '\n' : '')
+    + '\n'
+    + 'YOUR TASK:\n'
+    + 'Using web search and your knowledge, identify this business\'s REAL competitors — the companies a buyer would put on the SAME RFP or evaluation shortlist as this business.\n\n'
+    + 'THREE STRICT TESTS — a candidate must pass ALL THREE:\n'
+    + '1. SAME PRODUCT TYPE: sells the same type of product or service (not just adjacent or complementary)\n'
+    + '2. SAME BUYER: the same person spends the money (same buyer role, same company type, same deal size)\n'
+    + '3. SAME COMMERCIAL MODEL: both license software, or both sell direct-to-consumer, or both offer managed services — not mixed models\n\n'
+    + 'WHAT TO EXCLUDE:\n'
+    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
+    + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
+    + '- Review platforms, directories, aggregators\n'
+    + '- The subject business itself\n'
+    + '- Companies that merely appear in search results but serve a different buyer or different use case\n\n'
+    + 'GEOGRAPHIC SCOPE: match where the BUYERS are, not where the business is headquartered.\n'
+    + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
+    + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
+    + 'PRODUCE THREE ANSWERS:\n'
+    + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'
+    + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now (from the AI SELECTION GROUND TRUTH above, or from your web search). This is who is WINNING the AI recommendation slot today. May be the same as realCompetitor or different.\n'
+    + 'C — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if the same as realCompetitor.\n\n'
+    + 'IMPORTANT: Use web search to verify that your named competitors are currently operating and in the correct category. Do not name companies that have merged, been acquired, rebranded, or shut down without using their CURRENT name.\n\n'
+    + 'Respond with exactly this JSON — no markdown, no preamble:\n'
+    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 40000);
+  var timer = setTimeout(function() { controller.abort(); }, 55000); // web search needs more time
   try {
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -841,63 +859,68 @@ async function selectDominantCompetitor(evidence) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 350,
+        max_tokens: 400,
         temperature: 0,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      var errData = await res.json().catch(function() { return {}; });
+      console.warn('[competitor-selection] API error:', res.status, errData.error && errData.error.message);
+      return null;
+    }
     var data = await res.json();
-    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
-      .map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
+    // Extract text from response — may include tool_use blocks from web search
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    if (!text) {
+      console.warn('[competitor-selection] no text in response');
+      return null;
+    }
     var fi = text.indexOf('{'), li = text.lastIndexOf('}');
     var jsonText = (fi !== -1 && li > fi) ? text.slice(fi, li + 1) : text;
     var parsed = JSON.parse(jsonText);
     if (!parsed || typeof parsed !== 'object') return null;
     function cleanName(v) {
       var s = v ? String(v).trim() : '';
-      if (!s) return null;
-      // Exclude only exact matches (after normalization) — substring check was
-      // too broad and silently dropped valid competitors sharing a name prefix.
+      if (!s || s === 'null') return null;
       var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      if (normN && normS === normN) return null; // never the exact subject
-      // FIX H — also reject partial trading-name overlaps (e.g. "Acme" matching "Acme GmbH")
-      // Require at least 4 chars of overlap to avoid coincidental short-prefix matches.
+      if (normN && normS === normN) return null;
       if (normN && normS && normN.length >= 4 && normS.length >= 4) {
         if (normS.startsWith(normN) || normN.startsWith(normS)) return null;
       }
       return s;
     }
-    // No stability fallback anymore \u2014 if the model can't name a real,
-    // frequency-backed candidate, the honest answer is null (categoryUnowned
-    // territory), not a silently reused prior. Accuracy replaces protection.
-    var decidedReal = cleanName(parsed.realCompetitor);
-    return {
-      selectionVersion: 4, // v4: frequency-based selection, no continuity protection
-      realCompetitor:  decidedReal,
+    var result = {
+      selectionVersion: 5, // v5: direct web search competitor identification
+      realCompetitor:  cleanName(parsed.realCompetitor),
       aiRecommends:    cleanName(parsed.aiRecommends),
       globalBenchmark: cleanName(parsed.globalBenchmark),
-      source:          String(parsed.source || 'none'),
+      source:          'web_search',
       categoryUnowned: parsed.categoryUnowned === true,
       contested:       parsed.contested === true,
-      frequencyTable:  freq.table.slice(0, 5), // for logging/transparency
+      frequencyTable:  [], // not used in v5
       reason:          String(parsed.reason || '').slice(0, 300)
     };
+    console.log('[competitor-selection v5] real: ' + (result.realCompetitor || 'none')
+      + ' | AI names: ' + (result.aiRecommends || 'none')
+      + ' | benchmark: ' + (result.globalBenchmark || 'none')
+      + (result.categoryUnowned ? ' | category UNOWNED' : '')
+      + ' — ' + result.reason);
+    return result;
   } catch (err) {
     clearTimeout(timer);
-    console.warn('[competitor-selection] failed:', err.message);
+    console.warn('[competitor-selection] web search call failed:', err.message);
     return null;
   }
  } catch (outerErr) {
-  // Closes the SILENT-FAILURE gap confirmed live: buildFrequencyTable or the
-  // prompt-construction lines ran completely unguarded before this fix \u2014
-  // any error there rejected the whole function with zero log output at all,
-  // leaving a diagnostic with competitorDecision entirely unset and no trace
-  // of why. Now every failure path, wherever it happens, logs clearly.
-  console.warn('[competitor-selection] outer stage error (before the API call):', outerErr.message);
+  console.warn('[competitor-selection] outer stage error:', outerErr.message);
   return null;
  }
 }
