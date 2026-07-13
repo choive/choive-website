@@ -39,10 +39,11 @@ async function inferCategory(name, category, websiteText, searchText) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
   var prompt = 'Business name: ' + name + '\n'
-    + 'User-provided category: ' + category + '\n'
     + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 2000) + '\n'
-    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 2000) + '\n\n'
-    + 'Based only on the evidence above, determine the precise real-world category this business operates in.\n'
+    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 2000) + '\n'
+    + 'Self-described category (owner's own words — fallback only, use if website is thin or absent): ' + category + '\n\n'
+    + 'Based PRIMARILY on the WEBSITE CONTENT and SEARCH EVIDENCE above, determine the precise real-world category this business operates in.\n'
+    + 'The website is the authoritative source. The self-described category is a weak hint — it may be vague, imprecise, or wrong.\n'
     + 'Return ONLY a JSON object with one field:\n'
     + '{ "inferredCategory": "precise category name" }\n'
     + 'Be specific. Examples:\n'
