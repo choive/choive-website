@@ -582,12 +582,25 @@ exports.handler = async function (event) {
       if (!evidence['aiSimulationBefore'] || (languagePref && cachedSimLang !== languagePref)) {
         try {
           var simBefore = await runBeforeSimulation({
-            language:         languagePref || undefined,
-            name:             name,
-            category:         category,
-            city:             city,
-            description:      description,
-            inferredCategory: evidence['inferredCategory'] || category
+            language:          languagePref || undefined,
+            name:              name,
+            category:          category,
+            city:              city,
+            description:       description,
+            inferredCategory:  evidence['inferredCategory'] || category,
+            // Rich context — lets the query generator understand the real
+            // business from evidence, not just the user-typed category.
+            // website title + H1 are the most signal-dense part of websiteText.
+            websiteContext:    (
+              ((websiteSignals && websiteSignals.titleText) ? 'Title: ' + websiteSignals.titleText + '\n' : '') +
+              ((websiteSignals && websiteSignals.h1Text)    ? 'H1: '    + websiteSignals.h1Text    + '\n' : '') +
+              (websiteText ? websiteText.slice(0, 900) : '')
+            ).trim(),
+            kgText:            evidence['kgText'] || '',
+            competitorDomains: (evidence['competitors'] || [])
+              .map(function(c) { return c.domain || c.name || ''; })
+              .filter(Boolean),
+            knownCompetitors:  knownCompetitors || ''
           });
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
@@ -656,7 +669,9 @@ exports.handler = async function (event) {
                     var extractPrompt =
                       'TASK: From the AI recommendation responses below, identify the real business names being recommended as competitors to the subject business.\n\n'
                       + 'SUBJECT BUSINESS (exclude this from results): ' + name + '\n'
-                      + 'SUBJECT CATEGORY: ' + inferredCatForPrompt + '\n\n'
+                      + 'SUBJECT CATEGORY: ' + inferredCatForPrompt + '\n'
+                      + (city ? 'SUBJECT MARKET / LOCATION: ' + city + '\n' : '')
+                      + '\n'
                       + 'KNOWN COMPETITORS (company names or domains — prioritise these if they appear in responses):\n'
                       + (hintList || 'none') + '\n\n'
                       + 'AI SIMULATION RESPONSES:\n---\n'
@@ -666,10 +681,11 @@ exports.handler = async function (event) {
                       + '1. Extract ONLY real business/brand names that AI is actively recommending.\n'
                       + '2. EXCLUDE: the subject business (' + name + '), generic category terms, descriptive phrases (e.g. "Beide Optionen", "Both Options", "Black Angus Rinder"), platform names (Google, Amazon, Trustpilot), adjectives, and section headings.\n'
                       + '3. CRITICAL — SAME CATEGORY ONLY: Only return competitors that operate in the same category and serve the same type of buyer as the subject. If the subject is B2B, exclude consumer brands even if they are mentioned often. If the subject sells middleware or software to businesses, do not return consumer-facing products or streaming services — those are potential customers, not competitors.\n'
-                      + '4. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
-                      + '5. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
-                      + '6. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
-                      + '7. If no real same-category competitor appears, use empty string.\n\n'
+                      + '4. CRITICAL — SAME SERVICEABLE MARKET: The competitor must actually sell to or operate in the subject\'s market. A US-only brand is not the competitor of a Germany-only business. A global B2B platform can compete globally. A local service competes locally. If uncertain whether a competitor reaches the subject\'s market, exclude it.\n'
+                      + '5. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
+                      + '6. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
+                      + '7. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
+                      + '8. If no real same-category, same-market competitor appears, use empty string.\n\n'
                       + 'Return ONLY this JSON (no markdown, no explanation):\n'
                       + '{"first":"BusinessName","second":"BusinessName","firstCount":3,"secondCount":2}';
 
