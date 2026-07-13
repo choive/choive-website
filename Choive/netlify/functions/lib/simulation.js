@@ -795,6 +795,12 @@ async function generateQueryPlan(n) {
     'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
     + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
     + geoHint + '\n\n'
+    + 'ABSOLUTE BAN — APPLY BEFORE RETURNING:\n'
+    + 'If ANY of your 3 queries matches these patterns, DELETE it and write a vendor-discovery query:\n'
+    + '  ✗ Compares building in-house vs licensing externally (develop vs license, eigene Plattform entwickeln oder lizenzieren, build vs buy)\n'
+    + '  ✗ Asks for strategic advice that can be answered without naming companies (what is better, was ist besser)\n'
+    + '  ✗ Cannot be answered ONLY by naming specific real companies\n'
+    + 'REPLACE any banned query with: "Which [vendor type] should [buyer type] choose in [market]?"\n\n'
     + 'YOUR TASK:\n'
     + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
     + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
@@ -928,6 +934,26 @@ async function runBeforeSimulation(input, useWebSearch) {
     // Fallback: static templates keyed by businessModel
     console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
     rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+  }
+
+  // ── CODE-LEVEL BUILD-VS-BUY VALIDATION ─────────────────────────────────
+  // Reject any query that slipped through the prompt ban and replace with
+  // a safe fallback. This is deterministic — not reliant on the model.
+  if (rawQueries && rawQueries.length) {
+    var bvbPattern = /\b(besser\s+(als\s+)?|better\s+(than\s+)?|soll(en)?\s+wir|should\s+we|eigene?\s+\w+\s+(entwickeln|bauen)|own\s+\w+\s+(build|develop)|in.house|in-house|selbst\s+(entwickeln|bauen)|build\s+(your|our|vs)|versus\s+(buy|licens)|oder\s+liz[ei]n|or\s+licens|or\s+buy\b)/i;
+    var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+    var fbIdx = 0;
+    rawQueries = rawQueries.map(function(q, i) {
+      if (!q) return q;
+      var queryText = typeof q === 'string' ? q : (q.query || '');
+      if (bvbPattern.test(queryText)) {
+        console.warn('[simulation] build-vs-buy query REJECTED at code level: ' + queryText.slice(0, 100));
+        var safe = staticFallback[fbIdx % staticFallback.length];
+        fbIdx++;
+        return typeof q === 'string' ? safe.query : safe;
+      }
+      return q;
+    });
   }
 
   var buyerQueries = await generateBuyerQueries(n, rawQueries);
