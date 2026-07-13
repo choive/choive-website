@@ -41,7 +41,7 @@ const DIRECTORY_DOMAINS = [
   'companydata.com', 'ensun.io', 'handelsregister.ai', 'handelsregister.de',
   'northdata.de', 'northdata.com', 'firmenwissen.de', 'unternehmensregister.de',
   'bundesanzeiger.de', 'creditreform.de', 'dnb.com', 'dun-bradstreet.com',
-  'crunchbase.com', 'pitchbook.com', 'owler.com', 'zoominfo.com', 'credenceresearch.com',
+  'pitchbook.com', 'owler.com', 'zoominfo.com', 'credenceresearch.com',
   'grandviewresearch.com', 'mordorintelligence.com', 'marketsandmarkets.com', 'statista.com',
   'ibisworld.com', 'euromonitor.com', 'mintel.com', 'spglobal.com', 'indexbox.io',
   'similarsites.com', 'similarweb.com', 'semrush.com', 'ahrefs.com',
