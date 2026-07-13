@@ -902,6 +902,32 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
     const finalResult = buildSafeOutput(rawOutput);
+    // ── PROMOTE V5 COMPETITOR DECISION ──────────────────────────────────────────────────
+    // selectDominantCompetitor v5 (web search) runs inside scoreWithClaude and finds
+    // the real competitor via independent research. But evidence.competitorDecision is
+    // still v3/v4 from the simulation extraction. Promote v5 so enforcement uses it.
+    try {
+      var v5dec = rawOutput && rawOutput.competitorDecision;
+      if (v5dec && v5dec.selectionVersion === 5 && v5dec.realCompetitor) {
+        var existingDec = evidence['competitorDecision'] || {};
+        evidence['competitorDecision'] = {
+          realCompetitor:     v5dec.realCompetitor,
+          aiRecommends:       v5dec.aiRecommends       || existingDec.aiRecommends       || null,
+          secondAiCompetitor: v5dec.secondAiCompetitor || existingDec.secondAiCompetitor || null,
+          globalBenchmark:    v5dec.globalBenchmark    || null,
+          source:             'web_search_v5',
+          selectionVersion:   5,
+          categoryUnowned:    v5dec.categoryUnowned === true,
+          reason:             v5dec.reason || ''
+        };
+        console.log('[' + jobId + '] V5 competitor promoted to evidence: ' + v5dec.realCompetitor
+          + (v5dec.secondAiCompetitor ? ' | second: ' + v5dec.secondAiCompetitor : '')
+          + (v5dec.globalBenchmark ? ' | benchmark: ' + v5dec.globalBenchmark : ''));
+      }
+    } catch (v5Err) {
+      console.warn('[' + jobId + '] V5 promotion failed:', v5Err.message);
+    }
+
     // ── COMPETITOR ENFORCEMENT (code-level) ───────────────────────────
     // The dedicated selection stage's decision is final. If the scoring model
     // ignored the directive, this overwrites the result — a prompt can be
