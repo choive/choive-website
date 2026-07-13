@@ -361,24 +361,54 @@ function buildQueries(catClean, city, name, businessModel) {
     // Strip leading "B2B" label from catClean for cleaner query text.
     // "B2B multiscreen OTT middleware provider" → "multiscreen OTT middleware provider"
     var b2bCat = catClean.replace(/^b2b\s+/i, '').trim() || catClean;
+
+    // Extract the buyer type from the inferred category if present.
+    // "multiscreen entertainment software sold to pay-TV operators and automotive OEMs"
+    // → buyerType = "pay-TV operators and automotive OEMs"
+    // This is injected into queries so AI returns vendors that serve THAT specific buyer,
+    // not whoever ranks in search for the generic category term.
+    var buyerMatch = catClean.match(/(?:sold to|serving|for|used by|targeting)\s+([^—\-\.]{5,60})/i);
+    var buyerType = buyerMatch ? buyerMatch[1].trim() : '';
+
+    // Build the core product term — strip the buyer description for cleaner queries
+    var coreB2B = b2bCat.replace(/\s+(?:sold to|serving|for|used by|targeting)\s+.*/i, '').trim();
+
     return [
       {
+        // Query 1 — MARKET DISCOVERY: who does this type of buyer actually use?
+        // Asking "which vendors do [specific buyer type] use" surfaces the real
+        // competitive set — not whoever ranks in generic software searches.
+        // For 3SS this becomes: "which multiscreen platform software do pay-TV operators
+        // and telcos in Europe use for their TV services?" — surfaces Accedo, Zappware,
+        // Netgem, and 3SS itself — the real evaluation shortlist.
         label: 'B2B vendor discovery',
-        intent: 'A procurement decision-maker searching for the best vendor in this category',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies that sell to businesses — not consumer products or retail brands. Be specific and name real companies.' + hint,
-        query: 'What are the best ' + b2bCat + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
+        intent: 'A procurement decision-maker searching for what vendors exist in this space',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors and software companies that sell licensed platform or software solutions to businesses — not managed services, consumer products, or retail brands. Be specific and name real companies.' + hint,
+        query: buyerType
+          ? 'Which ' + coreB2B + ' vendors and platforms do ' + buyerType + ' use' + locationStr + '? Name 3-5 specific software companies with a brief reason for each.'
+          : 'What are the best ' + coreB2B + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
       },
       {
+        // Query 2 — HEAD-TO-HEAD COMPARISON: who are the main players buyers compare?
+        // This surfaces the competitive landscape as buyers actually see it —
+        // the companies that appear on the same RFP shortlist.
         label: 'B2B solution comparison',
-        intent: 'A business evaluating competing platforms or solutions',
-        system: 'You are a helpful AI assistant with live web search. Search for current reviews, analyst reports, and industry comparisons before answering — do not rely on memory alone. Name the specific companies that B2B buyers most consistently consider and recommend. Be specific and name real companies.' + hint,
-        query: 'Which ' + b2bCat + ' solutions are most recommended for businesses' + locationStr + '? Which providers or platforms do companies in this space choose and why?'
+        intent: 'A business evaluating the main competing platforms or solutions',
+        system: 'You are a helpful AI assistant with live web search. Search for analyst reports, industry comparisons, and RFP shortlists before answering. Name the specific companies that appear most consistently on evaluation shortlists for this type of solution. Be specific and name real companies.' + hint,
+        query: buyerType
+          ? 'What are the main ' + coreB2B + ' vendors that ' + buyerType + ' evaluate when choosing a platform' + locationStr + '? Which companies compete head-to-head in this space?'
+          : 'Which ' + coreB2B + ' solutions are most recommended for businesses' + locationStr + '? Which providers do companies in this space choose and why?'
       },
       {
+        // Query 3 — DIRECT RECOMMENDATION: which single vendor wins the deal?
+        // Forces AI to name its most confident answer — whoever has the most
+        // trust signals, press coverage, and structured evidence wins here.
         label: 'B2B direct recommendation',
         intent: 'A business decision-maker ready to select a vendor',
-        system: 'You are a helpful AI assistant. Answer from the perspective of advising a business technology decision-maker. Be specific and name one real company or platform.' + hint,
-        query: 'Which ' + b2bCat + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
+        system: 'You are a helpful AI assistant. Answer from the perspective of advising a senior technology decision-maker at a ' + (buyerType || 'business') + '. Be specific and name one real licensed software vendor or platform company.' + hint,
+        query: buyerType
+          ? 'Which ' + coreB2B + ' vendor would you recommend for ' + buyerType + (city ? ' in ' + city : '') + '? Give me your single best recommendation and why.'
+          : 'Which ' + coreB2B + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
       }
     ];
   }
