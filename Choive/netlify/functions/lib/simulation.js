@@ -112,17 +112,42 @@ function normalizeForMatch(s) {
   return s;
 }
 
+// Strip trailing 's' from words longer than 3 chars to normalise
+// singular/plural variants ('screens' -> 'screen', 'solutions' -> 'solution').
+// Applied to BOTH candidate name and response text so the same stemmed form
+// is compared on each side — '3 screens solution' matches '3 Screen Solutions'.
+function stemWord(w) {
+  return w.length > 3 && w[w.length - 1] === 's' ? w.slice(0, -1) : w;
+}
+function stemPhrase(s) {
+  return s.split(' ').map(stemWord).join(' ');
+}
+
 function businessMentioned(response, name) {
   if (!response || !name) return false;
   var resp = ' ' + normalizeForMatch(response) + ' ';
   var respNoSpace = resp.replace(/ /g, '');
+  // Stemmed response for singular/plural-tolerant phrase matching
+  var respStemmed = ' ' + stemPhrase(normalizeForMatch(response)) + ' ';
+
   var full = normalizeForMatch(name);
   var core = full.replace(LEGAL_SUFFIX_RE, ' ').replace(/\s+/g, ' ').trim();
-  var candidates = [full, core].filter(function(v, i, a) { return v && a.indexOf(v) === i; });
+  // Stemmed forms handle '3 screens solution' <-> '3 Screen Solutions'
+  var stemFull = stemPhrase(full);
+  var stemCore = stemPhrase(core);
+
+  var candidates = [full, core, stemFull, stemCore].filter(function(v, i, a) {
+    return v && a.indexOf(v) === i;
+  });
   for (var i = 0; i < candidates.length; i++) {
     var cand = candidates[i];
+    var candStemmed = stemPhrase(cand);
+    // 1. Exact phrase match in original normalised response
     if (resp.indexOf(' ' + cand + ' ') !== -1) return true;
+    // 2. No-space match (handles camelCase / run-together spellings)
     if (cand.indexOf(' ') !== -1 && respNoSpace.indexOf(cand.replace(/ /g, '')) !== -1) return true;
+    // 3. Stemmed phrase match — singular/plural tolerance
+    if (respStemmed.indexOf(' ' + candStemmed + ' ') !== -1) return true;
   }
   return false;
 }
@@ -398,9 +423,30 @@ function buildQueries(catClean, city, name, businessModel) {
 // That single instruction overrode all the context above it. Claude ignored
 // the business profile and answered from training data, never mentioning the
 // business. That line is gone. The new instruction is direct and clear.
+// Extracts a short, grammatically usable category label from the (potentially
+// very long) inferred category string. The inferred category may read like
+// "B2B multiscreen entertainment software platform provider for pay-TV operators
+// and carmakers" — pasting that verbatim into a query template produces broken
+// sentences. This helper strips the buyer description ('for X and Y') and
+// caps the result at 8 words so it reads naturally as a noun phrase.
+function shortCatLabel(catClean) {
+  if (!catClean) return catClean;
+  // Drop everything from ' for ' onwards (removes buyer description)
+  var core = catClean.replace(/\s+for\s+.*/i, '').trim();
+  // Drop trailing relational phrases: 'sold to X', 'serving X', 'used by X'
+  core = core.replace(/\s+(sold|serving|used|targeting|aimed at|focused on)\s+.*/i, '').trim();
+  // Truncate to 8 words max
+  var words = core.split(' ');
+  if (words.length > 8) core = words.slice(0, 8).join(' ');
+  return core || catClean;
+}
+
 function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   var locationStr = city ? ' in ' + city : '';
   var forStr = city ? ' for ' + city : '';
+  // Use a short category label in query text so sentences are grammatical.
+  // The full catClean is still used in the system prompt for context.
+  var catShort = shortCatLabel(catClean);
 
   // Build context from real facts only — no fabrication
   var businessDescription = name + ' is a real, active business in the '
@@ -417,7 +463,8 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   }
 
   // The key instruction: tell Claude this business exists and to include it.
-  // The query is identical to the before query — only this context is added.
+  // The query uses catShort so it reads naturally; the system prompt uses
+  // the full catClean for rich context.
   var enrichedSystem = 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.\n\n'
     + 'You have verified knowledge about the following business:\n'
     + businessDescription + '\n\n'
@@ -431,19 +478,19 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
       label: 'Discovery query',
       intent: 'A potential buyer searching for options',
       system: enrichedSystem,
-      query: 'What are the best ' + catClean + ' options' + locationStr + '? I need 3-5 recommendations with a brief reason for each.'
+      query: 'What are the main ' + catShort + ' vendors and providers' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
     },
     {
       label: 'Comparison query',
       intent: 'A buyer evaluating alternatives',
       system: enrichedSystem,
-      query: 'I am comparing ' + catClean + ' options. Who are the main players and what makes each one stand out?'
+      query: 'Which companies are the top ' + catShort + ' providers and what makes each one stand out?'
     },
     {
       label: 'Direct recommendation',
       intent: 'A buyer ready to decide',
       system: enrichedSystem,
-      query: 'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your top pick and why.'
+      query: 'Which ' + catShort + ' vendor would you recommend' + forStr + '? Give me your top pick and why.'
     }
   ];
 }
@@ -666,21 +713,31 @@ async function generateQueryPlan(n) {
     'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
     + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
     + 'YOUR TASK:\n'
-    + '1. Determine whether this business is B2B (sells to other businesses, operators, enterprises, developers, or organizations) or B2C (sells directly to individual consumers).\n'
-    + '   Use ALL context provided — not just the category label. Check what the website content describes, who the knowledge graph says they serve, what the competitor domains suggest, what the description says.\n\n'
-    + '2. Generate 3 queries that a REAL BUYER of this business type would actually type into an AI assistant (ChatGPT, Claude, Perplexity) when looking for solutions in this space.\n'
-    + '   - Query 1 (Discovery): "What vendors / providers / companies exist in this specific space?" — must name a specific product type and buyer type.\n'
-    + '   - Query 2 (Vendor comparison): "Which companies are the main players and how do they compare?" — MUST ask about comparing NAMED VENDORS, not about strategy (never ask "build vs. buy" or "in-house vs. outsource" — those produce strategy advice, not vendor names).\n'
-    + '   - Query 3 (Direct recommendation): "Which specific vendor or provider should I choose for my exact situation?" — must name the buyer type and their specific context so AI recommends a real named company.\n\n'
-    + 'CRITICAL RULES:\n'
-    + '- ALL THREE queries must be designed to make AI name REAL COMPETING COMPANIES. If a query could be answered with general advice instead of company names, rewrite it.\n'
-    + '- B2B: use procurement language — "which vendor", "best platform for [operator/enterprise type]", "which providers do [buyer type] use for...". NEVER "build vs. buy", NEVER "in-house vs. outsource" — these produce strategy answers, not competitor names.\n'
-    + '- B2C: use consumer shopping language — "best brand", "where to buy", "which one should I get".\n'
-    + '- Be specific to the exact niche vocabulary (e.g. for pay-TV middleware: "IPTV middleware vendor", "OTT platform provider", "white-label TV platform for telcos"; for premium beef: "grass-fed beef brand"; for legal tech: "contract management software vendors").\n'
+    + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
+    + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
+    + 'FOR B2B — MANDATORY QUERY FORMAT:\n'
+    + 'Every query must ask WHICH COMPANY/VENDOR/PROVIDER sells this type of product — NOT what software/platform does or enables. The query subject must be a SELLER TYPE, not a product function.\n'
+    + 'REQUIRED: each B2B query must contain at least one of: vendor, vendors, provider, providers, company, companies, supplier, suppliers, Anbieter, Unternehmen, or equivalent procurement word in the query language.\n'
+    + 'BANNED QUERY STRUCTURES (in any language):\n'
+    + '  - "What software can I use to [do X]?" → rewrite as "Which vendor/company sells X to [buyer type]?"\n'
+    + '  - "Where can I find a platform that [does X]?" → rewrite as "Which companies provide X as a licensed product?"\n'
+    + '  - Any build-vs-buy framing: "develop vs. license", "build vs. buy", "in-house vs. outsource", "eigene Lösung entwickeln vs. lizenzieren", "selbst bauen oder kaufen", "build your own vs. use a vendor" — ALL BANNED. They produce strategy advice, not vendor names.\n'
+    + '  - Terms so broad they attract consumer brands: "entertainment platform" (attracts Netflix), "streaming service" (attracts Spotify), "media platform" (attracts YouTube) — use the narrowest B2B vendor-type vocabulary.\n\n'
+    + 'QUERY TEMPLATES FOR B2B:\n'
+    + '  - Query 1 (Market): "Which [specific vendor type] companies [serve / are used by] [specific buyer type] in [market]?" — discovers the vendor landscape\n'
+    + '  - Query 2 (Comparison): "What are the main [specific vendor type] vendors and how do they compare for [buyer type]?" — pure named-company comparison\n'
+    + '  - Query 3 (Recommendation): "Which [specific vendor type] should [specific buyer persona with context] choose in [market]?" — forces a named-vendor recommendation\n\n'
+    + 'EXAMPLE (pay-TV middleware vendor):\n'
+    + '  Query 1: "Which OTT middleware vendors and white-label TV platform providers do pay-TV operators use in Germany?"\n'
+    + '  Query 2: "What are the main B2B multiscreen middleware companies serving telcos and cable operators in Europe, and how do they compare?"\n'
+    + '  Query 3: "Which white-label OTT middleware vendor should a German pay-TV operator choose for launching multiscreen TV services?"\n\n'
+    + 'FOR B2C — query format: consumer shopping language ("best brand", "where to buy", "which one should I get for [situation]").\n\n'
+    + 'RULES FOR BOTH:\n'
     + '- DO NOT mention ' + n.name + ' in any query.\n'
-    + '- DO NOT use category terms so broad they trigger consumer product results (e.g. "entertainment platform" could mean Netflix — use "middleware vendor" or "B2B OTT platform" instead).\n\n'
+    + '- Use the SPECIFIC vendor-type vocabulary of the inferred category — not generic terms.\n'
+    + '- If any query could be answered with general advice instead of named companies, rewrite it.\n\n'
     + 'Return ONLY this JSON (no markdown, no explanation):\n'
-    + '{"buyerType":"b2b","reasoning":"one sentence explaining why B2B or B2C","queries":["query 1","query 2","query 3"]}';
+    + '{"buyerType":"b2b","reasoning":"one sentence why B2B or B2C","queries":["query 1","query 2","query 3"]}';
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
