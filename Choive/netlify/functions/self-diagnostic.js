@@ -111,51 +111,9 @@ exports.handler = async function(event) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({ ok: true, jobId, status: 'queued' })
     };
-
-    console.log('[self-diagnostic] Started jobId:', jobId);
-
-    // Poll for result (max 90 seconds)
-    var attempts = 0;
-    var result   = null;
-    while (attempts < 18) {
-      await new Promise(function(r) { setTimeout(r, 5000); });
-      attempts++;
-
-      var { data: diag } = await supabase
-        .from('diagnostics')
-        .select('status, result')
-        .eq('job_id', jobId)
-        .maybeSingle();
-
-      if (diag && diag.status === 'complete' && diag.result) {
-        result = diag.result;
-        break;
-      }
-      if (diag && diag.status === 'failed') {
-        throw new Error('Self-diagnostic failed');
-      }
-    }
-
-    if (!result) throw new Error('Self-diagnostic timed out');
-
-    // Store in self_diagnostic table for homepage display
-    await supabase.from('self_diagnostic').insert({
-      job_id:       jobId,
-      overall_score: result.overallScore || 0,
-      pillars:       result.pillars || {},
-      verdict:       result.verdictHeadline || '',
-      summary:       result.summaryParagraph || '',
-      actions:       result.actions || [],
-      created_at:    new Date().toISOString()
-    });
-
-    console.log('[self-diagnostic] Complete. Score:', result.overallScore);
-
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, jobId, score: result.overallScore })
-    };
+    // The background function (run-diagnostic-background.js) writes the result
+    // to the self_diagnostic table automatically when it finishes (it detects
+    // choive.com and saves there). The GET handler above reads from that table.
 
   } catch (err) {
     console.error('[self-diagnostic] Error:', err.message);
