@@ -198,7 +198,9 @@ function buildPrompt(evidence) {
     + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
     + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
     + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
-    + (previousCompetitor ? '\n\nPREVIOUSLY VERIFIED COMPETITOR (identified in the last completed diagnostic of this exact business): ' + previousCompetitor : '')
+    // previousCompetitor deliberately NOT injected — v5 web search finds the
+    // real competitor fresh each run. Injecting a prior name biases scoring
+    // toward repeating old (potentially wrong) answers.
     + (evidence.competitorDecision ? '\n\nCOMPETITOR DECISION \u2014 MADE BY THE DEDICATED SELECTION STAGE (do not override):\n'
         + (evidence.competitorDecision.realCompetitor
             ? 'competitors[0].name MUST be exactly: ' + evidence.competitorDecision.realCompetitor + ' \u2014 the subject\u2019s true head-to-head market rival (source: ' + evidence.competitorDecision.source + '). Reason: ' + evidence.competitorDecision.reason + ' Its evidence text MUST state honestly whether the AI SELECTION GROUND TRUTH currently names this rival, quoting what AI answered instead if it does not.'
@@ -752,7 +754,8 @@ function buildFrequencyTable(evidence, subjectName) {
     var val = c.name || c.domain;
     if (val && !/\.[a-z]{2,4}(\s|\/|$)/i.test(val)) push(val);
   });
-  if (evidence.previousCompetitor) push(evidence.previousCompetitor);
+  // previousCompetitor deliberately excluded — it had unfair prior weight
+  // that caused old wrong competitors to persist. Frequency is measured fresh.
 
   var corpus = [];
   var simBefore = evidence.aiSimulationBefore;
@@ -950,11 +953,16 @@ async function scoreWithClaudeOnce(evidence) {
     // fallback (v3), or empty result — run the full sophisticated selection which has
     // grounding requirements, same-serviceable-market checks, and geography validation
     // that the quick background extraction lacks.
-    var highConfidence = existingDecision
+    // Skip selectDominantCompetitor ONLY on a scoring retry within the same run.
+    // A prior run's competitor decision (v4 or earlier) must NEVER be reused —
+    // v5 uses web search to find the real competitor fresh every time.
+    // The only valid skip is when competitorDecision was already set to v5
+    // in this exact run's evidence object (i.e. we're retrying the Claude
+    // scoring call after a timeout, not starting a new diagnostic).
+    var isCurrentRunV5 = existingDecision
       && existingDecision.realCompetitor
-      && existingDecision.selectionVersion >= 4
-      && (existingDecision.mentionCount || 0) >= 2;
-    var compDecision = highConfidence
+      && existingDecision.selectionVersion === 5;
+    var compDecision = isCurrentRunV5
       ? existingDecision
       : await selectDominantCompetitor(evidence);
     if (compDecision) {
