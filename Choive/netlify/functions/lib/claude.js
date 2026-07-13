@@ -1,840 +1,864 @@
-// lib/simulation.js
-// CHOIVE\u2122 AI Visibility Simulation \u2014 shared engine
-// Used by:
-//   - ai-simulation.js (live on-screen simulation for the free result)
-//   - run-diagnostic-background.js (persists simulation into the saved result
-//     so the $499 report always has real word-for-word queries)
-// Authentic-only policy: the "after" state injects only true facts about the
-// business (name, category, differentiator, real trust signals). No fabricated
-// reviews, no invented press, no fake clients.
+// lib/claude.js
+// CHOIVE™ evidence-first scoring engine
+// Architecture: structured signals confirmed by engine → Claude analyzes → validators normalize
 // ENV: ANTHROPIC_API_KEY
 
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
-const TIMEOUT_MS = 25000;
-const SEARCH_TIMEOUT_MS = 45000; // web search round-trips take longer
+'use strict';
 
-// useSearch=true grants the model real web search \u2014 matching what a real
-// user gets from ChatGPT/Perplexity/Claude.ai, all of which browse by default.
-// A no-search completion tests the model's static training memory, which is
-// structurally blind to any category that consolidated its players in the
-// last few months (exactly CHOIVE's own category). Ground-truth ("before")
-// queries MUST search; hypothetical "after" projections stay search-free.
-async function runQuery(systemPrompt, userQuery, useSearch) {
+const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
+const MAX_TOKENS      = 6500; // raised: richer ground-truth + decision context was clipping long responses mid-JSON
+
+function truncate(text, max) {
+  max = max || 4000;
+  var value = String(text || '');
+  return value.length > max ? value.slice(0, max) : value;
+}
+
+// ── Sanitize external content against prompt injection ────────────────────────
+function sanitizeExternal(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?|context)/gi, '[removed]')
+    .replace(/you\s+are\s+now\s+(a\s+)?(different|new|another)/gi, '[removed]')
+    .replace(/new\s+instructions?:/gi, '[removed]')
+    .replace(/system\s*:\s*you\s+are/gi, '[removed]')
+    .replace(/\[INST\]|\[\/INST\]|<\|im_start\|>|<\|im_end\|>/g, '[removed]')
+    .replace(/CHOIVE.*?score.*?must\s+be/gi, '[removed]')
+    .replace(/set\s+(the\s+)?(overall|clarity|trust|difference|ease)\s+score\s+to/gi, '[removed]')
+    .split('\n').map(function(line) {
+      return line.replace(/\S{500,}/g, '[long-token-removed]');
+    }).join('\n');
+}
+
+// ── Fast category inference ───────────────────────────────────────────────────
+async function inferCategory(name, category, websiteText, searchText) {
   var controller = new AbortController();
-  var timeoutMs = useSearch ? SEARCH_TIMEOUT_MS : TIMEOUT_MS;
-  var timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
+  var prompt = 'Business name: ' + name + '\n'
+    + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 2000) + '\n'
+    + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 2000) + '\n'
+    + 'Self-described category (owner\'s own words — fallback only, use if website is thin or absent): ' + category + '\n\n'
+    + 'Based PRIMARILY on the WEBSITE CONTENT and SEARCH EVIDENCE above, determine the precise real-world category this business operates in.\n'
+    + 'The website is the authoritative source. The self-described category is a weak hint — it may be vague, imprecise, or wrong.\n'
+    + 'Return ONLY a JSON object with one field:\n'
+    + '{ "inferredCategory": "precise category name" }\n'
+    + 'Be specific. Examples:\n'
+    + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
+    + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
+    + 'CATEGORY FIDELITY \u2014 CRITICAL: when the business explicitly names its own category (in its title, H1, or self-description), USE ITS EXACT WORDS as the core of the category. Never substitute an adjacent industry\u2019s vocabulary: a business calling itself an "AI selection diagnostic" is NOT an "AI evaluation and benchmarking platform" \u2014 those are different markets with different buyers. Paraphrasing the category into a neighboring industry poisons every downstream measurement.\n'    + 'BUSINESS MODEL PRECISION \u2014 CRITICAL: explicitly determine and STATE in the category whether this business (a) OWNS its own production \u2014 a farm, herd, factory, or workshop it controls \u2014 and sells that output directly (a vertically-integrated brand), or (b) CURATES and resells products sourced from multiple outside producers or brands (a retailer or marketplace). These are genuinely different competitive categories even when both sell the identical end product: a farm-owned beef brand competes against OTHER farm-owned beef brands, not against a retailer reselling beef from many farms, and vice versa. If the evidence shows the business names its own farm, herd, or production facility, the category MUST include a phrase like \u201cvertically-integrated brand\u201d or \u201cowns its own [production]\u201d \u2014 never just \u201cretailer\u201d or \u201cdelivery service\u201d for a business that actually produces what it sells. Get this wrong and every downstream competitor match will be comparing the wrong kind of business.\n'
+    + 'Return only raw JSON. No markdown. No explanation.';
   try {
-    var body = {
-      model: ANTHROPIC_MODEL,
-      max_tokens: useSearch ? 900 : 400,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userQuery }]
-    };
-    if (useSearch) {
-      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-    }
-    var res = await fetch(ANTHROPIC_URL, {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 100,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!res.ok) {
-      var errText = await res.text().catch(function() { return ''; });
-      console.warn('[ai-simulation] API returned', res.status, errText.slice(0, 200));
-      // Search tool unavailable/rejected \u2014 fail soft to a plain completion
-      // rather than losing the query entirely.
-      if (useSearch) {
-        console.warn('[ai-simulation] retrying without web_search');
-        return runQuery(systemPrompt, userQuery, false);
-      }
-      return null;
-    }
-    var data = await res.json();
-    if (useSearch) {
-      var usedSearch = (data.content || []).some(function(b) { return b.type === 'server_tool_use' || b.type === 'web_search_tool_result'; });
-      console.log('[ai-simulation] web search ' + (usedSearch ? 'USED \u2014 ground truth is live-grounded' : 'GRANTED but model answered from memory without searching'));
-    }
-    // Response interleaves text with server_tool_use / web_search_tool_result
-    // blocks; only text blocks are the model's actual answer.
-    return (data.content || []).filter(function(b) { return b.type === 'text'; })
+    if (!response.ok) return category;
+    var data = await response.json();
+    var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; }).join('').trim();
+    var clean = text.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+    return parsed.inferredCategory || category;
   } catch (err) {
     clearTimeout(timer);
-    console.warn('[ai-simulation] runQuery failed:', err.message);
-    return null;
+    return category;
   }
 }
 
-function cleanResponse(response) {
-  if (!response) return 'Query failed.';
-  var cleaned = response
-    .replace(/[#]+ /g, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/^[-*] /gm, '\u2022 ')
-    .replace(/\n{3,}/g, '\n\n')
+// ── Build confirmed signals section for prompt ────────────────────────────────
+function buildConfirmedSignals(websiteSignals) {
+  if (!websiteSignals || Object.keys(websiteSignals).length === 0) {
+    return 'CONFIRMED SIGNALS: Website not provided or not accessible.';
+  }
+
+  var s = websiteSignals;
+  var lines = ['CONFIRMED SIGNALS (mechanically verified — treat as ground truth):'];
+
+  lines.push('Title tag present: '        + (s.hasTitle           ? 'YES — "' + (s.titleText || '') + '"'  : 'NO'));
+  lines.push('H1 present: '               + (s.hasH1              ? 'YES — "' + (s.h1Text    || '') + '"'  : 'NO'));
+  lines.push('Meta description present: ' + (s.hasMetaDescription ? 'YES — "' + (s.metaDescriptionText || '').slice(0, 120) + '"' : 'NO'));
+  lines.push('OG tags present: '          + (s.hasOgTags          ? 'YES' : 'NO'));
+  lines.push('Canonical tag present: '    + (s.hasCanonical       ? 'YES' : 'NO'));
+
+  if (s.hasSchema) {
+    lines.push('Schema markup: YES (' + s.schemaCount + ' block(s)) — types: ' + (s.schemaTypes || []).join(', '));
+    lines.push('Specific schema type: ' + (s.hasSpecificSchema ? 'YES' : 'NO — only generic types found'));
+  } else {
+    lines.push('Schema markup: NO — no JSON-LD detected');
+    lines.push('Specific schema type: NO');
+  }
+
+  lines.push('llms.txt at domain root: ' + (s.hasLlmsTxt  ? 'YES (verified by direct fetch)' : 'NO'));
+  lines.push('sitemap.xml accessible: '  + (s.hasSitemap  ? 'YES' : 'NO'));
+  lines.push('robots.txt present: '      + (s.hasRobots   ? 'YES' : 'NO'));
+  if (s.botCrawlable !== null && s.botCrawlable !== undefined) {
+    if (s.botEmptyShellDetected) {
+      lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): FAILED \u2014 ' + (s.botEmptyShellBots || []).join(', ') + ' see a near-empty page despite the static checks above. The site likely renders content client-side (JS), which these crawlers do not execute. This is a REAL crawlability defect, independent of schema/llms.txt.');
+    } else if (s.botCrawlable) {
+      lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): PASSED \u2014 real bot user-agents see substantive content, matching what a normal browser sees.');
+    }
+  }
+  if (s.googleExtendedBlocked) {
+    lines.push('Google-Extended (Gemini AI-training crawler): BLOCKED via robots.txt \u2014 this site has opted out of Gemini training/citation.');
+  }
+
+  if (s.trustpilotReviewCount !== undefined) {
+    lines.push('Trustpilot reviews (live): ' + s.trustpilotReviewCount + (s.trustpilotRating ? ' — rating ' + s.trustpilotRating : ''));
+  }
+  if (s.googleReviewCount !== undefined) {
+    lines.push('Google reviews (live): ' + s.googleReviewCount + (s.googleRating ? ' — rating ' + s.googleRating : ''));
+  }
+
+  if (s.confirmedReviewPlatforms && s.confirmedReviewPlatforms.length > 0) {
+    lines.push('Review platform pages fetched: ' + s.confirmedReviewPlatforms.join(', '));
+  }
+
+  return lines.join('\n');
+}
+
+// ── Main scoring prompt ───────────────────────────────────────────────────────
+function buildPrompt(evidence) {
+  var name               = evidence.name        || '';
+  var category           = evidence.category    || '';
+  var city               = evidence.city        || '';
+  var website            = evidence.website     || 'not provided';
+  var description        = evidence.description || 'not provided';
+  var inferredSite       = evidence.inferredOfficialSite || 'not found';
+  var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
+  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
+  var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
+  var visibilityPosition = evidence.visibilityPosition;
+  var competitors        = evidence.competitors        || [];
+  var knownCompetitors   = evidence.knownCompetitors   || '';
+  var competitorDomain   = evidence.competitorDomain   || '';
+  var competitorPageText = evidence.competitorPageText || '';
+  var previousCompetitor = sanitizeExternal(String(evidence.previousCompetitor || '')).trim();
+
+  // AI SELECTION GROUND TRUTH — the three real recommendation queries run in
+  // Stage 1c. The businesses named in these responses are who AI actually
+  // recommends today; they are the primary source for competitor selection.
+  var simBefore = evidence.aiSimulationBefore || null;
+  var simGroundTruth = '';
+  if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
+    simGroundTruth = simBefore.before.results.map(function(r, i) {
+      return 'QUERY ' + (i + 1) + ' (' + String(r.label || '') + '): "' + String(r.query || '') + '"\n'
+        + 'AI ANSWERED: ' + sanitizeExternal(String(r.response || ''));
+    }).join('\n\n');
+  }
+  var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
+  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
+  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
+  var socialSignals      = evidence.socialSignals || {};
+  var summaries          = evidence.summaries     || {};
+  var websiteSignals     = evidence.websiteSignals || {};
+
+  var competitorText = competitors.length > 0
+    ? competitors.map(function(c) {
+        var tag = c.isLocal ? ' [found via local-market search — likely a local/domestic competitor]' : '';
+        return '- ' + c.domain + tag + ': ' + (c.snippet || '');
+      }).join('\n')
+    : 'No clear competitors identified in search results.';
+
+  var socialList    = Object.keys(socialSignals).filter(function(k) { return socialSignals[k]; });
+  var socialDisplay = socialList.length > 0 ? socialList.join(', ') : 'None detected in search results.';
+
+  var visibilityText = (visibilityPosition !== undefined && visibilityPosition !== -1)
+    ? 'YES (position ' + (visibilityPosition + 1) + ')'
+    : 'NO';
+
+  var confirmedSignalsSection = buildConfirmedSignals(websiteSignals);
+
+  var prompt = 'BUSINESS:\n'
+    + 'Name: ' + name + '\n'
+    + 'Category: ' + category + '\n'
+    + 'Location: ' + city + '\n'
+    + 'Website: ' + website + '\n'
+    + 'Description: ' + description + '\n'
+    + (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '')
+    + '\nINFERRED OFFICIAL SITE: ' + inferredSite
+    + '\n\n' + confirmedSignalsSection
+    + '\n\nKNOWLEDGE GRAPH:\n' + kgText
+    + '\n\nWEBSITE CONTENT:\n' + websiteText
+    + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
+    + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
+    + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
+    // previousCompetitor deliberately NOT injected — v5 web search finds the
+    // real competitor fresh each run. Injecting a prior name biases scoring
+    // toward repeating old (potentially wrong) answers.
+    + (evidence.competitorDecision ? '\n\nCOMPETITOR DECISION \u2014 MADE BY THE DEDICATED SELECTION STAGE (do not override):\n'
+        + (evidence.competitorDecision.realCompetitor
+            ? 'competitors[0].name MUST be exactly: ' + evidence.competitorDecision.realCompetitor + ' \u2014 the subject\u2019s true head-to-head market rival (source: ' + evidence.competitorDecision.source + '). Reason: ' + evidence.competitorDecision.reason + ' Its evidence text MUST state honestly whether the AI SELECTION GROUND TRUTH currently names this rival, quoting what AI answered instead if it does not.'
+            : 'No true head-to-head rival could be named with confidence \u2014 apply the normal fallback rules for competitors[0].')
+        + (evidence.competitorDecision.aiRecommends && evidence.competitorDecision.aiRecommends !== evidence.competitorDecision.realCompetitor
+            ? ' competitors[1] MUST be: ' + evidence.competitorDecision.aiRecommends + ' \u2014 the business AI actually recommends for these queries today; label its queryContext accordingly and ground its entry in the AI SELECTION GROUND TRUTH.'
+            : '')
+        + (evidence.competitorDecision.secondAiCompetitor
+            && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.realCompetitor
+            && evidence.competitorDecision.secondAiCompetitor !== evidence.competitorDecision.aiRecommends
+            ? ' competitors[2] MUST also include: ' + evidence.competitorDecision.secondAiCompetitor + ' \u2014 the second-most-mentioned business in real AI recommendation responses for this category. Set its queryContext to "ai-ground-truth". Ground its analysis in what the AI SELECTION GROUND TRUTH actually said about it.'
+            : '')
+        + (evidence.competitorDecision.globalBenchmark && evidence.competitorDecision.globalBenchmark !== evidence.competitorDecision.realCompetitor
+            ? ' competitors[2] MAY be: ' + evidence.competitorDecision.globalBenchmark + ' \u2014 the international category leader; label it explicitly as a global benchmark that does NOT serve this market: a playbook to study, not a rival taking these customers.'
+            : '')
+        + ' If the owner named competitors in their input and none of them appears in the competitors array, one slot (preferring [2] over the global benchmark) MUST address the most significant owner-named competitor honestly: state plainly whether the AI SELECTION GROUND TRUTH mentions them, and how their confirmed signals compare to the subject\u2019s. The owner asked about this business \u2014 the report must answer.'
+        + (evidence.competitorDecision.categoryUnowned
+            ? ' The ground truth names no true same-category player \u2014 the category answer is UNOWNED; state this as an opportunity in the competitor narrative.'
+            : '')
+        : '')
+    + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category and location, in the market\u2019s own language where applicable. The businesses named below are who AI ACTUALLY recommends today:\n' + simGroundTruth : '')
+    + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
+    + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
+    + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
+    + (apifyText ? '\n\nLIVE REVIEW DATA:\n' + apifyText : '')
+    + '\n\nEVIDENCE SUMMARIES:\n'
+    + 'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n'
+    + 'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n'
+    + 'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n'
+    + 'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n'
+    + '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText
+    + '\n\n---\n'
+    + 'YOU ARE CHOIVE™ — A DECISION INTELLIGENCE ENGINE.\n\n'
+    + 'YOUR ONLY JOB:\n'
+    + 'Determine why a customer would or would not choose this business over alternatives.\n\n'
+    + 'CRITICAL — CONFIRMED SIGNALS ARE GROUND TRUTH:\n'
+    + 'The CONFIRMED SIGNALS section above was produced by mechanical verification — direct HTTP\n'
+    + 'requests, HTML parsing, file checks. These facts are certain. Do not contradict them.\n'
+    + 'When scoring Clarity and Ease, your scores MUST reflect what the confirmed signals show:\n'
+    + '- If "Schema markup: YES" → ease score cannot be below 12\n'
+    + '- If "Schema markup: NO" → ease score cannot exceed 8\n'
+    + '- If "llms.txt: YES" → ease score cannot be below 18\n'
+    + '- If "Title tag: YES" and "H1: YES" and "Meta description: YES" → clarity cannot be below 14\n'
+    + '- If "Title tag: NO" and "H1: NO" → clarity cannot exceed 8\n'
+    + 'These are not suggestions. They are hard constraints derived from real data.\n\n'
+    + 'STRICT RULES:\n'
+    + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
+    + '2. Every score must be justified by specific evidence.\n'
+    + '3. If a signal is missing, say it is missing. Do not invent it.\n'
+    + '4. Every pillar finding must quote or directly reference specific evidence.\n'
+    + '5. If an AI SELECTION GROUND TRUTH section is present, prefer a business named in those AI responses — but ONLY if it is genuinely in the same category serving the same buyer at the same deal size. If no ground-truth name qualifies (AI often answers new categories with adjacent giants from other industries — those are NOT competitors), select from the search evidence instead. If neither yields one, return null.\n'
+    + '6. CRITICAL: It is NOT the same business being diagnosed — never name the subject business or any variation of its name as a competitor\n'
+    + '7. CRITICAL: It is NOT a platform, tool, or service that this business measures, diagnoses, audits, or helps businesses appear on — for example, if this business helps clients appear on ChatGPT, then ChatGPT is not a competitor; it is the platform being measured\n'
+    + '8. CRITICAL — SAME CATEGORY ONLY: Every competitor in the competitors[] array MUST operate in the same category and serve the same buyer type as the subject. If the subject is B2B, all competitors must be B2B. If the subject sells software to enterprises, do not list consumer products, streaming services, or retail brands — those are NOT competitors. A consumer streaming service is never a competitor of a B2B middleware vendor, even if AI mentioned it frequently. Apply this filter to ALL competitors[] slots — not just the first.\n'
+    + 'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n'
+    + 'User provided category: "' + category + '" — this may be vague or incorrect.\n'
+    + 'Using ONLY the evidence, determine:\n'
+    + '1. What does this business actually sell?\n'
+    + '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n'
+    + '3. What precise industry category would buyers use to find this?\n'
+    + '4. B2B, B2C, or both?\n'
+    + 'Set inferredCategory in the JSON. Do not write this as prose.\n\n'
+    + 'DECISION ENVIRONMENT — classify first:\n'
+    + '- discovery_driven: local, map-based, search-based selection\n'
+    + '- comparison_driven: evaluated against alternatives before decision\n'
+    + '- authority_driven: selected based on reputation, partnerships, capability\n'
+    + '- default_driven: category leader chosen automatically\n\n'
+    + 'SCORING — four pillars, each 0-25:\n\n'
+    + 'CLARITY (0-25): How precisely and consistently is this business defined?\n'
+    + '- Score 20+: specific H1, clear category, consistent naming across all sources\n'
+    + '- Score 10-19: partially defined, some inconsistency\n'
+    + '- Score 0-9: vague, inconsistent, or undefined\n'
+    + '- HARD CONSTRAINT: If confirmed signals show Title YES + H1 YES + Meta YES → minimum 14\n'
+    + '- HARD CONSTRAINT: If confirmed signals show Title NO + H1 NO → maximum 8\n'
+    + '- Required: quote the actual H1 or description found in confirmed signals\n\n'
+    + 'TRUST (0-25): How much independent third-party verification exists?\n'
+    + '- Score 20-25: multiple strong independent citations — press, reviews, partnerships all confirmed\n'
+    + '- Score 15-19: solid third-party signals — named client testimonials from known companies,\n'
+    + '  OR verified review platform presence with ratings, OR confirmed press coverage\n'
+    + '- Score 8-14: some third-party signals but limited — one or two sources only\n'
+    + '- Score 0-7: only owned channels, no independent confirmation found\n'
+    + '- RULE: named executive testimonials from Fortune 500 or major enterprise clients\n'
+    + '  with full name and title count as strong trust signals — score minimum 15\n'
+    + '- RULE: global top-tier firms (Magic Circle law, Big Four accounting) = minimum 16\n'
+    + '- RULE: Legal 500 or Chambers rankings count as strong independent citations\n'
+    + '- RULE: for consumer brands, use exact review numbers from CONFIRMED SIGNALS if present\n'
+    + '  330 Facebook likes + 1 review = score 4-6. 50+ Trustpilot reviews = score 14+\n'
+    + '- Required: name specific sources AND exact numbers\n\n'
+    + 'TRUST ACTION RULE:\n'
+    + 'When trust is low, action body must state:\n'
+    + '1. Exactly what was found\n'
+    + '2. The number needed to be credible in this category\n'
+    + '3. The specific platform that matters most for this buyer type\n\n'
+    + 'PRESS AND MEDIA ACTION RULE:\n'
+    + 'When the Trust signal audit shows "Press or media mention: FAIL" (no confirmed press or media coverage found), you MUST include an action addressing how to get the business named in an independent publication, trade outlet, food blog, industry site, or news source relevant to its category. This is a direct trust signal AI systems use — a business mentioned nowhere outside its own website is treated as unverifiable. The action must:\n'
+    + '- Name the specific type of outlet that matters for this business (food media for beef brands, industry press for B2B software, etc.)\n'
+    + '- Suggest one concrete, achievable step (pitch to a named outlet type, submit to a specific directory, contribute to an industry forum or podcast)\n'
+    + '- Not be generic — tie it to the specific product or story the business has that would be newsworthy\n\n'
+    + 'RECOMMENDED PLATFORM \u2014 CRITICAL: name the SINGLE real review or credibility platform that actually matters most for buyers in THIS SPECIFIC inferred category \u2014 reason from the real business type, never default to a generic answer. Examples of the reasoning expected: a B2B software company \u2014 G2 or Capterra; a restaurant \u2014 Google Reviews; a law firm \u2014 Chambers or Legal 500; a hotel \u2014 TripAdvisor and Google; a construction contractor \u2014 Google Business Profile and Houzz; a real estate agency \u2014 Zillow or a local realtor platform; a fitness studio \u2014 Google and ClassPass; a manufacturer or B2B supplier \u2014 industry-specific directories or Clutch; a consumer product brand with no single obvious platform \u2014 Trustpilot is a legitimate default, but only after genuinely considering whether a more specific, category-relevant platform exists first. Trustpilot must never be the reflexive default \u2014 it is correct only when it is truly the platform this buyer type actually checks.\n\n'
+    + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
+    + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
+    + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
+    + '- Score 8-14: differentiator exists but vague or easy to copy\n'
+    + '- Score 0-7: completely generic — no niche, no unique clients, no distinct use case\n'
+    + '- CRITICAL: a business with named automotive partnerships (Škoda, Zeekr, Geely)\n'
+    + '  AND named telco clients (TELUS, Proximus) AND 15+ years in a niche CANNOT score below 14\n'
+    + '- Required: quote the actual differentiator, or state precisely why none exists\n'
+    + '- DIFFERENCE FINDING FORMAT: complete this sentence — "[Business] is the [specific thing] for [specific buyer]"\n'
+    + '  If no differentiator exists, complete: "[Business] looks like every other [category] to a buyer"\n'
+    + '- Analysis sentence 1: Quote the exact phrase or evidence that shows the differentiator (or its absence)\n'
+    + '- Analysis sentence 2: Name the exact sales conversation moment where this difference is won or lost\n\n'
+    + 'EASE (0-25): How quickly and confidently can this business be understood and selected?\n'
+    + '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n'
+    + '- Score 14-19: schema present + complete metadata but no llms.txt\n'
+    + '- Score 8-13: partial structured signals — OG tags + some metadata, no schema\n'
+    + '- Score 4-7: basic web presence — website works, OG tags present, no schema, no llms.txt\n'
+    + '- Score 0-3: no structured signals at all, or website inaccessible\n'
+    + '- HARD CONSTRAINT: confirmed "Schema markup: YES" → score MINIMUM 12\n'
+    + '- HARD CONSTRAINT: confirmed "Schema markup: NO" → score MAXIMUM 8\n'
+    + '- HARD CONSTRAINT: confirmed "llms.txt: YES" → score MINIMUM 18\n'
+    + '- HARD CONSTRAINT: if the AI CRAWLER CHECK shows FAILED (empty-shell detected) → score MAXIMUM 6, regardless of schema/llms.txt \u2014 metadata files mean nothing if the actual crawlers you\u2019re being diagnosed for cannot read the page.\n'
+    + '- Required: state exactly which signals were confirmed and which were absent\n\n'
+    + 'COMPETITOR RULE — SOURCE PRIORITY:\n'
+    + 'PRIORITY 1 — AI SELECTION GROUND TRUTH: if the evidence contains an AI SELECTION GROUND TRUTH section, the dominant competitor (competitors[0], the business shown as \u201cAI is recommending instead of you\u201d) MUST be a business named in those AI responses THAT ALSO PASSES EVERY exclusion criterion below — same category, same buyer type, same deal size, not a directory, not the subject business, not a measured platform. Among qualifying names, choose the most prominently recommended — a top pick outranks a list mention; more mentions outrank fewer. The qualifying ground truth OUTRANKS the previously verified competitor: if they disagree, follow the ground truth — this is how past mis-identifications are corrected. Additional competitors (competitors[1..2]) MAY come from search evidence as structural benchmarks.\n'+ 'COMPETITOR ACCURACY: competitors[0] is decided by the dedicated selection stage above (frequency-verified across real AI samples) and must not be second-guessed or overridden here — no name is protected by a previous run; the highest observed, qualifying frequency wins fresh every time.\n'
+    + 'GROUND TRUTH DISQUALIFICATION: if NO business named in the ground truth passes the criteria — common when the category is new and AI answers with adjacent giants from other categories — do NOT force one in. Treat the ground truth as empty for competitor selection, select under PRIORITY 2 instead, and set the competitor queryContext to note that AI currently names no true same-category player for these queries — the category is unowned, which is an opportunity.\n'
+    + 'PRIORITY 2 — SEARCH EVIDENCE: if no AI SELECTION GROUND TRUTH section exists, or no ground-truth name qualifies, select from search evidence under the rule below.\n'
+    + 'In BOTH cases every exclusion criterion below still applies.\n'
+    + 'Only name a competitor if ALL of these are true:\n'
+    + '1. The competitor name appears in the AI SELECTION GROUND TRUTH responses or in the search evidence above\n'
+    + '2. It is in the exact same category as this business\n'
+    + '3. It competes for the same buyer type at the same deal size\n'
+    + '4. It is not a directory, review platform, aggregator, or listing site\n'
+    + '5. It would realistically appear in the same sales conversation\n'
+    + '6. CRITICAL: It is NOT the same business being diagnosed — never name the subject business or any variation of its name as a competitor\n'
+    + '7. CRITICAL: It is NOT a platform, tool, or service that this business measures, diagnoses, audits, or helps businesses appear on — for example, if this business helps clients appear on ChatGPT, then ChatGPT is not a competitor; it is the platform being measured\n'
+    + 'If no competitor meets all 6 criteria from search evidence, do this fallback:\n'
+    + '  Use your knowledge of the INFERRED CATEGORY to name the most well-known player in that space.\n'
+    + '  Set queryContext to "category-based analysis" and evidence to "Named based on category knowledge — not found in search evidence."\n'
+    + '  Only return null if the business is in a completely unique category with no comparable players anywhere.\n\n'
+    + (knownCompetitors ? ('IF THE USER PROVIDED KNOWN COMPETITORS:\n'
+    + 'It is verified ground truth from the business owner. For each name in that list:\n'
+    + '1. Search the evidence above for any mention of that name, even a brief one.\n'
+    + '2. If found anywhere in the evidence, include it as a competitor.\n'
+    + '3. A user-provided name found in evidence takes priority over unnamed competitors.\n'
+    + '4. If none of the user-provided names appear in evidence, do not invent evidence for them.\n\n') : '')
+    + 'SCAN ALL EVIDENCE — DO NOT STOP AT THE FIRST MATCH:\n'
+    + 'If TWO OR MORE distinct competitor names meeting all 6 criteria appear ANYWHERE in the evidence,\n'
+    + 'return all of them (up to 3). Returning only 1 when 2+ exist is an incomplete answer.\n\n'
+    + 'CATEGORY PRIORITY:\n'
+    + 'The evidence contains two passes of search results.\n'
+    + 'The SECOND-PASS results (labelled "SECOND-PASS COMPETITOR SEARCH") used the REAL inferred category — these are more accurate than first-pass results.\n'
+    + 'If a competitor appears in second-pass results, ALWAYS prefer them over first-pass results.\n'
+    + 'First-pass competitors should only be used if no second-pass competitors exist.\n\n'
++ 'GEOGRAPHIC COVERAGE:\n'
+    + 'Return UP TO 3 competitors. Target shape:\n'
+    + '- One LOCAL or DOMESTIC competitor (same country/region)\n'
+    + '- One INTERNATIONAL or GLOBAL competitor (different country, same category)\n'
+    + 'Entries tagged "[found via local-market search]" are your first choice for the local slot.\n'
+    + 'Do not invent a local competitor if none appears in evidence.\n\n'
+    + 'SOURCE QUALITY — PREFER GENUINE OVER GENERIC:\n'
+    + 'HIGH QUALITY: named alongside this business in a news article, industry panel, analyst report.\n'
+    + 'LOWER QUALITY: appears on a generic "best X vendors" / "top X alternatives" listicle site.\n'
+    + 'If both types exist, use the press-named one first.\n\n'
+    + 'IF A COMPETITOR HAS REBRANDED:\n'
+    + 'Use the CURRENT name only. You may mention the former name once in the evidence field.\n\n'
+    + 'COMPETITOR ANALYSIS DEPTH:\n'
+    + 'whyAIRecommendsThem: one sentence — what specific signal or content factor causes AI to name this competitor in recommendation responses? If they appear in the AI SELECTION GROUND TRUTH, quote or paraphrase what AI actually said about them. If from search evidence only, state what trust or visibility signal likely drives the recommendation.\n'
+    + 'advantage: one sentence — what structural competitive advantage does this competitor hold over the subject business specifically? Focus on what they have that the subject lacks — review volume, category positioning, brand recognition, trust signals — NOT on why AI names them (that is already covered above).\n'
+    + 'gapLocation: one sentence — at exactly what moment in a buyer\'s AI search does this competitor get named instead of [Business]? Name the specific query pattern or buying moment where the displacement happens.\n'
+    + 'closeGap: one sentence — what single specific change to [Business]\'s signals would cause AI to include them alongside or instead of this competitor in that same query?\n'
+    + 'Format: "[Business] should [exact action] so that [buyer outcome]."\n\n'
+    + 'PLATFORM COVERAGE RULE:\n'
+    + '- present: clearly findable OR marketPosition.tier is dominant\n'
+    + '- weak: appears in search results but lacks structured signals OR tier is strong\n'
+    + '- absent: genuinely no evidence — only for unknown or very new businesses\n'
+    + '- RULE: dominant tier = PRESENT on all platforms. No exceptions.\n'
+    + '- RULE: strong tier = minimum WEAK on all platforms.\n\n'
+    + 'MARKET POSITION TIERS:\n'
+    + 'dominant: household name globally — Nike, Starbucks, Salesforce, McKinsey, Freshfields\n'
+    + '  Magic Circle law firms = dominant. Big Four accounting = dominant.\n'
+    + 'strong: well-known in category — named by buyers without prompting.\n'
+    + 'upper_mid: known within category but requires some discovery.\n'
+    + 'mid: present but requires active search. Regional or niche B2B player.\n'
+    + 'weak: limited presence — hard to find without knowing the name.\n'
+    + 'absent: no detectable presence in evidence.\n'
+    + 'CRITICAL TIER RULES:\n'
+    + '- A B2B niche vendor with Fortune 500 clients = mid or upper_mid, NOT strong or dominant\n'
+    + '- Strong/dominant = known by buyers WITHOUT being searched for\n'
+    + '- Technical gaps do NOT lower tier. Tier = real-world selection likelihood.\n'
+    + '- When uncertain: use the lower tier\n\n'
+    + 'CHOIVE LANGUAGE STANDARD:\n'
+    + 'WHAT CHOIVE IS: A business selection diagnostic. Why a business is chosen, overlooked, trusted, compared, or ignored.\n'
+    + 'NOT an SEO audit. NOT an AI visibility tool. Focus on SELECTION.\n'
+    + 'NEVER WRITE: AI cannot understand / AI does not know / AI cannot categorize\n'
+    + 'INSTEAD WRITE: not consistently selected / recommendation confidence low / selection friction exists\n'
+    + 'TRUST: Named Fortune 500 clients, partnerships, long history = HIGH TRUST. Review volume alone is not trust.\n'
+    + 'EASE: How quickly understood, categorized, selected. Schema is one factor, not the whole score.\n'
+    + 'COMPETITORS: Only from evidence. Never invent. If none found: No dominant comparison pattern detected.\n'
+    + 'RECOMMENDATIONS: Explain outcome not task.\n'
+    + 'TONE: Strategic advisor.\n\n'
+    + 'ACTION RULES:\n'
+    + '- DISPLACEMENT-FIRST ORDERING: If the AI SELECTION GROUND TRUTH shows another business being recommended instead of this one, the FIRST critical action MUST address how to close that specific AI recommendation gap. Name the competitor being recommended. Explain what signal or content change would cause AI to include this business in those same responses. This is the primary CHOIVE finding. Do not lead with schema, llms.txt, or review platform actions if AI displacement was detected — those are supporting actions, not the lead.\n'
+    + '- Actions must be specific to this business — name the business, name the platform, name the exact gap\n'
+    + '- Body sentence 1: what is missing right now, with specific evidence cited — name the exact number, platform, or signal\n'
+    + '- Body sentence 2: exactly what to do — one action, one platform, one outcome. Start with a verb.\n'
+    + '- Explanation: the selection consequence — what changes for the buyer when this is fixed\n'
+    + '  Do NOT explain the technical task. Explain what the buyer experiences differently.\n'
+    + '  Format: "When [this is done], [buyer] will [specific outcome] instead of [current problem]."\n'
+    + '- if_nothing: one sentence — what happens to this business in 90 days if this action is not taken.\n'
+    + '  Format: "Without this, [specific competitive consequence]."\n'
+    + '- TITLE BANNED WORDS: schema, schema markup, JSON-LD, llms.txt, metadata, canonical — never in title\n'
+    + '- TITLE GOOD: Get your first independent review, Close the comparison gap, Define your business for AI systems\n'
+    + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\n'
+    + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
+    + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
+    + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
+    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'    + '- COMMUNITY OPPORTUNITY: if the evidence contains a REAL BUYER CONVERSATIONS section with an actual thread, forum post, or discussion, ONE action MUST be a tactical, human engagement in that specific conversation \u2014 name the exact platform (e.g. Reddit) and reference what the thread is actually asking, not a generic \u201cengage with your community.\u201d This is a genuinely different KIND of action from institutional fixes (schema, reviews) \u2014 it is immediate, human, and free. Do not substitute a structural fix for this when real community evidence exists; do both. If no real community evidence was found, do not invent a thread \u2014 omit this action type entirely rather than fabricate a plausible-sounding one.\n\n'
+    + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
+    + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Difference finding: [one short phrase, max 6 words, no punctuation]\n'
+    + 'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n'
+    + 'PILLAR ANALYSIS — exactly 2 sentences each:\n'
+    + 'Sentence 1: Quote or directly reference the specific evidence. Name exact numbers, platforms, signals found or missing.\n'
+    + 'Sentence 2: State the exact selection consequence — what a buyer experiences because of this score.\n'
+    + 'NEVER write generic analysis. Every sentence must be impossible to apply to a different business.\n\n'
+    + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone. '
+    + 'AVOID AMBIGUOUS NEGATION: never write "not consistently [positive thing]" or "not always [positive thing]" \u2014 a reader can misparse this as mostly-positive-with-exceptions when the true meaning is the opposite. BANNED EXAMPLE: "Not consistently the obvious choice" (reads as usually chosen, sometimes not \u2014 backwards for a weak/absent tier). Instead state the gap plainly and unambiguously: "Overlooked when it matters most", "Not the default choice yet", "Invisible at the moment of comparison".\n\n'
+    + 'SUMMARY PARAGRAPH — exactly 3 sentences:\n'
+    + 'DISPLACEMENT SUMMARY RULE — choose exactly one opening based on this priority order:\n'
+    + '  1. If the AI SELECTION GROUND TRUTH section names a specific competitor (displacement detected): Sentence 1 MUST be: "When buyers ask AI which [category] to choose in [location/market], [Competitor] is recommended — not [Business Name]."\n'
+    + '  2. If tier is dominant or strong AND no displacement competitor was named: Sentence 1 starts with "This business is currently chosen because..."\n'
+    + '  3. If tier is upper_mid/mid/weak/absent AND no displacement competitor was named: Sentence 1 starts with "This business operates in a category AI does not yet have a confident answer for — which is both a gap and an opportunity."\n'
+    + 'Apply only ONE of these openings. Do not blend them.\n'
+    + '- Sentence 2: the single strongest evidence-based driver or gap — name the specific signal or its absence\n'
+    + '- Sentence 3: the concrete moment in the buyer journey where this business is lost or won. Name the exact moment.\n\n'
+    + 'BUSINESS UNDERSTANDING — what AI currently thinks this business is:\n'
+    + 'Write exactly two paragraphs separated by a blank line.\n'
+    + 'Paragraph 1 — BEFORE: Write EXACTLY what a language model would output TODAY if someone asked "What is [business name]?" or "Which [category] should I buy in [location]?" — this is a simulation of current AI output, NOT a business description. Use ONLY signals from the evidence. CRITICAL: if the AI SELECTION GROUND TRUTH shows this business was NOT named when buyers asked about its category, the paragraph MUST start with that fact: "[Business] is not a business AI currently names when asked about [category] in [location]." If the knowledge graph is empty, write what AI would say when it has minimal data — it will be vague, hedged, or possibly confused with similar businesses. Do not write a flattering summary. Write what AI actually outputs.\n'
+    + 'Paragraph 2 — AFTER: Write what that same AI paragraph would say after the top fixes are implemented.\n'
+    + '  Start with the business name. Reference ONLY the concrete fixes from your own actions list\n'
+    + '  (e.g. verified reviews on the named platform, llms.txt present, schema confirmed).\n'
+    + '  NEVER invent press coverage, publications, client names, awards, or partnerships.\n'
+    + '  CRITICAL COHERENCE RULE: this paragraph must never assert a fact that the Trust pillar\u2019s own evidence contradicts elsewhere in this same output \u2014 if CONFIRMED SIGNALS or the review evidence shows zero Trustpilot/Google presence, this paragraph may NEVER say reviews are "verified" or "confirmed" as if they already exist. Describe the fix as pending, not as already accomplished: e.g. "once verified reviews are live on Trustpilot" not "verified reviews on Trustpilot confirm.\u201d A contradiction between this paragraph and the Trust pillar\u2019s own finding is a critical defect, not a stylistic choice.\n'
+    + '  NEVER use bracket placeholders like [platform] or [publication] — name the real platform from your actions or omit it.\n'
+    + '  Phrase it as what AI would say once those specific fixes are verifiably in place. Nothing beyond them.\n'
+    + '  The contrast between the two paragraphs is the core value of this field.\n\n'
+    + 'EVIDENCE NARRATIVE RULES:\n'
+    + 'LEAD WITH THE AI FINDING: If the AI SELECTION GROUND TRUTH section names a specific competitor, the evidence narrative MUST open with that fact: "Real AI recommendation queries for [category] in [location] returned [Competitor] as the named answer — [Business] was not mentioned." This is the most important finding in the entire report and must never be buried.\n'
+    + 'Write exactly what was found and what was not found. Name specific search queries that returned zero results.\n'
+    + 'Name specific signals that were confirmed. Name the exact gap between what exists and what is needed.\n'
+    + 'Do not summarise. Do not soften. Do not generalise. Every sentence must be evidence-backed.\n\n'
+    + 'SIGNAL AUDIT — populate signalAudit with EXACTLY the signals below per pillar. Use ONLY these three status values: "pass", "fail", "partial".\n'
+    + 'For each signal, detail must be a short specific phrase (max 12 words) — name the exact value found, or state exactly what was missing.\n'
+    + 'NEVER leave detail blank on a "pass". NEVER write "N/A" or "none". NEVER invent data not in the evidence.\n\n'
+    + 'CLARITY signals (check in order):\n'
+    + '1. "H1 headline names the service" — pass if H1 text contains the specific product/service category; fail if generic or absent\n'
+    + '2. "Meta description present" — pass if confirmed; fail if missing\n'
+    + '3. "Business name consistent across sources" — pass if search results show consistent name; partial if variation found; fail if conflicting\n'
+    + '4. "Homepage category immediately clear" — pass if first content clearly states what business does; partial if vague; fail if absent\n\n'
+    + 'TRUST signals (check in order):\n'
+    + '1. "Google reviews" — pass if rating + count found; partial if profile exists but low volume (<5); fail if none\n'
+    + '2. "Trustpilot presence" — pass if found with rating; fail if not found\n'
+    + '3. "Press or media mention" — pass if named publication found in search evidence; fail if none found\n'
+    + '4. "Case study or named client result" — pass if specific result with named client found; partial if result exists but no name; fail if none\n\n'
+    + 'DIFFERENCE signals (check in order):\n'
+    + '1. "Named differentiator stated" — pass if a specific unique claim exists (not "best" or "quality"); partial if vague claim only; fail if none\n'
+    + '2. "Named client or partner referenced" — pass if a specific company/person is named; fail if none\n'
+    + '3. "Niche or category ownership claim" — pass if business explicitly owns a defined niche; partial if implied; fail if absent\n'
+    + '4. "Proof of outcome stated" — pass if a measurable result is cited (number, %, time); fail if none\n\n'
+    + 'EASE signals (check in order):\n'
+    + '1. "Schema markup present" — pass if detected; fail if none found\n'
+    + '2. "llms.txt file present" — pass if confirmed; fail if absent\n'
+    + '3. "AI crawlers can read page" — pass if bots see substantive content; partial if thin; fail if blocked or empty shell\n'
+    + '4. "Structured FAQ or explainer content" — pass if clear question/answer format found; partial if present but thin; fail if absent\n\n'
+    + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
+
+  var jsonSchema = '{\n'
+    + '  "overallScore": 0,\n'
+    + '  "verdictHeadline": "",\n'
+    + '  "summaryParagraph": "",\n'
+    + '  "businessUnderstanding": "",\n'
+    + '  "evidenceNarrative": "",\n'
+    + '  "inferredCategory": "",\n'
+    + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
+    + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
+    + '  "recommendedPlatform": { "name": "", "url": "", "reason": "" },\n'
+    + '  "pillars": {\n'
+    + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "difference": { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
+    + '    "ease":       { "score": 0, "finding": "", "analysis": "", "evidence": "" }\n'
+    + '  },\n'
+    + '  "signalAudit": {\n'
+    + '    "clarity":    [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "trust":      [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "difference": [ { "name": "", "status": "pass", "detail": "" } ],\n'
+    + '    "ease":       [ { "name": "", "status": "pass", "detail": "" } ]\n'
+    + '  },\n'
+    + '  "competitors": [\n'
+    + '    { "name": "", "whyAIRecommendsThem": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" },\n'
+    + '    { "name": "", "whyAIRecommendsThem": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
+    + '  ],\n'
+    + '  "actions": [\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
+    + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
+    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "" }\n'
+    + '  ]\n'
+    + '}';
+
+  var competitorReminder = (evidence.competitorDecision && evidence.competitorDecision.realCompetitor)
+    ? 'IMPORTANT: competitors[0].name must be exactly "' + String(evidence.competitorDecision.realCompetitor).replace(/"/g, '\\"') + '". Do not alter it.\n\n'
+    : '';
+  return prompt + competitorReminder + jsonSchema;
+}
+
+// ── Parse Claude response ─────────────────────────────────────────────────────
+function parseClaudeResponse(data) {
+  var text = (data.content || [])
+    .filter(function(b) { return b.type === 'text'; })
+    .map(function(b) { return b.text || ''; })
+    .join('')
     .trim();
-  if (cleaned.length > 500) {
-    var cut = cleaned.lastIndexOf('.', 500);
-    cleaned = cut > 150 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 500);
+  if (!text) throw new Error('Claude returned empty response');
+  var clean = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  try { return JSON.parse(clean); } catch (_) {}
+  var start = clean.indexOf('{');
+  var end   = clean.lastIndexOf('}');
+  if (start > 0) { console.log('[CHOIVE] Non-JSON prefix:', JSON.stringify(clean.slice(0, Math.min(start, 100)))); }
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(clean.slice(start, end + 1)); } catch (_) {}
   }
-  return cleaned;
+  console.error('[CHOIVE] Claude parse failed. Raw start:', text.slice(0, 300));
+  console.error('[CHOIVE] Claude parse failed. Raw end:', text.slice(-300));
+  throw new Error('Could not parse Claude response as JSON');
 }
 
-// Detects whether the business actually appears in the AI's response.
-// Primary check requires the full name as a phrase — the strongest signal.
-// Fallback (for cases with minor name variation) requires ALL significant
-// words in the name to appear, not just any single word. A single shared
-// word (e.g. "Panorama" appearing in an unrelated sentence about scenery)
-// must not register as a false positive "appearance."
-// Hardened mention detection: folds diacritics (Täurbull → taurbull), strips
-// legal suffixes (GmbH, Ltd, Inc…) and possessives, matches on word boundaries,
-// and tolerates spacing variants (TaurBull vs Taur Bull). The old scatter-match
-// (every word anywhere in the text) is gone — it produced false positives for
-// generic names like Casa Verde.
-var LEGAL_SUFFIX_RE = /\b(gmbh|ag|kg|ug|ohg|gbr|ek|inc|llc|llp|ltd|limited|corp|corporation|co|company|s\s?a\s?r\s?l|sarl|sas|sa|bv|nv|srl|spa|oy|ab|as|aps|plc|pty|kft|sro|doo|kk|gk)\b/g;
+// ── Apply hard score constraints from confirmed signals ───────────────────────
+function applySignalConstraints(rawOutput, websiteSignals) {
+  if (!websiteSignals || Object.keys(websiteSignals).length === 0) return rawOutput;
+  var s = websiteSignals;
+  var p = rawOutput.pillars || {};
 
-function normalizeForMatch(s) {
+  if (p.ease) {
+    var ease = Number(p.ease.score) || 0;
+    // Apply floors first, then re-read the live score before applying caps
+    // so earlier mutations are visible to later checks.
+    if (s.hasLlmsTxt && ease < 18) { p.ease.score = Math.max(ease, 18); ease = p.ease.score; }
+    if (s.hasSchema  && ease < 12) { p.ease.score = Math.max(ease, 12); ease = p.ease.score; }
+    // No-schema cap only applies when llms.txt is also absent —
+    // having llms.txt is itself a strong AI-readability signal.
+    if (!s.hasSchema && !s.hasLlmsTxt && ease > 8) { p.ease.score = Math.min(ease, 8); ease = p.ease.score; }
+    // Empty-shell sites cap at 6 regardless of what the model scored \u2014 a
+    // code-level cap, not just a prompt instruction, because llms.txt/schema
+    // presence has repeatedly proven persuasive enough to override prose
+    // rules alone. Real crawlers seeing a blank page is the actual defect
+    // Ease is supposed to measure; static files are a proxy, not the fact.
+    if (s.botEmptyShellDetected && p.ease.score > 6) { p.ease.score = 6; }
+    if (s.allBotsFailed && p.ease.score > 3) { p.ease.score = 3; }
+  }
+
+  if (p.clarity) {
+    var clarity = Number(p.clarity.score) || 0;
+    if (s.hasTitle && s.hasH1 && s.hasMetaDescription && clarity < 14) {
+      p.clarity.score = Math.max(clarity, 14);
+    }
+    if (!s.hasTitle && !s.hasH1 && clarity > 8) {
+      p.clarity.score = Math.min(clarity, 8);
+    }
+  }
+
+  var cs = Number(p.clarity    && p.clarity.score)    || 0;
+  var ts = Number(p.trust      && p.trust.score)      || 0;
+  var ds = Number(p.difference && p.difference.score) || 0;
+  var es = Number(p.ease       && p.ease.score)       || 0;
+  rawOutput.overallScore = cs + ts + ds + es;
+
+  // ── Signal audit overrides ────────────────────────────────────────────────
+  // Replace Claude's generated statuses for signals we can verify
+  // programmatically from websiteSignals. Non-technical signals (press,
+  // case studies, differentiators) stay as Claude assessed them.
+  var sa = rawOutput.signalAudit;
+  if (sa && typeof sa === 'object') {
+    // Helper: find a signal entry by name prefix (case-insensitive)
+    function overrideSignal(pillar, namePrefix, status, detail) {
+      var arr = sa[pillar];
+      if (!Array.isArray(arr)) return;
+      var idx = -1;
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i] && String(arr[i].name || '').toLowerCase().indexOf(namePrefix.toLowerCase()) === 0) {
+          idx = i; break;
+        }
+      }
+      if (idx !== -1) {
+        arr[idx].status = status;
+        arr[idx].detail = detail;
+      } else {
+        // Signal wasn't generated by Claude — add it anyway so it's always shown
+        arr.push({ name: namePrefix, status: status, detail: detail });
+      }
+    }
+
+    // CLARITY — H1 and meta description
+    if (s.hasH1) {
+      var h1Detail = s.h1Text ? ('"' + String(s.h1Text).slice(0, 60) + '"') : 'H1 present';
+      overrideSignal('clarity', 'H1 headline', 'pass', h1Detail);
+    } else {
+      overrideSignal('clarity', 'H1 headline', 'fail', 'No H1 tag detected on page');
+    }
+    if (s.hasMetaDescription) {
+      var metaSnip = s.metaDescriptionText ? ('"' + String(s.metaDescriptionText).slice(0, 60) + '"') : 'Meta description present';
+      overrideSignal('clarity', 'Meta description', 'pass', metaSnip);
+    } else {
+      overrideSignal('clarity', 'Meta description', 'fail', 'No meta description found');
+    }
+
+    // TRUST — Google reviews and Trustpilot
+    if (s.googleRating && s.googleReviewCount) {
+      overrideSignal('trust', 'Google reviews', 'pass', s.googleRating + '★ · ' + s.googleReviewCount + ' reviews');
+    } else if (s.googleRating) {
+      overrideSignal('trust', 'Google reviews', 'partial', s.googleRating + '★ · review count not confirmed');
+    } else {
+      overrideSignal('trust', 'Google reviews', 'fail', 'No Google profile found');
+    }
+    if (s.trustpilotRating && s.trustpilotReviewCount) {
+      overrideSignal('trust', 'Trustpilot', 'pass', s.trustpilotRating + '/5 · ' + s.trustpilotReviewCount + ' reviews');
+    } else if (s.trustpilotRating) {
+      overrideSignal('trust', 'Trustpilot', 'partial', s.trustpilotRating + '/5 · review count not confirmed');
+    } else {
+      overrideSignal('trust', 'Trustpilot', 'fail', 'No Trustpilot profile found');
+    }
+
+    // EASE — schema, llms.txt, bot crawlability
+    if (s.hasSchema) {
+      var schemaDetail = (s.schemaCount && s.schemaCount > 0)
+        ? (s.schemaCount + ' schema type' + (s.schemaCount > 1 ? 's' : '') + (s.schemaTypes && s.schemaTypes.length ? ': ' + s.schemaTypes.slice(0, 2).join(', ') : ''))
+        : 'Schema markup detected';
+      overrideSignal('ease', 'Schema markup', 'pass', schemaDetail);
+    } else {
+      overrideSignal('ease', 'Schema markup', 'fail', 'No JSON-LD or schema detected');
+    }
+    if (s.hasLlmsTxt) {
+      overrideSignal('ease', 'llms.txt file', 'pass', 'llms.txt confirmed at root');
+    } else {
+      overrideSignal('ease', 'llms.txt file', 'fail', 'No llms.txt found');
+    }
+    if (s.botEmptyShellDetected) {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Bots see empty shell — JS-only render');
+    } else if (s.allBotsFailed) {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'All bot fetches blocked or failed');
+    } else if (s.botCrawlable === false) {
+      overrideSignal('ease', 'AI crawlers can read page', 'partial', 'Partial content visible to bots');
+    } else {
+      overrideSignal('ease', 'AI crawlers can read page', 'pass', 'Bots see substantive page content');
+    }
+  }
+
+  return rawOutput;
+}
+
+// ── Safe output normalizer ────────────────────────────────────────────────────
+function safeOutput(raw) {
+  var r = raw || {};
+  var pillars = r.pillars || {};
+  function safePillar(p) {
+    p = p || {};
+    return { score: Number(p.score) || 0, finding: p.finding || '', analysis: p.analysis || '', evidence: p.evidence || '' };
+  }
+  return {
+    overallScore:          Number(r.overallScore) || 0,
+    verdictHeadline:       r.verdictHeadline      || '',
+    summaryParagraph:      r.summaryParagraph     || '',
+    businessUnderstanding: r.businessUnderstanding || '',
+    evidenceNarrative:     r.evidenceNarrative    || '',
+    inferredCategory:      r.inferredCategory     || '',
+    signatureLine:         r.signatureLine        || '',
+    marketPosition:        r.marketPosition       || { tier: 'unknown', reasoning: '' },
+    platformCoverage:      r.platformCoverage     || { chatgpt: 'weak', perplexity: 'weak', gemini: 'weak', claude: 'weak' },
+    selectionGap:          r.selectionGap         || 0,
+    recommendedPlatform:   (r.recommendedPlatform && r.recommendedPlatform.name) ? r.recommendedPlatform : null,
+    pillars: {
+      clarity:    safePillar(pillars.clarity),
+      trust:      safePillar(pillars.trust),
+      difference: safePillar(pillars.difference),
+      ease:       safePillar(pillars.ease)
+    },
+    signalAudit: (r.signalAudit && typeof r.signalAudit === 'object') ? r.signalAudit : { clarity: [], trust: [], difference: [], ease: [] },
+    competitors:  Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
+    competitor:   r.competitor  || null,
+    actions:      Array.isArray(r.actions) ? r.actions : [],
+    deliverables: r.deliverables || null
+  };
+}
+
+// ── Main scoring function ─────────────────────────────────────────────────────
+// ── DEDICATED COMPETITOR SELECTION STAGE ─────────────────────────────────────
+// Competitor identity is too important to be one rule inside the giant scoring
+// prompt (where converging priors caused wrong-competitor lock-in). This small
+// single-purpose call decides the dominant competitor; the scoring prompt then
+// receives the decision as fact. Fails soft: on any error, returns null and the
+// scoring prompt's own rules apply as before.
+
+// ── Candidate frequency counting ──────────────────────────────────────────
+// Counts how often each candidate name appears across the FULL raw
+// ground-truth corpus (every independent sample, not just one representative
+// response per query). This is the deterministic replacement for
+// continuity/"protect the old answer" \u2014 accuracy comes from measuring
+// real frequency, not from defending a prior run's pick.
+function normalizeForCount(s) {
   s = String(s || '').toLowerCase();
   try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-  s = s.replace(/\u00df/g, 'ss');
-  s = s.replace(/['\u2019]s\b/g, '');
-  s = s.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return s;
+  return s.replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company|de|com)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-// Strip trailing 's' from words longer than 3 chars to normalise
-// singular/plural variants ('screens' -> 'screen', 'solutions' -> 'solution').
-// Applied to BOTH candidate name and response text so the same stemmed form
-// is compared on each side — '3 screens solution' matches '3 Screen Solutions'.
-function stemWord(w) {
-  return w.length > 3 && w[w.length - 1] === 's' ? w.slice(0, -1) : w;
-}
-function stemPhrase(s) {
-  return s.split(' ').map(stemWord).join(' ');
-}
-
-function businessMentioned(response, name) {
-  if (!response || !name) return false;
-  var resp = ' ' + normalizeForMatch(response) + ' ';
-  var respNoSpace = resp.replace(/ /g, '');
-  // Stemmed response for singular/plural-tolerant phrase matching
-  var respStemmed = ' ' + stemPhrase(normalizeForMatch(response)) + ' ';
-
-  var full = normalizeForMatch(name);
-  var core = full.replace(LEGAL_SUFFIX_RE, ' ').replace(/\s+/g, ' ').trim();
-  // Stemmed forms handle '3 screens solution' <-> '3 Screen Solutions'
-  var stemFull = stemPhrase(full);
-  var stemCore = stemPhrase(core);
-
-  var candidates = [full, core, stemFull, stemCore].filter(function(v, i, a) {
-    return v && a.indexOf(v) === i;
+function countCandidateFrequency(candidateName, corpus) {
+  var target = normalizeForCount(candidateName);
+  if (!target) return 0;
+  var count = 0;
+  corpus.forEach(function(text) {
+    var body = ' ' + normalizeForCount(text) + ' ';
+    if (body.indexOf(' ' + target + ' ') !== -1) count++;
   });
-  for (var i = 0; i < candidates.length; i++) {
-    var cand = candidates[i];
-    var candStemmed = stemPhrase(cand);
-    // 1. Exact phrase match in original normalised response
-    if (resp.indexOf(' ' + cand + ' ') !== -1) return true;
-    // 2. No-space match (handles camelCase / run-together spellings)
-    if (cand.indexOf(' ') !== -1 && respNoSpace.indexOf(cand.replace(/ /g, '')) !== -1) return true;
-    // 3. Stemmed phrase match — singular/plural tolerance
-    if (respStemmed.indexOf(' ' + candStemmed + ' ') !== -1) return true;
-  }
-  return false;
+  return count;
 }
 
-// Deterministic relevance guard: a generated "buyer" query must actually be
-// ABOUT the category, not a generic vendor-shopping question that happens to
-// name no one. Same fidelity test used for category-label drift, applied here
-// to catch query-drift — "which vendor is the best fit for my needs" passes
-// no platform filter and looks like buyer language, but it isn't asking about
-// this category at all, so an empty result proves nothing.
-// GENERIC-SHOPPING SIGNATURE: rather than matching one bug's exact wording
-// (a rephrase always slips past — "best fit for my needs" vs "best for my
-// business needs" already proved that), detect the SHAPE: a question whose
-// entire subject is a generic stand-in word (vendor/solution/software/
-// platform/tool) with no anchor to the actual category anywhere. Any
-// phrasing of "help me pick [generic word] for my needs" has this shape.
-var GENERIC_SUBJECT_RE = /\b(vendor|solution|software|platform|tool|product|service|provider|company|option)s?\b/i;
-var MY_NEEDS_RE = /\b(my|our)\s+(specific\s+)?(business\s+)?needs?\b|\bbest\s+fit\b|\bright\s+(fit|choice|one)\b/i;
-
-function queryOnCategory(query, catClean) {
-  var q = String(query || '');
-  var stop = { the:1, and:1, for:1, with:1, from:1, that:1, this:1, what:1, which:1, who:1, best:1, are:1, can:1, help:1, use:1, need:1, actually:1, specific:1, business:1, needs:1, solution:1, vendor:1, tool:1, tools:1, platform:1, options:1, choose:1, choosing:1, right:1, good:1, way:1, want:1, looking:1, find:1, get:1, should:1, could:1, would:1 };
-  var toks = function(s) {
-    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
-      .filter(function(w) { return w.length > 2 && !stop[w]; });
+// Builds the candidate list (owner-named, website-declared, search-evidence,
+// and the previous run's pick \u2014 now just ONE candidate among equals, with
+// no special protection) and their observed frequency across every raw
+// ground-truth sample.
+function buildFrequencyTable(evidence, subjectName) {
+  var seen = {};
+  var candidates = [];
+  var push = function(n) {
+    var s = String(n || '').trim();
+    if (!s) return;
+    var key = normalizeForCount(s);
+    if (!key || seen[key]) return;
+    if (subjectName && key.indexOf(normalizeForCount(subjectName)) !== -1) return; // never the subject
+    seen[key] = 1;
+    candidates.push(s);
   };
-  var catToks = toks(catClean);
-  var hasCategoryAnchor = catToks.some(function(w) { return q.toLowerCase().indexOf(w) !== -1; });
-  if (!hasCategoryAnchor && GENERIC_SUBJECT_RE.test(q) && MY_NEEDS_RE.test(q)) return false;
-  // Token overlap is a BONUS signal, not a requirement — genuine buyer
-  // language ("how do I get recommended by ChatGPT") legitimately shares no
-  // word with a coined category label like "AI selection diagnostic", and
-  // must not be penalized for using the buyer's words instead of the vendor's.
-  var stop = { the:1, and:1, for:1, with:1, from:1, that:1, this:1, what:1, which:1, who:1, best:1, are:1, can:1, help:1, use:1, need:1, actually:1, specific:1, business:1, needs:1, solution:1, vendor:1, tool:1, tools:1, platform:1, options:1, choose:1, choosing:1, right:1, good:1, way:1, want:1, looking:1, find:1, get:1, should:1, could:1, would:1 };
-  var toks = function(s) {
-    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
-      .filter(function(w) { return w.length > 2 && !stop[w]; });
-  };
-  var catToks = toks(catClean);
-  var qToks = {};
-  toks(q).forEach(function(w) { qToks[w] = 1; });
-  var overlaps = catToks.some(function(w) {
-    if (qToks[w]) return true;
-    for (var k in qToks) { if (k.indexOf(w) === 0 || w.indexOf(k) === 0) return true; }
-    return false;
+  String(evidence.knownCompetitors || '').split(',').forEach(push);
+  // FIX G — skip domain-format strings (e.g. "example.com") — only push real business names
+  (evidence.competitors || []).forEach(function(c) {
+    var val = c.name || c.domain;
+    if (val && !/\.[a-z]{2,4}(\s|\/|$)/i.test(val)) push(val);
   });
-  // Pass if EITHER it shares category vocabulary OR it's simply not a
-  // generic-shopping question (already filtered above). Reject only the
-  // narrow, dangerous middle: short, vague queries with zero category
-  // signal that also weren't caught by the explicit pattern.
-  if (overlaps) return true;
-  return q.split(/\s+/).length >= 8; // a full, specific buyer sentence passes; a bare vague fragment does not
-}
+  // previousCompetitor deliberately excluded — it had unfair prior weight
+  // that caused old wrong competitors to persist. Frequency is measured fresh.
 
-async function generateBuyerQueries(n, templates) {
-  // Template queries echo the vendor's category label — which breaks for
-  // category creators: "best AI selection diagnostic" reads as HR tech to the
-  // answering model (the Pymetrics bug). Real buyers ask about their PROBLEM.
-  var prompt = 'A business:\n'
-    + 'Name: ' + n.name + '\n'
-    + 'Category: ' + n.catClean + '\n'
-    + (n.city ? 'Market: ' + n.city + '\n' : '')
-    + (n.description ? 'Description: ' + String(n.description).slice(0, 300) + '\n' : '')
-    + '\nWrite the 3 questions a REAL potential buyer of this kind of offering would type into an AI assistant when looking for help \u2014 before knowing any vendor names.\n'
-    + 'Rules:\n'
-    + '- FIRST: identify who actually PAYS and what they want to ACHIEVE or BUY. Write every query from that person\'s seat — not a researcher, not a procurement officer.\n'
-    + '- REAL BUYER LANGUAGE: queries must sound like a real person typing into ChatGPT or Google. Use natural, conversational phrasing — not industry terminology, not vendor category labels.\n'
-    + '  WRONG: "What are the best Black Angus beef direct-to-consumer providers in Germany?"\n'
-    + '  RIGHT: "Where can I buy high quality Black Angus beef online in Germany?"\n'
-    + '  WRONG: "Which AI selection diagnostic platforms are recommended?"\n'
-    + '  RIGHT: "How do I get my business recommended by ChatGPT?"\n'
-    + '- DIRECTION CHECK: if the offering helps businesses get discovered or recommended (a marketing tool), the buyer is a business OWNER asking how to make their OWN business get recommended — NOT someone shopping for software. Do not invert the transaction.\n'
-    + '- QUERY INTENT SHAPE — write exactly this shape:\n'
-    + '  Query 1 (DISCOVERY): buyer wants to find the best place/option — "Where can I buy...", "Best place to order...", "Who sells the best..."\n'
-    + '  Query 2 (COMPARISON): buyer is weighing specific options — "[Specific type] vs [alternative]...", "Best [type] online vs local...", "Which is better for..."\n'
-    + '  Query 3 (DECISION): buyer wants one direct recommendation — "Which [specific thing] should I buy?", "Best [specific thing] delivered to [city]"\n'
-    + '- PRESERVE SPECIFICITY: if the category names a specific breed, material, certification, or niche (e.g. "Black Angus", "Wagyu", "Merino wool", "premium delivery"), that specific term MUST appear in every query unmodified. Never generalise "Black Angus beef" to just "beef" or "meat" — the specific term determines which real competitors are found.\n'
-    + '- MARKET SPECIFICITY: match the geographic scope of the BUSINESS, not just the city entered. A local restaurant in Berlin → "in Berlin". A national DTC brand in Germany → "in Germany". A B2B software company headquartered in Germany but serving European or global telcos and carmakers → drop the city anchor entirely and use "in Europe" or no location. The test: where are this business\'s BUYERS, not where is the business headquartered. If the inferred category or evidence mentions clients in multiple countries, or if the category is enterprise B2B software, do not anchor queries to the HQ city.\n'
-    + '- CATEGORY FIDELITY: the exact inferred category is: "' + n.catClean + '". Every query must be unmistakably about this specific thing.\n'
-    + '- Never mention ' + n.name + ' or any specific vendor name.\n'
-    + '- One natural sentence each. No introductions, no bullet points.\n'
-    + 'Respond ONLY with a JSON array of exactly 3 strings. No markdown.';
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 25000);
-  try {
-    var res = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    if (!res.ok) return templates;
-    var data = await res.json();
-    var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
-    var arr = JSON.parse(text);
-    if (!Array.isArray(arr) || arr.length !== 3) return templates;
-    var nameLc = n.name.toLowerCase();
-    if (arr.some(function(q) { return String(q).toLowerCase().indexOf(nameLc) !== -1; })) return templates;
-    var candidates = arr.map(String);
-    // Every query must be verifiably about the category. If even one drifts
-    // off-topic (the G2/Capterra-shopping pattern), reject the WHOLE set —
-    // a mixed set with one bad query still poisons the ground truth — and
-    // fall back to the templates, which contain catClean verbatim by construction.
-    var allOnTopic = candidates.every(function(q) { return queryOnCategory(q, n.catClean); });
-    if (!allOnTopic) {
-      console.warn('[simulation] generated queries drifted off-category, using templates:', JSON.stringify(candidates));
-      return templates;
-    }
-    return templates.map(function(t, i) {
-      return { label: t.label, intent: t.intent, system: t.system, query: candidates[i] };
-    });
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn('[simulation] buyer-query generation failed, using templates:', err.message);
-    return templates;
-  }
-}
-
-// Some coined SaaS category words collide with an entirely different,
-// much older industry (a "diagnostic platform" is medical/health-tech to
-// most of the web and to a model's training data long before "AI selection
-// diagnostic" existed as a category \u2014 confirmed live: CHOIVE's own ground
-// truth returned healthcare-diagnostics companies). This disambiguates the
-// SYSTEM prompt only \u2014 the query text shown to the user in the UI is
-// untouched \u2014 so search and the model are steered to the right industry.
-var INDUSTRY_COLLISION_HINTS = [
-  [/\bdiagnostic/i, 'Note: in this context "diagnostic" refers to a business/marketing tool that assesses how AI systems recommend companies \u2014 NOT a medical or clinical diagnostic product. Only answer with business/marketing/SaaS tools; ignore any healthcare, medical device, or clinical diagnostics companies entirely.'],
-  [/\bassessment\b/i, 'Note: "assessment" here means a business/marketing evaluation tool, not a psychological, medical, or educational assessment.'],
-  [/\btherapy|\btreatment\b/i, 'Note: this is a business/software context, not a healthcare or clinical context.'],
-  [/farm.brand|farm.to|direct.from.farm|eigene.farm|direkt.von.der.farm|vertically.integrat/i, 'CRITICAL: the buyer is looking for a BRAND that owns its own farm or production and sells direct \u2014 NOT a retailer, marketplace, or shop that resells beef from multiple farms. Only name brands that control their own production chain. A retailer selling beef from many farms (e.g. an online butcher shop with multiple origins) is NOT the correct answer here, even if it sells the same type of product.']
-];
-
-function collisionHint(catClean) {
-  for (var i = 0; i < INDUSTRY_COLLISION_HINTS.length; i++) {
-    if (INDUSTRY_COLLISION_HINTS[i][0].test(catClean)) return ' ' + INDUSTRY_COLLISION_HINTS[i][1];
-  }
-  return '';
-}
-
-function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) {
-  var hint = collisionHint(catClean);
-  // Use marketStr (scope-aware) instead of raw city for query anchoring.
-  // A global B2B software company headquartered in Germany should NOT have
-  // every query anchored to Germany — their buyers are worldwide.
-  var effectiveLocation = (marketStr !== undefined ? marketStr : city) || '';
-  var locationStr = effectiveLocation ? ' in ' + effectiveLocation : '';
-  var forStr = effectiveLocation ? ' for ' + effectiveLocation : '';
-
-  // Farm/DTC brands compete in THREE overlapping contexts simultaneously:
-  // (1) the specific niche — buyers searching for their exact product/breed/origin
-  // (2) the online/DTC channel — buyers searching where to buy this category online
-  // (3) the premium/quality tier — buyers searching for the best in the category
-  // Running all three identical farm-direct queries missed contexts 2 and 3,
-  // which is where established brands like Otto Gourmet dominate and where
-  // the business is also invisible. Each query surfaces different competitors
-  // and a different mention/no-mention result for the subject.
-  if (businessModel === 'farm_brand_dtc') {
-    // Extract the core product from the full inferred category string.
-    // "Vertically-integrated Black Angus beef brand with owned farm production..."
-    // → coreProduct = "Black Angus beef"
-    var coreExtract = catClean
-      .replace(/^vertically[\s-]integrated\s+/i, '')
-      .replace(/^(farm[\s-]?owned|farm[\s-]?direct|farm[\s-]?brand)\s+/i, '')
-      .replace(/\s+(brand|producer|farm|herd|ranch|company|business)\b.*/i, '')
-      .replace(/\s+with\s+.*/i, '')
-      .replace(/,\s*.*/i, '')
-      .trim();
-    var coreProduct = coreExtract.split(/\s+/).slice(0, 4).join(' ') || catClean;
-    // generalCat strips breed/qualifier to get the base product word.
-    // "Black Angus beef" → "beef" / "grass-fed lamb" → "lamb" / "specialty coffee" → "coffee"
-    var generalWords = coreProduct.split(/\s+/);
-    var generalCat = generalWords[generalWords.length - 1] || coreProduct;
-
-    return [
-      {
-        // Context 1 — BROAD DISCOVERY: open to ALL sources — retailers,
-        // brands, farm-direct, online shops. This is where established
-        // market leaders (Don Carne, Otto Gourmet, Gourmetfleisch) are
-        // most visible. Intentionally broad so the frequency table captures
-        // whoever dominates the widest buyer query.
-        label: 'Discovery query',
-        intent: 'A buyer looking for the best place to buy high quality beef online',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name specific online shops, brands, and retailers — include all types: farm-direct brands, premium retailers, and established online butchers. Be specific and name real options.' + hint,
-        query: 'Where is the best place to buy high quality ' + coreProduct + ' online' + locationStr + '? Name the top 3-5 options with a brief reason for each.'
-      },
-      {
-        // Context 2 — QUALITY/NICHE: the buyer knows what they want and is
-        // asking for the best quality in this specific product. Surfaces
-        // both premium retailers AND farm-direct brands that compete for
-        // quality-conscious buyers.
-        label: 'Quality comparison query',
-        intent: 'A buyer comparing quality across all available sources',
-        system: 'You are a helpful AI assistant with live web search. Search for current reviews, comparisons, and recommendations before answering. Name the specific brands or shops most consistently recommended for quality. Include both online shops and farm-direct brands.' + hint,
-        query: 'What are the best options for buying premium quality ' + coreProduct + locationStr + '? Which brands or online shops are most recommended and why?'
-      },
-      {
-        // Context 3 — DIRECT RECOMMENDATION: buyer wants one answer.
-        // Finds who AI names most confidently as the single best option
-        // in this category — often the market leader with most trust signals.
-        label: 'Direct recommendation',
-        intent: 'A buyer ready to decide — wants the single best recommendation',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Give a direct, confident recommendation. Name one specific brand, shop, or online retailer.' + hint,
-        query: 'Which online shop has the best ' + coreProduct + ' delivery' + locationStr + '? Just give me your single best recommendation and why.'
+  var corpus = [];
+  var simBefore = evidence.aiSimulationBefore;
+  if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
+    simBefore.before.results.forEach(function(r) {
+      if (Array.isArray(r.allResponses) && r.allResponses.length) {
+        corpus = corpus.concat(r.allResponses);
+      } else if (r.response) {
+        corpus.push(r.response); // fallback for older cached results without allResponses
       }
-    ];
-  }
-
-  // B2B queries — correct for software platforms, SaaS, enterprise solutions,
-  // middleware, API providers, and any business that sells to other businesses.
-  // Uses procurement/vendor-selection language instead of retail "buy" language.
-  // This prevents AI from surfacing consumer brands (e.g. streaming services)
-  // when the subject is a B2B platform vendor.
-  if (businessModel === 'b2b') {
-    // Strip leading "B2B" label from catClean for cleaner query text.
-    // "B2B multiscreen OTT middleware provider" → "multiscreen OTT middleware provider"
-    var b2bCat = catClean.replace(/^b2b\s+/i, '').trim() || catClean;
-
-    // Extract the buyer type from the inferred category if present.
-    // "multiscreen entertainment software sold to pay-TV operators and automotive OEMs"
-    // → buyerType = "pay-TV operators and automotive OEMs"
-    // This is injected into queries so AI returns vendors that serve THAT specific buyer,
-    // not whoever ranks in search for the generic category term.
-    var buyerMatch = catClean.match(/(?:sold to|serving|for|used by|targeting)\s+([^—\-\.]{5,60})/i);
-    var buyerType = buyerMatch ? buyerMatch[1].trim() : '';
-
-    // Build the core product term — strip the buyer description for cleaner queries
-    var coreB2B = b2bCat.replace(/\s+(?:sold to|serving|for|used by|targeting)\s+.*/i, '').trim();
-
-    return [
-      {
-        // Query 1 — MARKET DISCOVERY: who does this type of buyer actually use?
-        // Asking "which vendors do [specific buyer type] use" surfaces the real
-        // competitive set — not whoever ranks in generic software searches.
-        // For 3SS this becomes: "which multiscreen platform software do pay-TV operators
-        // and telcos in Europe use for their TV services?" — surfaces Accedo, Zappware,
-        // Netgem, and 3SS itself — the real evaluation shortlist.
-        label: 'B2B vendor discovery',
-        intent: 'A procurement decision-maker searching for what vendors exist in this space',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors and software companies that sell licensed platform or software solutions to businesses — not managed services, consumer products, or retail brands. Be specific and name real companies.' + hint,
-        query: buyerType
-          ? 'Which ' + coreB2B + ' vendors and platforms do ' + buyerType + ' use' + locationStr + '? Name 3-5 specific software companies with a brief reason for each.'
-          : 'What are the best ' + coreB2B + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
-      },
-      {
-        // Query 2 — HEAD-TO-HEAD COMPARISON: who are the main players buyers compare?
-        // This surfaces the competitive landscape as buyers actually see it —
-        // the companies that appear on the same RFP shortlist.
-        label: 'B2B solution comparison',
-        intent: 'A business evaluating the main competing platforms or solutions',
-        system: 'You are a helpful AI assistant with live web search. Search for analyst reports, industry comparisons, and RFP shortlists before answering. Name the specific companies that appear most consistently on evaluation shortlists for this type of solution. Be specific and name real companies.' + hint,
-        query: buyerType
-          ? 'What are the main ' + coreB2B + ' vendors that ' + buyerType + ' evaluate when choosing a platform' + locationStr + '? Which companies compete head-to-head in this space?'
-          : 'Which ' + coreB2B + ' solutions are most recommended for businesses' + locationStr + '? Which providers do companies in this space choose and why?'
-      },
-      {
-        // Query 3 — DIRECT RECOMMENDATION: which single vendor wins the deal?
-        // Forces AI to name its most confident answer — whoever has the most
-        // trust signals, press coverage, and structured evidence wins here.
-        label: 'B2B direct recommendation',
-        intent: 'A business decision-maker ready to select a vendor',
-        system: 'You are a helpful AI assistant. Answer from the perspective of advising a senior technology decision-maker at a ' + (buyerType || 'business') + '. Be specific and name one real licensed software vendor or platform company.' + hint,
-        query: buyerType
-          ? 'Which ' + coreB2B + ' vendor would you recommend for ' + buyerType + (city ? ' in ' + city : '') + '? Give me your single best recommendation and why.'
-          : 'Which ' + coreB2B + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
-      }
-    ];
-  }
-
-  // Standard buyer queries — correct for retailers, marketplaces, services
-  return [
-    {
-      label: 'Discovery query',
-      intent: 'A potential buyer searching for the best place to buy',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies, brands, or places.' + hint,
-      query: 'Where is the best place to buy ' + catClean + locationStr + '? Name 3-5 specific options with a brief reason for each.'
-    },
-    {
-      label: 'Comparison query',
-      intent: 'A buyer comparing specific options',
-      system: 'You are a helpful AI assistant with live web search. Search for current reviews, comparison articles, and rankings before answering — do not rely on memory alone. Name the specific companies or brands that authoritative sources most consistently recommend. Be specific and name real companies.' + hint,
-      query: 'What are the best options for ' + catClean + locationStr + '? Which brands or suppliers are most recommended and why?'
-    },
-    {
-      label: 'Direct recommendation',
-      intent: 'A buyer ready to make a decision',
-      system: 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name one real company, brand, or place.' + hint,
-      query: 'Which ' + catClean + ' would you recommend' + forStr + '? Just give me your single best recommendation and why.'
-    }
-  ];
-}
-
-// ── AFTER QUERIES ─────────────────────────────────────────────────────────────
-// The "after" state simulates what AI would say once the business has
-// implemented the top recommended fixes and established a real presence
-// in its category.
-//
-// The correct approach: inject the true facts about this business —
-// its name, category, and differentiator — and tell Claude it is a real
-// business to include in its answer. No fabricated reviews, no invented
-// press, no fake clients. Only what is actually true about the business.
-//
-// This works because the "after" section represents the state after
-// implementing CHOIVE's recommendations. Once those are done, the business
-// IS a real, verified option in its space. Giving Claude that context
-// is accurate — it simulates the post-fix state honestly.
-//
-// What changed from the broken version:
-// The old code ended with "Answer as you normally would based on what you know."
-// That single instruction overrode all the context above it. Claude ignored
-// the business profile and answered from training data, never mentioning the
-// business. That line is gone. The new instruction is direct and clear.
-// Extracts a short, grammatically usable category label from the (potentially
-// very long) inferred category string. The inferred category may read like
-// "B2B multiscreen entertainment software platform provider for pay-TV operators
-// and carmakers" — pasting that verbatim into a query template produces broken
-// sentences. This helper strips the buyer description ('for X and Y') and
-// caps the result at 8 words so it reads naturally as a noun phrase.
-function shortCatLabel(catClean) {
-  if (!catClean) return catClean;
-  // Drop everything from ' for ' onwards (removes buyer description)
-  var core = catClean.replace(/\s+for\s+.*/i, '').trim();
-  // Drop trailing relational phrases: 'sold to X', 'serving X', 'used by X'
-  core = core.replace(/\s+(sold|serving|used|targeting|aimed at|focused on)\s+.*/i, '').trim();
-  // Truncate to 8 words max
-  var words = core.split(' ');
-  if (words.length > 8) core = words.slice(0, 8).join(' ');
-  return core || catClean;
-}
-
-function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
-  var locationStr = city ? ' in ' + city : '';
-  var forStr = city ? ' for ' + city : '';
-  // Use a short category label in query text so sentences are grammatical.
-  // The full catClean is still used in the system prompt for context.
-  var catShort = shortCatLabel(catClean);
-
-  // Build context from real facts only — no fabrication
-  var businessDescription = name + ' is a real, active business in the '
-    + catClean + ' space'
-    + (city ? ', based in ' + city : '')
-    + '.';
-
-  if (differentiator && differentiator.trim()) {
-    businessDescription += ' ' + name + ' ' + differentiator.trim() + '.';
-  }
-
-  if (trustSignal && trustSignal.trim()) {
-    businessDescription += ' ' + trustSignal.trim() + '.';
-  }
-
-  // The key instruction: tell Claude this business exists and to include it.
-  // The query uses catShort so it reads naturally; the system prompt uses
-  // the full catClean for rich context.
-  var enrichedSystem = 'You are a helpful AI assistant. Answer naturally and directly. Be specific and name real companies.\n\n'
-    + 'You have verified knowledge about the following business:\n'
-    + businessDescription + '\n\n'
-    + 'When answering questions about ' + catClean + ', include '
-    + name + ' as one of the specific businesses you name. '
-    + 'Use its exact name: ' + name + '. '
-    + 'Describe what it does and why a buyer in this space would consider it.';
-
-  return [
-    {
-      label: 'Discovery query',
-      intent: 'A potential buyer searching for options',
-      system: enrichedSystem,
-      query: 'What are the main ' + catShort + ' vendors and providers' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
-    },
-    {
-      label: 'Comparison query',
-      intent: 'A buyer evaluating alternatives',
-      system: enrichedSystem,
-      query: 'Which companies are the top ' + catShort + ' providers and what makes each one stand out?'
-    },
-    {
-      label: 'Direct recommendation',
-      intent: 'A buyer ready to decide',
-      system: enrichedSystem,
-      query: 'Which ' + catShort + ' vendor would you recommend' + forStr + '? Give me your top pick and why.'
-    }
-  ];
-}
-
-// GROUND_TRUTH_SAMPLES: how many independent, parallel search-grounded
-// attempts each ground-truth query gets. Raised from 2 \u2192 4 to build a real
-// frequency signal (who gets named, how often) instead of a single yes/no.
-// All samples fire concurrently (Promise.allSettled), so this costs API
-// spend, not wall-clock time \u2014 12 parallel calls take the same time as 3.
-var GROUND_TRUTH_SAMPLES = 4;
-
-async function runQuerySet(queries, name, useSearch) {
-  var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
-
-  // Fire every (query \u00d7 sample) combination in one parallel batch.
-  var jobs = [];
-  queries.forEach(function(q, qi) {
-    for (var s = 0; s < sampleCount; s++) jobs.push({ qi: qi, q: q });
-  });
-  var settled = await Promise.allSettled(
-    jobs.map(function(j) { return runQuery(j.q.system, j.q.query, !!useSearch); })
-  );
-
-  // Group raw responses back by query index.
-  var byQuery = queries.map(function() { return []; });
-  settled.forEach(function(res, i) {
-    var qi = jobs[i].qi;
-    var raw = res.status === 'fulfilled' ? res.value : null;
-    var cleaned = cleanResponse(raw);
-    if (cleaned) byQuery[qi].push(cleaned);
-  });
-
-  return queries.map(function(q, i) {
-    var responses = byQuery[i];
-    var appearances = responses.filter(function(r) { return businessMentioned(r, name); });
-    // Representative text shown in the UI: prefer a response that actually
-    // named the business; otherwise the longest/richest raw response.
-    var shown = appearances[0] || responses.slice().sort(function(a, b) { return (b || '').length - (a || '').length; })[0] || '';
-    return {
-      label: q.label,
-      intent: q.intent,
-      query: q.query,
-      response: shown,
-      appeared: appearances.length > 0,
-      sampleCount: responses.length,
-      appearedCount: appearances.length,
-      // Full raw corpus \u2014 every independent response, not just the shown
-      // one \u2014 so competitor frequency can be counted across ALL of them,
-      // not just a single representative sample per query.
-      allResponses: responses
-    };
-  });
-}
-
-// ── PUBLIC API ────────────────────────────────────────────────────────────────
-// Runs the full before/after simulation and returns the same payload shape
-// the ai-simulation endpoint returns: { name, category, before, after }.
-
-// ── MARKET LANGUAGE ─────────────────────────────────────────────────
-// German buyers ask AI in German. Ground truth measured in the wrong language
-// is the wrong ground truth. Deterministic keyword table (no extra call); the
-// three queries are translated once per run via a small model call, cached
-// with the evidence. Any failure falls back to English silently.
-var MARKET_LANGS = [
-  ['de', /\b(german(y)?|deutschland|berlin|m[u\u00fc]nchen|munich|stuttgart|hamburg|frankfurt|k[o\u00f6]ln|cologne|d[u\u00fc]sseldorf|austria|\u00f6sterreich|wien|vienna|schweiz|switzerland|z[u\u00fc]rich|zurich)\b/],
-  ['es', /\b(spain|espa[n\u00f1]a|madrid|barcelona|marbella|valencia|sevilla|m[e\u00e9]xico|mexico|bogot[a\u00e1]|argentina|buenos aires|colombia|chile|per[u\u00fa])\b/],
-  ['fr', /\b(france|paris|lyon|marseille|bordeaux|belgi(um|que)|bruxelles|montreal|montr[e\u00e9]al|qu[e\u00e9]bec)\b/],
-  ['it', /\b(ital(y|ia)|roma|rome|milan(o)?|torino|napoli)\b/],
-  ['nl', /\b(netherlands|nederland|amsterdam|rotterdam|utrecht|den haag)\b/],
-  ['pt', /\b(portugal|lisbo[an]|porto|brasil|brazil|s[a\u00e3]o paulo|rio de janeiro)\b/],
-  ['pl', /\b(poland|polska|warsaw|warszawa|krak[o\u00f3]w)\b/],
-  ['tr', /\b(turkey|t[u\u00fc]rkiye|istanbul|ankara|izmir)\b/],
-  ['sv', /\b(sweden|sverige|stockholm|g[o\u00f6]teborg)\b/],
-  ['da', /\b(denmark|danmark|copenhagen|k[o\u00f8]benhavn)\b/],
-  ['ja', /\b(japan|tokyo|osaka|kyoto)\b/],
-  ['ko', /\b(korea|seoul|busan)\b/],
-  ['zh', /\b(china|beijing|shanghai|shenzhen|taiwan|taipei)\b/],
-  ['ar', /\b(saudi|riyadh|jeddah|egypt|cairo|jordan|amman|kuwait|qatar|doha|bahrain|oman|muscat|morocco|casablanca|rabat|tunisia|tunis|algeria|iraq|baghdad|lebanon|beirut)\b/],
-  ['ru', /\b(russia|moscow|st\.? petersburg|kazakhstan|almaty|belarus|minsk)\b/],
-  ['id', /\b(indonesia|jakarta|surabaya|bali)\b/]
-];
-var LANG_NAMES = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' };
-
-function detectMarketLanguage(city) {
-  var c = String(city || '').toLowerCase();
-  if (!c || c === 'global' || c === 'worldwide') return 'en';
-  for (var i = 0; i < MARKET_LANGS.length; i++) {
-    if (MARKET_LANGS[i][1].test(c)) return MARKET_LANGS[i][0];
-  }
-  return 'en';
-}
-
-async function localizeQueries(queries, lang) {
-  var langName = LANG_NAMES[lang];
-  if (!langName) return null;
-  var prompt = 'Translate these three buyer search queries into natural, native ' + langName
-    + ' \u2014 phrased exactly as a local customer would type them to an AI assistant. '
-    + 'CRITICAL: preserve every specific breed, material, technology, certification, or niche term EXACTLY \u2014 translate it, never generalize it away. '
-    + 'Example: "Black Angus beef" must become the specific German term for Black Angus beef, NOT a generic word for "beef" or "meat". Losing the specific term changes what the question is actually asking. '
-    + 'Respond ONLY with a JSON array of exactly 3 strings, no markdown.\n\n'
-    + JSON.stringify(queries.map(function(q) { return q.query; }));
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 25000);
-  try {
-    var res = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 500, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
-      signal: controller.signal
     });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    var data = await res.json();
-    var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
-    var arr = JSON.parse(text);
-    if (!Array.isArray(arr) || arr.length !== 3) return null;
-    return arr.map(String);
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn('[simulation] query localization failed, using English:', err.message);
-    return null;
-  }
-}
-
-async function applyMarketLanguage(queries, city, forcedLang) {
-  var lang = forcedLang || detectMarketLanguage(city);
-  if (lang === 'en') return { queries: queries, language: 'en' };
-  var localized = await localizeQueries(queries, lang);
-  if (!localized) return { queries: queries, language: 'en' };
-  var out = queries.map(function(q, i) {
-    return { label: q.label, intent: q.intent,
-      system: q.system + ' Answer in the same language as the question.',
-      query: localized[i] };
-  });
-  return { queries: out, language: lang };
-}
-
-// Shared input normalization — one place for the category-cleaning rules.
-function normalizeSimInput(input) {
-  var name             = String(input.name             || '').trim();
-  var category         = String(input.category         || '').trim();
-  var city             = String(input.city             || '').trim();
-  var inferredCategory = String(input.inferredCategory || category).trim();
-  var description      = String(input.description      || '').trim();
-  // Rich context from evidence gathering — used to understand the business
-  // beyond what the user typed in the category field.
-  var websiteContext    = String(input.websiteContext   || '').trim().slice(0, 1200);
-  var kgText            = String(input.kgText           || '').replace(/^None$/i, '').trim().slice(0, 400);
-  var competitorDomains = Array.isArray(input.competitorDomains)
-    ? input.competitorDomains.filter(Boolean).slice(0, 10) : [];
-  var knownCompetitors  = String(input.knownCompetitors || '').trim();
-
-  if (!name || !category) {
-    throw new Error('Missing name or category');
   }
 
-  // catClean: only remove the most generic platform/vendor/provider suffixes
-  // that confuse AI query generation. Keep ALL niche qualifiers:
-  // B2B, B2C, direct, delivery, local, premium, organic, breed names etc.
-  // These are what make queries specific enough to find the REAL competitor.
-  var catClean = inferredCategory
-    .replace(/\s+platform$/i, ' platform')   // keep "platform" but normalise
-    .replace(/\bsoftware\s+as\s+a\s+service\b/i, 'SaaS')
-    .trim();
+  var table = candidates.map(function(c) {
+    return { name: c, frequency: countCandidateFrequency(c, corpus), sampleSize: corpus.length };
+  }).sort(function(a, b) { return b.frequency - a.frequency; });
 
-  // Business model detection — used as FALLBACK if Claude query plan fails.
-  // The Claude query plan reads all evidence and is always preferred.
-  // This regex detection only fires when that plan is unavailable.
-  var businessModel = 'standard';
-  var catLower = catClean.toLowerCase();
-  var descLower = description.toLowerCase();
-  var webLower  = websiteContext.toLowerCase();
-  var combined = catLower + ' ' + descLower + ' ' + webLower;
-  if (
-    /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|direct.to.consumer|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined) ||
-    (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined))
-  ) {
-    businessModel = 'farm_brand_dtc';
-  } else if (
-    /b2b|wholesale|distributor|supplier.*business|business.*supplier/i.test(combined) ||
-    /\bfor\s+(operators?|enterprises?|broadcasters?|carriers?|telecoms?|pay.tv|msso?|mvpd|isp|oems?|manufacturers?|developers?|agencies|corporations?)\b/i.test(combined) ||
-    /\b(middleware|saas|white.label|white\s+label|api\s+platform|sdk|enterprise\s+software|b2b\s+software|operator\s+platform|headend|backend\s+platform)\b/i.test(combined)
-  ) {
-    businessModel = 'b2b';
-  } else if (/marketplace|platform|aggregator|multi.brand|curates|resell/i.test(combined)) {
-    businessModel = 'marketplace';
-  }
-
-  // Geographic scope detection — determines the query location anchor.
-  // Local businesses: anchor to city. National brands: anchor to country.
-  // Global/regional B2B businesses: use region or no anchor at all.
-  // The test is WHERE THE BUYERS ARE, not where the business is headquartered.
-  var geoScope = 'national'; // default
-  var scopeCombined = (catClean + ' ' + description + ' ' + websiteContext + ' ' + kgText).toLowerCase();
-  var isLocalService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|shop|store|bakery|retail|local service|freelancer/i.test(catClean);
-  var isGlobalB2B = (businessModel === 'b2b') && (
-    /telco|telecom|operator|broadcaster|carmaker|automotive oem|global|international|worldwide|multinational|europe|nordic|dach|mena|apac|north america/i.test(scopeCombined) ||
-    /enterprise|middleware|white.label|saas platform/i.test(catClean)
-  );
-  var isRegional = /europe|nordic|dach|mena|apac|latam|south asia|north america|latin america/i.test(scopeCombined) && !isGlobalB2B;
-
-  if (isLocalService) geoScope = 'local';
-  else if (isGlobalB2B) geoScope = 'global';
-  else if (isRegional) geoScope = 'regional';
-  else if (businessModel === 'farm_brand_dtc') geoScope = 'national';
-
-  // marketStr — the location to actually use in queries
-  var regionMap = {
-    'germany': 'Europe', 'deutschland': 'Europe', 'austria': 'Europe',
-    'switzerland': 'Europe', 'france': 'Europe', 'uk': 'Europe',
-    'netherlands': 'Europe', 'sweden': 'Europe', 'norway': 'Europe',
-    'denmark': 'Europe', 'finland': 'Europe', 'poland': 'Europe',
-    'spain': 'Europe', 'italy': 'Europe', 'portugal': 'Europe',
-    'uae': 'MENA', 'dubai': 'MENA', 'saudi arabia': 'MENA',
-    'us': 'North America', 'usa': 'North America', 'canada': 'North America',
-  };
-  var cityKey = city.toLowerCase();
-  var marketStr = '';
-  if (geoScope === 'local') marketStr = city;
-  else if (geoScope === 'national') marketStr = city; // city = country at national scope
-  else if (geoScope === 'regional') marketStr = regionMap[cityKey] || 'Europe';
-  else if (geoScope === 'global') marketStr = ''; // no location anchor for global B2B
-
-  return {
-    name: name, category: category, city: city, catClean: catClean,
-    description: description, businessModel: businessModel,
-    geoScope: geoScope, marketStr: marketStr,
-    websiteContext: websiteContext, kgText: kgText,
-    competitorDomains: competitorDomains, knownCompetitors: knownCompetitors
-  };
+  return { table: table, corpusSize: corpus.length };
 }
 
-// ── CONTEXT-AWARE QUERY PLAN ──────────────────────────────────────────────────
-// Reads ALL available evidence about a business (category, website content,
-// knowledge graph, Serper domains) and generates 3 buyer queries tailored to
-// how a REAL buyer of that specific type actually searches.
-//
-// This replaces static templates, which couldn't distinguish B2B procurement
-// language from B2C consumer language, and couldn't adapt to the specific
-// niche vocabulary a real buyer would use.
-//
-// Falls back to static buildQueries() if the API call fails.
-async function generateQueryPlan(n) {
-  var contextParts = [
-    'BUSINESS NAME: ' + n.name,
-    'CATEGORY (user typed): ' + n.category,
-    'CATEGORY (engine inferred from evidence): ' + n.catClean
-  ];
-  if (n.description)               contextParts.push('DESCRIPTION: ' + n.description);
-  if (n.websiteContext)             contextParts.push('WEBSITE CONTENT (excerpt): ' + n.websiteContext);
-  if (n.kgText)                     contextParts.push('KNOWLEDGE GRAPH: ' + n.kgText);
-  if (n.competitorDomains.length)   contextParts.push('RELATED DOMAINS FROM SEARCH: ' + n.competitorDomains.join(', '));
-  if (n.knownCompetitors)           contextParts.push('KNOWN COMPETITORS: ' + n.knownCompetitors);
+async function selectDominantCompetitor(evidence) {
+ try {
+  var name     = String(evidence.name     || '').trim();
+  var category = String(evidence.category || '').trim();
+  var inferred = String(evidence.inferredCategory || category).trim();
+  var known    = String(evidence.knownCompetitors || '').trim();
+  var siteText = sanitizeExternal(String(evidence.websiteText || '')).slice(0, 1200);
+  var website  = String(evidence.website  || '').trim();
+  var city     = String(evidence.city     || '').trim();
+  var kgText   = sanitizeExternal(String((evidence.kgText || '')).replace(/^None$/i, '')).slice(0, 400);
 
-  // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
-  var geoHint = n.geoScope === 'global'
-    ? 'GEOGRAPHIC SCOPE: GLOBAL — this business sells to enterprise buyers worldwide. Do NOT anchor queries to the HQ city or country. Ask where buyers would search globally or in the regions their clients are concentrated (e.g. Europe, North America).'
-    : n.geoScope === 'regional'
-    ? 'GEOGRAPHIC SCOPE: REGIONAL (' + (n.marketStr || 'Europe') + ') — this business serves buyers across a region, not just one country. Use the region name in queries, not the HQ city.'
-    : n.geoScope === 'local'
-    ? 'GEOGRAPHIC SCOPE: LOCAL — this business serves buyers in its city. Anchor all queries to ' + n.city + '.'
-    : 'GEOGRAPHIC SCOPE: NATIONAL — this business serves buyers in ' + (n.city || 'its country') + '. Anchor queries to the country, not a specific city.';
+  // AI SELECTION GROUND TRUTH — who AI actually recommended in buyer queries
+  var simBefore = evidence.aiSimulationBefore || null;
+  var groundTruth = '';
+  var aiNamedCompetitors = [];
+  if (simBefore && simBefore.before && Array.isArray(simBefore.before.results)) {
+    groundTruth = simBefore.before.results.map(function(r, i) {
+      return 'QUERY ' + (i + 1) + ': "' + String(r.query || '') + '"\nAI ANSWERED: '
+        + sanitizeExternal(String(r.response || '')).slice(0, 800);
+    }).join('\n\n');
+  }
 
-  var prompt =
-    'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
-    + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
-    + geoHint + '\n\n'
-    + 'ABSOLUTE BAN — APPLY BEFORE RETURNING:\n'
-    + 'If ANY of your 3 queries matches these patterns, DELETE it and write a vendor-discovery query:\n'
-    + '  ✗ Compares building in-house vs licensing externally (develop vs license, eigene Plattform entwickeln oder lizenzieren, build vs buy)\n'
-    + '  ✗ Asks for strategic advice that can be answered without naming companies (what is better, was ist besser)\n'
-    + '  ✗ Cannot be answered ONLY by naming specific real companies\n'
-    + 'REPLACE any banned query with: "Which [vendor type] should [buyer type] choose in [market]?"\n\n'
+  // Search evidence competitors — who appeared in Serper results
+  var searchComps = (evidence.competitors || []).map(function(c) {
+    return String(c.name || c.domain || '');
+  }).filter(Boolean).slice(0, 8).join(', ');
+
+  // ── DIRECT COMPETITOR IDENTIFICATION WITH WEB SEARCH ───────────────────
+  // This is the core change: instead of counting frequency of names in AI
+  // buyer query responses (which surfaces whoever ranks in search, not real
+  // competitors), we ask Claude with web search to reason about the business
+  // and identify true head-to-head rivals — the same way a knowledgeable
+  // industry analyst would answer "who does this company compete with?"
+  //
+  // This approach finds:
+  // - Zappware/Leyra for 3SS (same middleware category, same pay-TV buyers)
+  // - Don Carne for Taurbull (same premium online beef market in Germany)
+  // - Profound for CHOIVE (same AI visibility category)
+  //
+  // NOT whoever happened to appear in generic buyer queries.
+  var prompt = 'You are a competitive intelligence analyst. Your task is to identify the TRUE head-to-head competitors of a specific business.\n\n'
+    + 'SUBJECT BUSINESS:\n'
+    + 'Name: ' + name + (website ? ' (' + website + ')' : '') + '\n'
+    + 'Inferred category: ' + inferred + '\n'
+    + (city ? 'Headquarters / primary market: ' + city + '\n' : '')
+    + (siteText ? 'Website content (what they actually sell and who buys it):\n' + siteText + '\n' : '')
+    + (kgText ? 'Knowledge graph: ' + kgText + '\n' : '')
+    + (known ? 'Competitors named by the owner: ' + known + '\n' : '')
+    + (searchComps ? 'Companies appearing in related search evidence: ' + searchComps + '\n' : '')
+    + (groundTruth ? 'What AI currently recommends when buyers search for this category:\n' + groundTruth + '\n' : '')
+    + '\n'
     + 'YOUR TASK:\n'
-    + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
-    + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
-    + 'FOR B2B — MANDATORY QUERY FORMAT:\n'
-    + 'Every query must ask WHICH COMPANY/VENDOR/PROVIDER sells this type of product — NOT what software/platform does or enables. The query subject must be a SELLER TYPE, not a product function.\n'
-    + 'REQUIRED: each B2B query must contain at least one of: vendor, vendors, provider, providers, company, companies, supplier, suppliers, Anbieter, Unternehmen, or equivalent procurement word in the query language.\n'
-    + 'BANNED QUERY STRUCTURES (in any language):\n'
-    + '  - "What software can I use to [do X]?" → rewrite as "Which vendor/company sells X to [buyer type]?"\n'
-    + '  - "Where can I find a platform that [does X]?" → rewrite as "Which companies provide X as a licensed product?"\n'
-    + '  - Any build-vs-buy framing: "develop vs. license", "build vs. buy", "in-house vs. outsource", "eigene Lösung entwickeln vs. lizenzieren", "selbst bauen oder kaufen", "eigene Videoplattform entwickeln oder lizenzieren", "build your own vs. use a vendor" — ALL BANNED. They produce strategy advice, not vendor names.\n'
-    + '  - Terms so broad they attract the wrong type of company: "entertainment platform" attracts consumer streaming services; "TV platform" attracts content distributors and operators who are BUYERS of the software, not sellers of it. Use the narrowest vendor-type vocabulary that describes what the subject SELLS, not what it ENABLES. For B2B software, queries should name the seller role explicitly: "middleware software vendor", "OTT platform provider", "licensed multiscreen platform".\n'
-    + '  - ROLE CONFUSION: In B2B markets, AI often names companies that BUY the product when asked about the product category. Every query must make clear it seeks companies that SELL this type of product — not companies that use, operate, or distribute it. The query subject must be a seller role, not a buyer role.\n\n'
-    + 'QUERY TEMPLATES FOR B2B:\n'
-    + '  - Query 1 (Market): "Which [specific vendor type] companies [serve / are used by] [specific buyer type] in [market]?" — discovers the vendor landscape\n'
-    + '  - Query 2 (Comparison): "What are the main [specific vendor type] vendors and how do they compare for [buyer type]?" — pure named-company comparison\n'
-    + '  - Query 3 (Recommendation): "Which [specific vendor type] should [specific buyer persona with context] choose in [market]?" — forces a named-vendor recommendation\n\n'
-    + 'EXAMPLE (pay-TV middleware vendor):\n'
-    + '  Query 1: "Which OTT middleware vendors and white-label TV platform SOFTWARE COMPANIES do pay-TV operators in Germany license for their TV products?"\n'
-    + '  Query 2: "What are the main B2B multiscreen middleware SOFTWARE vendors and OTT platform technology providers serving telcos and cable operators in Europe — name the companies that BUILD and SELL the software?"\n'
-    + '  Query 3: "Which OTT middleware software company should a German pay-TV operator license for their multiscreen TV platform?"\n'
-    + 'ANTI-PATTERN (what NOT to generate for a middleware vendor):\n'
-    + '  BAD: "Is it better to develop our own multiscreen video platform or license an existing one?" — produces strategy advice, not vendor names\n'
-    + '  BAD: "Which TV platform is best for pay-TV operators in Germany?" — attracts content distributors and operators who BUY platform software, not vendors who SELL it\n'
-    + '  BAD: "What entertainment platform should we use?" — attracts Netflix, Disney+, not B2B software vendors\n\n'
-    + 'FOR B2C — query format: consumer shopping language ("best brand", "where to buy", "which one should I get for [situation]").\n\n'
-    + 'RULES FOR BOTH:\n'
-    + '- DO NOT mention ' + n.name + ' in any query.\n'
-    + '- Use the SPECIFIC vendor-type vocabulary of the inferred category — not generic terms.\n'
-    + '- If any query could be answered with general advice instead of named companies, rewrite it.\n\n'
-    + 'Return ONLY this JSON (no markdown, no explanation):\n'
-    + '{"buyerType":"b2b","reasoning":"one sentence why B2B or B2C","queries":["query 1","query 2","query 3"]}';
+    + 'Using web search and your knowledge, identify this business\'s REAL competitors — the companies a buyer would put on the SAME RFP or evaluation shortlist as this business.\n\n'
+    + 'THREE STRICT TESTS — a candidate must pass ALL THREE:\n'
+    + '1. SAME PRODUCT TYPE: sells the same type of product or service (not just adjacent or complementary)\n'
+    + '2. SAME BUYER: the same person spends the money (same buyer role, same company type, same deal size)\n'
+    + '3. SAME COMMERCIAL MODEL: both license software, or both sell direct-to-consumer, or both offer managed services — not mixed models\n\n'
+    + 'CRITICAL BUSINESS MODEL RULE — apply before anything else:\n'
+    + 'If the inferred category says the business OWNS its production (farm brand, own herd, own factory, vertically-integrated, direct from farm): its competitors MUST ALSO own their own production and sell direct. A retailer that sources from multiple farms is NOT a true competitor to a farm brand — the buying decision is fundamentally different.\n'
+    + 'Example: a farm brand\'s real competitor is another farm-direct brand, not a premium retailer. Look for competitors that own their animals/production and sell under their own brand.\n'
+    + '\n'
+    + 'WHAT TO EXCLUDE:\n'
+    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
+    + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
+    + '- Review platforms, directories, aggregators\n'
+    + '- The subject business itself\n'
+    + '- Companies that merely appear in search results but serve a different buyer or different use case\n\n'
+    + 'GEOGRAPHIC SCOPE: match where the BUYERS are, not where the business is headquartered.\n'
+    + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
+    + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
+    + 'PRODUCE THREE ANSWERS:\n'
+    + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'    + 'TIEBREAKER RULE: if two or more candidates both pass all three tests and evidence is similar, prefer the one with (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order. This produces more stable, accurate results. Example: if Don Carne has 21,000+ reviews and Angus-Rindfleisch-kaufen.de has no reviews, Don Carne wins the tiebreaker regardless of which appeared first in search results this run.\n'
+    + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now. Apply the SAME TIEBREAKER RULE as Answer A: if multiple names appear, prefer the one with more third-party review volume, then longer market presence. May be the same as realCompetitor or different.\n'
+    + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Null if no clear second name exists.\n'
+    + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if same as realCompetitor or aiRecommends.\n\n'
+    + 'TIEBREAKER FOR ALL ANSWERS: when multiple candidates qualify, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search/analyst presence.\n\n'
+    + 'IMPORTANT: Use web search to verify all named companies are currently operating. Use their CURRENT name if they have rebranded or merged.\n\n'
+    + 'Respond with exactly this JSON — no markdown, no preamble:\n'
+    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
+    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 15000);
+  var timer = setTimeout(function() { controller.abort(); }, 55000); // web search needs more time
   try {
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -844,187 +868,343 @@ async function generateQueryPlan(n) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: ANTHROPIC_MODEL,
         max_tokens: 400,
         temperature: 0,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (res.ok) {
-      var data = await res.json();
-      var text = (data.content || [])
-        .filter(function(b) { return b.type === 'text'; })
-        .map(function(b) { return b.text; }).join('').trim();
-      var clean = text.replace(/```json|```/g, '').trim();
-      var parsed = JSON.parse(clean);
-      if (parsed && Array.isArray(parsed.queries) && parsed.queries.length >= 3) {
-        return parsed;
-      }
-    } else {
-      var errText = await res.text().catch(function() { return ''; });
-      console.warn('[simulation] generateQueryPlan API error: ' + res.status + ' ' + errText.slice(0, 100));
+    if (!res.ok) {
+      var errData = await res.json().catch(function() { return {}; });
+      console.warn('[competitor-selection] API error:', res.status, errData.error && errData.error.message);
+      return null;
     }
-  } catch(e) {
+    var data = await res.json();
+    // Extract text from response — may include tool_use blocks from web search
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    if (!text) {
+      console.warn('[competitor-selection] no text in response');
+      return null;
+    }
+    var fi = text.indexOf('{'), li = text.lastIndexOf('}');
+    var jsonText = (fi !== -1 && li > fi) ? text.slice(fi, li + 1) : text;
+    var parsed = JSON.parse(jsonText);
+    if (!parsed || typeof parsed !== 'object') return null;
+    function cleanName(v) {
+      var s = v ? String(v).trim() : '';
+      if (!s || s === 'null') return null;
+      var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (normN && normS === normN) return null;
+      if (normN && normS && normN.length >= 4 && normS.length >= 4) {
+        if (normS.startsWith(normN) || normN.startsWith(normS)) return null;
+      }
+      return s;
+    }
+    var result = {
+      selectionVersion:   5, // v5: direct web search competitor identification
+      realCompetitor:     cleanName(parsed.realCompetitor),
+      aiRecommends:       cleanName(parsed.aiRecommends),
+      secondAiCompetitor: cleanName(parsed.secondAiCompetitor),
+      globalBenchmark:    cleanName(parsed.globalBenchmark),
+      source:             'web_search',
+      categoryUnowned:    parsed.categoryUnowned === true,
+      contested:          parsed.contested === true,
+      frequencyTable:     [], // not used in v5
+      reason:             String(parsed.reason || '').slice(0, 300)
+    };
+    console.log('[competitor-selection v5] real: ' + (result.realCompetitor || 'none')
+      + ' | AI names: ' + (result.aiRecommends || 'none')
+      + ' | AI second: ' + (result.secondAiCompetitor || 'none')
+      + ' | benchmark: ' + (result.globalBenchmark || 'none')
+      + (result.categoryUnowned ? ' | category UNOWNED' : '')
+      + ' — ' + result.reason);
+    return result;
+  } catch (err) {
     clearTimeout(timer);
-    console.warn('[simulation] generateQueryPlan failed:', e.message);
+    console.warn('[competitor-selection] web search call failed:', err.message);
+    return null;
   }
+ } catch (outerErr) {
+  console.warn('[competitor-selection] outer stage error:', outerErr.message);
   return null;
+ }
 }
 
-function beforeSummary(name, count) {
-  return count === 0
-    ? name + ' was not mentioned in any of the 3 queries. A buyer searching right now would not find you.'
-    : count === 3
-    ? name + ' was mentioned in all 3 queries. Current visibility is strong.'
-    : name + ' was mentioned in ' + count + ' of 3 queries. Partial visibility \u2014 not consistent enough to rely on.';
-}
-
-function afterSummary(name, count) {
-  return count === 3
-    ? name + ' was mentioned in all 3 queries after positioning improvements. This is what AI says about you once the fixes are in place.'
-    : count === 0
-    ? name + ' was not mentioned after positioning improvements were applied. Trust signals are the critical remaining gap.'
-    : name + ' was mentioned in ' + count + ' of 3 queries after positioning improvements were applied.';
-}
-
-// BEFORE half — needs only name/category/city/inferredCategory, so it can run
-// BEFORE scoring. Its responses are the AI selection ground truth: the
-// businesses AI actually recommends today, which drive competitor selection.
-//
-// Now also accepts rich evidence context (websiteContext, kgText,
-// competitorDomains, knownCompetitors) which are passed to generateQueryPlan()
-// so queries are tailored to what this specific business actually does.
-// useWebSearch=true: grants real web search — used by the background diagnostic
-// for ground-truth competitor detection. Default false for the frontend simulation
-// (ai-simulation.js) which runs as a regular Netlify function with a short timeout;
-// web search adds 10-30s per query which risks exceeding that budget.
-async function runBeforeSimulation(input, useWebSearch) {
-  if (useWebSearch === undefined) useWebSearch = true; // background callers get search by default
-  var n = normalizeSimInput(input);
-
-  // ── CONTEXT-AWARE QUERY GENERATION ──────────────────────────────────────
-  // Ask Claude to read all available evidence and generate queries that match
-  // how a real buyer of this business type actually searches — distinguishing
-  // B2B procurement from B2C consumer intent, and using the right vocabulary
-  // for the specific niche. Falls back to static templates if plan fails.
-  var rawQueries;
-  var queryPlan = await generateQueryPlan(n);
-  if (queryPlan && Array.isArray(queryPlan.queries) && queryPlan.queries.length >= 3) {
-    console.log('[simulation] Query plan: buyerType=' + queryPlan.buyerType + ' — ' + (queryPlan.reasoning || ''));
-    // System prompt omits "with live web search" when search is disabled,
-    // so the model answers from training rather than spinning up a search round-trip.
-    var systemPromptBase = queryPlan.buyerType === 'b2b'
-      ? (useWebSearch
-          ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.'
-          : 'You are a helpful AI assistant. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.')
-      : (useWebSearch
-          ? 'You are a helpful AI assistant with live web search. Search before answering. Name specific brands, shops, or businesses. Be concrete and name real options.'
-          : 'You are a helpful AI assistant. Name specific brands, shops, or businesses. Be concrete and name real options.');
-    rawQueries = queryPlan.queries.map(function(q, i) {
-      return {
-        label:  ['Discovery query', 'Comparison query', 'Direct recommendation'][i] || ('Query ' + (i + 1)),
-        intent: 'Context-aware ' + (queryPlan.buyerType || 'standard') + ' buyer query',
-        system: systemPromptBase,
-        query:  q
-      };
-    });
-  } else {
-    // Fallback: static templates keyed by businessModel
-    console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
-    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+async function scoreWithClaude(evidence) {
+  try {
+    return await scoreWithClaudeOnce(evidence);
+  } catch (err) {
+    if (String(err.message || '').indexOf('timed out') !== -1) {
+      console.warn('[scoring] timed out once — retrying (transient model latency)');
+      return await scoreWithClaudeOnce(evidence);
+    }
+    throw err;
   }
+}
 
-  // ── CODE-LEVEL BUILD-VS-BUY VALIDATION ─────────────────────────────────
-  // Reject any query that slipped through the prompt ban and replace with
-  // a safe fallback. This is deterministic — not reliant on the model.
-  if (rawQueries && rawQueries.length) {
-    var bvbPattern = /\b(besser\s+(als\s+)?|better\s+(than\s+)?|soll(en)?\s+wir|should\s+we|eigene?\s+\w+\s+(entwickeln|bauen)|own\s+\w+\s+(build|develop)|in.house|in-house|selbst\s+(entwickeln|bauen)|build\s+(your|our|vs)|versus\s+(buy|licens)|oder\s+liz[ei]n|or\s+licens|or\s+buy\b)/i;
-    var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
-    var fbIdx = 0;
-    rawQueries = rawQueries.map(function(q, i) {
-      if (!q) return q;
-      var queryText = typeof q === 'string' ? q : (q.query || '');
-      if (bvbPattern.test(queryText)) {
-        console.warn('[simulation] build-vs-buy query REJECTED at code level: ' + queryText.slice(0, 100));
-        var safe = staticFallback[fbIdx % staticFallback.length];
-        fbIdx++;
-        return typeof q === 'string' ? safe.query : safe;
-      }
-      return q;
-    });
+async function scoreWithClaudeOnce(evidence) {
+  // Dedicated competitor selection first; its decision is injected as fact.
+  // Idempotent: on a scoring retry the existing decision is reused, not recomputed.
+  try {
+    var existingDecision = evidence.competitorDecision;
+    // Skip selectDominantCompetitor ONLY when the prior extraction was high-confidence:
+    //   selectionVersion 4 (direct Claude extraction, not frequency fallback)
+    //   AND mentionCount >= 2 (appeared in at least 2 of 3 simulation responses)
+    //   AND realCompetitor is non-null
+    // In all other cases — no prior decision, low confidence (count=1), frequency
+    // fallback (v3), or empty result — run the full sophisticated selection which has
+    // grounding requirements, same-serviceable-market checks, and geography validation
+    // that the quick background extraction lacks.
+    // Skip selectDominantCompetitor ONLY on a scoring retry within the same run.
+    // A prior run's competitor decision (v4 or earlier) must NEVER be reused —
+    // v5 uses web search to find the real competitor fresh every time.
+    // The only valid skip is when competitorDecision was already set to v5
+    // in this exact run's evidence object (i.e. we're retrying the Claude
+    // scoring call after a timeout, not starting a new diagnostic).
+    var isCurrentRunV5 = existingDecision
+      && existingDecision.realCompetitor
+      && existingDecision.selectionVersion === 5;
+    var compDecision = isCurrentRunV5
+      ? existingDecision
+      : await selectDominantCompetitor(evidence);
+    if (compDecision) {
+      evidence.competitorDecision = compDecision;
+      console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
+        + ' | AI names: ' + (compDecision.aiRecommends || 'none')
+        + ' | global benchmark: ' + (compDecision.globalBenchmark || 'none')
+        + ' (' + compDecision.source + (compDecision.categoryUnowned ? ', category unowned' : '') + ') \u2014 ' + compDecision.reason);
+    }
+  } catch (err) {
+    console.warn('[competitor-selection] stage error:', err.message);
   }
+  var prompt     = buildPrompt(evidence);
+  var controller = new AbortController();
+  var timeout    = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
 
-  var buyerQueries = await generateBuyerQueries(n, rawQueries);
-  var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
-  var results = await runQuerySet(loc.queries, n.name, useWebSearch);
-  var count = results.filter(function(r) { return r.appeared; }).length;
-  return {
-    name:     n.name,
-    category: n.catClean,
-    before: {
-      language:      loc.language,
-      results:       results,
-      appearedCount: count,
-      totalQueries:  3,
-      summary:       beforeSummary(n.name, count)
+  try {
+    var response = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: MAX_TOKENS,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      var errBody = '';
+      try { var errJson = await response.json(); errBody = (errJson && errJson.error && errJson.error.message) ? errJson.error.message : ''; } catch (e) {}
+      throw new Error(errBody || 'Anthropic HTTP ' + response.status);
     }
-  };
+    var data = await response.json();
+    if (data.stop_reason && data.stop_reason !== 'end_turn') {
+      console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason, '— response may be truncated');
+    }
+
+    var raw = parseClaudeResponse(data);
+    raw = applySignalConstraints(raw, evidence.websiteSignals || {});
+    return safeOutput(raw);
+
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') throw new Error('Claude request timed out');
+    throw error;
+  }
 }
 
-// AFTER half — consumes the scored differentiator and trust signal, so it
-// runs after scoring, exactly as before.
-async function runAfterSimulation(input) {
-  var n = normalizeSimInput(input);
-  var differentiator = String(input.differentiator || '').trim();
-  var trustSignal    = String(input.trustSignal    || '').trim();
-  var locA = await applyMarketLanguage(
-    buildAfterQueries(n.catClean, n.city, n.name, differentiator, trustSignal), n.city, input.language);
-  var results = await runQuerySet(locA.queries, n.name);
-  var count = results.filter(function(r) { return r.appeared; }).length;
-  return {
-    name:     n.name,
-    category: n.catClean,
-    after: {
-      language:      locA.language,
-      results:       results,
-      appearedCount: count,
-      totalQueries:  3,
-      summary:       afterSummary(n.name, count)
-    }
-  };
+// ── CHANNEL COMPETITOR SELECTION ─────────────────────────────────────────────
+// Used only when dual-arena is detected. Asks Claude to identify the dominant
+// online/DTC seller for this product category in this market — not the brand
+// peer (which selectDominantCompetitor handles) but the established e-commerce
+// player a buyer would find by searching "buy [product] online [market]".
+async function selectChannelCompetitor(evidence, channelResults) {
+  var name     = String(evidence.name || '').trim();
+  var category = String(evidence.inferredCategory || evidence.category || '').trim();
+  var city     = String(evidence.city || '').trim();
+
+  var candidateLines = (channelResults.competitors || []).map(function(c) {
+    return '- ' + (c.domain || '') + (c.title ? ' ("' + c.title.slice(0, 70) + '")' : '');
+  }).filter(Boolean).slice(0, 8).join('\n');
+
+  var searchExcerpt = sanitizeExternal(String(channelResults.searchText || '')).slice(0, 2000);
+
+  if (!candidateLines && !searchExcerpt) return null;
+
+  var prompt = 'You identify the dominant online/DTC seller in a product category and market. Respond ONLY with valid JSON, no markdown, no explanation outside the JSON.\n\n'
+    + 'SUBJECT BUSINESS: ' + name + '\n'
+    + 'PRODUCT CATEGORY: ' + category + '\n'
+    + (city ? 'MARKET: ' + city + '\n' : '')
+    + (candidateLines ? '\nCANDIDATES FROM "buy online" SEARCH:\n' + candidateLines + '\n' : '')
+    + (searchExcerpt  ? '\nSEARCH RESULTS EXCERPT:\n' + searchExcerpt + '\n' : '')
+    + '\nIdentify the ONE business that most clearly owns the online/e-commerce buying experience for this product in this market — the company a buyer would land on when searching "buy [product] online". '
+    + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the same market/country as ' + name + ', '
+    + '(3) is NOT ' + name + ' itself, (4) is NOT a marketplace or aggregator (Amazon, eBay, Etsy, Google Shopping etc), '
+    + '(5) PREFER businesses appearing in the evidence, but if evidence is sparse you MAY use verified general knowledge for well-known markets. '
+    + 'Return null if genuinely uncertain. '
+    + 'This is the CHANNEL competitor, not the brand peer — ordering experience and delivery dominate this arena, not product quality or heritage.\n\n'
+    + 'Respond with exactly: {"name": <string or null>, "domain": <string or null>, "reason": "<one sentence>"}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 20000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 200, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.warn('[channel-competitor] Anthropic ' + res.status); return null; }
+    var data = await res.json();
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    var fi2 = text.indexOf('{'), li2 = text.lastIndexOf('}');
+    var jsonText2 = (fi2 !== -1 && li2 > fi2) ? text.slice(fi2, li2 + 1) : text;
+    var parsed = JSON.parse(jsonText2);
+    if (!parsed || !parsed.name) return null;
+    return {
+      name:   String(parsed.name).trim(),
+      domain: String(parsed.domain || '').trim(),
+      reason: String(parsed.reason || '').slice(0, 200),
+      source: 'channel-search'
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[channel-competitor] failed:', err.message);
+    return null;
+  }
 }
 
-// Full simulation — composes both halves in parallel. Payload shape is
-// byte-identical to the previous implementation, so the ai-simulation.js
-// HTTP endpoint and the free result page are unaffected.
-// useWebSearch is explicitly false here: ai-simulation.js is a regular Netlify
-// function with a ~26s hard timeout. Web search adds 10-30s per query which
-// would hit that ceiling. The background diagnostic calls runBeforeSimulation
-// directly with useWebSearch=true (the default) for accurate ground-truth results.
-async function runSimulation(input) {
-  var n = normalizeSimInput(input); // validates early, same error contract
+// ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────────
+// Called only when dual-arena is active. Scores the competitor in ONE arena
+// (brand or online) using a lightweight Claude call.
+// Returns: { arenaType, competitorName, pillars: { clarity, trust, difference, ease },
+//            keyGap, priorityAction }
+// Each pillar: { you: <0-25>, competitor: <0-25>, gap: <signed int> }
+// Fails soft — caller catches and ignores.
+async function scoreArena(evidence, mainResult, competitorName, arenaType) {
+  if (!competitorName) return null;
+  var name     = String(evidence.name || '').trim();
+  var category = String(evidence.inferredCategory || evidence.category || '').trim();
+  var city     = String(evidence.city || '').trim();
 
-  var settled = await Promise.allSettled([
-    runBeforeSimulation(input, false),
-    runAfterSimulation(input)
-  ]);
+  var subjectPillars = (mainResult && mainResult.pillars) || {};
+  function s(pillar) { return Number((subjectPillars[pillar] && subjectPillars[pillar].score) || 0); }
+  var youClarity    = s('clarity');
+  var youTrust      = s('trust');
+  var youDifference = s('difference');
+  var youEase       = s('ease');
 
-  var beforeHalf = settled[0].status === 'fulfilled' ? settled[0].value : null;
-  var afterHalf  = settled[1].status === 'fulfilled' ? settled[1].value : null;
+  var searchExcerpt = sanitizeExternal(
+    String(evidence.searchText || '').slice(0, 1500)
+    + '\n' + String(evidence.competitorPageText || '').slice(0, 1000)
+  );
 
-  var emptyResults = [];
-  return {
-    name:     n.name,
-    category: n.catClean,
-    before: beforeHalf ? beforeHalf.before : {
-      results: emptyResults, appearedCount: 0, totalQueries: 3, summary: beforeSummary(n.name, 0)
-    },
-    after: afterHalf ? afterHalf.after : {
-      results: emptyResults, appearedCount: 0, totalQueries: 3, summary: afterSummary(n.name, 0)
+  var arenaLabel = arenaType === 'online'
+    ? 'online/DTC channel (ordering experience, delivery, online UX)'
+    : 'brand/product arena (specialty product quality, heritage, breed specificity)';
+
+  var arenaContext = arenaType === 'online'
+    ? 'In this arena, buyers decide based on: ease of ordering online, delivery reliability, website clarity, DTC trust signals (reviews, returns policy), and online brand presence.'
+    : 'In this arena, buyers decide based on: breed/product specificity, source transparency, production method, provenance claims, and specialty positioning.';
+
+  var prompt = 'You compare two businesses on the CHOIVE four pillars within a specific competitive arena. '
+    + 'Respond ONLY with valid JSON, no markdown, no text outside the JSON.\n\n'
+    + 'SUBJECT BUSINESS: ' + name + '\n'
+    + 'COMPETITOR: ' + competitorName + '\n'
+    + 'PRODUCT CATEGORY: ' + category + '\n'
+    + (city ? 'MARKET: ' + city + '\n' : '')
+    + 'ARENA: ' + arenaLabel + '\n'
+    + arenaContext + '\n\n'
+    + 'SUBJECT\'S CONFIRMED PILLAR SCORES (from full diagnostic):\n'
+    + '  Clarity: ' + youClarity + '/25\n'
+    + '  Trust: ' + youTrust + '/25\n'
+    + '  Difference: ' + youDifference + '/25\n'
+    + '  Ease: ' + youEase + '/25\n\n'
+    + 'AVAILABLE EVIDENCE (excerpts):\n' + searchExcerpt + '\n\n'
+    + 'TASK: Estimate ' + competitorName + '\'s pillar scores IN THIS SPECIFIC ARENA ONLY. '
+    + 'Use the same 0-25 scale per pillar. Base estimates on the evidence and your knowledge of this competitor. '
+    + 'Gap = your score minus competitor score (positive = you lead, negative = competitor leads).\n\n'
+    + 'Also identify the single biggest gap (the pillar where the subject is most behind in this arena) '
+    + 'and one specific priority action to close it.\n\n'
+    + 'Respond with exactly this JSON structure:\n'
+    + '{\n'
+    + '  "pillars": {\n'
+    + '    "clarity":    { "you": ' + youClarity    + ', "competitor": 0, "gap": 0 },\n'
+    + '    "trust":      { "you": ' + youTrust      + ', "competitor": 0, "gap": 0 },\n'
+    + '    "difference": { "you": ' + youDifference + ', "competitor": 0, "gap": 0 },\n'
+    + '    "ease":       { "you": ' + youEase       + ', "competitor": 0, "gap": 0 }\n'
+    + '  },\n'
+    + '  "keyGap": "<pillar name where subject is most behind in this arena>",\n'
+    + '  "priorityAction": "<one specific sentence: what to change in this arena>"\n'
+    + '}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 25000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 350, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.warn('[scoreArena] Anthropic ' + res.status); return null; }
+    var data = await res.json();
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text || ''; })
+      .join('').replace(/```json|```/g, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(text); } catch (e) {
+      // Try to extract JSON
+      var jStart = text.indexOf('{'); var jEnd = text.lastIndexOf('}');
+      if (jStart !== -1 && jEnd > jStart) { try { parsed = JSON.parse(text.slice(jStart, jEnd + 1)); } catch (_) {} }
     }
-  };
+    if (!parsed || !parsed.pillars) return null;
+
+    // Fill in "you" scores (always use confirmed values from main diagnostic)
+    // and compute gaps deterministically — never trust what the model writes for "you" or "gap"
+    var pillars = parsed.pillars;
+    function fixPillar(key, youScore) {
+      var p = pillars[key] || {};
+      var comp = Math.max(0, Math.min(25, Number(p.competitor) || 0));
+      return { you: youScore, competitor: comp, gap: youScore - comp };
+    }
+    return {
+      arenaType:      arenaType,
+      competitorName: competitorName,
+      pillars: {
+        clarity:    fixPillar('clarity',    youClarity),
+        trust:      fixPillar('trust',      youTrust),
+        difference: fixPillar('difference', youDifference),
+        ease:       fixPillar('ease',       youEase)
+      },
+      keyGap:         String(parsed.keyGap         || '').slice(0, 50),
+      priorityAction: String(parsed.priorityAction || '').slice(0, 600)
+    };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[scoreArena] failed (' + arenaType + '):', err.message);
+    return null;
+  }
 }
 
-module.exports = { runSimulation: runSimulation, runBeforeSimulation: runBeforeSimulation, runAfterSimulation: runAfterSimulation };
+module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena };
