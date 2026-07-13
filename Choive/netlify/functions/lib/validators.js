@@ -114,7 +114,8 @@ function buildSafeOutput(output) {
     displacement:   resolveDisplacement(output),
     competitors:    Array.isArray(output && output.competitors)   ? output.competitors   : [],
     socialSignals:  (output && output.socialSignals && typeof output.socialSignals === 'object') ? output.socialSignals : {},
-    summaries:      (output && output.summaries    && typeof output.summaries    === 'object') ? output.summaries    : {}
+    summaries:      (output && output.summaries    && typeof output.summaries    === 'object') ? output.summaries    : {},
+    signalAudit:    (output && output.signalAudit  && typeof output.signalAudit  === 'object') ? output.signalAudit  : { clarity: [], trust: [], difference: [], ease: [] }
   };
 
   // ── Validate platform statuses ────────────────────────────────────────────
