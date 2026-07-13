@@ -324,6 +324,37 @@ function buildQueries(catClean, city, name, businessModel) {
     ];
   }
 
+  // B2B queries — correct for software platforms, SaaS, enterprise solutions,
+  // middleware, API providers, and any business that sells to other businesses.
+  // Uses procurement/vendor-selection language instead of retail "buy" language.
+  // This prevents AI from surfacing consumer brands (e.g. streaming services)
+  // when the subject is a B2B platform vendor.
+  if (businessModel === 'b2b') {
+    // Strip leading "B2B" label from catClean for cleaner query text.
+    // "B2B multiscreen OTT middleware provider" → "multiscreen OTT middleware provider"
+    var b2bCat = catClean.replace(/^b2b\s+/i, '').trim() || catClean;
+    return [
+      {
+        label: 'B2B vendor discovery',
+        intent: 'A procurement decision-maker searching for the best vendor in this category',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies that sell to businesses — not consumer products or retail brands. Be specific and name real companies.' + hint,
+        query: 'What are the best ' + b2bCat + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
+      },
+      {
+        label: 'B2B solution comparison',
+        intent: 'A business evaluating competing platforms or solutions',
+        system: 'You are a helpful AI assistant with live web search. Search for current reviews, analyst reports, and industry comparisons before answering — do not rely on memory alone. Name the specific companies that B2B buyers most consistently consider and recommend. Be specific and name real companies.' + hint,
+        query: 'Which ' + b2bCat + ' solutions are most recommended for businesses' + locationStr + '? Which providers or platforms do companies in this space choose and why?'
+      },
+      {
+        label: 'B2B direct recommendation',
+        intent: 'A business decision-maker ready to select a vendor',
+        system: 'You are a helpful AI assistant. Answer from the perspective of advising a business technology decision-maker. Be specific and name one real company or platform.' + hint,
+        query: 'Which ' + b2bCat + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
+      }
+    ];
+  }
+
   // Standard buyer queries — correct for retailers, marketplaces, services
   return [
     {
@@ -557,6 +588,13 @@ function normalizeSimInput(input) {
   var city             = String(input.city             || '').trim();
   var inferredCategory = String(input.inferredCategory || category).trim();
   var description      = String(input.description      || '').trim();
+  // Rich context from evidence gathering — used to understand the business
+  // beyond what the user typed in the category field.
+  var websiteContext    = String(input.websiteContext   || '').trim().slice(0, 1200);
+  var kgText            = String(input.kgText           || '').replace(/^None$/i, '').trim().slice(0, 400);
+  var competitorDomains = Array.isArray(input.competitorDomains)
+    ? input.competitorDomains.filter(Boolean).slice(0, 10) : [];
+  var knownCompetitors  = String(input.knownCompetitors || '').trim();
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -571,29 +609,117 @@ function normalizeSimInput(input) {
     .replace(/\bsoftware\s+as\s+a\s+service\b/i, 'SaaS')
     .trim();
 
-  // Business model detection — determines the BUYER INTENT behind the query.
-  // A buyer choosing a vertically-integrated farm brand is asking a fundamentally
-  // different question than a buyer choosing a retailer or marketplace.
-  // Farm/DTC brands: the buyer wants to know the animal's origin, the producer's
-  // story, and the brand's own production — NOT which shop has the widest range.
-  // Getting this wrong means the simulation asks the wrong buyer question and
-  // surfaces retailers instead of farm brands as competitors.
+  // Business model detection — used as FALLBACK if Claude query plan fails.
+  // The Claude query plan reads all evidence and is always preferred.
+  // This regex detection only fires when that plan is unavailable.
   var businessModel = 'standard';
   var catLower = catClean.toLowerCase();
   var descLower = description.toLowerCase();
-  var combined = catLower + ' ' + descLower;
+  var webLower  = websiteContext.toLowerCase();
+  var combined = catLower + ' ' + descLower + ' ' + webLower;
   if (
     /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|direct.to.consumer|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined) ||
     (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined))
   ) {
     businessModel = 'farm_brand_dtc';
-  } else if (/b2b|wholesale|distributor|supplier.*business|business.*supplier/i.test(combined)) {
+  } else if (
+    /b2b|wholesale|distributor|supplier.*business|business.*supplier/i.test(combined) ||
+    /\bfor\s+(operators?|enterprises?|broadcasters?|carriers?|telecoms?|pay.tv|msso?|mvpd|isp|oems?|manufacturers?|developers?|agencies|corporations?)\b/i.test(combined) ||
+    /\b(middleware|saas|white.label|white\s+label|api\s+platform|sdk|enterprise\s+software|b2b\s+software|operator\s+platform|headend|backend\s+platform)\b/i.test(combined)
+  ) {
     businessModel = 'b2b';
   } else if (/marketplace|platform|aggregator|multi.brand|curates|resell/i.test(combined)) {
     businessModel = 'marketplace';
   }
 
-  return { name: name, category: category, city: city, catClean: catClean, description: description, businessModel: businessModel };
+  return {
+    name: name, category: category, city: city, catClean: catClean,
+    description: description, businessModel: businessModel,
+    websiteContext: websiteContext, kgText: kgText,
+    competitorDomains: competitorDomains, knownCompetitors: knownCompetitors
+  };
+}
+
+// ── CONTEXT-AWARE QUERY PLAN ──────────────────────────────────────────────────
+// Reads ALL available evidence about a business (category, website content,
+// knowledge graph, Serper domains) and generates 3 buyer queries tailored to
+// how a REAL buyer of that specific type actually searches.
+//
+// This replaces static templates, which couldn't distinguish B2B procurement
+// language from B2C consumer language, and couldn't adapt to the specific
+// niche vocabulary a real buyer would use.
+//
+// Falls back to static buildQueries() if the API call fails.
+async function generateQueryPlan(n) {
+  var contextParts = [
+    'BUSINESS NAME: ' + n.name,
+    'CATEGORY (user typed): ' + n.category,
+    'CATEGORY (engine inferred from evidence): ' + n.catClean
+  ];
+  if (n.description)               contextParts.push('DESCRIPTION: ' + n.description);
+  if (n.websiteContext)             contextParts.push('WEBSITE CONTENT (excerpt): ' + n.websiteContext);
+  if (n.kgText)                     contextParts.push('KNOWLEDGE GRAPH: ' + n.kgText);
+  if (n.competitorDomains.length)   contextParts.push('RELATED DOMAINS FROM SEARCH: ' + n.competitorDomains.join(', '));
+  if (n.knownCompetitors)           contextParts.push('KNOWN COMPETITORS: ' + n.knownCompetitors);
+
+  var prompt =
+    'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
+    + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
+    + 'YOUR TASK:\n'
+    + '1. Determine whether this business is B2B (sells to other businesses, operators, enterprises, developers, or organizations) or B2C (sells directly to individual consumers).\n'
+    + '   Use ALL context provided — not just the category label. Check what the website content describes, who the knowledge graph says they serve, what the competitor domains suggest, what the description says.\n\n'
+    + '2. Generate 3 queries that a REAL BUYER of this business type would actually type into an AI assistant (ChatGPT, Claude, Perplexity) when looking for solutions in this space.\n'
+    + '   - Query 1 (Discovery): "what are the main options / best vendors in this specific space?"\n'
+    + '   - Query 2 (Comparison): "how do I choose between the leading solutions for my situation?"\n'
+    + '   - Query 3 (Recommendation): "which specific one should I pick for my exact use case?"\n\n'
+    + 'CRITICAL RULES:\n'
+    + '- B2B: use business procurement language — "which vendor", "best platform for [operator/enterprise type]", "which solution do companies use for...". NEVER use consumer phrases like "where to buy", "best place to purchase", or "where can I get".\n'
+    + '- B2C: use natural consumer language — "best brand", "where to buy", "which one should I get", "where can I order".\n'
+    + '- Queries must be specific to the exact niche and buyer type. Use the vocabulary that buyer would actually use (e.g. for pay-TV middleware: "OTT platform", "multiscreen solution", "IPTV stack"; for premium beef online: "grass-fed beef brand", "order steaks online"; for legal tech: "contract management software", "legal workflow platform").\n'
+    + '- Queries must be specific enough that an AI answering them would name REAL competing businesses — not give generic advice.\n'
+    + '- DO NOT mention ' + n.name + ' in any query.\n'
+    + '- DO NOT use generic phrases like "best software" or "top tools" — be specific to this vertical.\n\n'
+    + 'Return ONLY this JSON (no markdown, no explanation):\n'
+    + '{"buyerType":"b2b","reasoning":"one sentence explaining why B2B or B2C","queries":["query 1","query 2","query 3"]}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      var data = await res.json();
+      var text = (data.content || [])
+        .filter(function(b) { return b.type === 'text'; })
+        .map(function(b) { return b.text; }).join('').trim();
+      var clean = text.replace(/```json|```/g, '').trim();
+      var parsed = JSON.parse(clean);
+      if (parsed && Array.isArray(parsed.queries) && parsed.queries.length >= 3) {
+        return parsed;
+      }
+    } else {
+      var errText = await res.text().catch(function() { return ''; });
+      console.warn('[simulation] generateQueryPlan API error: ' + res.status + ' ' + errText.slice(0, 100));
+    }
+  } catch(e) {
+    clearTimeout(timer);
+    console.warn('[simulation] generateQueryPlan failed:', e.message);
+  }
+  return null;
 }
 
 function beforeSummary(name, count) {
@@ -615,11 +741,53 @@ function afterSummary(name, count) {
 // BEFORE half — needs only name/category/city/inferredCategory, so it can run
 // BEFORE scoring. Its responses are the AI selection ground truth: the
 // businesses AI actually recommends today, which drive competitor selection.
-async function runBeforeSimulation(input) {
+//
+// Now also accepts rich evidence context (websiteContext, kgText,
+// competitorDomains, knownCompetitors) which are passed to generateQueryPlan()
+// so queries are tailored to what this specific business actually does.
+// useWebSearch=true: grants real web search — used by the background diagnostic
+// for ground-truth competitor detection. Default false for the frontend simulation
+// (ai-simulation.js) which runs as a regular Netlify function with a short timeout;
+// web search adds 10-30s per query which risks exceeding that budget.
+async function runBeforeSimulation(input, useWebSearch) {
+  if (useWebSearch === undefined) useWebSearch = true; // background callers get search by default
   var n = normalizeSimInput(input);
-  var buyerQueries = await generateBuyerQueries(n, buildQueries(n.catClean, n.city, n.name, n.businessModel));
+
+  // ── CONTEXT-AWARE QUERY GENERATION ──────────────────────────────────────
+  // Ask Claude to read all available evidence and generate queries that match
+  // how a real buyer of this business type actually searches — distinguishing
+  // B2B procurement from B2C consumer intent, and using the right vocabulary
+  // for the specific niche. Falls back to static templates if plan fails.
+  var rawQueries;
+  var queryPlan = await generateQueryPlan(n);
+  if (queryPlan && Array.isArray(queryPlan.queries) && queryPlan.queries.length >= 3) {
+    console.log('[simulation] Query plan: buyerType=' + queryPlan.buyerType + ' — ' + (queryPlan.reasoning || ''));
+    // System prompt omits "with live web search" when search is disabled,
+    // so the model answers from training rather than spinning up a search round-trip.
+    var systemPromptBase = queryPlan.buyerType === 'b2b'
+      ? (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.'
+          : 'You are a helpful AI assistant. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.')
+      : (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name specific brands, shops, or businesses. Be concrete and name real options.'
+          : 'You are a helpful AI assistant. Name specific brands, shops, or businesses. Be concrete and name real options.');
+    rawQueries = queryPlan.queries.map(function(q, i) {
+      return {
+        label:  ['Discovery query', 'Comparison query', 'Direct recommendation'][i] || ('Query ' + (i + 1)),
+        intent: 'Context-aware ' + (queryPlan.buyerType || 'standard') + ' buyer query',
+        system: systemPromptBase,
+        query:  q
+      };
+    });
+  } else {
+    // Fallback: static templates keyed by businessModel
+    console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
+    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel);
+  }
+
+  var buyerQueries = await generateBuyerQueries(n, rawQueries);
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
-  var results = await runQuerySet(loc.queries, n.name, true);
+  var results = await runQuerySet(loc.queries, n.name, useWebSearch);
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
     name:     n.name,
@@ -660,11 +828,15 @@ async function runAfterSimulation(input) {
 // Full simulation — composes both halves in parallel. Payload shape is
 // byte-identical to the previous implementation, so the ai-simulation.js
 // HTTP endpoint and the free result page are unaffected.
+// useWebSearch is explicitly false here: ai-simulation.js is a regular Netlify
+// function with a ~26s hard timeout. Web search adds 10-30s per query which
+// would hit that ceiling. The background diagnostic calls runBeforeSimulation
+// directly with useWebSearch=true (the default) for accurate ground-truth results.
 async function runSimulation(input) {
   var n = normalizeSimInput(input); // validates early, same error contract
 
   var settled = await Promise.allSettled([
-    runBeforeSimulation(input),
+    runBeforeSimulation(input, false),
     runAfterSimulation(input)
   ]);
 
