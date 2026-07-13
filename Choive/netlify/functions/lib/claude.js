@@ -838,13 +838,10 @@ async function selectDominantCompetitor(evidence) {
     + 'Example: a farm brand\'s real competitor is another farm-direct brand, not a premium retailer. Look for competitors that own their animals/production and sell under their own brand.\n'
     + '\n'
     + 'WHAT TO EXCLUDE:\n'
-    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
-    + '- Consumer streaming services that sell to end users, not to operators as a software platform (Zattoo, Netflix, Disney+, Sky, Hulu, DAZN) — these are in the consumer market, not the B2B middleware market\n'
-    + '- OTT SaaS tools aimed at content owners, sports leagues, or media companies (ViewLift, Brightcove, Kaltura, Wistia) — these serve a fundamentally different buyer type from middleware sold to telcos and carmakers\n'
-    + '- Platform operators that BUY middleware (CANAL+ Germany, Sky, Vodafone, Telkom) — they are customers of the type of software being sold, not competitors to it\n'
+    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'    + '- Consumer streaming services selling directly to end users (Zattoo, Netflix, Sky, DAZN, Disney+) — these are never competitors to a B2B middleware vendor\n'    + '- OTT SaaS platforms for content owners and sports leagues (ViewLift, Brightcove, Kaltura) — different buyer, different product\n'    + '- Content distributors or platform operators (CANAL+ Germany, Sky, Vodafone) — they BUY the type of product being sold\n'    + '- Multi-brand retailers sourcing from multiple farms/suppliers (Gourmetfleisch.de, Otto Gourmet) — not competitors to a vertically-integrated farm brand\n'
     + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
     + '- Review platforms, directories, aggregators\n'
-    + '- The subject business itself — including its website domain, abbreviation, or any variation of its name. If the subject is "3 screens solutions" with website 3ss.tv, then "3ss", "3ss.tv", "3 Screen Solutions", "Three Screen Solutions" are ALL excluded.\n'
+    + '- The subject business itself — including its website domain, abbreviation, or any name variant (e.g. for a business with domain 3ss.tv: exclude 3ss, 3SS, 3ss.tv, Three Screen Solutions)\n'
     + '- Companies that merely appear in search results but serve a different buyer or different use case\n\n'
     + 'GEOGRAPHIC SCOPE: match where the BUYERS are, not where the business is headquartered.\n'
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
@@ -858,6 +855,8 @@ async function selectDominantCompetitor(evidence) {
     + 'IMPORTANT: Use web search to verify all named companies are currently operating. Use their CURRENT name if they have rebranded or merged.\n\n'
     + 'Respond with exactly this JSON — no markdown, no preamble:\n'
     + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
+
+  var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 55000); // web search needs more time
   try {
     var res = await fetch(ANTHROPIC_URL, {
@@ -900,18 +899,18 @@ async function selectDominantCompetitor(evidence) {
       var s = v ? String(v).trim() : '';
       if (!s || s === 'null') return null;
       var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      // Check against business name
       var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       if (normN && normS === normN) return null;
       if (normN && normS && normN.length >= 4 && normS.length >= 4) {
         if (normS.startsWith(normN) || normN.startsWith(normS)) return null;
       }
-      // Check against website domain — prevents the business naming its OWN domain as competitor
-      // e.g. "3ss.tv" returned as competitor for "3 screens solutions" (3ss.tv)
+      // Reject subject's own website domain being returned as competitor
       if (website) {
-        var normW = website.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[^a-z0-9]+/g, ' ').trim();
-        var normSClean = normS.replace(/\.(com|de|tv|io|co|net|org|uk|us|eu|app)$/, '').trim();
-        if (normW && (normS === normW || normSClean === normW.split(' ')[0] || normW.startsWith(normSClean))) return null;
+        var domainCore = website.toLowerCase()
+          .replace(/^https?:\/\//, '').replace(/^www\./, '')
+          .split('/')[0].replace(/\.[^.]+$/, ''); // e.g. "3ss.tv" → "3ss"
+        var candidateCore = normS.replace(/\s+/g, '').replace(/\.[a-z]{2,4}$/, '');
+        if (domainCore && (candidateCore === domainCore || normS.replace(/\s/g,'') === domainCore)) return null;
       }
       return s;
     }
