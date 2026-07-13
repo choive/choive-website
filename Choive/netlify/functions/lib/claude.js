@@ -833,6 +833,10 @@ async function selectDominantCompetitor(evidence) {
     + '1. SAME PRODUCT TYPE: sells the same type of product or service (not just adjacent or complementary)\n'
     + '2. SAME BUYER: the same person spends the money (same buyer role, same company type, same deal size)\n'
     + '3. SAME COMMERCIAL MODEL: both license software, or both sell direct-to-consumer, or both offer managed services — not mixed models\n\n'
+    + 'CRITICAL BUSINESS MODEL RULE — apply before anything else:\n'
+    + 'If the inferred category says the business OWNS its production (farm brand, own herd, own factory, vertically-integrated, direct from farm): its competitors MUST ALSO own their own production and sell direct. A retailer that sources from multiple farms is NOT a true competitor to a farm brand — the buying decision is fundamentally different.\n'
+    + 'Example: a farm brand\'s real competitor is another farm-direct brand, not a premium retailer. Look for competitors that own their animals/production and sell under their own brand.\n'
+    + '\n'
     + 'WHAT TO EXCLUDE:\n'
     + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
     + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
@@ -843,11 +847,14 @@ async function selectDominantCompetitor(evidence) {
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
     + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
     + 'PRODUCE THREE ANSWERS:\n'
-    + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'
-    + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now (from the AI SELECTION GROUND TRUTH above, or from your web search). This is who is WINNING the AI recommendation slot today. May be the same as realCompetitor or different.\n'
-    + 'C — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if the same as realCompetitor.\n\n'
-    + 'IMPORTANT: Use web search to verify that your named competitors are currently operating and in the correct category. Do not name companies that have merged, been acquired, rebranded, or shut down without using their CURRENT name.\n\n'
+    + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'    + 'TIEBREAKER RULE: if two or more candidates both pass all three tests and evidence is similar, prefer the one with (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order. This produces more stable, accurate results. Example: if Don Carne has 21,000+ reviews and Angus-Rindfleisch-kaufen.de has no reviews, Don Carne wins the tiebreaker regardless of which appeared first in search results this run.\n'
+    + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now. Apply the SAME TIEBREAKER RULE as Answer A: if multiple names appear, prefer the one with more third-party review volume, then longer market presence. May be the same as realCompetitor or different.\n'
+    + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Null if no clear second name exists.\n'
+    + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if same as realCompetitor or aiRecommends.\n\n'
+    + 'TIEBREAKER FOR ALL ANSWERS: when multiple candidates qualify, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search/analyst presence.\n\n'
+    + 'IMPORTANT: Use web search to verify all named companies are currently operating. Use their CURRENT name if they have rebranded or merged.\n\n'
     + 'Respond with exactly this JSON — no markdown, no preamble:\n'
+    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
     + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
@@ -901,18 +908,20 @@ async function selectDominantCompetitor(evidence) {
       return s;
     }
     var result = {
-      selectionVersion: 5, // v5: direct web search competitor identification
-      realCompetitor:  cleanName(parsed.realCompetitor),
-      aiRecommends:    cleanName(parsed.aiRecommends),
-      globalBenchmark: cleanName(parsed.globalBenchmark),
-      source:          'web_search',
-      categoryUnowned: parsed.categoryUnowned === true,
-      contested:       parsed.contested === true,
-      frequencyTable:  [], // not used in v5
-      reason:          String(parsed.reason || '').slice(0, 300)
+      selectionVersion:   5, // v5: direct web search competitor identification
+      realCompetitor:     cleanName(parsed.realCompetitor),
+      aiRecommends:       cleanName(parsed.aiRecommends),
+      secondAiCompetitor: cleanName(parsed.secondAiCompetitor),
+      globalBenchmark:    cleanName(parsed.globalBenchmark),
+      source:             'web_search',
+      categoryUnowned:    parsed.categoryUnowned === true,
+      contested:          parsed.contested === true,
+      frequencyTable:     [], // not used in v5
+      reason:             String(parsed.reason || '').slice(0, 300)
     };
     console.log('[competitor-selection v5] real: ' + (result.realCompetitor || 'none')
       + ' | AI names: ' + (result.aiRecommends || 'none')
+      + ' | AI second: ' + (result.secondAiCompetitor || 'none')
       + ' | benchmark: ' + (result.globalBenchmark || 'none')
       + (result.categoryUnowned ? ' | category UNOWNED' : '')
       + ' — ' + result.reason);
