@@ -225,7 +225,7 @@ async function generateBuyerQueries(n, templates) {
     + '  Query 2 (COMPARISON): buyer is weighing specific options — "[Specific type] vs [alternative]...", "Best [type] online vs local...", "Which is better for..."\n'
     + '  Query 3 (DECISION): buyer wants one direct recommendation — "Which [specific thing] should I buy?", "Best [specific thing] delivered to [city]"\n'
     + '- PRESERVE SPECIFICITY: if the category names a specific breed, material, certification, or niche (e.g. "Black Angus", "Wagyu", "Merino wool", "premium delivery"), that specific term MUST appear in every query unmodified. Never generalise "Black Angus beef" to just "beef" or "meat" — the specific term determines which real competitors are found.\n'
-    + '- MARKET SPECIFICITY: if a city or country is provided, EVERY query must be geographically anchored. A buyer in Germany asks "...in Germany" or "...delivered to Germany" — never a global question.\n'
+    + '- MARKET SPECIFICITY: match the geographic scope of the BUSINESS, not just the city entered. A local restaurant in Berlin → "in Berlin". A national DTC brand in Germany → "in Germany". A B2B software company headquartered in Germany but serving European or global telcos and carmakers → drop the city anchor entirely and use "in Europe" or no location. The test: where are this business\'s BUYERS, not where is the business headquartered. If the inferred category or evidence mentions clients in multiple countries, or if the category is enterprise B2B software, do not anchor queries to the HQ city.\n'
     + '- CATEGORY FIDELITY: the exact inferred category is: "' + n.catClean + '". Every query must be unmistakably about this specific thing.\n'
     + '- Never mention ' + n.name + ' or any specific vendor name.\n'
     + '- One natural sentence each. No introductions, no bullet points.\n'
@@ -288,10 +288,14 @@ function collisionHint(catClean) {
   return '';
 }
 
-function buildQueries(catClean, city, name, businessModel) {
+function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) {
   var hint = collisionHint(catClean);
-  var locationStr = city ? ' in ' + city : '';
-  var forStr = city ? ' for ' + city : '';
+  // Use marketStr (scope-aware) instead of raw city for query anchoring.
+  // A global B2B software company headquartered in Germany should NOT have
+  // every query anchored to Germany — their buyers are worldwide.
+  var effectiveLocation = (marketStr !== undefined ? marketStr : city) || '';
+  var locationStr = effectiveLocation ? ' in ' + effectiveLocation : '';
+  var forStr = effectiveLocation ? ' for ' + effectiveLocation : '';
 
   // Farm/DTC brands compete in THREE overlapping contexts simultaneously:
   // (1) the specific niche — buyers searching for their exact product/breed/origin
@@ -712,9 +716,45 @@ function normalizeSimInput(input) {
     businessModel = 'marketplace';
   }
 
+  // Geographic scope detection — determines the query location anchor.
+  // Local businesses: anchor to city. National brands: anchor to country.
+  // Global/regional B2B businesses: use region or no anchor at all.
+  // The test is WHERE THE BUYERS ARE, not where the business is headquartered.
+  var geoScope = 'national'; // default
+  var scopeCombined = (catClean + ' ' + description + ' ' + websiteContext + ' ' + kgText).toLowerCase();
+  var isLocalService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|shop|store|bakery|retail|local service|freelancer/i.test(catClean);
+  var isGlobalB2B = (businessModel === 'b2b') && (
+    /telco|telecom|operator|broadcaster|carmaker|automotive oem|global|international|worldwide|multinational|europe|nordic|dach|mena|apac|north america/i.test(scopeCombined) ||
+    /enterprise|middleware|white.label|saas platform/i.test(catClean)
+  );
+  var isRegional = /europe|nordic|dach|mena|apac|latam|south asia|north america|latin america/i.test(scopeCombined) && !isGlobalB2B;
+
+  if (isLocalService) geoScope = 'local';
+  else if (isGlobalB2B) geoScope = 'global';
+  else if (isRegional) geoScope = 'regional';
+  else if (businessModel === 'farm_brand_dtc') geoScope = 'national';
+
+  // marketStr — the location to actually use in queries
+  var regionMap = {
+    'germany': 'Europe', 'deutschland': 'Europe', 'austria': 'Europe',
+    'switzerland': 'Europe', 'france': 'Europe', 'uk': 'Europe',
+    'netherlands': 'Europe', 'sweden': 'Europe', 'norway': 'Europe',
+    'denmark': 'Europe', 'finland': 'Europe', 'poland': 'Europe',
+    'spain': 'Europe', 'italy': 'Europe', 'portugal': 'Europe',
+    'uae': 'MENA', 'dubai': 'MENA', 'saudi arabia': 'MENA',
+    'us': 'North America', 'usa': 'North America', 'canada': 'North America',
+  };
+  var cityKey = city.toLowerCase();
+  var marketStr = '';
+  if (geoScope === 'local') marketStr = city;
+  else if (geoScope === 'national') marketStr = city; // city = country at national scope
+  else if (geoScope === 'regional') marketStr = regionMap[cityKey] || 'Europe';
+  else if (geoScope === 'global') marketStr = ''; // no location anchor for global B2B
+
   return {
     name: name, category: category, city: city, catClean: catClean,
     description: description, businessModel: businessModel,
+    geoScope: geoScope, marketStr: marketStr,
     websiteContext: websiteContext, kgText: kgText,
     competitorDomains: competitorDomains, knownCompetitors: knownCompetitors
   };
@@ -742,9 +782,19 @@ async function generateQueryPlan(n) {
   if (n.competitorDomains.length)   contextParts.push('RELATED DOMAINS FROM SEARCH: ' + n.competitorDomains.join(', '));
   if (n.knownCompetitors)           contextParts.push('KNOWN COMPETITORS: ' + n.knownCompetitors);
 
+  // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
+  var geoHint = n.geoScope === 'global'
+    ? 'GEOGRAPHIC SCOPE: GLOBAL — this business sells to enterprise buyers worldwide. Do NOT anchor queries to the HQ city or country. Ask where buyers would search globally or in the regions their clients are concentrated (e.g. Europe, North America).'
+    : n.geoScope === 'regional'
+    ? 'GEOGRAPHIC SCOPE: REGIONAL (' + (n.marketStr || 'Europe') + ') — this business serves buyers across a region, not just one country. Use the region name in queries, not the HQ city.'
+    : n.geoScope === 'local'
+    ? 'GEOGRAPHIC SCOPE: LOCAL — this business serves buyers in its city. Anchor all queries to ' + n.city + '.'
+    : 'GEOGRAPHIC SCOPE: NATIONAL — this business serves buyers in ' + (n.city || 'its country') + '. Anchor queries to the country, not a specific city.';
+
   var prompt =
     'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
     + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
+    + geoHint + '\n\n'
     + 'YOUR TASK:\n'
     + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
     + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
@@ -877,7 +927,7 @@ async function runBeforeSimulation(input, useWebSearch) {
   } else {
     // Fallback: static templates keyed by businessModel
     console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
-    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel);
+    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
   }
 
   var buyerQueries = await generateBuyerQueries(n, rawQueries);
