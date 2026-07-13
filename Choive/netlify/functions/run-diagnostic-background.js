@@ -902,31 +902,25 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
     const finalResult = buildSafeOutput(rawOutput);
-    // ── PROMOTE V5 COMPETITOR DECISION ──────────────────────────────────────────────────
-    // selectDominantCompetitor v5 (web search) runs inside scoreWithClaude and finds
-    // the real competitor via independent research. But evidence.competitorDecision is
-    // still v3/v4 from the simulation extraction. Promote v5 so enforcement uses it.
+    // ── V5 COMPETITOR CONFIRMATION ─────────────────────────────────────────────────────
+    // scoreWithClaude calls selectDominantCompetitor v5 which writes directly to
+    // evidence.competitorDecision (JS object passed by reference). After scoreWithClaude
+    // returns, evidence.competitorDecision already holds the v5 web-search result.
+    // No promotion needed — just log the active decision for debugging.
     try {
-      var v5dec = rawOutput && rawOutput.competitorDecision;
-      if (v5dec && v5dec.selectionVersion === 5 && v5dec.realCompetitor) {
-        var existingDec = evidence['competitorDecision'] || {};
-        evidence['competitorDecision'] = {
-          realCompetitor:     v5dec.realCompetitor,
-          aiRecommends:       v5dec.aiRecommends       || existingDec.aiRecommends       || null,
-          secondAiCompetitor: v5dec.secondAiCompetitor || existingDec.secondAiCompetitor || null,
-          globalBenchmark:    v5dec.globalBenchmark    || null,
-          source:             'web_search_v5',
-          selectionVersion:   5,
-          categoryUnowned:    v5dec.categoryUnowned === true,
-          reason:             v5dec.reason || ''
-        };
-        console.log('[' + jobId + '] V5 competitor promoted to evidence: ' + v5dec.realCompetitor
-          + (v5dec.secondAiCompetitor ? ' | second: ' + v5dec.secondAiCompetitor : '')
-          + (v5dec.globalBenchmark ? ' | benchmark: ' + v5dec.globalBenchmark : ''));
+      var cd5 = evidence['competitorDecision'];
+      if (cd5 && cd5.selectionVersion === 5) {
+        console.log('[' + jobId + '] V5 active: ' + (cd5.realCompetitor || 'none')
+          + (cd5.secondAiCompetitor ? ' | second: ' + cd5.secondAiCompetitor : '')
+          + (cd5.globalBenchmark ? ' | benchmark: ' + cd5.globalBenchmark : ''));
+      } else if (cd5) {
+        console.log('[' + jobId + '] V5 did not run — using v' + (cd5.selectionVersion || '?')
+          + ': ' + (cd5.realCompetitor || 'none'));
       }
     } catch (v5Err) {
-      console.warn('[' + jobId + '] V5 promotion failed:', v5Err.message);
+      console.warn('[' + jobId + '] V5 check failed:', v5Err.message);
     }
+
 
     // ── COMPETITOR ENFORCEMENT (code-level) ───────────────────────────
     // The dedicated selection stage's decision is final. If the scoring model
