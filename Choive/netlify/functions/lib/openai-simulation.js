@@ -119,7 +119,16 @@ async function requestOpenAI(systemPrompt, query, useSearch) {
 
 async function extractRecommendations(name, category, city, results) {
   var transcripts = [];
-  (results || []).forEach(function(result) {
+  // The explicit named-competitor question is the highest-intent evidence for
+  // a top-three shortlist. Discovery answers can contain adjacent vendors and
+  // infrastructure suppliers that should not outrank that direct comparison.
+  var namedShortlistResults = (results || []).filter(function(result) {
+    return String(result && result.label || '').toLowerCase().indexOf('named competitor') !== -1
+      && Array.isArray(result.allResponses)
+      && result.allResponses.some(Boolean);
+  });
+  var extractionResults = namedShortlistResults.length ? namedShortlistResults : (results || []);
+  extractionResults.forEach(function(result) {
     (result.allResponses || []).forEach(function(response) {
       if (response) transcripts.push(response);
     });
@@ -127,7 +136,7 @@ async function extractRecommendations(name, category, city, results) {
   if (!transcripts.length) return null;
 
   var prompt =
-    'Extract the companies that these OpenAI buyer answers recommend as alternatives to the subject.\n'
+    'Extract and rank the top three companies that these OpenAI buyer answers identify as direct alternatives to the subject. When samples disagree, rank by closest overall purchasing substitute: same product scope, same buyers, same commercial model, and same serviceable markets. For a subject spanning multiple buyer markets, a competitor credibly spanning those same markets outranks a specialist that overlaps in only one. Use repeated mentions and stated answer order only as secondary tie-breakers.\n'
     + 'Subject: ' + name + '\nCategory: ' + category + '\nMarket: ' + (city || 'not specified') + '\n\n'
     + transcripts.map(function(text, i) { return 'Answer ' + (i + 1) + ':\n' + text; }).join('\n\n')
     + '\n\nReturn JSON only with this shape: '
