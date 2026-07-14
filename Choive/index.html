@@ -819,6 +819,7 @@ nav {
 .platform-verdict.absent  { color:var(--red); }
 .platform-verdict.weak    { color:var(--amber); }
 .platform-verdict.present { color:var(--green); }
+.platform-verdict.partial { color:var(--amber); }
 .platform-detail { font-size:11px; color:var(--muted); line-height:1.5; }
 
 /* Evidence */
@@ -3178,18 +3179,23 @@ function showResults(r, jobId) {
         + '</div>';
     }
   } else if (cd.categoryUnowned) {
-    competitorBanner = '<div class="selection-status">'
-      + (name ? '<div class="selection-status-label">Diagnostic for</div><div class="selection-status-value">' + esc(name) + '</div>' : '')
-      + '<div class="selection-status-grid">'
-      + '<div class="selection-status-cell"><div class="selection-status-label">AI recommendation leader</div>'
-      + '<div class="selection-status-value">No consistent leader</div>'
-      + '<div class="selection-status-copy">No company appeared across enough different buyer questions to qualify as the current recommendation leader.</div></div>'
-      + '<div class="selection-status-cell"><div class="selection-status-label">Head-to-head market competitor</div>'
-      + '<div class="selection-status-value">' + esc(marketComp || 'Not confidently identified') + '</div>'
-      + '<div class="selection-status-copy">' + (marketComp ? 'This is the closest like-for-like business model identified by the market analysis. It was not consistently recommended by AI in this run.' : 'The evidence did not support a reliable like-for-like competitor in this run.') + '</div></div>'
+    competitorBanner = bannerHead
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">No consistent AI recommendation leader</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
+      + (marketComp
+        ? esc(marketComp) + ' is the closest head-to-head market competitor identified in this run, but no company appeared across enough different buyer questions to qualify as the consistent AI recommendation leader.'
+        : 'No company appeared consistently enough to qualify as the recommendation leader, and the evidence did not support a reliable head-to-head market competitor in this run.')
       + '</div></div>';
   } else {
-    competitorBanner = '';
+    competitorBanner = bannerHead
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Competitive position</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
+      + (marketComp
+        ? 'This is the closest verified market competitor found in the diagnostic. It was not established as a consistent AI recommendation leader.'
+        : 'This diagnostic did not establish a competitor strongly enough to present one as the current recommendation leader.')
+      + '</div></div>';
   }
 
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
@@ -3319,8 +3325,34 @@ function showResults(r, jobId) {
       + '</div>';
   }
 
+  function buildPlatformRecommendationBlock() {
+    var multi = r.multiPlatformRecommendations;
+    if (!multi || typeof multi !== 'object') return '';
+    var claudeNames = Array.isArray(multi.claude) ? multi.claude.filter(Boolean) : [];
+    var openaiNames = Array.isArray(multi.openai) ? multi.openai.filter(Boolean) : [];
+    if (!claudeNames.length && !openaiNames.length) return '';
+    var provider = function(label, names, complete) {
+      return '<div style="background:var(--paper-2);padding:20px 24px;min-width:0;">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">' + label + '</div>'
+        + (names.length
+          ? '<div style="font-size:15px;font-weight:700;color:var(--ink);line-height:1.65;overflow-wrap:anywhere;">' + names.map(esc).join(' · ') + '</div>'
+          : '<div style="font-size:13px;color:var(--muted);">No named alternative established</div>')
+        + (complete === false ? '<div style="font-size:11px;color:var(--amber);margin-top:8px;">Partial measurement</div>' : '')
+        + '</div>';
+    };
+    return '<div style="margin:2px 0;background:var(--rule);">'
+      + '<div style="background:var(--paper);padding:16px 24px 12px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink);">Recommendations by measured platform</div>'
+      + '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:5px;">Different models can produce different valid buyer shortlists. These names are kept separate rather than forced into one answer.</div></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;">'
+      + provider('Claude', claudeNames, true)
+      + provider('OpenAI API', openaiNames, multi.openaiComplete)
+      + '</div></div>';
+  }
+
   zone.innerHTML =
     competitorBanner
+    + buildPlatformRecommendationBlock()
     + scoreHeader
     + buildScoreLabels(r)
     + buildProgressDelta(r)
@@ -3448,10 +3480,44 @@ function showResults(r, jobId) {
       + '</div>';
   }).join('');
 
+  var competitorComparisonBlock = '';
+  try {
+    var comparisonEntries = r.competitorComparison && Array.isArray(r.competitorComparison.entries)
+      ? r.competitorComparison.entries : [];
+    if (comparisonEntries.length) {
+      function comparisonCard(entry, index) {
+        var scoreData = entry && entry.score;
+        if (!scoreData || !scoreData.pillars) return '';
+        var rows = ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
+          var p = scoreData.pillars[key] || {};
+          var you = Math.max(0, Math.min(25, Number(p.you) || 0));
+          var competitor = Math.max(0, Math.min(25, Number(p.competitor) || 0));
+          var gap = you - competitor;
+          return '<div style="margin-bottom:13px;">'
+            + '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:5px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">'
+            + '<span>' + esc(key) + '</span><span><strong style="color:var(--ink);">' + you + '</strong> / ' + competitor + ' &nbsp; ' + (gap > 0 ? '+' : '') + gap + '</span></div>'
+            + '<div style="height:3px;background:var(--rule);position:relative;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ac);width:' + Math.round(you / 25 * 100) + '%;"></span></div>'
+            + '<div style="height:2px;background:var(--rule);position:relative;margin-top:3px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ink);opacity:0.25;width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
+        }).join('');
+        return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Competitor ' + (index + 1) + ' · ' + esc(entry.source || 'Verified evidence') + '</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
+          + rows
+          + (scoreData.keyGap ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest gap: <strong style="color:var(--ink);">' + esc(scoreData.keyGap) + '</strong></div>' : '')
+          + (scoreData.priorityAction ? '<div style="font-size:12px;line-height:1.7;color:var(--body);margin-top:8px;">' + esc(scoreData.priorityAction) + '</div>' : '')
+          + '</div>';
+      }
+      competitorComparisonBlock = '<div class="pay-section"><div class="pay-eyebrow">Top Competitor Comparison</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Your four CHOIVE pillars compared with the top two verified alternatives returned across the measured AI platforms.</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
+        + comparisonEntries.slice(0, 2).map(comparisonCard).join('') + '</div></div>';
+    }
+  } catch(e) { console.warn('[CHOIVE] competitor comparison display failed:', e.message); }
+
   // ── DUAL-ARENA BLOCK ──────────────────────────────────────────────────────
   var dualArenaBlock = '';
   try {
-    if (r.dualArena && r.dualArena.detected && r.arenaScores) {
+    if (!r.competitorComparison && r.dualArena && r.dualArena.detected && r.arenaScores) {
       var _da = r.dualArena;
       var _as = r.arenaScores;
       function _arenaCard(arenaData, label, subtitle, competitorName) {
@@ -3617,6 +3683,7 @@ function showResults(r, jobId) {
       + '</div></div>'
       + '<div class="pay-section"><div class="pay-eyebrow">Competitor Reality</div>'
       + compBlock + extraCompsHtml + '</div>'
+      + competitorComparisonBlock
       + dualArenaBlock
       + '<div class="pay-section"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('') + '</div></div>'
@@ -3940,7 +4007,8 @@ async function runAISimulation(r) {
       results.innerHTML += '<div style="margin-top:26px;padding-top:22px;border-top:2px solid var(--rule-d);">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">'
         + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tp);">OpenAI measurement</div>'
-        + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search</div></div>'
+        + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search'
+        + (openaiRun.complete === false ? ' · partial run (' + Number(openaiRun.completedSamples || 0) + '/' + Number(openaiRun.expectedSamples || 0) + ' samples)' : '') + '</div></div>'
         + (recNames.length
           ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Recommended alternatives: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
           : '')
