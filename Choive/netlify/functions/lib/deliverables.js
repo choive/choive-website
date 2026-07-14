@@ -192,7 +192,7 @@ function generateSchemaBrief(evidence, result) {
   var pillars  = result.pillars           || {};
 
   var easeEvidence    = (pillars.ease && pillars.ease.evidence) || '';
-  var schemaConfirmed = /schema found: yes/i.test(easeEvidence);
+  var schemaConfirmed = /schema(?:\s+markup)?\s*(?:found|confirmed|present)?\s*[:—-]?\s*(?:yes|present)|schema\s+yes|schema\s+markup\s+is\s+confirmed\s+present/i.test(easeEvidence);
 
   // Determine schema types needed
   var catLower    = category.toLowerCase();
@@ -239,10 +239,6 @@ function generateReviewAction(evidence, result) {
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
   var trustEvidence = (pillars.trust && pillars.trust.evidence) || '';
 
-  // Extract current review count
-  var countMatch = trustEvidence.match(/(\d+)\s+reviews?/i);
-  var currentCount = countMatch ? parseInt(countMatch[1]) : 0;
-
   // Determine target platform and count by category
   var catLower = category.toLowerCase();
   var platform, targetCount, platformUrl, instruction;
@@ -285,6 +281,16 @@ function generateReviewAction(evidence, result) {
     targetCount = 50;
     platformUrl = 'trustpilot.com/businesses';
     instruction = 'Go to ' + platformUrl + ' and create a free business account today. Add your Trustpilot review link to your order confirmation email. This one change alone will build your review count within weeks.';
+  }
+
+  // Counts are platform-specific. Never reuse an employee-review count from
+  // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
+  var signals = (evidence && evidence.websiteSignals) || {};
+  var currentCount = 0;
+  if (/google/i.test(platform || '') && Number(signals.googleReviewCount) > 0) {
+    currentCount = Number(signals.googleReviewCount);
+  } else if (/trustpilot/i.test(platform || '') && Number(signals.trustpilotReviewCount) > 0) {
+    currentCount = Number(signals.trustpilotReviewCount);
   }
 
   targetCount = targetCount || 25;
