@@ -981,6 +981,31 @@ async function runBeforeSimulation(input, useWebSearch) {
   };
 }
 
+// Separate named-brand competitor test. It is deliberately excluded from the
+// unbranded visibility score: mentioning the subject in the question would
+// otherwise make "appeared" meaningless. The result is used only for the
+// competitor shortlist and platform comparison.
+async function runDirectCompetitorQuestion(input, useWebSearch) {
+  if (useWebSearch === undefined) useWebSearch = true;
+  var n = normalizeSimInput(input);
+  var market = n.marketStr || n.city || '';
+  var englishQuery = n.name + ' is a ' + n.catClean
+    + (market ? ' serving ' + market : '')
+    + '. What are its top three competitors, and which one would you recommend instead of ' + n.name + '?';
+  var localized = await applyMarketLanguage([{
+    label: 'Named competitor shortlist',
+    intent: 'A buyer explicitly comparing the subject with alternatives',
+    system: 'You are a helpful AI assistant with live web search. Search before answering. Identify three real companies a buyer could choose for the same purchase, then recommend one. Distinguish close business-model competitors from broader purchasing alternatives.',
+    query: englishQuery
+  }], n.city, input.language);
+  var results = await runQuerySet(localized.queries, n.name, useWebSearch);
+  return {
+    language: localized.language,
+    results: results,
+    totalQueries: 1
+  };
+}
+
 // AFTER half — consumes the scored differentiator and trust signal, so it
 // runs after scoring, exactly as before.
 async function runAfterSimulation(input) {
@@ -1035,4 +1060,9 @@ async function runSimulation(input) {
   };
 }
 
-module.exports = { runSimulation: runSimulation, runBeforeSimulation: runBeforeSimulation, runAfterSimulation: runAfterSimulation };
+module.exports = {
+  runSimulation: runSimulation,
+  runBeforeSimulation: runBeforeSimulation,
+  runAfterSimulation: runAfterSimulation,
+  runDirectCompetitorQuestion: runDirectCompetitorQuestion
+};
