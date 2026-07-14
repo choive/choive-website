@@ -1277,4 +1277,85 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
   }
 }
 
-module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena };
+// Selects the closest purchasing substitute from candidates actually returned
+// by the measured AI platforms. This is intentionally separate from mention
+// frequency: the most repeated company is not always the closest business-model
+// match (for example, a pay-TV specialist versus a subject spanning pay-TV and
+// automotive).
+async function selectBestFitCompetitors(evidence, candidates) {
+  var name = String(evidence.name || '').trim();
+  var category = String(evidence.inferredCategory || evidence.category || '').trim();
+  var city = String(evidence.city || '').trim();
+  var cleanCandidates = (candidates || []).filter(function(candidate) {
+    return candidate && candidate.name;
+  }).slice(0, 10);
+  if (cleanCandidates.length < 2) return null;
+
+  var prompt = 'You are adjudicating competitor candidates returned by measured AI recommendation platforms. Return only valid JSON.\n\n'
+    + 'SUBJECT: ' + name + '\n'
+    + 'CATEGORY: ' + category + '\n'
+    + (city ? 'MARKET: ' + city + '\n' : '')
+    + 'WEBSITE EVIDENCE: ' + sanitizeExternal(String(evidence.websiteText || '')).slice(0, 1600) + '\n\n'
+    + 'CANDIDATES:\n'
+    + cleanCandidates.map(function(candidate, index) {
+      return (index + 1) + '. ' + candidate.name + ' (named by: ' + (candidate.sources || []).join(', ') + ')';
+    }).join('\n')
+    + '\n\nRank the closest two real purchasing substitutes. Apply these tests in order:\n'
+    + '1. Same product or service scope.\n'
+    + '2. Same buyer and deal tier.\n'
+    + '3. Same commercial model.\n'
+    + '4. Same serviceable geography.\n'
+    + '5. Same market breadth. If the subject spans multiple buyer markets, a candidate spanning those same markets outranks a specialist overlapping in only one.\n'
+    + 'Mention frequency is only a tie-breaker after business fit. Exclude customers, suppliers, infrastructure providers, directories, and the subject itself. Choose only from the supplied candidates.\n\n'
+    + 'Return exactly: {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}';
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 45000);
+  try {
+    var res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 700,
+        temperature: 0,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    var data = await res.json();
+    var text = (data.content || []).filter(function(block) { return block.type === 'text'; })
+      .map(function(block) { return block.text || ''; }).join('').replace(/```json|```/g, '').trim();
+    var start = text.indexOf('{'), end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+    var parsed = JSON.parse(text);
+    var allowed = {};
+    cleanCandidates.forEach(function(candidate) {
+      allowed[String(candidate.name).toLowerCase().replace(/[^a-z0-9]/g, '')] = candidate;
+    });
+    function validated(value) {
+      var candidateName = String(value && value.name || '').trim();
+      var match = allowed[candidateName.toLowerCase().replace(/[^a-z0-9]/g, '')];
+      if (!match) return null;
+      return {
+        name: match.name,
+        sources: match.sources || [],
+        reason: String(value.reason || '').slice(0, 400)
+      };
+    }
+    var best = validated(parsed.best);
+    var runnerUp = validated(parsed.runnerUp);
+    if (!best) return null;
+    if (runnerUp && runnerUp.name === best.name) runnerUp = null;
+    return { best: best, runnerUp: runnerUp };
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[best-fit-competitors] failed:', err.message);
+    return null;
+  }
+}
+
+module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors };
