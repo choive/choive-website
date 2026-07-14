@@ -327,6 +327,7 @@ function buildPrompt(evidence) {
     + 'PRIORITY 1 — AI SELECTION GROUND TRUTH: if the evidence contains an AI SELECTION GROUND TRUTH section, the dominant competitor (competitors[0], the business shown as \u201cAI is recommending instead of you\u201d) MUST be a business named in those AI responses THAT ALSO PASSES EVERY exclusion criterion below — same category, same buyer type, same deal size, not a directory, not the subject business, not a measured platform. Among qualifying names, choose the most prominently recommended — a top pick outranks a list mention; more mentions outrank fewer. The qualifying ground truth OUTRANKS the previously verified competitor: if they disagree, follow the ground truth — this is how past mis-identifications are corrected. Additional competitors (competitors[1..2]) MAY come from search evidence as structural benchmarks.\n'+ 'COMPETITOR ACCURACY: competitors[0] is decided by the dedicated selection stage above (frequency-verified across real AI samples) and must not be second-guessed or overridden here — no name is protected by a previous run; the highest observed, qualifying frequency wins fresh every time.\n'
     + 'GROUND TRUTH DISQUALIFICATION: if NO business named in the ground truth passes the criteria — common when the category is new and AI answers with adjacent giants from other categories — do NOT force one in. Treat the ground truth as empty for competitor selection, select under PRIORITY 2 instead, and set the competitor queryContext to note that AI currently names no true same-category player for these queries — the category is unowned, which is an opportunity.\n'
     + 'PRIORITY 2 — SEARCH EVIDENCE: if no AI SELECTION GROUND TRUTH section exists, or no ground-truth name qualifies, select from search evidence under the rule below.\n'
+    + 'FINAL ROLE OVERRIDE: competitors[0] is the head-to-head market rival selected by the dedicated research stage. aiRecommends is a separate transcript-verified Claude recommendation leader. Never claim the market rival was recommended by Claude unless the recorded ground-truth answers name it. Label every competitor by its actual source.\n'
     + 'In BOTH cases every exclusion criterion below still applies.\n'
     + 'Only name a competitor if ALL of these are true:\n'
     + '1. The competitor name appears in the AI SELECTION GROUND TRUTH responses or in the search evidence above\n'
@@ -810,12 +811,8 @@ async function selectDominantCompetitor(evidence) {
   // and identify true head-to-head rivals — the same way a knowledgeable
   // industry analyst would answer "who does this company compete with?"
   //
-  // This approach finds:
-  // - Zappware/Leyra for 3SS (same middleware category, same pay-TV buyers)
-  // - Don Carne for Taurbull (same premium online beef market in Germany)
-  // - Profound for CHOIVE (same AI visibility category)
-  //
-  // NOT whoever happened to appear in generic buyer queries.
+  // This stage identifies the head-to-head market rival. It does not decide
+  // who Claude recommended in the simulations; that is measured separately.
   var prompt = 'You are a competitive intelligence analyst. Your task is to identify the TRUE head-to-head competitors of a specific business.\n\n'
     + 'SUBJECT BUSINESS:\n'
     + 'Name: ' + name + (website ? ' (' + website + ')' : '') + '\n'
@@ -831,9 +828,7 @@ async function selectDominantCompetitor(evidence) {
     + 'Using web search, identify this business\'s REAL competitors through this structured search strategy:\n\n'
     + 'STEP 1 — SEARCH WITH TIER MATCHING:\n'
     + '  Search using the BUYER TIER, not just the product category. If the subject has named enterprise clients, search for who serves those same clients.\n'
-    + '  For enterprise OTT middleware serving tier-1 telcos and carmakers: search "OTT middleware vendor tier-1 telco" or "multiscreen platform Proximus Swisscom Liberty Global" — finds Leyra, Zappware, Synamedia, not SMB tools like MwareTV or Muvi.\n'
-    + '  For DTC farm beef Germany: search "grass-fed beef farm direct Germany own herd" or "Black Angus farm brand Germany"\n'
-    + '  For AI visibility tools: search "AI recommendation visibility tool" or "answer engine optimization software 2026"\n'
+    + '  Build search terms from the subject evidence. Do not begin with a list of candidate companies.\n'
     + '  CRITICAL TIER RULE — applies to every business category:\n'
     + '  Look at NAMED CLIENTS, DEAL SIZE, and STAFF COUNT in the evidence to identify the competitive tier. Search for competitors at that exact tier.\n'
     + '  Examples by category and tier:\n'
@@ -868,12 +863,7 @@ async function selectDominantCompetitor(evidence) {
     + 'GEOGRAPHIC SCOPE: match where the BUYERS are, not where the business is headquartered.\n'
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
     + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
-    + 'RESEARCH ANCHORS — specific companies you MUST investigate via web search before answering:\n'
-    + 'These may not appear prominently in general search results but are known real-market players. Verify each against the three strict tests — do not assume they qualify, but do not skip them.\n'
-    + 'For B2B multiscreen/OTT middleware platform for pay-TV operators and automotive OEMs: investigate Leyra (formerly Accedo — rebranded March 2026 after merger with Magine Pro; their Hibox Aura product is part of this same entity, not a separate competitor), Zappware, Synamedia, TiVo (Xperi division), Netgem, MwareTV, Wiztivi. IMPORTANT: Hibox Systems / Hibox Aura is an Accedo/Leyra product — if you find Hibox content on accedo.tv, the correct competitor name is Leyra (or Accedo), not Hibox Systems separately.\n'
-    + 'For DTC farm-brand premium beef sold direct in Germany: investigate Landpute, Angus-Rindfleisch-kaufen.de, Meatlovers.de — these are farm brands with own production, which is the correct competitive tier for a vertically-integrated farm brand.\n'
-    + 'For AI visibility / AEO / answer engine optimization tools: investigate Profound (now called Profound.ai), Otterly.ai, Rankscale, Scrunch.ai.\n'
-    + 'For other categories: search for "[category] vendor comparison site:g2.com" or "[category] alternatives" to find who appears on real evaluation shortlists.\n\n'
+    + 'CANDIDATE DISCOVERY: discover candidates from the subject evidence and independent searches only. Do not prefer a company because it appeared in a previous report, prompt example, or model answer.\n\n'
     + 'PRODUCE THREE ANSWERS:\n'
     + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'    + 'TIEBREAKER RULE: if two or more candidates both pass all three tests and evidence is similar, prefer the one with (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order. This produces more stable, accurate results. Example: if Don Carne has 21,000+ reviews and Angus-Rindfleisch-kaufen.de has no reviews, Don Carne wins the tiebreaker regardless of which appeared first in search results this run.\n'
     + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now. Apply the SAME TIEBREAKER RULE as Answer A: if multiple names appear, prefer the one with more third-party review volume, then longer market presence. May be the same as realCompetitor or different.\n'
@@ -1015,10 +1005,26 @@ async function scoreWithClaudeOnce(evidence) {
     var isCurrentRunV5 = existingDecision
       && existingDecision.realCompetitor
       && existingDecision.selectionVersion === 5;
+    var measuredDecision = existingDecision && existingDecision.selectionVersion < 5
+      ? existingDecision
+      : null;
     var compDecision = isCurrentRunV5
       ? existingDecision
       : await selectDominantCompetitor(evidence);
     if (compDecision) {
+      // Web research determines the market rival only. Recommendation leaders
+      // must remain grounded in the recorded Claude simulation transcripts.
+      if (measuredDecision) {
+        compDecision.aiRecommends = measuredDecision.aiRecommends || null;
+        compDecision.secondAiCompetitor = measuredDecision.secondAiCompetitor || null;
+        compDecision.mentionCount = measuredDecision.mentionCount || 0;
+        compDecision.secondMentionCount = measuredDecision.secondMentionCount || 0;
+        compDecision.totalResponses = measuredDecision.totalResponses || 0;
+        compDecision.recommendationSource = measuredDecision.source || null;
+      } else {
+        compDecision.aiRecommends = null;
+        compDecision.secondAiCompetitor = null;
+      }
       evidence.competitorDecision = compDecision;
       console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
         + ' | AI names: ' + (compDecision.aiRecommends || 'none')
