@@ -1302,11 +1302,26 @@ exports.handler = async function (event) {
         claudeDecision.aiMentionedCompetitor,
         claudeDecision.secondAiMentionedCompetitor
       ].filter(Boolean);
+      var subjectRecommendationKeys = {};
+      var addSubjectKey = function(value) {
+        var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (key) subjectRecommendationKeys[key] = true;
+      };
+      addSubjectKey(name);
+      var subjectDomain = normalizeUrl((evidence && (evidence.website || evidence.inferredOfficialSite)) || '');
+      addSubjectKey(subjectDomain);
+      addSubjectKey(String(subjectDomain || '').split('.')[0]);
+      var subjectTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+      if (subjectTokens.length >= 3 && subjectTokens.some(function(token) { return /\d/.test(token); })) {
+        addSubjectKey(subjectTokens.map(function(token) {
+          return /^\d+$/.test(token) ? token : token.charAt(0);
+        }).join(''));
+      }
       var dedupeRecommendations = function(values) {
         var seen = {};
         return values.filter(function(value) {
           var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!key || seen[key]) return false;
+          if (!key || seen[key] || subjectRecommendationKeys[key]) return false;
           seen[key] = true;
           return true;
         });
@@ -1347,10 +1362,14 @@ exports.handler = async function (event) {
       var multiRecs = finalResult['multiPlatformRecommendations'] || {};
       var claudeRecs = Array.isArray(multiRecs.claude) ? multiRecs.claude : [];
       var openaiRecs = Array.isArray(multiRecs.openai) ? multiRecs.openai : [];
+      var openaiResearchRecs = measuredOpenAI && measuredOpenAI.competitorShortlist
+        ? [measuredOpenAI.competitorShortlist.primary, measuredOpenAI.competitorShortlist.second, measuredOpenAI.competitorShortlist.third].filter(Boolean)
+        : [];
       var researchedRecs = (finalResult['competitors'] || []).map(function(comp) { return comp && comp.name; }).filter(Boolean);
       var orderedComparisonCandidates = [];
       claudeRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
       openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
+      openaiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI competitor research' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
       var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       var candidateMap = {};
