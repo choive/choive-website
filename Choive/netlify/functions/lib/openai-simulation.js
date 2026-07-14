@@ -5,7 +5,7 @@
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.6';
-const REQUEST_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 90000;
 
 function sampleCount() {
   var configured = Number(process.env.OPENAI_GROUND_TRUTH_SAMPLES || 2);
@@ -48,12 +48,31 @@ function normalize(s) {
   return s.replace(/\u00df/g, 'ss').replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function stemWords(s) {
+  return normalize(s).split(' ').filter(Boolean).map(function(word) {
+    return word.length > 3 && word[word.length - 1] === 's' ? word.slice(0, -1) : word;
+  }).join(' ');
+}
+
 function businessMentioned(response, name) {
-  var haystack = ' ' + normalize(response) + ' ';
-  var needle = normalize(name)
+  var haystack = ' ' + stemWords(response) + ' ';
+  var needle = stemWords(name)
     .replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ')
     .replace(/\s+/g, ' ').trim();
-  return !!needle && haystack.indexOf(' ' + needle + ' ') !== -1;
+  if (needle && haystack.indexOf(' ' + needle + ' ') !== -1) return true;
+
+  // Recognize established compact brand forms such as "3SS" for
+  // "3 Screen Solutions" without applying broad acronym matching to ordinary
+  // multi-word businesses.
+  var tokens = normalize(name).split(' ').filter(Boolean);
+  if (tokens.length >= 3 && tokens.some(function(token) { return /\d/.test(token); })) {
+    var acronym = tokens.map(function(token) {
+      return /^\d+$/.test(token) ? token : token.charAt(0);
+    }).join('');
+    var compactResponse = normalize(response).replace(/\s+/g, '');
+    if (acronym.length >= 3 && compactResponse.indexOf(acronym) !== -1) return true;
+  }
+  return false;
 }
 
 async function requestOpenAI(systemPrompt, query, useSearch) {
@@ -65,7 +84,13 @@ async function requestOpenAI(systemPrompt, query, useSearch) {
       model: OPENAI_MODEL,
       instructions: systemPrompt,
       input: query,
-      max_output_tokens: 1200,
+      // GPT-5 models may spend part of this allowance on reasoning. A 1,200
+      // token cap produced live answers such as "Meine klare" and then stopped
+      // before the recommendation. Keep reasoning low and leave enough room
+      // for a searched answer plus citations.
+      reasoning: { effort: 'low' },
+      text: { verbosity: 'low' },
+      max_output_tokens: 3200,
       store: false
     };
     if (useSearch) body.tools = [{ type: 'web_search', search_context_size: 'medium' }];
@@ -190,6 +215,9 @@ async function runOpenAISimulation(input) {
   );
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
+    complete: results.every(function(result) { return result.sampleCount === samples; }),
+    completedSamples: results.reduce(function(total, result) { return total + result.sampleCount; }, 0),
+    expectedSamples: results.length * samples,
     provider: 'openai',
     model: OPENAI_MODEL,
     language: input.language || null,
