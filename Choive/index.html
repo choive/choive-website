@@ -2798,7 +2798,7 @@ function buildGapBlock(r) {
   // page, one authoritative name, everywhere.
   var activeThreatName = null;
   try {
-    var aiRec = r && r.competitorDecision && r.competitorDecision.realCompetitor;
+    var aiRec = r && r.competitorDecision && r.competitorDecision.aiRecommends;
     if (aiRec) {
       var simRes = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results;
       if (Array.isArray(simRes)) {
@@ -3085,15 +3085,11 @@ function showResults(r, jobId) {
     ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
     : '';
 
-  // Competitor name — pulled in priority order so banner and gap block always match
-  // FIX J: prefer realCompetitor (AI-verified), then displacement, then competitors[0]
-  var topComp = (r.competitorDecision && r.competitorDecision.realCompetitor)
-    ? r.competitorDecision.realCompetitor
-    : (r.displacement && r.displacement.competitorName)
-      ? r.displacement.competitorName
-      : (Array.isArray(r.competitors) && r.competitors.length > 0 && r.competitors[0].name)
-        ? r.competitors[0].name
-        : '';
+  // Only the recommendation leader verified in the recorded Claude transcripts
+  // may appear in the displacement banner. Market rivals stay in the analysis.
+  var topComp = (r.competitorDecision && r.competitorDecision.aiRecommends)
+    ? r.competitorDecision.aiRecommends
+    : '';
   window.__choiveTopComp = topComp;
   
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
@@ -3120,9 +3116,7 @@ function showResults(r, jobId) {
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:-0.01em;margin-bottom:16px;">' + esc(name) + '</div>'
         : '');
   // Second competitor name (if present)
-  var secondComp = (Array.isArray(r.competitors) && r.competitors.length > 1 && r.competitors[1] && r.competitors[1].name)
-    ? r.competitors[1].name
-    : '';
+  var secondComp = cd.secondAiCompetitor || '';
 
   var competitorBanner;
   if (topComp) {
@@ -3147,7 +3141,7 @@ function showResults(r, jobId) {
     // Second competitor row \u2014 shown in banner when a second competitor exists
     var secondCompRow = secondComp
       ? '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(245,242,238,0.12);">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,242,238,0.45);margin-bottom:5px;">Also competing for AI recommendations</div>'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,242,238,0.45);margin-bottom:5px;">Also named consistently by Claude</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:rgba(245,242,238,0.75);letter-spacing:-0.01em;">' + esc(secondComp) + '</div>'
         + '</div>'
       : '';
@@ -3155,9 +3149,9 @@ function showResults(r, jobId) {
     if (named === true) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">AI is currently recommending instead of you</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">Claude is consistently recommending instead of you</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named in real AI answers to: <em>"' + esc(simQuery) + '"</em></div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named in ' + Number(cd.mentionCount || 0) + ' of ' + Number(cd.totalResponses || 0) + ' recorded Claude answers, including: <em>"' + esc(simQuery) + '"</em></div>'
         + secondCompRow
         + '</div>';
     } else {
@@ -3282,7 +3276,7 @@ function showResults(r, jobId) {
           // Free: show name + locked analysis teaser
           return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
             + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
-            + (i === 0 ? 'Primary competitor' : 'Also named by AI') + '</div>'
+            + (i === 0 ? 'Head-to-head competitor' : (cp.queryContext === 'ai-ground-truth' ? 'Also named by Claude' : 'Market competitor')) + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
@@ -3406,7 +3400,7 @@ function showResults(r, jobId) {
       an = r.arenaScores.online.priorityAction || '';
     }
     // FIX M — dynamic label by queryContext
-    var _extraLabel = cp.queryContext === 'ai-ground-truth' ? 'Also named by AI'
+    var _extraLabel = cp.queryContext === 'ai-ground-truth' ? 'Also named by Claude'
       : cp.queryContext === 'online-arena' ? 'Also competing online'
       : 'Also in this category';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
