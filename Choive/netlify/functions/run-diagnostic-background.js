@@ -687,7 +687,7 @@ exports.handler = async function (event) {
                       + 'RULES:\n'
                       + '1. Extract ONLY real business/brand names that AI is actively recommending.\n'
                       + '2. EXCLUDE: the subject business (' + name + '), generic category terms, descriptive phrases (e.g. "Beide Optionen", "Both Options", "Black Angus Rinder"), platform names (Google, Amazon, Trustpilot), adjectives, and section headings.\n'
-                      + '3. CRITICAL — SAME ROLE IN THE TRANSACTION: A true competitor is a company a buyer would put on the SAME SHORTLIST for the SAME purchasing decision. Apply three tests: (a) Does this company sell the same TYPE of product or service? (b) To the same TYPE of buyer? (c) Under the same COMMERCIAL MODEL — e.g. both license software, both sell direct, both offer managed services? If any test fails, it is not a true competitor — it may be a customer, a supplier, or a company in an adjacent market. A company that buys or uses the product type is a CUSTOMER. A company that distributes content operates in a different market from one that sells the software to display it. A company that outsources operations is in a different procurement category from one that licenses software.\n'                      + '4b. ROLE DISAMBIGUATION: When an AI response names a company prominently, identify its ROLE before treating it as a competitor. Is it a SELLER of the same product (competitor), a BUYER of the product (customer), or a company in a different part of the value chain (supplier, distributor, infrastructure)? Only sellers of the same product to the same buyer under the same model qualify. Prominence in an AI answer does not make something a competitor — what matters is whether a real buyer would choose it instead of the subject for the same need.\n'
+                      + '3. CRITICAL — SAME CATEGORY ONLY: Only return competitors that operate in the same category and serve the same type of buyer as the subject. If the subject is B2B, exclude consumer brands even if they are mentioned often. IMPORTANT: A competitor must be another SELLER of the same product/service type. Companies that BUY or USE that type of product are potential CUSTOMERS, not competitors. Example: if the subject sells middleware/software to broadcasters, then TV operators, pay-TV providers, and broadcasters are customers — they buy the product. Only other middleware/software vendors that sell to the same buyers qualify as competitors. Do NOT return companies that would be buyers or end-users of the subject\'s product type.\n'
                       + '4. CRITICAL — SAME SERVICEABLE MARKET: The competitor must actually sell to or operate in the subject\'s market. A US-only brand is not the competitor of a Germany-only business. A global B2B platform can compete globally. A local service competes locally. If uncertain whether a competitor reaches the subject\'s market, exclude it.\n'
                       + '5. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
                       + '6. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
@@ -902,26 +902,6 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
     }
     const finalResult = buildSafeOutput(rawOutput);
-    // ── V5 COMPETITOR CONFIRMATION ─────────────────────────────────────────────────────
-    // scoreWithClaude calls selectDominantCompetitor v5 which writes directly to
-    // evidence.competitorDecision (JS object passed by reference). After scoreWithClaude
-    // returns, evidence.competitorDecision already holds the v5 web-search result.
-    // No promotion needed — just log the active decision for debugging.
-    try {
-      var cd5 = evidence['competitorDecision'];
-      if (cd5 && cd5.selectionVersion === 5) {
-        console.log('[' + jobId + '] V5 active: ' + (cd5.realCompetitor || 'none')
-          + (cd5.secondAiCompetitor ? ' | second: ' + cd5.secondAiCompetitor : '')
-          + (cd5.globalBenchmark ? ' | benchmark: ' + cd5.globalBenchmark : ''));
-      } else if (cd5) {
-        console.log('[' + jobId + '] V5 did not run — using v' + (cd5.selectionVersion || '?')
-          + ': ' + (cd5.realCompetitor || 'none'));
-      }
-    } catch (v5Err) {
-      console.warn('[' + jobId + '] V5 check failed:', v5Err.message);
-    }
-
-
     // ── COMPETITOR ENFORCEMENT (code-level) ───────────────────────────
     // The dedicated selection stage's decision is final. If the scoring model
     // ignored the directive, this overwrites the result — a prompt can be
