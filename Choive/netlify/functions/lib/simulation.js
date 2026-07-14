@@ -27,7 +27,7 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
   try {
     var body = {
       model: ANTHROPIC_MODEL,
-      max_tokens: useSearch ? 900 : 400,
+      max_tokens: useSearch ? 1600 : 400,
       temperature: 0,
       system: systemPrompt,
       messages: [{ role: 'user', content: userQuery }]
@@ -83,9 +83,9 @@ function cleanResponse(response) {
     .replace(/^[-*] /gm, '\u2022 ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (cleaned.length > 500) {
-    var cut = cleaned.lastIndexOf('.', 500);
-    cleaned = cut > 150 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 500);
+  if (cleaned.length > 1200) {
+    var cut = cleaned.lastIndexOf('.', 1200);
+    cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 1200);
   }
   return cleaned;
 }
