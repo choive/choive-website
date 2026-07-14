@@ -7,7 +7,7 @@
 const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena } = require('./lib/claude');
+const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors } = require('./lib/claude');
 const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
@@ -675,6 +675,7 @@ exports.handler = async function (event) {
             try {
               var allSimResponses = [];
               var allSimResponsesOrig = []; // original-cased for name extraction
+              var allSimLabeledResponses = []; // preserves which buyer question produced each answer
               var simResponseGroups = []; // one group per distinct buyer-intent query
               var allSimQueryTexts = []; // query texts — terms here describe the category, not competitors
               sharedPlatformQueries.forEach(function(r) {
@@ -685,6 +686,7 @@ exports.handler = async function (event) {
                   if (txt) {
                     allSimResponses.push(txt.toLowerCase());
                     allSimResponsesOrig.push(txt);
+                    allSimLabeledResponses.push({ label: r.label || 'Buyer query', text: txt });
                   }
                 });
               });
@@ -728,8 +730,8 @@ exports.handler = async function (event) {
                     }).join(', ');
                     // Read every recorded sample. Limiting this to six silently
                     // dropped some buyer questions when each query had four runs.
-                    var responseSnippets = allSimResponsesOrig.map(function(r, i) {
-                      return 'Response ' + (i + 1) + ':\n' + String(r).slice(0, 700);
+                    var responseSnippets = allSimLabeledResponses.map(function(item, i) {
+                      return 'Response ' + (i + 1) + ' [' + item.label + ']:\n' + String(item.text).slice(0, 1200);
                     }).join('\n\n');
                     var inferredCatForPrompt = evidence['inferredCategory'] || category || '';
                     var extractPrompt =
@@ -748,8 +750,8 @@ exports.handler = async function (event) {
                       + '2. EXCLUDE: the subject business (' + name + '), generic category terms, descriptive phrases (e.g. "Beide Optionen", "Both Options", "Black Angus Rinder"), platform names (Google, Amazon, Trustpilot), adjectives, and section headings.\n'
                       + '3. CRITICAL — SAME ROLE IN THE TRANSACTION: A true competitor is a company a buyer would put on the SAME SHORTLIST for the SAME purchasing decision. Apply three tests: (a) Does this company sell the same TYPE of product or service? (b) To the same TYPE of buyer? (c) Under the same COMMERCIAL MODEL — e.g. both license software, both sell direct, both offer managed services? If any test fails, it is not a true competitor — it may be a customer, a supplier, or a company in an adjacent market. A company that buys or uses the product type is a CUSTOMER. A company that distributes content operates in a different market from one that sells the software to display it. A company that outsources operations is in a different procurement category from one that licenses software.\n'                      + '4b. ROLE DISAMBIGUATION: When an AI response names a company prominently, identify its ROLE before treating it as a competitor. Is it a SELLER of the same product (competitor), a BUYER of the product (customer), or a company in a different part of the value chain (supplier, distributor, infrastructure)? Only sellers of the same product to the same buyer under the same model qualify. Prominence in an AI answer does not make something a competitor — what matters is whether a real buyer would choose it instead of the subject for the same need.\n'
                       + '4. CRITICAL — SAME SERVICEABLE MARKET: The competitor must actually sell to or operate in the subject\'s market. A US-only brand is not the competitor of a Germany-only business. A global B2B platform can compete globally. A local service competes locally. If uncertain whether a competitor reaches the subject\'s market, exclude it.\n'
-                      + '5. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
-                      + '6. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
+                      + '5. EVIDENCE PRIORITY: Treat known competitor names and domains only as identity hints, never as automatic winners. Prioritise candidates from the explicit "Named competitor shortlist" answer after verifying that they pass the product, buyer, commercial-model, geography, and market-breadth tests.\n'
+                      + '6. Rank by closest overall purchasing-substitute fit first, then by repeated support across independent samples. For a multi-market subject, a candidate covering the same markets outranks a specialist covering only one. The most directly competing business goes in "first".\n'
                       + '7. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
                       + '7b. IDENTITY ACCURACY: preserve the company\'s exact public brand name. Never shorten, translate, or invent a domain. If a response is visibly truncated but an exact known domain hint completes the identity, use that exact known identity rather than guessing a shorter domain.\n'
                       + '8. If no real same-category, same-market competitor appears, use empty string.\n\n'
@@ -1315,6 +1317,21 @@ exports.handler = async function (event) {
         openaiComplete: measuredOpenAI ? measuredOpenAI.complete !== false : false,
         note: 'Platform-specific recommendations are reported separately because different models can return different shortlists.'
       };
+      var completedPlatformRuns = [measuredClaude, measuredOpenAI].filter(function(run) {
+        return run && run.available;
+      });
+      var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
+        return Number(run.appearedCount || 0) > 0;
+      });
+      if (platformsWithVisibility.length > 0) {
+        var visibleInEveryQueryOnEveryPlatform = completedPlatformRuns.length > 0 && completedPlatformRuns.every(function(run) {
+          return Number(run.totalQueries || 0) > 0
+            && Number(run.appearedCount || 0) === Number(run.totalQueries || 0);
+        });
+        finalResult['verdictHeadline'] = visibleInEveryQueryOnEveryPlatform
+          ? 'Visible across measured AI platforms'
+          : 'Recognized, but not consistently chosen';
+      }
     }
     // The dedicated category pass is authoritative for business-model fidelity.
     // Later prose generation must not downgrade a producer into a retailer or
@@ -1332,19 +1349,44 @@ exports.handler = async function (event) {
       var openaiRecs = Array.isArray(multiRecs.openai) ? multiRecs.openai : [];
       var researchedRecs = (finalResult['competitors'] || []).map(function(comp) { return comp && comp.name; }).filter(Boolean);
       var orderedComparisonCandidates = [];
-      if (claudeRecs[0]) orderedComparisonCandidates.push({ name: claudeRecs[0], source: 'Claude' });
-      if (openaiRecs[0]) orderedComparisonCandidates.push({ name: openaiRecs[0], source: 'OpenAI API' });
-      claudeRecs.slice(1).forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
-      openaiRecs.slice(1).forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
+      claudeRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
+      openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
       var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      var seenComparisonKeys = {};
-      var topComparisonCandidates = orderedComparisonCandidates.filter(function(candidate) {
+      var candidateMap = {};
+      orderedComparisonCandidates.forEach(function(candidate) {
         var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!key || key === subjectComparisonKey || seenComparisonKeys[key] || isPlatformName(candidate.name)) return false;
-        seenComparisonKeys[key] = true;
-        return true;
-      }).slice(0, 2);
+        if (!key || key === subjectComparisonKey || isPlatformName(candidate.name)) return;
+        if (!candidateMap[key]) candidateMap[key] = { name: candidate.name, sources: [] };
+        if (candidateMap[key].sources.indexOf(candidate.source) === -1) candidateMap[key].sources.push(candidate.source);
+      });
+      var combinedCandidates = Object.keys(candidateMap).map(function(key) { return candidateMap[key]; });
+      var adjudicated = await selectBestFitCompetitors(evidence, combinedCandidates);
+      var topComparisonCandidates = [];
+      if (adjudicated && adjudicated.best) {
+        topComparisonCandidates.push({
+          name: adjudicated.best.name,
+          source: (adjudicated.best.sources || []).join(' + ') || 'AI recommendations',
+          reason: adjudicated.best.reason
+        });
+        if (adjudicated.runnerUp) {
+          topComparisonCandidates.push({
+            name: adjudicated.runnerUp.name,
+            source: (adjudicated.runnerUp.sources || []).join(' + ') || 'AI recommendations',
+            reason: adjudicated.runnerUp.reason
+          });
+        }
+        finalResult['bestFitCompetitor'] = adjudicated.best;
+      }
+      // Fail-soft fallback if adjudication is unavailable.
+      if (topComparisonCandidates.length < 2) {
+        combinedCandidates.forEach(function(candidate) {
+          if (topComparisonCandidates.length >= 2) return;
+          if (!topComparisonCandidates.some(function(existing) { return existing.name === candidate.name; })) {
+            topComparisonCandidates.push({ name: candidate.name, source: candidate.sources.join(' + ') || 'Verified evidence', reason: '' });
+          }
+        });
+      }
 
       if (topComparisonCandidates.length === 2) {
         var comparisonScores = await Promise.allSettled(topComparisonCandidates.map(function(candidate) {
@@ -1352,12 +1394,12 @@ exports.handler = async function (event) {
         }));
         var comparisonEntries = topComparisonCandidates.map(function(candidate, index) {
           var score = comparisonScores[index].status === 'fulfilled' ? comparisonScores[index].value : null;
-          return score ? { name: candidate.name, source: candidate.source, score: score } : null;
+          return score ? { name: candidate.name, source: candidate.source, reason: candidate.reason || '', score: score } : null;
         }).filter(Boolean);
         if (comparisonEntries.length) {
           finalResult['competitorComparison'] = {
             entries: comparisonEntries,
-            selectionRule: 'One leading verified alternative per measured AI platform, with market-analysis fallback.'
+            selectionRule: 'Closest overall business-model matches adjudicated from the combined measured AI recommendations.'
           };
         }
       }
