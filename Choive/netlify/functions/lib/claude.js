@@ -829,11 +829,20 @@ async function selectDominantCompetitor(evidence) {
     + '\n'
     + 'YOUR TASK:\n'
     + 'Using web search, identify this business\'s REAL competitors through this structured search strategy:\n\n'
-    + 'STEP 1 — SEARCH THE BUYER CONVERSATION: search what a BUYER types when looking for this type of product — not the vendor category label. Examples:\n'
-    + '  For OTT middleware: search "OTT platform vendor comparison" or "pay-TV middleware alternatives"\n'
-    + '  For DTC farm beef: search "grass-fed beef online Germany farm brand"\n'
-    + '  For AI visibility tool: search "AI recommendation visibility tool" or "which tools track if AI recommends my business" or "answer engine optimization software" or "Profound alternative"\n'
-    + '  The pattern: use BUYER language, not vendor category labels.\n\n'
+    + 'STEP 1 — SEARCH WITH TIER MATCHING:\n'
+    + '  Search using the BUYER TIER, not just the product category. If the subject has named enterprise clients, search for who serves those same clients.\n'
+    + '  For enterprise OTT middleware serving tier-1 telcos and carmakers: search "OTT middleware vendor tier-1 telco" or "multiscreen platform Proximus Swisscom Liberty Global" — finds Leyra, Zappware, Synamedia, not SMB tools like MwareTV or Muvi.\n'
+    + '  For DTC farm beef Germany: search "grass-fed beef farm direct Germany own herd" or "Black Angus farm brand Germany"\n'
+    + '  For AI visibility tools: search "AI recommendation visibility tool" or "answer engine optimization software 2026"\n'
+    + '  CRITICAL TIER RULE — applies to every business category:\n'
+    + '  Look at NAMED CLIENTS, DEAL SIZE, and STAFF COUNT in the evidence to identify the competitive tier. Search for competitors at that exact tier.\n'
+    + '  Examples by category and tier:\n'
+    + '  Accounting firm with FTSE 100 clients: search "Big Four accounting competitor UK FTSE 100". Local bookkeeper: search "bookkeeper small business competitor [city]".\n'
+    + '  Law firm doing multinational M and A: search "Magic Circle law firm competitor". Local property solicitor: search "property solicitor competitor [city]".\n'
+    + '  5-star hotel with celebrity guests: search "luxury 5-star hotel competitor [city]". Budget hostel: search "budget hostel competitor [city]".\n'
+    + '  Restaurant with Michelin stars: search "Michelin star restaurant competitor [city]". Local pizza place: search "pizza restaurant competitor [city]".\n'
+    + '  SaaS with Fortune 500 clients: search "enterprise [category] software competitor Fortune 500". SaaS for startups: search "[category] startup tool competitor".\n'
+    + '  The tier anchor is always the named clients or evidence signals, never the generic category name.\n\n'
     + 'STEP 2 — SEARCH FOR COMPARISONS: search "[subject name] vs" or "[subject name] alternative" or "[subject name] competitor" — comparison pages explicitly name who buyers evaluate side by side.\n\n'
     + 'STEP 3 — CHECK REVIEW PLATFORMS: search "site:g2.com [category keyword]" or "site:capterra.com [category keyword]" — these show who else occupies the same software category as defined by real buyers.\n\n'
     + 'STEP 4 — EVALUATE ALL CANDIDATES against the three strict tests below. Only accept companies that pass all three.\n\n'
@@ -846,7 +855,12 @@ async function selectDominantCompetitor(evidence) {
     + 'Example: a farm brand\'s real competitor is another farm-direct brand, not a premium retailer. Look for competitors that own their animals/production and sell under their own brand.\n'
     + '\n'
     + 'WHAT TO EXCLUDE:\n'
-    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'    + '- Consumer streaming services selling directly to end users (Zattoo, Netflix, Sky, DAZN, Disney+) — these are never competitors to a B2B middleware vendor\n'    + '- OTT SaaS platforms for content owners and sports leagues (ViewLift, Brightcove, Kaltura) — different buyer, different product\n'    + '- Content distributors or platform operators (CANAL+ Germany, Sky, Vodafone) — they BUY the type of product being sold\n'    + '- Multi-brand retailers sourcing from multiple farms/suppliers (Gourmetfleisch.de, Otto Gourmet) — not competitors to a vertically-integrated farm brand\n'
+    + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
+    + '- Consumer streaming services selling directly to end users (Zattoo, Netflix, Sky, DAZN, Disney+) — these are never competitors to a B2B middleware vendor\n'
+    + '- OTT SaaS platforms for content owners, sports leagues, or small creators (ViewLift, Brightcove, Kaltura, Muvi, Dacast, Uscreen, Vimeo OTT) — these serve a fundamentally different buyer from enterprise pay-TV operators and automotive OEMs. A telco or carmaker would never put Muvi on the same RFP as 3SS.\n'
+    + '- Content distributors or platform operators (CANAL+ Germany, Sky, Vodafone) — they BUY the type of product being sold\n'
+    + '- Multi-brand retailers sourcing from multiple farms/suppliers (Gourmetfleisch.de, Otto Gourmet) — not competitors to a vertically-integrated farm brand\n'
+    + '- Local SEO tools, traditional SEO platforms, or citation management tools (BrightLocal, BrightEdge, Moz, SEMrush, Yext) — these optimise for Google search rankings, not AI recommendation visibility. They are a different product for a different buyer journey.\n'
     + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
     + '- Review platforms, directories, aggregators\n'
     + '- The subject business itself — including its website domain, abbreviation, or any name variant (e.g. for a business with domain 3ss.tv: exclude 3ss, 3SS, 3ss.tv, Three Screen Solutions)\n'
@@ -914,17 +928,26 @@ async function selectDominantCompetitor(evidence) {
       if (!s || s === 'null') return null;
       var normS = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
       var normN = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      // Exact match
       if (normN && normS === normN) return null;
+      // Prefix match
       if (normN && normS && normN.length >= 4 && normS.length >= 4) {
         if (normS.startsWith(normN) || normN.startsWith(normS)) return null;
       }
-      // Reject subject's own website domain being returned as competitor
+      // Abbreviation check — e.g. "3SS" is abbreviation of "3 screens solutions"
+      // Build initials from name words: "3 screens solutions" → "3ss"
+      var nameInitials = normN.split(/\s+/).map(function(w) { return w[0] || ''; }).join('');
+      var candidateCompact = normS.replace(/\s+/g, '');
+      if (nameInitials.length >= 2 && candidateCompact === nameInitials) return null;
+      // Also check if candidate matches domain core (e.g. "3ss" from "3ss.tv")
       if (website) {
         var domainCore = website.toLowerCase()
           .replace(/^https?:\/\//, '').replace(/^www\./, '')
-          .split('/')[0].replace(/\.[^.]+$/, ''); // e.g. "3ss.tv" → "3ss"
-        var candidateCore = normS.replace(/\s+/g, '').replace(/\.[a-z]{2,4}$/, '');
-        if (domainCore && (candidateCore === domainCore || normS.replace(/\s/g,'') === domainCore)) return null;
+          .split('/')[0].replace(/\.[^.]+$/, '');
+        if (domainCore && (candidateCompact === domainCore || normS.replace(/\s/g,'') === domainCore)) return null;
+        // Also reject if candidate IS the domain with TLD
+        var fullDomain = website.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+        if (normS.replace(/\s/g,'') === fullDomain.replace(/\./g,'')) return null;
       }
       return s;
     }
