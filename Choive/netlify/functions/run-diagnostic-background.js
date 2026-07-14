@@ -2,15 +2,18 @@
 // CHOIVE™ background diagnostic engine
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
+// Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL,
+// OPENAI_GROUND_TRUTH_SAMPLES
 const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena } = require('./lib/claude');
+const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
-const { runSimulation, runBeforeSimulation, runAfterSimulation } = require('./lib/simulation');
+const { runSimulation, runBeforeSimulation, runAfterSimulation, runDirectCompetitorQuestion } = require('./lib/simulation');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -612,6 +615,57 @@ exports.handler = async function (event) {
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
             console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount + '/3');
+            var directCompetitorCheck = null;
+            try {
+              directCompetitorCheck = await runDirectCompetitorQuestion({
+                language: simBefore.before.language,
+                name: name,
+                category: category,
+                city: city,
+                description: description,
+                inferredCategory: evidence['inferredCategory'] || category
+              }, true);
+              evidence['directCompetitorCheck'] = directCompetitorCheck;
+            } catch (directErr) {
+              console.warn('[' + jobId + '] Direct competitor question failed:', directErr.message);
+            }
+            var sharedPlatformQueries = (simBefore.before.results || []).concat(
+              directCompetitorCheck && Array.isArray(directCompetitorCheck.results)
+                ? directCompetitorCheck.results
+                : []
+            );
+            // Measure OpenAI against the exact same localized buyer questions.
+            // Results remain platform-separated; Claude stays the existing
+            // scoring authority until a true cross-platform aggregation rule is
+            // introduced and validated.
+            try {
+              var openaiSimulation = await runOpenAISimulation({
+                name: name,
+                category: evidence['inferredCategory'] || category,
+                city: city,
+                language: simBefore.before.language,
+                sourceResults: sharedPlatformQueries
+              });
+              evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+              evidence['platformSimulations']['claude'] = {
+                available: true,
+                provider: 'anthropic',
+                language: simBefore.before.language,
+                appearedCount: simBefore.before.appearedCount,
+                totalQueries: simBefore.before.totalQueries,
+                results: sharedPlatformQueries
+              };
+              evidence['platformSimulations']['openai'] = openaiSimulation;
+              console.log('[' + jobId + '] OpenAI simulation: ' + (openaiSimulation.available ? 'completed' : 'unavailable'));
+            } catch (openaiErr) {
+              console.warn('[' + jobId + '] OpenAI simulation failed:', openaiErr.message);
+              evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+              evidence['platformSimulations']['openai'] = {
+                available: false,
+                provider: 'openai',
+                reason: openaiErr.message || 'OpenAI simulation failed'
+              };
+            }
             // ── COMPETITOR FREQUENCY — derive competitorDecision from AI ground truth
             // Count how many simulation responses mention each known competitor.
             // The most-mentioned non-platform name becomes realCompetitor, which
@@ -623,7 +677,7 @@ exports.handler = async function (event) {
               var allSimResponsesOrig = []; // original-cased for name extraction
               var simResponseGroups = []; // one group per distinct buyer-intent query
               var allSimQueryTexts = []; // query texts — terms here describe the category, not competitors
-              (simBefore.before.results || []).forEach(function(r) {
+              sharedPlatformQueries.forEach(function(r) {
                 if (r.query) allSimQueryTexts.push(String(r.query).toLowerCase());
                 var responseGroup = (r.allResponses || []).filter(Boolean);
                 simResponseGroups.push(responseGroup);
@@ -879,6 +933,46 @@ exports.handler = async function (event) {
 
     }
 
+    // Cached evidence created before the OpenAI integration already contains
+    // valid Claude buyer queries. Backfill only the missing OpenAI measurement
+    // instead of forcing a full evidence refresh.
+    try {
+      var cachedBeforeForOpenAI = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before;
+      var cachedOpenAI = evidence['platformSimulations'] && evidence['platformSimulations']['openai'];
+      if (process.env.OPENAI_API_KEY && cachedBeforeForOpenAI && (!cachedOpenAI || !cachedOpenAI.available)) {
+        var cachedOpenAIResult = await runOpenAISimulation({
+          name: name,
+          category: evidence['inferredCategory'] || category,
+          city: city,
+          language: cachedBeforeForOpenAI.language,
+          sourceResults: (cachedBeforeForOpenAI.results || []).concat(
+            evidence['directCompetitorCheck'] && Array.isArray(evidence['directCompetitorCheck'].results)
+              ? evidence['directCompetitorCheck'].results
+              : []
+          )
+        });
+        evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+        evidence['platformSimulations']['claude'] = evidence['platformSimulations']['claude'] || {
+          available: true,
+          provider: 'anthropic',
+          language: cachedBeforeForOpenAI.language,
+          appearedCount: cachedBeforeForOpenAI.appearedCount,
+          totalQueries: cachedBeforeForOpenAI.totalQueries,
+          results: (cachedBeforeForOpenAI.results || []).concat(
+            evidence['directCompetitorCheck'] && Array.isArray(evidence['directCompetitorCheck'].results)
+              ? evidence['directCompetitorCheck'].results
+              : []
+          )
+        };
+        evidence['platformSimulations']['openai'] = cachedOpenAIResult;
+        await saveEvidence(jobId, evidence).catch(function(err) {
+          console.warn('[' + jobId + '] OpenAI cache backfill save failed:', err.message);
+        });
+      }
+    } catch (openaiBackfillErr) {
+      console.warn('[' + jobId + '] OpenAI cache backfill failed:', openaiBackfillErr.message);
+    }
+
     // ── COMPETITOR STABILITY — look up previously identified competitor ────────
     // This prevents drift between runs (e.g. Semrush one day, Profound the next)
     // by giving Claude a strong prior anchored to the last verified run.
@@ -1037,6 +1131,7 @@ exports.handler = async function (event) {
         // Preserve useful buyer-choice alternatives even when they appeared in
         // only one distinct query. They are not promoted to recommendation
         // leader; the label and coverage make their narrower evidence explicit.
+        var altInsertAt = (cd.aiRecommends && normName(cd.aiRecommends) !== target) ? 2 : 1;
         [
           { name: cd.aiMentionedCompetitor, count: cd.aiMentionedCount, queries: cd.aiMentionedQueryCount },
           { name: cd.secondAiMentionedCompetitor, count: cd.secondAiMentionedCount, queries: cd.secondAiMentionedQueryCount }
@@ -1044,7 +1139,7 @@ exports.handler = async function (event) {
           if (!alt.name || normName(alt.name) === target || normName(alt.name) === normName(cd.aiRecommends)) return;
           var hasAlt = comps.some(function(c) { return c && normName(c.name) === normName(alt.name); });
           if (!hasAlt) {
-            comps.push({
+            comps.splice(altInsertAt, 0, {
               name: alt.name,
               advantage: 'Named by Claude for a specific buyer question in this diagnostic.',
               gapLocation: '',
@@ -1052,6 +1147,7 @@ exports.handler = async function (event) {
               evidence: 'Appeared in ' + Number(alt.queries || 0) + ' of ' + Number(cd.totalQueries || 0) + ' buyer questions (' + Number(alt.count || 0) + ' recorded samples). This is a query-specific purchasing alternative, not the consistent overall AI leader.',
               queryContext: 'ai-query-alternative'
             });
+            altInsertAt += 1;
           }
         });
       }
@@ -1178,7 +1274,28 @@ exports.handler = async function (event) {
     if (evidence['trustpilot'])       finalResult['trustpilot']       = evidence['trustpilot'];
     if (evidence['googleReviews'])    finalResult['googleReviews']    = evidence['googleReviews'];
     if (evidence['competitorApify'])  finalResult['competitorApify']  = evidence['competitorApify'];
-    if (evidence['inferredCategory']) finalResult['inferredCategory'] = finalResult['inferredCategory'] || evidence['inferredCategory'];
+    if (evidence['platformSimulations']) finalResult['platformSimulations'] = evidence['platformSimulations'];
+    // Platform coverage must describe measurements that actually ran. The
+    // OpenAI API is labelled OpenAI rather than consumer ChatGPT because API
+    // and chat product answers are not guaranteed to be identical.
+    if (evidence['platformSimulations']) {
+      var measuredClaude = evidence['platformSimulations']['claude'];
+      var measuredOpenAI = evidence['platformSimulations']['openai'];
+      finalResult['platformCoverage'] = {
+        chatgpt: measuredOpenAI && measuredOpenAI.available
+          ? { status: measuredOpenAI.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with OpenAI ' + (measuredOpenAI.model || 'API') + ' and web search.' }
+          : { status: 'unmeasured', detail: 'OpenAI API was not configured for this run.' },
+        claude: measuredClaude && measuredClaude.available
+          ? { status: measuredClaude.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with Claude and web search.' }
+          : { status: 'unmeasured', detail: 'Claude was not measured in this run.' },
+        perplexity: { status: 'unmeasured', detail: 'Not measured.' },
+        gemini: { status: 'unmeasured', detail: 'Not measured.' }
+      };
+    }
+    // The dedicated category pass is authoritative for business-model fidelity.
+    // Later prose generation must not downgrade a producer into a retailer or
+    // shift a B2B platform into an adjacent category.
+    if (evidence['inferredCategory']) finalResult['inferredCategory'] = evidence['inferredCategory'];
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictHeadline);
 
     // ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────
