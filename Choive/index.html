@@ -3151,7 +3151,7 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">Claude is consistently recommending instead of you</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named in ' + Number(cd.mentionCount || 0) + ' of ' + Number(cd.totalResponses || 0) + ' recorded Claude answers, including: <em>"' + esc(simQuery) + '"</em></div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named across ' + Number(cd.distinctQueryCount || 0) + ' of ' + Number(cd.totalQueries || 0) + ' different buyer questions (' + Number(cd.mentionCount || 0) + ' recorded samples), including: <em>"' + esc(simQuery) + '"</em></div>'
         + secondCompRow
         + '</div>';
     } else {
