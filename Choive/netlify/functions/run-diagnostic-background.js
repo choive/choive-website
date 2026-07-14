@@ -621,10 +621,13 @@ exports.handler = async function (event) {
             try {
               var allSimResponses = [];
               var allSimResponsesOrig = []; // original-cased for name extraction
+              var simResponseGroups = []; // one group per distinct buyer-intent query
               var allSimQueryTexts = []; // query texts — terms here describe the category, not competitors
               (simBefore.before.results || []).forEach(function(r) {
                 if (r.query) allSimQueryTexts.push(String(r.query).toLowerCase());
-                (r.allResponses || []).forEach(function(txt) {
+                var responseGroup = (r.allResponses || []).filter(Boolean);
+                simResponseGroups.push(responseGroup);
+                responseGroup.forEach(function(txt) {
                   if (txt) {
                     allSimResponses.push(txt.toLowerCase());
                     allSimResponsesOrig.push(txt);
@@ -754,11 +757,25 @@ exports.handler = async function (event) {
                       return (' ' + normalizedResponse + ' ').indexOf(' ' + normalizedCandidate + ' ') !== -1;
                     }).length;
                   };
+                  var countDistinctQueries = function(candidate) {
+                    var normalizedCandidate = String(candidate || '').toLowerCase()
+                      .replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ')
+                      .replace(/[^a-z0-9]+/g, ' ').trim();
+                    if (!normalizedCandidate) return 0;
+                    return simResponseGroups.filter(function(group) {
+                      return group.some(function(response) {
+                        var normalizedResponse = String(response || '').toLowerCase()
+                          .replace(/[^a-z0-9]+/g, ' ').trim();
+                        return (' ' + normalizedResponse + ' ').indexOf(' ' + normalizedCandidate + ' ') !== -1;
+                      });
+                    }).length;
+                  };
                   var verifiedFirstCount = countExactMentions(extractedCompetitors.first);
                   var verifiedSecondCount = countExactMentions(extractedCompetitors.second);
-                  var minimumMentions = allSimResponses.length >= 3 ? 2 : allSimResponses.length;
-                  var verifiedFirst = verifiedFirstCount >= minimumMentions ? extractedCompetitors.first : null;
-                  var verifiedSecond = verifiedSecondCount >= minimumMentions ? extractedCompetitors.second : null;
+                  var verifiedFirstQueryCount = countDistinctQueries(extractedCompetitors.first);
+                  var verifiedSecondQueryCount = countDistinctQueries(extractedCompetitors.second);
+                  var verifiedFirst = verifiedFirstQueryCount >= 2 ? extractedCompetitors.first : null;
+                  var verifiedSecond = verifiedSecondQueryCount >= 2 ? extractedCompetitors.second : null;
                   evidence['competitorDecision'] = {
                     realCompetitor:     null,
                     aiRecommends:       verifiedFirst,
@@ -767,10 +784,13 @@ exports.handler = async function (event) {
                     selectionVersion:   4,
                     mentionCount:       verifiedFirstCount,
                     secondMentionCount: verifiedSecondCount,
+                    distinctQueryCount: verifiedFirstQueryCount,
+                    secondDistinctQueryCount: verifiedSecondQueryCount,
                     totalResponses:     allSimResponses.length,
+                    totalQueries:       simResponseGroups.length,
                     categoryUnowned:    !verifiedFirst
                   };
-                  console.log('[' + jobId + '] competitorDecision (verified): ' + (verifiedFirst || 'no consistent leader') + ' (' + verifiedFirstCount + '/' + allSimResponses.length + ')' + (verifiedSecond ? ' | second: ' + verifiedSecond + ' (' + verifiedSecondCount + ')' : ''));
+                  console.log('[' + jobId + '] competitorDecision (verified): ' + (verifiedFirst || 'no consistent leader') + ' (' + verifiedFirstCount + '/' + allSimResponses.length + ' samples, ' + verifiedFirstQueryCount + '/' + simResponseGroups.length + ' queries)' + (verifiedSecond ? ' | second: ' + verifiedSecond + ' (' + verifiedSecondQueryCount + ' queries)' : ''));
                 } else {
                   // Fallback: frequency count mentions of Serper/known candidates across responses
                   console.log('[' + jobId + '] Direct extraction returned no names — using frequency fallback on ' + uniqueCandidates.length + ' candidates');
@@ -794,13 +814,15 @@ exports.handler = async function (event) {
                   });
                   evidence['competitorDecision'] = {
                     realCompetitor:     null,
-                    aiRecommends:       bestCount >= 2 ? bestName : null,
-                    secondAiCompetitor: secondCount >= 2 ? secondName : null,
+                    aiRecommends:       null,
+                    secondAiCompetitor: null,
                     source:             'ai-ground-truth',
                     selectionVersion:   3,
                     mentionCount:       bestCount,
                     totalResponses:     allSimResponses.length,
-                    categoryUnowned:    !bestName || bestCount < 2
+                    distinctQueryCount: 0,
+                    totalQueries:       simResponseGroups.length,
+                    categoryUnowned:    true
                   };
                   console.log('[' + jobId + '] competitorDecision (fallback): ' +
                     (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
@@ -1049,6 +1071,22 @@ exports.handler = async function (event) {
           console.warn('[' + jobId + '] [competitor-validation] purged ' + (beforeN - finalResult['competitors'].length) + ' platform card(s) from the competitor list');
         }
       }
+      // A single query may surface a useful candidate, but it is not a
+      // consistent recommendation leader. Remove cards whose only basis is
+      // unverified displacement; retain the researched market rival.
+      if (cdV && !cdV.aiRecommends && Array.isArray(finalResult['competitors'])) {
+        var marketKey = String(cdV.realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        finalResult['competitors'] = finalResult['competitors'].filter(function(cc) {
+          var key = String(cc && cc.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var context = String(cc && cc.queryContext || '').toLowerCase();
+          if (marketKey && key === marketKey) {
+            cc.queryContext = 'head-to-head';
+            return true;
+          }
+          return context.indexOf('ai-ground-truth') === -1
+            && context.indexOf('ai-selection-ground-truth') === -1;
+        });
+      }
     } catch (e) {
       console.warn('[' + jobId + '] Competitor validation failed:', e.message);
     }
@@ -1064,7 +1102,10 @@ exports.handler = async function (event) {
           secondAiCompetitor: cdX.secondAiCompetitor || null,
           mentionCount: cdX.mentionCount || 0,
           secondMentionCount: cdX.secondMentionCount || 0,
+          distinctQueryCount: cdX.distinctQueryCount || 0,
+          secondDistinctQueryCount: cdX.secondDistinctQueryCount || 0,
           totalResponses: cdX.totalResponses || 0,
+          totalQueries: cdX.totalQueries || 0,
           globalBenchmark: cdX.globalBenchmark || null,
           categoryUnowned: cdX.categoryUnowned === true
         };
