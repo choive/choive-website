@@ -991,11 +991,11 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   var market = n.marketStr || n.city || '';
   var englishQuery = n.name + ' is a ' + n.catClean
     + (market ? ' serving ' + market : '')
-    + '. What are its top three competitors, and which one would you recommend instead of ' + n.name + '?';
+    + '. Research what ' + n.name + ' actually sells and who buys it before answering. What are its three closest direct competitors? Which one is the best replacement for the entire business scope, and would your recommendation change for a narrower use case?';
   var localized = await applyMarketLanguage([{
     label: 'Named competitor shortlist',
     intent: 'A buyer explicitly comparing the subject with alternatives',
-    system: 'You are a helpful AI assistant with live web search. Search before answering. Identify three real companies a buyer could choose for the same purchase, then recommend one. Distinguish close business-model competitors from broader purchasing alternatives.',
+    system: 'You are a competitive intelligence analyst with live web search. Search the subject\'s official website first, then verify every candidate using official candidate pages and credible independent comparison sources. Do not begin with a broad category list. A direct competitor must sell the same product scope to the same buyer type under the same commercial model and serve the same market. For a multi-market business, distinguish a full-scope replacement from specialists covering only one use case. Return three verified direct competitors, name the best replacement for the subject\'s entire scope, and separately name the best specialist by use case when relevant. Exclude customers, suppliers, infrastructure components, directories, and adjacent tools.',
     query: englishQuery
   }], n.city, input.language);
   var results = await runQuerySet(localized.queries, n.name, useWebSearch);
