@@ -418,7 +418,9 @@ function buildPrompt(evidence) {
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
-    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'    + '- COMMUNITY OPPORTUNITY: if the evidence contains a REAL BUYER CONVERSATIONS section with an actual thread, forum post, or discussion, ONE action MUST be a tactical, human engagement in that specific conversation \u2014 name the exact platform (e.g. Reddit) and reference what the thread is actually asking, not a generic \u201cengage with your community.\u201d This is a genuinely different KIND of action from institutional fixes (schema, reviews) \u2014 it is immediate, human, and free. Do not substitute a structural fix for this when real community evidence exists; do both. If no real community evidence was found, do not invent a thread \u2014 omit this action type entirely rather than fabricate a plausible-sounding one.\n\n'
+    + '- NUMERIC TARGETS: review counts, publication counts, timelines, and similar numbers may be proposed as practical goals, but never call them an AI-system minimum, required threshold, guaranteed trigger, or industry standard unless the supplied evidence contains a credible source establishing that exact threshold.\n'
+    + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'
+    + '- COMMUNITY OPPORTUNITY: if the evidence contains a REAL BUYER CONVERSATIONS section with an actual thread, forum post, or discussion, ONE action MUST be a tactical, human engagement in that specific conversation \u2014 name the exact platform (e.g. Reddit) and reference what the thread is actually asking, not a generic \u201cengage with your community.\u201d This is a genuinely different KIND of action from institutional fixes (schema, reviews) \u2014 it is immediate, human, and free. Do not substitute a structural fix for this when real community evidence exists; do both. If no real community evidence was found, do not invent a thread \u2014 omit this action type entirely rather than fabricate a plausible-sounding one. Any founder, employee, agency, or representative must disclose their relationship clearly and follow the platform\'s self-promotion rules. Never advise posing as an unaffiliated customer, hiding a commercial connection, using a personal account to evade disclosure, or adding an unverified discount code.\n\n'
     + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
     + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
     + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
@@ -868,7 +870,7 @@ async function selectDominantCompetitor(evidence) {
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
     + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
     + 'CANDIDATE DISCOVERY: discover candidates from the subject evidence and independent searches only. Do not prefer a company because it appeared in a previous report, prompt example, or model answer.\n\n'
-    + 'COMPETITOR IDENTITY: return the exact current public brand name used by the company itself. Do not translate it, shorten it into a guessed domain, or construct a new name from category words. A descriptive domain and a public brand may differ; prefer the verified public brand, and leave the result null when the identity cannot be established reliably.\n\n'
+    + 'COMPETITOR IDENTITY: return the exact current public brand name used by the company itself. Do not translate it, shorten it into a guessed domain, or construct a new name from category words. A descriptive domain and a public brand may differ; prefer the verified public brand, and leave the result null when the identity cannot be established reliably. If a competing product was transferred, merged, or rebranded, name the current vendor that now sells and contracts for that product. Do not use a legacy product owner merely because its separate services business still operates; match the entity to the actual purchasing decision being analysed.\n\n'
     + 'PRODUCE THREE ANSWERS:\n'
     + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'
     + 'TIEBREAKER RULE: use popularity signals only after candidates have independently passed every product, buyer, commercial-model, production-ownership, tier, and geography test. Review volume or search presence can never compensate for a failed or unverified business-model match. Among equally valid candidates, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order.\n'
@@ -1183,10 +1185,14 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
 
   var arenaLabel = arenaType === 'online'
     ? 'online/DTC channel (ordering experience, delivery, online UX)'
+    : arenaType === 'competitor'
+    ? 'overall head-to-head purchasing decision'
     : 'brand/product arena (specialty product quality, heritage, breed specificity)';
 
   var arenaContext = arenaType === 'online'
     ? 'In this arena, buyers decide based on: ease of ordering online, delivery reliability, website clarity, DTC trust signals (reviews, returns policy), and online brand presence.'
+    : arenaType === 'competitor'
+    ? 'Compare the two businesses for the same real buyer decision in the stated category and market. Evaluate category clarity, independently verifiable trust, meaningful differentiation, and how easily an AI system can understand and recommend each company. Do not assume a product, retail, or software business model beyond the supplied category evidence.'
     : 'In this arena, buyers decide based on: breed/product specificity, source transparency, production method, provenance claims, and specialty positioning.';
 
   var prompt = 'You compare two businesses on the CHOIVE four pillars within a specific competitive arena. '
