@@ -342,10 +342,17 @@ async function searchSerper(name, category, city) {
     { q: 'best ' + category + ' ' + city + ' site:reddit.com',  type: 'community'  },
     { q: category + ' recommendation site:reddit.com',         type: 'community'  },
     { q: 'best ' + category + ' forum OR group',                type: 'community'  },
-    // Authority
+    // Authority — generic press
     { q: name + ' news OR press OR announcement',              type: 'authority'  },
     { q: name + ' site:linkedin.com',                          type: 'authority'  },
     { q: name + ' site:youtube.com',                           type: 'authority'  },
+    // Trade press — B2B companies get covered in industry publications not general news.
+    // These targeted site: searches surface coverage that generic queries miss entirely.
+    // The publications cover: broadcast/media tech, OTT/streaming, pay-TV, food/hospitality,
+    // legal/professional services, SaaS/tech — the real places buyers read about vendors.
+    { q: '"' + name + '" site:broadbandtvnews.com OR site:rapidtvnews.com OR site:digitaltveurope.com OR site:streamingmedia.com OR site:broadcastnow.co.uk', type: 'authority' },
+    { q: '"' + name + '" site:g2.com OR site:capterra.com OR site:clutch.co OR site:trustradius.com', type: 'authority' },
+    { q: '"' + name + '" interview OR awarded OR partnership OR launch OR milestone', type: 'authority' },
     // Comparison
     { q: 'best ' + category + ' ' + city,                      type: 'comparison' },
     { q: 'top ' + category + ' ' + city,                       type: 'comparison' },
