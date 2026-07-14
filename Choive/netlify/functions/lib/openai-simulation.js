@@ -25,8 +25,9 @@ function outputText(data) {
   return parts.join('\n').trim();
 }
 
-function cleanResponse(response) {
+function cleanResponse(response, maxLength) {
   if (!response) return '';
+  maxLength = Number(maxLength || 900);
   var cleaned = String(response)
     .replace(/[#]+ /g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -35,9 +36,9 @@ function cleanResponse(response) {
     .replace(/^[-*] /gm, '\u2022 ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (cleaned.length > 900) {
-    var cut = cleaned.lastIndexOf('.', 900);
-    cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 900);
+  if (cleaned.length > maxLength) {
+    var cut = cleaned.lastIndexOf('.', maxLength);
+    cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, maxLength);
   }
   return cleaned;
 }
@@ -117,17 +118,32 @@ async function requestOpenAI(systemPrompt, query, useSearch) {
   }
 }
 
-async function extractRecommendations(name, category, city, results) {
+async function extractRecommendations(name, category, city, results, mode) {
   var transcripts = [];
-  // The explicit named-competitor question is the highest-intent evidence for
-  // a top-three shortlist. Discovery answers can contain adjacent vendors and
-  // infrastructure suppliers that should not outrank that direct comparison.
+  // Keep unbranded buyer recommendations separate from branded competitor
+  // research. The latter is useful for market-fit adjudication, but it cannot
+  // truthfully describe what the platform recommends before the subject is
+  // named.
   var namedShortlistResults = (results || []).filter(function(result) {
     return String(result && result.label || '').toLowerCase().indexOf('named competitor') !== -1
       && Array.isArray(result.allResponses)
       && result.allResponses.some(Boolean);
   });
-  var extractionResults = namedShortlistResults.length ? namedShortlistResults : (results || []);
+  var directRecommendationResults = (results || []).filter(function(result) {
+    return String(result && result.label || '').toLowerCase().indexOf('direct recommendation') !== -1
+      && Array.isArray(result.allResponses)
+      && result.allResponses.some(Boolean);
+  });
+  var extractionResults;
+  if (mode === 'competitor-shortlist') {
+    extractionResults = namedShortlistResults;
+  } else {
+    extractionResults = directRecommendationResults.length
+      ? directRecommendationResults
+      : (results || []).filter(function(result) {
+          return String(result && result.label || '').toLowerCase().indexOf('named competitor') === -1;
+        });
+  }
   extractionResults.forEach(function(result) {
     (result.allResponses || []).forEach(function(response) {
       if (response) transcripts.push(response);
@@ -199,7 +215,11 @@ async function runOpenAISimulation(input) {
 
   var grouped = sourceResults.map(function() { return []; });
   settled.forEach(function(outcome, index) {
-    var text = outcome.status === 'fulfilled' ? cleanResponse(outcome.value) : '';
+    var sourceLabel = String(jobs[index] && jobs[index].result && jobs[index].result.label || '').toLowerCase();
+    // Competitor research answers begin by explaining the subject. Preserve
+    // enough of the answer to reach the actual shortlist and recommendation.
+    var responseLimit = sourceLabel.indexOf('named competitor') !== -1 ? 2800 : 1200;
+    var text = outcome.status === 'fulfilled' ? cleanResponse(outcome.value, responseLimit) : '';
     if (text) grouped[jobs[index].queryIndex].push(text);
   });
   var results = sourceResults.map(function(source, index) {
@@ -220,8 +240,19 @@ async function runOpenAISimulation(input) {
     input.name,
     input.category || '',
     input.city || '',
-    results
+    results,
+    'buyer-recommendation'
   );
+  var competitorShortlist = await extractRecommendations(
+    input.name,
+    input.category || '',
+    input.city || '',
+    results,
+    'competitor-shortlist'
+  );
+  var visibilityResults = results.filter(function(result) {
+    return String(result && result.label || '').toLowerCase().indexOf('named competitor') === -1;
+  });
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
     complete: results.every(function(result) { return result.sampleCount === samples; }),
@@ -231,9 +262,10 @@ async function runOpenAISimulation(input) {
     model: OPENAI_MODEL,
     language: input.language || null,
     sampleCountPerQuery: samples,
-    appearedCount: results.filter(function(result) { return result.appeared; }).length,
-    totalQueries: results.length,
+    appearedCount: visibilityResults.filter(function(result) { return result.appeared; }).length,
+    totalQueries: visibilityResults.length,
     recommendations: recommendations,
+    competitorShortlist: competitorShortlist,
     results: results
   };
 }
