@@ -672,7 +672,9 @@ exports.handler = async function (event) {
                       // Strip TLD for cleaner display (doncarne.de → doncarne.de shown as-is; scoring strips it)
                       return c;
                     }).join(', ');
-                    var responseSnippets = allSimResponsesOrig.slice(0, 6).map(function(r, i) {
+                    // Read every recorded sample. Limiting this to six silently
+                    // dropped some buyer questions when each query had four runs.
+                    var responseSnippets = allSimResponsesOrig.map(function(r, i) {
                       return 'Response ' + (i + 1) + ':\n' + String(r).slice(0, 700);
                     }).join('\n\n');
                     var inferredCatForPrompt = evidence['inferredCategory'] || category || '';
@@ -695,6 +697,7 @@ exports.handler = async function (event) {
                       + '5. KNOWN COMPETITORS FIRST: If a known competitor name or domain appears anywhere in the responses (even once), prioritise it over unknown names with higher mention counts — it is the most reliable signal.\n'
                       + '6. Rank by category relevance first, then by mention count. The most directly competing business goes in "first".\n'
                       + '7. If a known domain hint matches a name in the text (e.g. "doncarne.de" → "Don Carne"), use the clean business name form.\n'
+                      + '7b. IDENTITY ACCURACY: preserve the company\'s exact public brand name. Never shorten, translate, or invent a domain. If a response is visibly truncated but an exact known domain hint completes the identity, use that exact known identity rather than guessing a shorter domain.\n'
                       + '8. If no real same-category, same-market competitor appears, use empty string.\n\n'
                       + 'Return ONLY this JSON (no markdown, no explanation):\n'
                       + '{"first":"BusinessName","second":"BusinessName","firstCount":3,"secondCount":2}';
@@ -786,6 +789,12 @@ exports.handler = async function (event) {
                     secondMentionCount: verifiedSecondCount,
                     distinctQueryCount: verifiedFirstQueryCount,
                     secondDistinctQueryCount: verifiedSecondQueryCount,
+                    aiMentionedCompetitor: verifiedFirstCount > 0 ? extractedCompetitors.first : null,
+                    secondAiMentionedCompetitor: verifiedSecondCount > 0 ? extractedCompetitors.second : null,
+                    aiMentionedCount: verifiedFirstCount,
+                    secondAiMentionedCount: verifiedSecondCount,
+                    aiMentionedQueryCount: verifiedFirstQueryCount,
+                    secondAiMentionedQueryCount: verifiedSecondQueryCount,
                     totalResponses:     allSimResponses.length,
                     totalQueries:       simResponseGroups.length,
                     categoryUnowned:    !verifiedFirst
@@ -812,6 +821,18 @@ exports.handler = async function (event) {
                       secondName = n; secondCount = cnt;
                     }
                   });
+                  var fallbackQueryCount = function(candidate) {
+                    var forNeedle = String(candidate || '').replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
+                    var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (!needle) return 0;
+                    return simResponseGroups.filter(function(group) {
+                      return group.some(function(response) {
+                        return String(response || '').toLowerCase().replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
+                      });
+                    }).length;
+                  };
+                  var bestQueryCount = fallbackQueryCount(bestName);
+                  var secondQueryCount = fallbackQueryCount(secondName);
                   evidence['competitorDecision'] = {
                     realCompetitor:     null,
                     aiRecommends:       null,
@@ -820,7 +841,15 @@ exports.handler = async function (event) {
                     selectionVersion:   3,
                     mentionCount:       bestCount,
                     totalResponses:     allSimResponses.length,
-                    distinctQueryCount: 0,
+                    distinctQueryCount: bestQueryCount,
+                    secondMentionCount: secondCount,
+                    secondDistinctQueryCount: secondQueryCount,
+                    aiMentionedCompetitor: bestCount > 0 ? bestName : null,
+                    secondAiMentionedCompetitor: secondCount > 0 ? secondName : null,
+                    aiMentionedCount: bestCount,
+                    secondAiMentionedCount: secondCount,
+                    aiMentionedQueryCount: bestQueryCount,
+                    secondAiMentionedQueryCount: secondQueryCount,
                     totalQueries:       simResponseGroups.length,
                     categoryUnowned:    true
                   };
@@ -1005,6 +1034,26 @@ exports.handler = async function (event) {
             });
           }
         }
+        // Preserve useful buyer-choice alternatives even when they appeared in
+        // only one distinct query. They are not promoted to recommendation
+        // leader; the label and coverage make their narrower evidence explicit.
+        [
+          { name: cd.aiMentionedCompetitor, count: cd.aiMentionedCount, queries: cd.aiMentionedQueryCount },
+          { name: cd.secondAiMentionedCompetitor, count: cd.secondAiMentionedCount, queries: cd.secondAiMentionedQueryCount }
+        ].forEach(function(alt) {
+          if (!alt.name || normName(alt.name) === target || normName(alt.name) === normName(cd.aiRecommends)) return;
+          var hasAlt = comps.some(function(c) { return c && normName(c.name) === normName(alt.name); });
+          if (!hasAlt) {
+            comps.push({
+              name: alt.name,
+              advantage: 'Named by Claude for a specific buyer question in this diagnostic.',
+              gapLocation: '',
+              closeGap: '',
+              evidence: 'Appeared in ' + Number(alt.queries || 0) + ' of ' + Number(cd.totalQueries || 0) + ' buyer questions (' + Number(alt.count || 0) + ' recorded samples). This is a query-specific purchasing alternative, not the consistent overall AI leader.',
+              queryContext: 'ai-query-alternative'
+            });
+          }
+        });
       }
       // Trim moved to after second-competitor merge so all sources are included before slicing
     } catch (err) {
@@ -1104,6 +1153,12 @@ exports.handler = async function (event) {
           secondMentionCount: cdX.secondMentionCount || 0,
           distinctQueryCount: cdX.distinctQueryCount || 0,
           secondDistinctQueryCount: cdX.secondDistinctQueryCount || 0,
+          aiMentionedCompetitor: cdX.aiMentionedCompetitor || null,
+          secondAiMentionedCompetitor: cdX.secondAiMentionedCompetitor || null,
+          aiMentionedCount: cdX.aiMentionedCount || 0,
+          secondAiMentionedCount: cdX.secondAiMentionedCount || 0,
+          aiMentionedQueryCount: cdX.aiMentionedQueryCount || 0,
+          secondAiMentionedQueryCount: cdX.secondAiMentionedQueryCount || 0,
           totalResponses: cdX.totalResponses || 0,
           totalQueries: cdX.totalQueries || 0,
           globalBenchmark: cdX.globalBenchmark || null,
