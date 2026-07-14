@@ -516,7 +516,10 @@ function buildPrompt(evidence) {
   var competitorReminder = (evidence.competitorDecision && evidence.competitorDecision.realCompetitor)
     ? 'IMPORTANT: competitors[0].name must be exactly "' + String(evidence.competitorDecision.realCompetitor).replace(/"/g, '\\"') + '". Do not alter it.\n\n'
     : '';
-  return prompt + competitorReminder + jsonSchema;
+  var recommendationGuard = evidence.competitorDecision && !evidence.competitorDecision.aiRecommends
+    ? 'ABSOLUTE RECOMMENDATION GUARD: No company met the cross-query consistency threshold in the recorded Claude samples. Do not say any company is recommended instead of the subject, do not describe any company as the AI/Claude selection leader, and do not create displacement language in the summary, evidence narrative, actions, or competitor cards. You may still discuss the verified head-to-head market competitor, but label it as market analysis only.\n\n'
+    : '';
+  return prompt + recommendationGuard + competitorReminder + jsonSchema;
 }
 
 // ── Parse Claude response ─────────────────────────────────────────────────────
@@ -825,7 +828,7 @@ async function selectDominantCompetitor(evidence) {
     + (groundTruth ? 'What AI currently recommends when buyers search for this category:\n' + groundTruth + '\n' : '')
     + '\n'
     + 'YOUR TASK:\n'
-    + 'Using web search, identify this business\'s REAL competitors through this structured search strategy:\n\n'
+    + 'Using the supplied website, search, and simulation evidence plus your category knowledge, identify this business\'s REAL competitors through this structured strategy:\n\n'
     + 'STEP 1 — SEARCH WITH TIER MATCHING:\n'
     + '  Search using the BUYER TIER, not just the product category. If the subject has named enterprise clients, search for who serves those same clients.\n'
     + '  Build search terms from the subject evidence. Do not begin with a list of candidate companies.\n'
@@ -870,12 +873,12 @@ async function selectDominantCompetitor(evidence) {
     + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Null if no clear second name exists.\n'
     + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if same as realCompetitor or aiRecommends.\n\n'
     + 'TIEBREAKER FOR ALL ANSWERS: when multiple candidates qualify, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search/analyst presence.\n\n'
-    + 'IMPORTANT: Use web search to verify all named companies are currently operating. Use their CURRENT name if they have rebranded or merged.\n\n'
+    + 'IMPORTANT: Only return a company when the supplied evidence or reliable category knowledge supports that it currently operates. Use its current name when a rebrand is established.\n\n'
     + 'Respond with exactly this JSON — no markdown, no preamble:\n'
-    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "web_search", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
+    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "evidence_analysis", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 55000); // web search needs more time
+  var timer = setTimeout(function() { controller.abort(); }, 30000);
   try {
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -888,7 +891,6 @@ async function selectDominantCompetitor(evidence) {
         model: ANTHROPIC_MODEL,
         max_tokens: 400,
         temperature: 0,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -947,7 +949,7 @@ async function selectDominantCompetitor(evidence) {
       aiRecommends:       cleanName(parsed.aiRecommends),
       secondAiCompetitor: cleanName(parsed.secondAiCompetitor),
       globalBenchmark:    cleanName(parsed.globalBenchmark),
-      source:             'web_search',
+      source:             'evidence_analysis',
       categoryUnowned:    parsed.categoryUnowned === true,
       contested:          parsed.contested === true,
       frequencyTable:     [], // not used in v5
@@ -1019,7 +1021,10 @@ async function scoreWithClaudeOnce(evidence) {
         compDecision.secondAiCompetitor = measuredDecision.secondAiCompetitor || null;
         compDecision.mentionCount = measuredDecision.mentionCount || 0;
         compDecision.secondMentionCount = measuredDecision.secondMentionCount || 0;
+        compDecision.distinctQueryCount = measuredDecision.distinctQueryCount || 0;
+        compDecision.secondDistinctQueryCount = measuredDecision.secondDistinctQueryCount || 0;
         compDecision.totalResponses = measuredDecision.totalResponses || 0;
+        compDecision.totalQueries = measuredDecision.totalQueries || 0;
         compDecision.recommendationSource = measuredDecision.source || null;
       } else {
         compDecision.aiRecommends = null;
