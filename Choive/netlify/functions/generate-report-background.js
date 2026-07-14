@@ -1023,7 +1023,9 @@ var CSS = [
   var disp     = safeObj(r.displacement);
   var compList = safeArr(r.competitors);
   var comp0    = compList.length > 0 ? safeObj(compList[0]) : {};
-  var compName = safeStr(disp.competitorName || comp0.name, '');
+  var competitorDecision = safeObj(r.competitorDecision);
+  var aiCompName = safeStr(competitorDecision.aiRecommends, '');
+  var compName = safeStr(competitorDecision.realCompetitor || comp0.name, '');
   var compWhy  = safeStr(disp.competitorWhy  || comp0.advantage || comp0.analysis || comp0.why, '');
   var compQuery= safeStr(disp.competitorQuery || comp0.queryContext, '');
 
@@ -1177,7 +1179,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '</div>'
     + '<div class="eb-body">'
     + '<div class="eb-panel">'
-    + '<div class="eb-panel-label">AI is recommending instead</div>'
+    + '<div class="eb-panel-label">Claude consistently recommended instead</div>'
     + (compName
         ? '<div class="eb-comp-name">' + esc(compName) + '</div>'
         : '<div class="eb-comp-none">No dominant competitor established yet. A significant opportunity to be first.</div>')
@@ -1210,7 +1212,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     ['Ease',       pillarScore(r, 'ease')]
   ].sort(function(a, b) { return a[1] - b[1]; });
   var weakest = { label: pillarPairs[0][0], score: pillarPairs[0][1] };
-  var letter = buildLetter(bizName, score, weakest, compName, input);
+  var letter = buildLetter(bizName, score, weakest, aiCompName, input);
 
   // ── HTML ─────────────────────────────────────────────────────────────────────
   var H = [];
@@ -1334,7 +1336,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('</div>');
   })();
 
-  H.push(buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl).replace(/<\/div>$/, pageFt('3') + '</div>'));
+  H.push(buildExecutiveBrief(r, input, bizName, score, aiCompName, date, qrDataUrl).replace(/<\/div>$/, pageFt('3') + '</div>'));
 
   // ── TOC ──────────────────────────────────────────────────────────────────────
   var tocItems = [
@@ -1578,7 +1580,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="eyebrow">AI query simulation</div>');
       var appearedFlat = renderSimSet('Query', simBeforeResults);
       var flatVerdict = appearedFlat === 0
-        ? 'None of these queries returned ' + esc(bizName) + ' in the AI response. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.'
+        ? 'None of these queries returned ' + esc(bizName) + ' in the Claude response. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
         : appearedFlat === simBeforeResults.length
         ? esc(bizName) + ' appeared in all ' + simBeforeResults.length + ' queries. The priority actions in Section 8 will consolidate this position.'
         : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' queries. Priority actions in Section 8 will close the remaining gaps.';
@@ -1589,7 +1591,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="eyebrow">Current state \u2014 before any fixes</div>');
       var appearedBefore = renderSimSet('Current state', simBeforeResults);
       var beforeVerdict = appearedBefore === 0
-        ? 'Every query your customers ask is answered without mentioning you. ' + esc(compName || 'A competitor') + ' appears in your place. Section 7 shows exactly who is being chosen and why.'
+        ? 'Every recorded query was answered without mentioning you. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
         : 'Partial visibility. Priority actions will close remaining gaps.';
       H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
       H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
