@@ -868,6 +868,7 @@ async function selectDominantCompetitor(evidence) {
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
     + 'If the business serves local consumers (e.g. restaurant, local clinic), only local competitors qualify.\n\n'
     + 'CANDIDATE DISCOVERY: discover candidates from the subject evidence and independent searches only. Do not prefer a company because it appeared in a previous report, prompt example, or model answer.\n\n'
+    + 'COMPETITOR IDENTITY: return the exact current public brand name used by the company itself. Do not translate it, shorten it into a guessed domain, or construct a new name from category words. A descriptive domain and a public brand may differ; prefer the verified public brand, and leave the result null when the identity cannot be established reliably.\n\n'
     + 'PRODUCE THREE ANSWERS:\n'
     + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'
     + 'TIEBREAKER RULE: use popularity signals only after candidates have independently passed every product, buyer, commercial-model, production-ownership, tier, and geography test. Review volume or search presence can never compensate for a failed or unverified business-model match. Among equally valid candidates, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order.\n'
@@ -1025,6 +1026,12 @@ async function scoreWithClaudeOnce(evidence) {
         compDecision.secondMentionCount = measuredDecision.secondMentionCount || 0;
         compDecision.distinctQueryCount = measuredDecision.distinctQueryCount || 0;
         compDecision.secondDistinctQueryCount = measuredDecision.secondDistinctQueryCount || 0;
+        compDecision.aiMentionedCompetitor = measuredDecision.aiMentionedCompetitor || null;
+        compDecision.secondAiMentionedCompetitor = measuredDecision.secondAiMentionedCompetitor || null;
+        compDecision.aiMentionedCount = measuredDecision.aiMentionedCount || 0;
+        compDecision.secondAiMentionedCount = measuredDecision.secondAiMentionedCount || 0;
+        compDecision.aiMentionedQueryCount = measuredDecision.aiMentionedQueryCount || 0;
+        compDecision.secondAiMentionedQueryCount = measuredDecision.secondAiMentionedQueryCount || 0;
         compDecision.totalResponses = measuredDecision.totalResponses || 0;
         compDecision.totalQueries = measuredDecision.totalQueries || 0;
         compDecision.recommendationSource = measuredDecision.source || null;
