@@ -742,18 +742,35 @@ exports.handler = async function (event) {
 
                 // ── SET competitorDecision ─────────────────────────────────────────────
                 if (extractedCompetitors && extractedCompetitors.first) {
-                  // Primary path: Claude read its own responses and named competitors directly
+                  // Claude identifies names; JavaScript verifies frequency from the
+                  // actual transcripts. Never trust model-supplied counts.
+                  var countExactMentions = function(candidate) {
+                    var normalizedCandidate = String(candidate || '').toLowerCase()
+                      .replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ')
+                      .replace(/[^a-z0-9]+/g, ' ').trim();
+                    if (!normalizedCandidate) return 0;
+                    return allSimResponses.filter(function(response) {
+                      var normalizedResponse = String(response || '').replace(/[^a-z0-9]+/g, ' ').trim();
+                      return (' ' + normalizedResponse + ' ').indexOf(' ' + normalizedCandidate + ' ') !== -1;
+                    }).length;
+                  };
+                  var verifiedFirstCount = countExactMentions(extractedCompetitors.first);
+                  var verifiedSecondCount = countExactMentions(extractedCompetitors.second);
+                  var minimumMentions = allSimResponses.length >= 3 ? 2 : allSimResponses.length;
+                  var verifiedFirst = verifiedFirstCount >= minimumMentions ? extractedCompetitors.first : null;
+                  var verifiedSecond = verifiedSecondCount >= minimumMentions ? extractedCompetitors.second : null;
                   evidence['competitorDecision'] = {
-                    realCompetitor:     extractedCompetitors.first,
-                    aiRecommends:       extractedCompetitors.first,
-                    secondAiCompetitor: extractedCompetitors.second || null,
+                    realCompetitor:     null,
+                    aiRecommends:       verifiedFirst,
+                    secondAiCompetitor: verifiedSecond,
                     source:             'ai-direct-extraction',
                     selectionVersion:   4,
-                    mentionCount:       extractedCompetitors.firstCount,
+                    mentionCount:       verifiedFirstCount,
+                    secondMentionCount: verifiedSecondCount,
                     totalResponses:     allSimResponses.length,
-                    categoryUnowned:    false
+                    categoryUnowned:    !verifiedFirst
                   };
-                  console.log('[' + jobId + '] competitorDecision (direct): ' + extractedCompetitors.first + ' (' + extractedCompetitors.firstCount + '/' + allSimResponses.length + ')' + (extractedCompetitors.second ? ' | second: ' + extractedCompetitors.second + ' (' + extractedCompetitors.secondCount + ')' : ''));
+                  console.log('[' + jobId + '] competitorDecision (verified): ' + (verifiedFirst || 'no consistent leader') + ' (' + verifiedFirstCount + '/' + allSimResponses.length + ')' + (verifiedSecond ? ' | second: ' + verifiedSecond + ' (' + verifiedSecondCount + ')' : ''));
                 } else {
                   // Fallback: frequency count mentions of Serper/known candidates across responses
                   console.log('[' + jobId + '] Direct extraction returned no names — using frequency fallback on ' + uniqueCandidates.length + ' candidates');
@@ -776,14 +793,14 @@ exports.handler = async function (event) {
                     }
                   });
                   evidence['competitorDecision'] = {
-                    realCompetitor:     bestName   || null,
-                    aiRecommends:       bestName   || null,
-                    secondAiCompetitor: secondName || null,
+                    realCompetitor:     null,
+                    aiRecommends:       bestCount >= 2 ? bestName : null,
+                    secondAiCompetitor: secondCount >= 2 ? secondName : null,
                     source:             'ai-ground-truth',
                     selectionVersion:   3,
                     mentionCount:       bestCount,
                     totalResponses:     allSimResponses.length,
-                    categoryUnowned:    !bestName || bestCount === 0
+                    categoryUnowned:    !bestName || bestCount < 2
                   };
                   console.log('[' + jobId + '] competitorDecision (fallback): ' +
                     (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
@@ -1044,6 +1061,10 @@ exports.handler = async function (event) {
           selectionVersion: cdX.selectionVersion || null,
           realCompetitor:  cdX.realCompetitor  || null,
           aiRecommends:    cdX.aiRecommends    || null,
+          secondAiCompetitor: cdX.secondAiCompetitor || null,
+          mentionCount: cdX.mentionCount || 0,
+          secondMentionCount: cdX.secondMentionCount || 0,
+          totalResponses: cdX.totalResponses || 0,
           globalBenchmark: cdX.globalBenchmark || null,
           categoryUnowned: cdX.categoryUnowned === true
         };
