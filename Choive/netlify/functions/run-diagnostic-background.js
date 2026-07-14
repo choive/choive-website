@@ -939,7 +939,7 @@ exports.handler = async function (event) {
     try {
       var cachedBeforeForOpenAI = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before;
       var cachedOpenAI = evidence['platformSimulations'] && evidence['platformSimulations']['openai'];
-      if (process.env.OPENAI_API_KEY && cachedBeforeForOpenAI && (!cachedOpenAI || !cachedOpenAI.available)) {
+      if (process.env.OPENAI_API_KEY && cachedBeforeForOpenAI && (!cachedOpenAI || !cachedOpenAI.available || cachedOpenAI.complete === false || !Number(cachedOpenAI.expectedSamples))) {
         var cachedOpenAIResult = await runOpenAISimulation({
           name: name,
           category: evidence['inferredCategory'] || category,
@@ -1283,7 +1283,7 @@ exports.handler = async function (event) {
       var measuredOpenAI = evidence['platformSimulations']['openai'];
       finalResult['platformCoverage'] = {
         chatgpt: measuredOpenAI && measuredOpenAI.available
-          ? { status: measuredOpenAI.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with OpenAI ' + (measuredOpenAI.model || 'API') + ' and web search.' }
+          ? { status: measuredOpenAI.complete === false ? 'partial' : (measuredOpenAI.appearedCount > 0 ? 'present' : 'absent'), detail: 'Measured with OpenAI ' + (measuredOpenAI.model || 'API') + ' and web search. ' + Number(measuredOpenAI.completedSamples || 0) + ' of ' + Number(measuredOpenAI.expectedSamples || 0) + ' samples completed.' }
           : { status: 'unmeasured', detail: 'OpenAI API was not configured for this run.' },
         claude: measuredClaude && measuredClaude.available
           ? { status: measuredClaude.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with Claude and web search.' }
@@ -1291,12 +1291,79 @@ exports.handler = async function (event) {
         perplexity: { status: 'unmeasured', detail: 'Not measured.' },
         gemini: { status: 'unmeasured', detail: 'Not measured.' }
       };
+      var openaiRecommendations = measuredOpenAI && measuredOpenAI.recommendations
+        ? [measuredOpenAI.recommendations.primary, measuredOpenAI.recommendations.second, measuredOpenAI.recommendations.third].filter(Boolean)
+        : [];
+      var claudeDecision = evidence['competitorDecision'] || {};
+      var claudeRecommendations = [
+        claudeDecision.aiRecommends,
+        claudeDecision.aiMentionedCompetitor,
+        claudeDecision.secondAiMentionedCompetitor
+      ].filter(Boolean);
+      var dedupeRecommendations = function(values) {
+        var seen = {};
+        return values.filter(function(value) {
+          var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!key || seen[key]) return false;
+          seen[key] = true;
+          return true;
+        });
+      };
+      finalResult['multiPlatformRecommendations'] = {
+        claude: dedupeRecommendations(claudeRecommendations).slice(0, 3),
+        openai: dedupeRecommendations(openaiRecommendations).slice(0, 3),
+        openaiComplete: measuredOpenAI ? measuredOpenAI.complete !== false : false,
+        note: 'Platform-specific recommendations are reported separately because different models can return different shortlists.'
+      };
     }
     // The dedicated category pass is authoritative for business-model fidelity.
     // Later prose generation must not downgrade a producer into a retailer or
     // shift a B2B platform into an adjacent category.
     if (evidence['inferredCategory']) finalResult['inferredCategory'] = evidence['inferredCategory'];
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictHeadline);
+
+    // ── UNIVERSAL TOP-TWO COMPETITOR COMPARISON ─────────────────────────────
+    // Use one leading alternative from each measured model first. Fill any
+    // missing/duplicate slot from the remaining verified market shortlist.
+    // This runs for every business type; it is not limited to DTC products.
+    try {
+      var multiRecs = finalResult['multiPlatformRecommendations'] || {};
+      var claudeRecs = Array.isArray(multiRecs.claude) ? multiRecs.claude : [];
+      var openaiRecs = Array.isArray(multiRecs.openai) ? multiRecs.openai : [];
+      var researchedRecs = (finalResult['competitors'] || []).map(function(comp) { return comp && comp.name; }).filter(Boolean);
+      var orderedComparisonCandidates = [];
+      if (claudeRecs[0]) orderedComparisonCandidates.push({ name: claudeRecs[0], source: 'Claude' });
+      if (openaiRecs[0]) orderedComparisonCandidates.push({ name: openaiRecs[0], source: 'OpenAI API' });
+      claudeRecs.slice(1).forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
+      openaiRecs.slice(1).forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
+      researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
+      var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      var seenComparisonKeys = {};
+      var topComparisonCandidates = orderedComparisonCandidates.filter(function(candidate) {
+        var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!key || key === subjectComparisonKey || seenComparisonKeys[key] || isPlatformName(candidate.name)) return false;
+        seenComparisonKeys[key] = true;
+        return true;
+      }).slice(0, 2);
+
+      if (topComparisonCandidates.length === 2) {
+        var comparisonScores = await Promise.allSettled(topComparisonCandidates.map(function(candidate) {
+          return scoreArena(evidence, finalResult, candidate.name, 'competitor');
+        }));
+        var comparisonEntries = topComparisonCandidates.map(function(candidate, index) {
+          var score = comparisonScores[index].status === 'fulfilled' ? comparisonScores[index].value : null;
+          return score ? { name: candidate.name, source: candidate.source, score: score } : null;
+        }).filter(Boolean);
+        if (comparisonEntries.length) {
+          finalResult['competitorComparison'] = {
+            entries: comparisonEntries,
+            selectionRule: 'One leading verified alternative per measured AI platform, with market-analysis fallback.'
+          };
+        }
+      }
+    } catch (comparisonErr) {
+      console.warn('[' + jobId + '] Universal competitor comparison failed (non-critical):', comparisonErr.message);
+    }
 
     // ── DUAL-ARENA PILLAR SCORING ─────────────────────────────────────────────
     // Only runs if dual-arena was detected. Online competitor = second AI-named competitor
