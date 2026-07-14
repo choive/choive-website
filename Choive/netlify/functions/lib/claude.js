@@ -1300,13 +1300,14 @@ async function selectBestFitCompetitors(evidence, candidates) {
     + cleanCandidates.map(function(candidate, index) {
       return (index + 1) + '. ' + candidate.name + ' (named by: ' + (candidate.sources || []).join(', ') + ')';
     }).join('\n')
-    + '\n\nRank the closest two real purchasing substitutes. Apply these tests in order:\n'
+    + '\n\nResearch each candidate on its official product and pricing pages before ranking. Rank the closest two real purchasing substitutes. Apply these tests in order:\n'
     + '1. Same product or service scope.\n'
     + '2. Same buyer and deal tier.\n'
     + '3. Same commercial model.\n'
     + '4. Same serviceable geography.\n'
     + '5. Same market breadth. If the subject spans multiple buyer markets, a candidate spanning those same markets outranks a specialist overlapping in only one.\n'
-    + 'Mention frequency is only a tie-breaker after business fit. Exclude customers, suppliers, infrastructure providers, directories, and the subject itself. Choose only from the supplied candidates.\n\n'
+    + 'Tests 1 and 3 are hard fit gates: a candidate that passes both must outrank a candidate that fails either, unless it fails the buyer or geography test completely. Treat a one-time diagnostic, audit, or report purchase as a different commercial model from a recurring monitoring SaaS subscription. Treat self-service software as different from an agency or managed service. Do not claim two commercial models match unless official product or pricing evidence supports that claim.\n'
+    + 'Mention frequency is only a tie-breaker after business fit. Exclude customers, suppliers, infrastructure providers, directories, and the subject itself. Choose only from the supplied candidates. In each reason, explicitly state whether product scope and commercial model are full matches or partial matches.\n\n'
     + 'Return exactly: {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}';
 
   var controller = new AbortController();
