@@ -3931,6 +3931,24 @@ async function runAISimulation(r) {
         + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
     }
 
+    // A real second-platform measurement, using the same questions. Keep it
+    // visually and semantically separate from Claude's projected "after" state.
+    var openaiRun = r.platformSimulations && r.platformSimulations.openai;
+    if (openaiRun && openaiRun.available && Array.isArray(openaiRun.results)) {
+      var rec = openaiRun.recommendations || {};
+      var recNames = [rec.primary, rec.second, rec.third].filter(Boolean);
+      results.innerHTML += '<div style="margin-top:26px;padding-top:22px;border-top:2px solid var(--rule-d);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tp);">OpenAI measurement</div>'
+        + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search</div></div>'
+        + (recNames.length
+          ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Recommended alternatives: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
+          : '')
+        + renderQSet(openaiRun.results, 'Same buyer questions asked through OpenAI')
+        + '<div style="font-size:11px;color:var(--tm);line-height:1.6;margin-top:10px;">This is an OpenAI API measurement. Consumer ChatGPT may answer differently because its model, search context, and product settings can vary.</div>'
+        + '</div>';
+    }
+
   } catch (err) {
     if (loading) loading.style.display = 'none';
     if (results) {
