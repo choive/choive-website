@@ -225,7 +225,7 @@ async function generateBuyerQueries(n, templates) {
     + '  Query 2 (COMPARISON): buyer is weighing specific options — "[Specific type] vs [alternative]...", "Best [type] online vs local...", "Which is better for..."\n'
     + '  Query 3 (DECISION): buyer wants one direct recommendation — "Which [specific thing] should I buy?", "Best [specific thing] delivered to [city]"\n'
     + '- PRESERVE SPECIFICITY: if the category names a specific breed, material, certification, or niche (e.g. "Black Angus", "Wagyu", "Merino wool", "premium delivery"), that specific term MUST appear in every query unmodified. Never generalise "Black Angus beef" to just "beef" or "meat" — the specific term determines which real competitors are found.\n'
-    + '- MARKET SPECIFICITY: if a city or country is provided, EVERY query must be geographically anchored. A buyer in Germany asks "...in Germany" or "...delivered to Germany" — never a global question.\n'
+    + '- MARKET SPECIFICITY: match the geographic scope of the BUSINESS, not just the city entered. A local restaurant in Berlin → "in Berlin". A national DTC brand in Germany → "in Germany". A B2B software company headquartered in Germany but serving European or global telcos and carmakers → drop the city anchor entirely and use "in Europe" or no location. The test: where are this business\'s BUYERS, not where is the business headquartered. If the inferred category or evidence mentions clients in multiple countries, or if the category is enterprise B2B software, do not anchor queries to the HQ city.\n'
     + '- CATEGORY FIDELITY: the exact inferred category is: "' + n.catClean + '". Every query must be unmistakably about this specific thing.\n'
     + '- Never mention ' + n.name + ' or any specific vendor name.\n'
     + '- One natural sentence each. No introductions, no bullet points.\n'
@@ -288,10 +288,14 @@ function collisionHint(catClean) {
   return '';
 }
 
-function buildQueries(catClean, city, name, businessModel) {
+function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) {
   var hint = collisionHint(catClean);
-  var locationStr = city ? ' in ' + city : '';
-  var forStr = city ? ' for ' + city : '';
+  // Use marketStr (scope-aware) instead of raw city for query anchoring.
+  // A global B2B software company headquartered in Germany should NOT have
+  // every query anchored to Germany — their buyers are worldwide.
+  var effectiveLocation = (marketStr !== undefined ? marketStr : city) || '';
+  var locationStr = effectiveLocation ? ' in ' + effectiveLocation : '';
+  var forStr = effectiveLocation ? ' for ' + effectiveLocation : '';
 
   // Farm/DTC brands compete in THREE overlapping contexts simultaneously:
   // (1) the specific niche — buyers searching for their exact product/breed/origin
@@ -320,31 +324,34 @@ function buildQueries(catClean, city, name, businessModel) {
 
     return [
       {
-        // Context 1 — SPECIFIC NICHE: finds who AI recommends in the exact
-        // product niche. Uses the full coreProduct term and the farm-ownership
-        // hint so only same-model brands (not retailers) are named.
-        label: 'Niche brand query',
-        intent: 'A buyer looking for a specific type of farm-owned brand that sells direct',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only brands that own their own production and sell directly to consumers — not retailers that resell from multiple farms. Be specific and name real brands.' + hint,
-        query: 'What are the best ' + coreProduct + ' brands' + locationStr + '? Which ones produce their own product and sell directly to customers online?'
+        // Context 1 — BROAD DISCOVERY: open to ALL sources — retailers,
+        // brands, farm-direct, online shops. This is where established
+        // market leaders (Don Carne, Otto Gourmet, Gourmetfleisch) are
+        // most visible. Intentionally broad so the frequency table captures
+        // whoever dominates the widest buyer query.
+        label: 'Discovery query',
+        intent: 'A buyer looking for the best place to buy high quality beef online',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name specific online shops, brands, and retailers — include all types: farm-direct brands, premium retailers, and established online butchers. Be specific and name real options.' + hint,
+        query: 'Where is the best place to buy high quality ' + coreProduct + ' online' + locationStr + '? Name the top 3-5 options with a brief reason for each.'
       },
       {
-        // Context 2 — ONLINE/DTC CHANNEL: open to ALL online sources in the
-        // general category. This is where established DTC brands and premium
-        // online shops appear — including competitors the niche query misses.
-        label: 'Online channel query',
-        intent: 'A buyer searching for the best place to buy this product category online',
-        system: 'You are a helpful AI assistant with live web search. Search for current recommendations before answering. Name specific brands or online shops — include both producers that sell direct and established online specialists. Be concrete and specific.',
-        query: 'Where is the best place to buy ' + generalCat + ' online' + locationStr + '? Name 3-5 specific brands or shops with a brief reason for each.'
+        // Context 2 — QUALITY/NICHE: the buyer knows what they want and is
+        // asking for the best quality in this specific product. Surfaces
+        // both premium retailers AND farm-direct brands that compete for
+        // quality-conscious buyers.
+        label: 'Quality comparison query',
+        intent: 'A buyer comparing quality across all available sources',
+        system: 'You are a helpful AI assistant with live web search. Search for current reviews, comparisons, and recommendations before answering. Name the specific brands or shops most consistently recommended for quality. Include both online shops and farm-direct brands.' + hint,
+        query: 'What are the best options for buying premium quality ' + coreProduct + locationStr + '? Which brands or online shops are most recommended and why?'
       },
       {
-        // Context 3 — PREMIUM/QUALITY TIER: open to the full premium segment.
-        // Finds who AI names when a buyer simply wants the best, regardless
-        // of business model. Often where category leaders are most visible.
-        label: 'Premium category query',
-        intent: 'A buyer wanting the best premium option in the category',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name the specific brand or producer consistently rated as the best quality option. Be direct and specific.',
-        query: 'What is the best premium ' + generalCat + locationStr + '? Which brand would you recommend and why? Just give me your single best answer.'
+        // Context 3 — DIRECT RECOMMENDATION: buyer wants one answer.
+        // Finds who AI names most confidently as the single best option
+        // in this category — often the market leader with most trust signals.
+        label: 'Direct recommendation',
+        intent: 'A buyer ready to decide — wants the single best recommendation',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Give a direct, confident recommendation. Name one specific brand, shop, or online retailer.' + hint,
+        query: 'Which online shop has the best ' + coreProduct + ' delivery' + locationStr + '? Just give me your single best recommendation and why.'
       }
     ];
   }
@@ -358,24 +365,54 @@ function buildQueries(catClean, city, name, businessModel) {
     // Strip leading "B2B" label from catClean for cleaner query text.
     // "B2B multiscreen OTT middleware provider" → "multiscreen OTT middleware provider"
     var b2bCat = catClean.replace(/^b2b\s+/i, '').trim() || catClean;
+
+    // Extract the buyer type from the inferred category if present.
+    // "multiscreen entertainment software sold to pay-TV operators and automotive OEMs"
+    // → buyerType = "pay-TV operators and automotive OEMs"
+    // This is injected into queries so AI returns vendors that serve THAT specific buyer,
+    // not whoever ranks in search for the generic category term.
+    var buyerMatch = catClean.match(/(?:sold to|serving|for|used by|targeting)\s+([^—\-\.]{5,60})/i);
+    var buyerType = buyerMatch ? buyerMatch[1].trim() : '';
+
+    // Build the core product term — strip the buyer description for cleaner queries
+    var coreB2B = b2bCat.replace(/\s+(?:sold to|serving|for|used by|targeting)\s+.*/i, '').trim();
+
     return [
       {
+        // Query 1 — MARKET DISCOVERY: who does this type of buyer actually use?
+        // Asking "which vendors do [specific buyer type] use" surfaces the real
+        // competitive set — not whoever ranks in generic software searches.
+        // For 3SS this becomes: "which multiscreen platform software do pay-TV operators
+        // and telcos in Europe use for their TV services?" — surfaces Accedo, Zappware,
+        // Netgem, and 3SS itself — the real evaluation shortlist.
         label: 'B2B vendor discovery',
-        intent: 'A procurement decision-maker searching for the best vendor in this category',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies that sell to businesses — not consumer products or retail brands. Be specific and name real companies.' + hint,
-        query: 'What are the best ' + b2bCat + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
+        intent: 'A procurement decision-maker searching for what vendors exist in this space',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors and software companies that sell licensed platform or software solutions to businesses — not managed services, consumer products, or retail brands. Be specific and name real companies.' + hint,
+        query: buyerType
+          ? 'Which ' + coreB2B + ' vendors and platforms do ' + buyerType + ' use' + locationStr + '? Name 3-5 specific software companies with a brief reason for each.'
+          : 'What are the best ' + coreB2B + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
       },
       {
+        // Query 2 — HEAD-TO-HEAD COMPARISON: who are the main players buyers compare?
+        // This surfaces the competitive landscape as buyers actually see it —
+        // the companies that appear on the same RFP shortlist.
         label: 'B2B solution comparison',
-        intent: 'A business evaluating competing platforms or solutions',
-        system: 'You are a helpful AI assistant with live web search. Search for current reviews, analyst reports, and industry comparisons before answering — do not rely on memory alone. Name the specific companies that B2B buyers most consistently consider and recommend. Be specific and name real companies.' + hint,
-        query: 'Which ' + b2bCat + ' solutions are most recommended for businesses' + locationStr + '? Which providers or platforms do companies in this space choose and why?'
+        intent: 'A business evaluating the main competing platforms or solutions',
+        system: 'You are a helpful AI assistant with live web search. Search for analyst reports, industry comparisons, and RFP shortlists before answering. Name the specific companies that appear most consistently on evaluation shortlists for this type of solution. Be specific and name real companies.' + hint,
+        query: buyerType
+          ? 'What are the main ' + coreB2B + ' vendors that ' + buyerType + ' evaluate when choosing a platform' + locationStr + '? Which companies compete head-to-head in this space?'
+          : 'Which ' + coreB2B + ' solutions are most recommended for businesses' + locationStr + '? Which providers do companies in this space choose and why?'
       },
       {
+        // Query 3 — DIRECT RECOMMENDATION: which single vendor wins the deal?
+        // Forces AI to name its most confident answer — whoever has the most
+        // trust signals, press coverage, and structured evidence wins here.
         label: 'B2B direct recommendation',
         intent: 'A business decision-maker ready to select a vendor',
-        system: 'You are a helpful AI assistant. Answer from the perspective of advising a business technology decision-maker. Be specific and name one real company or platform.' + hint,
-        query: 'Which ' + b2bCat + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
+        system: 'You are a helpful AI assistant. Answer from the perspective of advising a senior technology decision-maker at a ' + (buyerType || 'business') + '. Be specific and name one real licensed software vendor or platform company.' + hint,
+        query: buyerType
+          ? 'Which ' + coreB2B + ' vendor would you recommend for ' + buyerType + (city ? ' in ' + city : '') + '? Give me your single best recommendation and why.'
+          : 'Which ' + coreB2B + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
       }
     ];
   }
@@ -586,12 +623,10 @@ function detectMarketLanguage(city) {
 async function localizeQueries(queries, lang) {
   var langName = LANG_NAMES[lang];
   if (!langName) return null;
-  var prompt = 'Translate these three search queries into natural, native ' + langName
-    + ' \u2014 phrased exactly as a local person would type them to an AI assistant. '
-    + 'CRITICAL: preserve every specific technology term, niche term, vendor-type word, or product name EXACTLY \u2014 translate it accurately, never generalize it away. '
-    + 'For B2B queries (vendor/provider/company): preserve procurement words accurately \u2014 "middleware vendor" \u2192 "Middleware-Anbieter", "OTT platform provider" \u2192 "OTT-Plattform-Anbieter". '
-    + 'For B2C queries (product/brand): "Black Angus beef" must become the specific ' + langName + ' term, NOT a generic word for "beef" or "meat". '
-    + 'Losing the specific term changes what the question is actually asking. '
+  var prompt = 'Translate these three buyer search queries into natural, native ' + langName
+    + ' \u2014 phrased exactly as a local customer would type them to an AI assistant. '
+    + 'CRITICAL: preserve every specific breed, material, technology, certification, or niche term EXACTLY \u2014 translate it, never generalize it away. '
+    + 'Example: "Black Angus beef" must become the specific German term for Black Angus beef, NOT a generic word for "beef" or "meat". Losing the specific term changes what the question is actually asking. '
     + 'Respond ONLY with a JSON array of exactly 3 strings, no markdown.\n\n'
     + JSON.stringify(queries.map(function(q) { return q.query; }));
   var controller = new AbortController();
@@ -681,9 +716,45 @@ function normalizeSimInput(input) {
     businessModel = 'marketplace';
   }
 
+  // Geographic scope detection — determines the query location anchor.
+  // Local businesses: anchor to city. National brands: anchor to country.
+  // Global/regional B2B businesses: use region or no anchor at all.
+  // The test is WHERE THE BUYERS ARE, not where the business is headquartered.
+  var geoScope = 'national'; // default
+  var scopeCombined = (catClean + ' ' + description + ' ' + websiteContext + ' ' + kgText).toLowerCase();
+  var isLocalService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|shop|store|bakery|retail|local service|freelancer/i.test(catClean);
+  var isGlobalB2B = (businessModel === 'b2b') && (
+    /telco|telecom|operator|broadcaster|carmaker|automotive oem|global|international|worldwide|multinational|europe|nordic|dach|mena|apac|north america/i.test(scopeCombined) ||
+    /enterprise|middleware|white.label|saas platform/i.test(catClean)
+  );
+  var isRegional = /europe|nordic|dach|mena|apac|latam|south asia|north america|latin america/i.test(scopeCombined) && !isGlobalB2B;
+
+  if (isLocalService) geoScope = 'local';
+  else if (isGlobalB2B) geoScope = 'global';
+  else if (isRegional) geoScope = 'regional';
+  else if (businessModel === 'farm_brand_dtc') geoScope = 'national';
+
+  // marketStr — the location to actually use in queries
+  var regionMap = {
+    'germany': 'Europe', 'deutschland': 'Europe', 'austria': 'Europe',
+    'switzerland': 'Europe', 'france': 'Europe', 'uk': 'Europe',
+    'netherlands': 'Europe', 'sweden': 'Europe', 'norway': 'Europe',
+    'denmark': 'Europe', 'finland': 'Europe', 'poland': 'Europe',
+    'spain': 'Europe', 'italy': 'Europe', 'portugal': 'Europe',
+    'uae': 'MENA', 'dubai': 'MENA', 'saudi arabia': 'MENA',
+    'us': 'North America', 'usa': 'North America', 'canada': 'North America',
+  };
+  var cityKey = city.toLowerCase();
+  var marketStr = '';
+  if (geoScope === 'local') marketStr = city;
+  else if (geoScope === 'national') marketStr = city; // city = country at national scope
+  else if (geoScope === 'regional') marketStr = regionMap[cityKey] || 'Europe';
+  else if (geoScope === 'global') marketStr = ''; // no location anchor for global B2B
+
   return {
     name: name, category: category, city: city, catClean: catClean,
     description: description, businessModel: businessModel,
+    geoScope: geoScope, marketStr: marketStr,
     websiteContext: websiteContext, kgText: kgText,
     competitorDomains: competitorDomains, knownCompetitors: knownCompetitors
   };
@@ -711,9 +782,25 @@ async function generateQueryPlan(n) {
   if (n.competitorDomains.length)   contextParts.push('RELATED DOMAINS FROM SEARCH: ' + n.competitorDomains.join(', '));
   if (n.knownCompetitors)           contextParts.push('KNOWN COMPETITORS: ' + n.knownCompetitors);
 
+  // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
+  var geoHint = n.geoScope === 'global'
+    ? 'GEOGRAPHIC SCOPE: GLOBAL — this business sells to enterprise buyers worldwide. Do NOT anchor queries to the HQ city or country. Ask where buyers would search globally or in the regions their clients are concentrated (e.g. Europe, North America).'
+    : n.geoScope === 'regional'
+    ? 'GEOGRAPHIC SCOPE: REGIONAL (' + (n.marketStr || 'Europe') + ') — this business serves buyers across a region, not just one country. Use the region name in queries, not the HQ city.'
+    : n.geoScope === 'local'
+    ? 'GEOGRAPHIC SCOPE: LOCAL — this business serves buyers in its city. Anchor all queries to ' + n.city + '.'
+    : 'GEOGRAPHIC SCOPE: NATIONAL — this business serves buyers in ' + (n.city || 'its country') + '. Anchor queries to the country, not a specific city.';
+
   var prompt =
     'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
     + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
+    + geoHint + '\n\n'
+    + 'ABSOLUTE BAN — APPLY BEFORE RETURNING:\n'
+    + 'If ANY of your 3 queries matches these patterns, DELETE it and write a vendor-discovery query:\n'
+    + '  ✗ Compares building in-house vs licensing externally (develop vs license, eigene Plattform entwickeln oder lizenzieren, build vs buy)\n'
+    + '  ✗ Asks for strategic advice that can be answered without naming companies (what is better, was ist besser)\n'
+    + '  ✗ Cannot be answered ONLY by naming specific real companies\n'
+    + 'REPLACE any banned query with: "Which [vendor type] should [buyer type] choose in [market]?"\n\n'
     + 'YOUR TASK:\n'
     + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
     + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
@@ -723,16 +810,21 @@ async function generateQueryPlan(n) {
     + 'BANNED QUERY STRUCTURES (in any language):\n'
     + '  - "What software can I use to [do X]?" → rewrite as "Which vendor/company sells X to [buyer type]?"\n'
     + '  - "Where can I find a platform that [does X]?" → rewrite as "Which companies provide X as a licensed product?"\n'
-    + '  - Any build-vs-buy framing: "develop vs. license", "build vs. buy", "in-house vs. outsource", "eigene Lösung entwickeln vs. lizenzieren", "selbst bauen oder kaufen", "build your own vs. use a vendor" — ALL BANNED. They produce strategy advice, not vendor names.\n'
-    + '  - Terms so broad they attract consumer brands: "entertainment platform" (attracts Netflix), "streaming service" (attracts Spotify), "media platform" (attracts YouTube) — use the narrowest B2B vendor-type vocabulary.\n\n'
+    + '  - Any build-vs-buy framing: "develop vs. license", "build vs. buy", "in-house vs. outsource", "eigene Lösung entwickeln vs. lizenzieren", "selbst bauen oder kaufen", "eigene Videoplattform entwickeln oder lizenzieren", "build your own vs. use a vendor" — ALL BANNED. They produce strategy advice, not vendor names.\n'
+    + '  - Terms so broad they attract the wrong type of company: "entertainment platform" attracts consumer streaming services; "TV platform" attracts content distributors and operators who are BUYERS of the software, not sellers of it. Use the narrowest vendor-type vocabulary that describes what the subject SELLS, not what it ENABLES. For B2B software, queries should name the seller role explicitly: "middleware software vendor", "OTT platform provider", "licensed multiscreen platform".\n'
+    + '  - ROLE CONFUSION: In B2B markets, AI often names companies that BUY the product when asked about the product category. Every query must make clear it seeks companies that SELL this type of product — not companies that use, operate, or distribute it. The query subject must be a seller role, not a buyer role.\n\n'
     + 'QUERY TEMPLATES FOR B2B:\n'
     + '  - Query 1 (Market): "Which [specific vendor type] companies [serve / are used by] [specific buyer type] in [market]?" — discovers the vendor landscape\n'
     + '  - Query 2 (Comparison): "What are the main [specific vendor type] vendors and how do they compare for [buyer type]?" — pure named-company comparison\n'
     + '  - Query 3 (Recommendation): "Which [specific vendor type] should [specific buyer persona with context] choose in [market]?" — forces a named-vendor recommendation\n\n'
     + 'EXAMPLE (pay-TV middleware vendor):\n'
-    + '  Query 1: "Which OTT middleware vendors and white-label TV platform providers do pay-TV operators use in Germany?"\n'
-    + '  Query 2: "What are the main B2B multiscreen middleware companies serving telcos and cable operators in Europe, and how do they compare?"\n'
-    + '  Query 3: "Which white-label OTT middleware vendor should a German pay-TV operator choose for launching multiscreen TV services?"\n\n'
+    + '  Query 1: "Which OTT middleware vendors and white-label TV platform SOFTWARE COMPANIES do pay-TV operators in Germany license for their TV products?"\n'
+    + '  Query 2: "What are the main B2B multiscreen middleware SOFTWARE vendors and OTT platform technology providers serving telcos and cable operators in Europe — name the companies that BUILD and SELL the software?"\n'
+    + '  Query 3: "Which OTT middleware software company should a German pay-TV operator license for their multiscreen TV platform?"\n'
+    + 'ANTI-PATTERN (what NOT to generate for a middleware vendor):\n'
+    + '  BAD: "Is it better to develop our own multiscreen video platform or license an existing one?" — produces strategy advice, not vendor names\n'
+    + '  BAD: "Which TV platform is best for pay-TV operators in Germany?" — attracts content distributors and operators who BUY platform software, not vendors who SELL it\n'
+    + '  BAD: "What entertainment platform should we use?" — attracts Netflix, Disney+, not B2B software vendors\n\n'
     + 'FOR B2C — query format: consumer shopping language ("best brand", "where to buy", "which one should I get for [situation]").\n\n'
     + 'RULES FOR BOTH:\n'
     + '- DO NOT mention ' + n.name + ' in any query.\n'
@@ -841,23 +933,30 @@ async function runBeforeSimulation(input, useWebSearch) {
   } else {
     // Fallback: static templates keyed by businessModel
     console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
-    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel);
+    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
   }
 
-  // For B2B businesses, generateQueryPlan already produced vendor-appropriate
-  // queries with full business context and specific examples (middleware vendors,
-  // OTT platforms, etc.). Running generateBuyerQueries on top would rewrite them
-  // using consumer-language patterns ("Where can I buy...") — exactly the wrong
-  // vocabulary for a procurement search. Skip the rewrite for B2B queryPlan output.
-  var buyerQueries;
-  if (queryPlan && queryPlan.buyerType === 'b2b') {
-    // B2B: use queryPlan output directly — vendor/provider language is correct
-    buyerQueries = rawQueries;
-    console.log('[simulation] B2B queryPlan: skipping generateBuyerQueries to preserve vendor vocabulary');
-  } else {
-    // B2C or fallback: apply buyer-language rewrite as before
-    buyerQueries = await generateBuyerQueries(n, rawQueries);
+  // ── CODE-LEVEL BUILD-VS-BUY VALIDATION ─────────────────────────────────
+  // Reject any query that slipped through the prompt ban and replace with
+  // a safe fallback. This is deterministic — not reliant on the model.
+  if (rawQueries && rawQueries.length) {
+    var bvbPattern = /\b(besser\s+(als\s+)?|better\s+(than\s+)?|soll(en)?\s+wir|should\s+we|eigene?\s+\w+\s+(entwickeln|bauen)|own\s+\w+\s+(build|develop)|in.house|in-house|selbst\s+(entwickeln|bauen)|build\s+(your|our|vs)|versus\s+(buy|licens)|oder\s+liz[ei]n|or\s+licens|or\s+buy\b)/i;
+    var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+    var fbIdx = 0;
+    rawQueries = rawQueries.map(function(q, i) {
+      if (!q) return q;
+      var queryText = typeof q === 'string' ? q : (q.query || '');
+      if (bvbPattern.test(queryText)) {
+        console.warn('[simulation] build-vs-buy query REJECTED at code level: ' + queryText.slice(0, 100));
+        var safe = staticFallback[fbIdx % staticFallback.length];
+        fbIdx++;
+        return typeof q === 'string' ? safe.query : safe;
+      }
+      return q;
+    });
   }
+
+  var buyerQueries = await generateBuyerQueries(n, rawQueries);
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, useWebSearch);
   var count = results.filter(function(r) { return r.appeared; }).length;
