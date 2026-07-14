@@ -963,6 +963,12 @@ nav {
 .paid-comp-name { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:10px; }
 .paid-comp-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
 .paid-comp-none { font-size:14px; font-weight:400; color:var(--muted); font-style:italic; padding:20px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
+.selection-status { background:var(--paper-2); border:1px solid var(--rule); border-left:4px solid var(--ac); padding:26px 28px; margin-bottom:2px; }
+.selection-status-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1px; background:var(--rule); margin-top:18px; }
+.selection-status-cell { background:var(--paper); padding:18px 20px; min-width:0; }
+.selection-status-label { font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+.selection-status-value { font-family:'Libre Baskerville',serif; font-size:20px; font-weight:400; color:var(--ink); line-height:1.3; overflow-wrap:anywhere; }
+.selection-status-copy { font-size:13px; color:var(--body); line-height:1.7; margin-top:7px; }
 .paid-actions { display:flex; flex-direction:column; }
 .paid-action { padding:22px 0; background:var(--paper); border-bottom:1px solid var(--rule); border-left:3px solid var(--rule); padding-left:16px; }
 .paid-action-critical { border-left-color:var(--red); }
@@ -987,6 +993,11 @@ nav {
 .pay-cta-block { padding:20px 0; }
 .pay-cta-headline { font-family:'Libre Baskerville', serif; font-size:22px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:8px; }
 .pay-cta-body { font-size:14px; font-weight:400; color:var(--body); line-height:1.75; margin-bottom:16px; }
+
+@media (max-width:640px) {
+  .selection-status-grid { grid-template-columns:1fr; }
+  .selection-status { padding:22px 18px; }
+}
 
 /* Deliverables */
 .deliv-section { padding:32px 0; border-bottom:1px solid var(--rule); }
@@ -3109,6 +3120,7 @@ function showResults(r, jobId) {
   // honest states, each with its own headline AND its own path to urgency:
   // confirmed \u2192 direct threat; unconfirmed \u2192 open contest, stakes still high.
   var cd = r.competitorDecision || {};
+  var marketComp = cd.realCompetitor || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : '');
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
@@ -3166,11 +3178,16 @@ function showResults(r, jobId) {
         + '</div>';
     }
   } else if (cd.categoryUnowned) {
-    competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI recommends no one in this category yet</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:30px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">The answer is unowned.</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">On queries like <em>"' + esc(simQuery) + '"</em>, AI names no one in this category. First mover takes it.</div>'
-      + '</div>';
+    competitorBanner = '<div class="selection-status">'
+      + (name ? '<div class="selection-status-label">Diagnostic for</div><div class="selection-status-value">' + esc(name) + '</div>' : '')
+      + '<div class="selection-status-grid">'
+      + '<div class="selection-status-cell"><div class="selection-status-label">AI recommendation leader</div>'
+      + '<div class="selection-status-value">No consistent leader</div>'
+      + '<div class="selection-status-copy">No company appeared across enough different buyer questions to qualify as the current recommendation leader.</div></div>'
+      + '<div class="selection-status-cell"><div class="selection-status-label">Head-to-head market competitor</div>'
+      + '<div class="selection-status-value">' + esc(marketComp || 'Not confidently identified') + '</div>'
+      + '<div class="selection-status-copy">' + (marketComp ? 'This is the closest like-for-like business model identified by the market analysis. It was not consistently recommended by AI in this run.' : 'The evidence did not support a reliable like-for-like competitor in this run.') + '</div></div>'
+      + '</div></div>';
   } else {
     competitorBanner = '';
   }
@@ -3249,9 +3266,15 @@ function showResults(r, jobId) {
   }
 
   function buildUrgencyBridge(topComp, bName, bCat) {
-    var comp = topComp ? topComp : 'a competitor';
+    var comp = topComp ? topComp : marketComp;
     var name = bName  ? bName  : 'your business';
     var cat  = bCat   ? bCat   : 'your category';
+    if (!topComp) {
+      return '<div class="urgency-bridge">'
+        + '<div class="urgency-sentence">No company owns the AI recommendation across different buyer questions yet.</div>'
+        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor, but it is not a verified recommendation leader in this diagnostic.' : 'The category remains open, with no reliably verified market leader.') + '</div>'
+        + '</div>';
+    }
     return '<div class="urgency-bridge">'
       + '<div class="urgency-sentence">Every day this stays unfixed, someone searching for '
       + esc(cat) + ' finds ' + esc(comp) + ' instead of ' + esc(name) + '.</div>'
@@ -3268,6 +3291,13 @@ function showResults(r, jobId) {
       list = r.competitors.filter(function(cp) { return cp && cp.name; });
     } else if (r.competitor && r.competitor.name) {
       list = [r.competitor];
+    }
+    if (marketComp) {
+      var marketIdx = list.findIndex(function(cp) {
+        return cp && String(cp.name || '').toLowerCase() === String(marketComp).toLowerCase();
+      });
+      if (marketIdx > 0) list.unshift(list.splice(marketIdx, 1)[0]);
+      if (marketIdx < 0) list.unshift({ name: marketComp, queryContext: 'head-to-head' });
     }
     if (list.length === 0) return '';
     // FIX N — removed dead isPaid branch; this function is only called in the free path
@@ -3376,6 +3406,13 @@ function showResults(r, jobId) {
   if (compList.length === 0 && r.displacement && r.displacement.competitorName) {
     compList = [{ name: r.displacement.competitorName, analysis: r.displacement.competitorWhy, queryContext: r.displacement.competitorQuery }];
   }
+  if (marketComp) {
+    var paidMarketIdx = compList.findIndex(function(cp) {
+      return cp && String(cp.name || '').toLowerCase() === String(marketComp).toLowerCase();
+    });
+    if (paidMarketIdx > 0) compList.unshift(compList.splice(paidMarketIdx, 1)[0]);
+    if (paidMarketIdx < 0) compList.unshift({ name: marketComp, queryContext: 'head-to-head' });
+  }
   var compName     = compList.length > 0 ? compList[0].name : '';
   var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
   var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
@@ -3401,6 +3438,7 @@ function showResults(r, jobId) {
     }
     // FIX M — dynamic label by queryContext
     var _extraLabel = cp.queryContext === 'ai-ground-truth' ? 'Also named by Claude'
+      : cp.queryContext === 'ai-query-alternative' ? 'Named by Claude for a buyer question'
       : cp.queryContext === 'online-arena' ? 'Also competing online'
       : 'Also in this category';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
