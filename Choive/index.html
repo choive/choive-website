@@ -3097,11 +3097,15 @@ function showResults(r, jobId) {
     ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
     : '';
 
-  // Only the recommendation leader verified in the recorded Claude transcripts
-  // may appear in the displacement banner. Market rivals stay in the analysis.
-  var topComp = (r.competitorDecision && r.competitorDecision.aiRecommends)
-    ? r.competitorDecision.aiRecommends
-    : '';
+  // Use the closest business-model match adjudicated from the combined
+  // measured-platform recommendations. Leader language remains separately
+  // gated by the transcript consistency evidence below.
+  var bestFitComp = r.bestFitCompetitor && r.bestFitCompetitor.name
+    ? r.bestFitCompetitor : null;
+  var topComp = bestFitComp
+    ? bestFitComp.name
+    : ((r.competitorDecision && r.competitorDecision.aiRecommends)
+      ? r.competitorDecision.aiRecommends : '');
   window.__choiveTopComp = topComp;
   
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
@@ -3159,7 +3163,10 @@ function showResults(r, jobId) {
         + '</div>'
       : '';
 
-    if (named === true) {
+    var normalizedTop = norm(topComp).replace(/\s+/g, '');
+    var normalizedLeader = norm(cd.aiRecommends || '').replace(/\s+/g, '');
+    var isConfirmedRecommendationLeader = named === true && normalizedLeader && normalizedLeader === normalizedTop;
+    if (isConfirmedRecommendationLeader) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">Claude is consistently recommending instead of you</div>'
@@ -3172,9 +3179,9 @@ function showResults(r, jobId) {
       // contest, not a false alarm. Urgency comes from the stakes being live
       // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your head-to-head competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Best-matched competitor across AI recommendations</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">' + esc(topComp) + ' is who buyers already compare you against. Ask AI a question like <em>"' + esc(simQuery) + '"</em> today and it answers \u2014 but ask again tomorrow and the specific name it gives often changes. No single company has locked in as the consistent answer yet \u2014 whoever proves their trust first is the one AI starts repeating.</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((bestFitComp && bestFitComp.reason) || (topComp + ' is the closest purchasing substitute among the candidates returned by the measured AI platforms.')) + '</div>'
         + secondCompRow
         + '</div>';
     }
