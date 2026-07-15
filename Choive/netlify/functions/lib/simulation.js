@@ -540,12 +540,13 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   ];
 }
 
-// GROUND_TRUTH_SAMPLES: how many independent, parallel search-grounded
-// attempts each ground-truth query gets. Raised from 2 \u2192 4 to build a real
-// frequency signal (who gets named, how often) instead of a single yes/no.
-// All samples fire concurrently (Promise.allSettled), so this costs API
-// spend, not wall-clock time \u2014 12 parallel calls take the same time as 3.
-var GROUND_TRUTH_SAMPLES = 4;
+// Two independent search-grounded attempts preserve a repeatability signal
+// without multiplying every diagnostic into sixteen Claude web-search calls.
+// The environment override is capped so production spend cannot accidentally
+// grow without an explicit configuration change.
+var configuredGroundTruthSamples = Number(process.env.CLAUDE_GROUND_TRUTH_SAMPLES || 2);
+if (!Number.isFinite(configuredGroundTruthSamples)) configuredGroundTruthSamples = 2;
+var GROUND_TRUTH_SAMPLES = Math.max(1, Math.min(4, Math.floor(configuredGroundTruthSamples)));
 
 async function runQuerySet(queries, name, useSearch) {
   var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
