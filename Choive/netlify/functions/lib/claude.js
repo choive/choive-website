@@ -7,6 +7,7 @@
 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const ANTHROPIC_FAST_MODEL = 'claude-haiku-4-5-20251001';
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
 const MAX_TOKENS      = 6500; // raised: richer ground-truth + decision context was clipping long responses mid-JSON
 
@@ -60,7 +61,7 @@ async function inferCategory(name, category, websiteText, searchText) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: ANTHROPIC_FAST_MODEL,
         max_tokens: 100,
         temperature: 0,
         messages: [{ role: 'user', content: prompt }]
@@ -1232,7 +1233,7 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 350, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: ANTHROPIC_FAST_MODEL, max_tokens: 350, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
       signal: controller.signal
     });
     clearTimeout(timer);
