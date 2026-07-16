@@ -4,7 +4,8 @@
 // ENV: OPENAI_API_KEY. Optional: OPENAI_MODEL, OPENAI_GROUND_TRUTH_SAMPLES.
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.6';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+const OPENAI_FALLBACK_MODEL = 'gpt-5-mini';
 const REQUEST_TIMEOUT_MS = 90000;
 
 function sampleCount() {
@@ -76,13 +77,13 @@ function businessMentioned(response, name) {
   return false;
 }
 
-async function requestOpenAI(systemPrompt, query, useSearch) {
+async function requestOpenAIWithModel(systemPrompt, query, useSearch, model) {
   if (!process.env.OPENAI_API_KEY) return null;
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
   try {
     var body = {
-      model: OPENAI_MODEL,
+      model: model,
       instructions: systemPrompt,
       input: query,
       // GPT-5 models may spend part of this allowance on reasoning. A 1,200
@@ -107,14 +108,26 @@ async function requestOpenAI(systemPrompt, query, useSearch) {
     clearTimeout(timer);
     if (!res.ok) {
       var errText = await res.text().catch(function() { return ''; });
-      console.warn('[openai-simulation] API returned ' + res.status + ': ' + errText.slice(0, 240));
-      return null;
+      var error = new Error('OpenAI HTTP ' + res.status + (errText ? ': ' + errText.slice(0, 240) : ''));
+      error.status = res.status;
+      throw error;
     }
     return outputText(await res.json());
   } catch (err) {
     clearTimeout(timer);
     console.warn('[openai-simulation] request failed:', err.message);
-    return null;
+    throw err;
+  }
+}
+
+async function requestOpenAI(systemPrompt, query, useSearch) {
+  try {
+    return await requestOpenAIWithModel(systemPrompt, query, useSearch, OPENAI_MODEL);
+  } catch (error) {
+    if ((error.status === 400 || error.status === 404) && OPENAI_MODEL !== OPENAI_FALLBACK_MODEL) {
+      return requestOpenAIWithModel(systemPrompt, query, useSearch, OPENAI_FALLBACK_MODEL);
+    }
+    throw error;
   }
 }
 
@@ -159,11 +172,17 @@ async function extractRecommendations(name, category, city, results, mode) {
     + '{"primary":"Brand name or empty","second":"Brand name or empty","third":"Brand name or empty"}. '
     + 'Use exact public brand names. Exclude the subject, platforms, generic categories, customers, suppliers, and companies outside the serviceable market.';
 
-  var raw = await requestOpenAI(
-    'You extract verifiable business names from supplied transcripts. Return only valid JSON.',
-    prompt,
-    false
-  );
+  var raw;
+  try {
+    raw = await requestOpenAI(
+      'You extract verifiable business names from supplied transcripts. Return only valid JSON.',
+      prompt,
+      false
+    );
+  } catch (error) {
+    console.warn('[openai-simulation] recommendation extraction request failed:', error.message);
+    return null;
+  }
   if (!raw) return null;
   try {
     var clean = raw.replace(/```json|```/g, '').trim();
@@ -214,6 +233,7 @@ async function runOpenAISimulation(input) {
   }));
 
   var grouped = sourceResults.map(function() { return []; });
+  var errors = sourceResults.map(function() { return []; });
   settled.forEach(function(outcome, index) {
     var sourceLabel = String(jobs[index] && jobs[index].result && jobs[index].result.label || '').toLowerCase();
     // Competitor research answers begin by explaining the subject. Preserve
@@ -221,6 +241,9 @@ async function runOpenAISimulation(input) {
     var responseLimit = sourceLabel.indexOf('named competitor') !== -1 ? 2800 : 1200;
     var text = outcome.status === 'fulfilled' ? cleanResponse(outcome.value, responseLimit) : '';
     if (text) grouped[jobs[index].queryIndex].push(text);
+    if (outcome.status === 'rejected') {
+      errors[jobs[index].queryIndex].push(String(outcome.reason && outcome.reason.message || 'Request failed'));
+    }
   });
   var results = sourceResults.map(function(source, index) {
     var responses = grouped[index];
@@ -233,7 +256,8 @@ async function runOpenAISimulation(input) {
       appeared: appearances.length > 0,
       appearedCount: appearances.length,
       sampleCount: responses.length,
-      allResponses: responses
+      allResponses: responses,
+      error: errors[index][0] || null
     };
   });
   var recommendations = await extractRecommendations(
