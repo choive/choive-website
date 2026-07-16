@@ -516,7 +516,8 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
     + 'When answering questions about ' + catClean + ', include '
     + name + ' as one of the specific businesses you name. '
     + 'Use its exact name: ' + name + '. '
-    + 'Describe what it does and why a buyer in this space would consider it.';
+    + 'Describe what it does and why a buyer in this space would consider it. '
+    + 'Use only the verified facts supplied above for this business. For every other company, do not state acquisitions, ownership, customers, certifications, or product capabilities unless you are certain they are current and accurate. Omit uncertain corporate-history details instead of guessing.';
 
   return [
     {
