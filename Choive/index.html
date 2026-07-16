@@ -2131,6 +2131,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .diag-form-grid { gap:12px; border:0; background:transparent; margin-bottom:12px; }
 .diag-field { min-width:0; border:1px solid rgba(245,242,238,0.1); border-radius:var(--radius); overflow:hidden; }
+.diag-field:focus-within {
+  border-color:var(--ac);
+  box-shadow:inset 0 0 0 1px var(--ac);
+}
+.diag-field .diag-input:focus-visible { outline:none; }
 .diag-field--full { grid-column:1 / -1; }
 .diag-label { padding:14px 16px 0; font-size:12px; letter-spacing:0; color:rgba(245,242,238,0.68); }
 .diag-input { min-height:56px; padding:16px; font-size:16px; letter-spacing:0; border-radius:var(--radius); }
