@@ -3273,20 +3273,24 @@ function showResults(r, jobId) {
       failed: 'Measurement failed',
       no_recommendation: 'No named recommendation established'
     };
+    var subjectLaneKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     var cards = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var legacyNames = Array.isArray(legacy[base.key]) ? legacy[base.key].filter(Boolean) : [];
       var recommendation = lane.recommendation || legacyNames[0] || '';
       var state = recommendation ? 'recommended' : (lane.status || 'no_recommendation');
+      var recommendationKey = String(recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      var recommendsSubject = Boolean(recommendationKey && recommendationKey === subjectLaneKey);
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(recommendation || statusText[state] || 'No named recommendation established') + '</div>'
+        + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
         + (recommendation && lane.subjectAppeared === false ? '<div style="font-size:10px;color:rgba(245,242,238,0.42);margin-top:7px;">Subject was not named in this platform sample</div>' : '')
         + '</div>';
     }).join('');
     return '<div style="margin:4px 0 20px;">'
-      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends instead of you</div>'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends for this buyer question</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
       + '</div>';
   }
@@ -4599,3 +4603,4 @@ initResultRoute();
 </script>
 </body>
 </html>
+
