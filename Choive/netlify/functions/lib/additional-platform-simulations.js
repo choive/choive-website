@@ -50,7 +50,6 @@ function extractTopRecommendation(response, subjectName) {
   if (!matches) return null;
   var candidate = matches[1].replace(/\[[^\]]*\]/g, '').replace(/[.;]+$/, '').trim().slice(0, 100);
   if (!candidate || /^(none|no named recommendation|not established)$/i.test(candidate)) return null;
-  if (normalize(candidate) === normalize(subjectName)) return null;
   return candidate;
 }
 
@@ -156,8 +155,10 @@ async function runProvider(provider, input, requestFn, configured) {
   var direct = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('direct recommendation') !== -1; })[0];
   var namedCompetitor = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') !== -1; })[0];
   var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') === -1; });
-  var fallback = buyerResults.slice().reverse().filter(function(result) { return result.topRecommendation; })[0];
-  var chosen = direct && direct.topRecommendation ? direct : fallback;
+  // Only the direct buyer-decision question may populate a provider's top
+  // recommendation lane. Discovery and comparison answers are context, not a
+  // substitute when the direct answer recommends the subject or names nobody.
+  var chosen = direct && direct.topRecommendation ? direct : null;
   var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
   return {
     available: completed > 0,
