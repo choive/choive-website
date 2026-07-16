@@ -621,6 +621,7 @@ exports.handler = async function (event) {
               directCompetitorCheck = await runDirectCompetitorQuestion({
                 language: simBefore.before.language,
                 name: name,
+                website: website,
                 category: category,
                 city: city,
                 description: description,
