@@ -1,0 +1,171 @@
+// Low-cost, independently attributed Gemini and Perplexity measurements.
+// Each provider answers the same three unbranded buyer questions once.
+
+'use strict';
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar';
+const REQUEST_TIMEOUT_MS = 60000;
+
+function normalize(value) {
+  var text = String(value || '').toLowerCase();
+  try { text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  return text.replace(/\u00df/g, 'ss').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function stem(value) {
+  return normalize(value).split(' ').filter(Boolean).map(function(word) {
+    return word.length > 3 && word[word.length - 1] === 's' ? word.slice(0, -1) : word;
+  }).join(' ');
+}
+
+function businessMentioned(response, name) {
+  var haystack = ' ' + stem(response) + ' ';
+  var needle = stem(name).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (needle && haystack.indexOf(' ' + needle + ' ') !== -1) return true;
+  var tokens = normalize(name).split(' ').filter(Boolean);
+  if (tokens.length >= 3 && tokens.some(function(token) { return /\d/.test(token); })) {
+    var acronym = tokens.map(function(token) { return /^\d+$/.test(token) ? token : token.charAt(0); }).join('');
+    return normalize(response).replace(/\s+/g, '').indexOf(acronym) !== -1;
+  }
+  return false;
+}
+
+function cleanResponse(value) {
+  var cleaned = String(value || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (cleaned.length <= 1600) return cleaned;
+  var cut = cleaned.lastIndexOf('.', 1600);
+  return cut > 500 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 1600);
+}
+
+function extractTopRecommendation(response, subjectName) {
+  var text = String(response || '');
+  var matches = text.match(/(?:^|\n)TOP_RECOMMENDATION\s*:\s*([^\n]+)/i);
+  if (!matches) return null;
+  var candidate = matches[1].replace(/\[[^\]]*\]/g, '').replace(/[.;]+$/, '').trim().slice(0, 100);
+  if (!candidate || /^(none|no named recommendation|not established)$/i.test(candidate)) return null;
+  if (normalize(candidate) === normalize(subjectName)) return null;
+  return candidate;
+}
+
+function providerPrompt(source) {
+  return String(source.query || '') + '\n\n'
+    + 'Search current public sources before answering. Answer the buyer naturally and name real companies only. '
+    + 'At the very end, add exactly one separate line in this format: TOP_RECOMMENDATION: Company Name. '
+    + 'Use the single company you most clearly recommend for this exact question. If you do not recommend a specific company, write TOP_RECOMMENDATION: NONE.';
+}
+
+async function requestGemini(source) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
+  try {
+    var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(GEMINI_MODEL) + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: providerPrompt(source) }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0, maxOutputTokens: 900 }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+    var data = await response.json();
+    return (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
+      .map(function(part) { return part && part.text || ''; }).join('\n').trim();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function requestPerplexity(source) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
+  try {
+    var response = await fetch('https://api.perplexity.ai/v1/sonar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.PERPLEXITY_API_KEY },
+      body: JSON.stringify({
+        model: PERPLEXITY_MODEL,
+        messages: [
+          { role: 'system', content: 'You are a buyer research assistant. Use current web evidence and name real companies only.' },
+          { role: 'user', content: providerPrompt(source) }
+        ],
+        max_tokens: 900,
+        temperature: 0
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error('Perplexity HTTP ' + response.status);
+    var data = await response.json();
+    return data.choices && data.choices[0] && data.choices[0].message
+      ? String(data.choices[0].message.content || '').trim() : '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runProvider(provider, input, requestFn, configured) {
+  var sources = Array.isArray(input && input.sourceResults)
+    ? input.sourceResults.filter(function(source) {
+        return String(source && source.label || '').toLowerCase().indexOf('named competitor') === -1;
+      }).slice(0, 3)
+    : [];
+  if (!configured) return { available: false, configured: false, provider: provider, status: 'not_configured', results: [] };
+  if (!sources.length) return { available: false, configured: true, provider: provider, status: 'no_queries', results: [] };
+
+  var settled = await Promise.allSettled(sources.map(requestFn));
+  var results = sources.map(function(source, index) {
+    var raw = settled[index].status === 'fulfilled' ? settled[index].value : '';
+    var response = cleanResponse(raw);
+    return {
+      label: source.label,
+      intent: source.intent,
+      query: source.query,
+      response: response,
+      appeared: businessMentioned(response, input.name),
+      appearedCount: businessMentioned(response, input.name) ? 1 : 0,
+      sampleCount: response ? 1 : 0,
+      allResponses: response ? [response] : [],
+      topRecommendation: extractTopRecommendation(raw, input.name),
+      error: settled[index].status === 'rejected' ? String(settled[index].reason && settled[index].reason.message || 'Request failed') : null
+    };
+  });
+  var direct = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('direct recommendation') !== -1; })[0];
+  var fallback = results.slice().reverse().filter(function(result) { return result.topRecommendation; })[0];
+  var chosen = direct && direct.topRecommendation ? direct : fallback;
+  var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
+  return {
+    available: completed > 0,
+    configured: true,
+    complete: completed === sources.length,
+    provider: provider,
+    model: provider === 'gemini' ? GEMINI_MODEL : PERPLEXITY_MODEL,
+    status: completed === sources.length ? 'complete' : (completed > 0 ? 'partial' : 'failed'),
+    completedSamples: completed,
+    expectedSamples: sources.length,
+    appearedCount: results.filter(function(result) { return result.appeared; }).length,
+    totalQueries: results.length,
+    topRecommendation: chosen ? chosen.topRecommendation : null,
+    recommendationQuery: chosen ? chosen.query : null,
+    recommendationResponse: chosen ? chosen.response : null,
+    results: results
+  };
+}
+
+function runGeminiSimulation(input) {
+  return runProvider('gemini', input, requestGemini, Boolean(process.env.GEMINI_API_KEY));
+}
+
+function runPerplexitySimulation(input) {
+  return runProvider('perplexity', input, requestPerplexity, Boolean(process.env.PERPLEXITY_API_KEY));
+}
+
+module.exports = { runGeminiSimulation: runGeminiSimulation, runPerplexitySimulation: runPerplexitySimulation };
