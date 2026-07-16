@@ -3226,15 +3226,19 @@ function showResults(r, jobId) {
     ? '<div style="font-size:11px;font-weight:500;color:var(--tm);margin-bottom:8px;">Identified as: ' + esc(r.inferredCategory) + '</div>'
     : '';
 
-  // Use the closest business-model match adjudicated from the combined
-  // measured-platform recommendations. Leader language remains separately
-  // gated by the transcript consistency evidence below.
+  // The large competitor headline is exclusively the researched head-to-head
+  // rival. Platform recommendations belong only in their attributed lanes and
+  // must never replace this value when cross-platform adjudication is absent.
+  var cd = r.competitorDecision || {};
+  var savedHeadToHead = r.headToHeadDecision && r.headToHeadDecision.name
+    ? r.headToHeadDecision : null;
   var bestFitComp = r.bestFitCompetitor && r.bestFitCompetitor.name
     ? r.bestFitCompetitor : null;
-  var topComp = bestFitComp
-    ? bestFitComp.name
-    : ((r.competitorDecision && r.competitorDecision.aiRecommends)
-      ? r.competitorDecision.aiRecommends : '');
+  var firstResearchedCompetitor = Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name
+    ? r.competitors[0].name : '';
+  var topComp = savedHeadToHead
+    ? savedHeadToHead.name
+    : (bestFitComp ? bestFitComp.name : (cd.realCompetitor || firstResearchedCompetitor));
   window.__choiveTopComp = topComp;
   
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
@@ -3253,7 +3257,6 @@ function showResults(r, jobId) {
   // (headline screams urgency, body sentence immediately retracts it). Two
   // honest states, each with its own headline AND its own path to urgency:
   // confirmed \u2192 direct threat; unconfirmed \u2192 open contest, stakes still high.
-  var cd = r.competitorDecision || {};
   var marketComp = cd.realCompetitor || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : '');
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   function buildTopPlatformLanes() {
@@ -3331,7 +3334,7 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((bestFitComp && bestFitComp.reason) || (topComp + ' is the closest verified purchasing substitute identified in this diagnostic.')) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((savedHeadToHead && savedHeadToHead.reason) || (bestFitComp && bestFitComp.reason) || (topComp + ' is the closest verified purchasing substitute identified in this diagnostic.')) + '</div>'
         + buildTopPlatformLanes()
         + '</div>';
     } else {
@@ -3341,7 +3344,7 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((bestFitComp && bestFitComp.reason) || (topComp + ' is the closest purchasing substitute among the candidates returned by the measured AI platforms.')) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((savedHeadToHead && savedHeadToHead.reason) || (bestFitComp && bestFitComp.reason) || (topComp + ' is the closest purchasing substitute identified in this diagnostic.')) + '</div>'
         + buildTopPlatformLanes()
         + '</div>';
     }
