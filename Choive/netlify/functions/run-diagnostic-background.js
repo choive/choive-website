@@ -1412,15 +1412,24 @@ exports.handler = async function (event) {
       var firstValidRecommendation = function(values) {
         return dedupeRecommendations(values || [])[0] || null;
       };
+      var firstLaneRecommendation = function(values) {
+        var seen = {};
+        return (values || []).filter(function(value) {
+          var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!key || seen[key] || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
+          seen[key] = true;
+          return true;
+        })[0] || null;
+      };
       var laneStatus = function(run, recommendation) {
         if (!run || run.configured === false || run.status === 'not_configured') return 'not_configured';
         if (!run.available || run.status === 'failed') return 'failed';
         return recommendation ? 'recommended' : 'no_recommendation';
       };
       var claudeTop = firstValidRecommendation(claudeRecommendations);
-      var openaiTop = firstValidRecommendation(openaiRecommendations);
-      var geminiTop = firstValidRecommendation([measuredGemini && measuredGemini.topRecommendation]);
-      var perplexityTop = firstValidRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
+      var openaiTop = firstLaneRecommendation([measuredOpenAI && measuredOpenAI.topRecommendation].concat(openaiRecommendations));
+      var geminiTop = firstLaneRecommendation([measuredGemini && measuredGemini.topRecommendation]);
+      var perplexityTop = firstLaneRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
       var platformLanes = [
         { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: null },
         { key: 'openai', label: 'OpenAI', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
@@ -1531,6 +1540,11 @@ exports.handler = async function (event) {
           adjudicatedCard.queryContext = 'head-to-head';
           adjudicatedCard.evidence = adjudicated.best.reason;
           adjudicatedCard.selectionSources = adjudicated.best.sources || [];
+          finalResult['competitors'].forEach(function(comp) {
+            if (comp && comp !== adjudicatedCard && String(comp.queryContext || '').toLowerCase() === 'head-to-head') {
+              comp.queryContext = 'market-runner-up';
+            }
+          });
           finalResult['competitors'].unshift(adjudicatedCard);
         }
       }
