@@ -991,9 +991,10 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   if (useWebSearch === undefined) useWebSearch = true;
   var n = normalizeSimInput(input);
   var market = n.marketStr || n.city || '';
-  var englishQuery = n.name + ' is a ' + n.catClean
+  var officialWebsite = String(input && input.website || '').trim();
+  var englishQuery = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '') + ' is a ' + n.catClean
     + (market ? ' serving ' + market : '')
-    + '. Research what ' + n.name + ' actually sells and who buys it before answering. What are its three closest direct competitors? Which one is the best replacement for the entire business scope, and would your recommendation change for a narrower use case?';
+    + '. Begin by opening the supplied official website and confirm the subject identity before searching for alternatives. Research what ' + n.name + ' actually sells and who buys it before answering. What are its three closest direct competitors? Which one is the best replacement for the entire business scope, and would your recommendation change for a narrower use case?';
   var localized = await applyMarketLanguage([{
     label: 'Named competitor shortlist',
     intent: 'A buyer explicitly comparing the subject with alternatives',
