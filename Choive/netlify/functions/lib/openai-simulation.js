@@ -280,6 +280,10 @@ async function runOpenAISimulation(input) {
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
     complete: results.every(function(result) { return result.sampleCount === samples; }),
+    configured: true,
+    status: results.every(function(result) { return result.sampleCount === samples; })
+      ? 'complete'
+      : (results.some(function(result) { return result.sampleCount > 0; }) ? 'partial' : 'failed'),
     completedSamples: results.reduce(function(total, result) { return total + result.sampleCount; }, 0),
     expectedSamples: results.length * samples,
     provider: 'openai',
