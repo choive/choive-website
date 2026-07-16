@@ -714,11 +714,25 @@ exports.handler = async function (event) {
                 var allCandidates = compCandidates.concat(kcNames);
                 // Deduplicate by normalized key; exclude platforms, generics, and the subject itself
                 var normSelf = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                var subjectCandidateKeys = {};
+                subjectCandidateKeys[normSelf] = true;
+                var subjectDomain = normalizeUrl(website || evidence['inferredOfficialSite'] || '');
+                var subjectDomainCore = String(subjectDomain || '').split('.')[0].replace(/[^a-z0-9]/g, '');
+                var subjectDomainFull = String(subjectDomain || '').replace(/[^a-z0-9]/g, '');
+                if (subjectDomainCore) subjectCandidateKeys[subjectDomainCore] = true;
+                if (subjectDomainFull) subjectCandidateKeys[subjectDomainFull] = true;
+                var subjectWords = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+                if (subjectWords.length >= 3 && subjectWords.some(function(token) { return /\d/.test(token); })) {
+                  subjectCandidateKeys[subjectWords.map(function(token) {
+                    return /^\d+$/.test(token) ? token : token.charAt(0);
+                  }).join('')] = true;
+                }
                 var seenKeys = {};
                 var uniqueCandidates = allCandidates.filter(function(n) {
                   if (!n) return false;
                   var key = n.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  if (key === normSelf) return false;
+                  var keyWithoutTld = String(n).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].replace(/\.[a-z]{2,}$/i, '').replace(/[^a-z0-9]/g, '');
+                  if (subjectCandidateKeys[key] || subjectCandidateKeys[keyWithoutTld]) return false;
                   if (isPlatformName(n) || isGenericEntity(n) || isGenericPhrase(n)) return false;
                   if (seenKeys[key]) return false;
                   seenKeys[key] = true;
@@ -792,6 +806,11 @@ exports.handler = async function (event) {
                         .filter(function(b) { return b.type === 'text'; })
                         .map(function(b) { return b.text || ''; }).join('').trim();
                       var extractClean = extractText.replace(/```json|```/g, '').trim();
+                      var extractStart = extractClean.indexOf('{');
+                      var extractEnd = extractClean.lastIndexOf('}');
+                      if (extractStart >= 0 && extractEnd > extractStart) {
+                        extractClean = extractClean.slice(extractStart, extractEnd + 1);
+                      }
                       var extractParsed = JSON.parse(extractClean);
                       if (extractParsed && typeof extractParsed === 'object') {
                         var f = String(extractParsed.first  || '').trim();
