@@ -3,7 +3,8 @@
 
 'use strict';
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const GEMINI_FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar';
 const REQUEST_TIMEOUT_MS = 60000;
 
@@ -60,11 +61,11 @@ function providerPrompt(source) {
     + 'Use the single company you most clearly recommend for this exact question. If you do not recommend a specific company, write TOP_RECOMMENDATION: NONE.';
 }
 
-async function requestGemini(source) {
+async function requestGeminiWithModel(source, model) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
   try {
-    var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(GEMINI_MODEL) + ':generateContent', {
+    var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
       body: JSON.stringify({
@@ -75,12 +76,28 @@ async function requestGemini(source) {
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+    if (!response.ok) {
+      var errorText = await response.text().catch(function() { return ''; });
+      var error = new Error('Gemini HTTP ' + response.status + (errorText ? ': ' + errorText.slice(0, 240) : ''));
+      error.status = response.status;
+      throw error;
+    }
     var data = await response.json();
     return (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
       .map(function(part) { return part && part.text || ''; }).join('\n').trim();
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function requestGemini(source) {
+  try {
+    return await requestGeminiWithModel(source, GEMINI_MODEL);
+  } catch (error) {
+    if ((error.status === 400 || error.status === 404) && GEMINI_MODEL !== GEMINI_FALLBACK_MODEL) {
+      return requestGeminiWithModel(source, GEMINI_FALLBACK_MODEL);
+    }
+    throw error;
   }
 }
 
