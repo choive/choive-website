@@ -2075,6 +2075,127 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
   .process-preview-card { padding: 20px; }
 }
 
+/* ── CHOIVE PRODUCT DESIGN SYSTEM ──────────────────────────────── */
+:root {
+  --content: 1080px;
+  --reading: 720px;
+  --control-h: 52px;
+  --radius: 4px;
+}
+
+body { font-size:16px; line-height:1.6; }
+a, button, input, select { -webkit-tap-highlight-color:transparent; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline:2px solid var(--ac);
+  outline-offset:3px;
+}
+
+.nav { height:64px; padding:0 max(24px, calc((100vw - var(--content)) / 2)); }
+.nav-logo-img { height:30px; }
+.nav-links { gap:28px; }
+.nav-link { font-size:14px; letter-spacing:0; }
+.nav-cta {
+  min-height:42px; display:inline-flex; align-items:center; justify-content:center;
+  padding:0 20px; font-size:14px; letter-spacing:0; border-radius:var(--radius);
+}
+
+.hero { padding-top:128px; }
+.hero-inner { max-width:960px; padding:0 40px; }
+.hero-kicker { margin-bottom:24px; font-size:12px; letter-spacing:0; }
+.hero-h1 { max-width:900px; font-size:clamp(42px, 5vw, 64px); line-height:1.12; letter-spacing:0; margin-bottom:24px; }
+.hero-sub { max-width:640px; font-size:18px; line-height:1.7; margin-bottom:28px; }
+.hero-cta, .bottom-cta-btn {
+  min-height:var(--control-h); padding:0 30px; border-radius:var(--radius);
+  font-size:15px; letter-spacing:0; justify-content:center;
+}
+.hero-proof-strip { margin-bottom:28px; font-size:13px; letter-spacing:0; }
+.hero-selection { margin-bottom:32px; }
+.hs-label, .hero-card-eyebrow { font-size:11px; letter-spacing:0; }
+.hero-card-wrap { max-width:800px; }
+.hero-card { padding:32px; border-radius:var(--radius); }
+.hero-card-name { font-size:20px; }
+.hero-card-meta, .hero-card-sub, .hero-card-label { font-size:14px; }
+.hero-card-pillar-name, .hero-card-ba-label { font-size:11px; letter-spacing:0; }
+.hero-card-ba-desc { font-size:13px; line-height:1.6; }
+
+.diag-section, .process-section, .number-section, .diff-section, .bottom-cta-section {
+  padding-top:96px; padding-bottom:96px;
+}
+.diag-inner, .process-inner, .number-inner, .diff-inner { max-width:var(--content); }
+.diag-header { max-width:760px; margin-bottom:40px; }
+.diag-h2 { font-size:clamp(34px, 4vw, 48px); line-height:1.16; letter-spacing:0; }
+.diag-sub { max-width:700px; font-size:17px; line-height:1.7; margin-bottom:0; }
+.diag-form-panel {
+  padding:12px; border:1px solid rgba(245,242,238,0.12); border-radius:var(--radius);
+  background:var(--void-2); box-shadow:0 18px 50px rgba(0,0,0,0.22);
+}
+.diag-form-grid { gap:12px; border:0; background:transparent; margin-bottom:12px; }
+.diag-field { min-width:0; border:1px solid rgba(245,242,238,0.1); border-radius:var(--radius); overflow:hidden; }
+.diag-field--full { grid-column:1 / -1; }
+.diag-label { padding:14px 16px 0; font-size:12px; letter-spacing:0; color:rgba(245,242,238,0.68); }
+.diag-input { min-height:56px; padding:16px; font-size:16px; letter-spacing:0; border-radius:var(--radius); }
+.diag-field .diag-input { min-height:44px; padding:7px 16px 14px; }
+.diag-input::placeholder { font-size:14px; color:rgba(245,242,238,0.45); }
+select.diag-input { grid-column:auto; background-position:right 16px center; }
+.diag-opt-divider { margin:4px 0 12px; padding:8px 2px; background:transparent; border:0; font-size:12px; letter-spacing:0; }
+.diag-btn {
+  min-height:56px; padding:0 24px; border-radius:var(--radius); margin:0;
+  font-size:16px; letter-spacing:0;
+}
+.diag-note { padding:14px 4px 2px; font-size:13px; letter-spacing:0; text-align:center; }
+
+#dR { padding:80px 32px 104px; }
+#dR > * { max-width:880px; }
+.mono-section { padding-left:4px !important; padding-right:4px !important; }
+.mono-eyebrow, .pay-eyebrow, .paid-section-header, .paid-action-priority,
+.selection-status-label, .sim-query-label, .deliv-tab { letter-spacing:0; }
+.pay-section { padding:52px 0; }
+.pay-eyebrow { font-size:13px; margin-bottom:24px; }
+.paid-narrative { max-width:760px; font-size:16px; line-height:1.8; }
+.paid-pillar { padding:24px; }
+.paid-pillar-name { font-size:13px; letter-spacing:0; }
+.paid-pillar-analysis, .paid-comp-analysis, .pay-cta-body { font-size:15px; line-height:1.75; }
+.paid-pillar-evidence, .paid-action-body, .sim-response { font-size:14px; line-height:1.7; }
+.paid-action-title { font-size:17px; }
+.selection-status-value { font-size:22px; }
+.selection-status-copy { font-size:14px; }
+.platform-name, .platform-verdict, .platform-detail { letter-spacing:0; }
+
+.nav-cta, .hero-cta, .diag-btn, .bottom-cta-btn, .paywall-btn, .cta-primary,
+.pay-btn-primary, .lead-submit-btn, .whn-cta-btn {
+  min-height:var(--control-h); border-radius:var(--radius); font-size:14px; letter-spacing:0;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.cta-secondary, .pay-btn-secondary, .share-btn, .deliv-copy-btn {
+  min-height:44px; border-radius:var(--radius); font-size:13px; letter-spacing:0;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.lead-capture-form { align-items:stretch; }
+.lead-email-input { min-height:var(--control-h); border-radius:var(--radius); font-size:16px; }
+
+@media (max-width:768px) {
+  .nav { padding:0 20px; }
+  .nav-cta { min-height:40px; padding:0 14px; font-size:13px; }
+  .hero { padding-top:104px; }
+  .hero-inner { padding:0 20px; }
+  .hero-h1 { font-size:clamp(38px, 11vw, 48px); }
+  .hero-sub { font-size:16px; }
+  .hero-proof-strip { flex-wrap:wrap; justify-content:center; row-gap:6px; }
+  .hero-card { padding:22px; }
+  .hero-card-score { font-size:60px; }
+  .hero-card-label { margin-left:0; }
+  .diag-section, .process-section, .number-section, .diff-section, .bottom-cta-section { padding-top:72px; padding-bottom:72px; }
+  .diag-form-panel { padding:8px; }
+  .diag-form-grid { grid-template-columns:1fr; gap:8px; margin-bottom:8px; }
+  .diag-field--full { grid-column:auto; }
+  #dR { padding:56px 16px 80px; }
+  #dR > * { max-width:100%; }
+  .pay-section { padding:40px 0; }
+  .selection-status-grid, .platform-row { grid-template-columns:1fr; }
+  .lead-capture-form, .cta-buttons { flex-direction:column; }
+  .lead-submit-btn, .lead-email-input, .cta-primary, .cta-secondary, .pay-btn-primary, .pay-btn-secondary { width:100%; }
+}
+
 </style>
 </head>
 <body>
@@ -2112,7 +2233,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
 
     <!-- Sub — the consequence -->
     <p class="hero-sub">
-      When someone asks ChatGPT, Perplexity, or Google AI for the best [your business type] near them — one business gets named. Most business owners have no idea if it's theirs.
+      When someone asks Claude, OpenAI, Perplexity, or Gemini which business to choose, specific companies get named. Most business owners have no idea whether theirs is one of them.
     </p>
 
     <!-- CTA — immediate, no scroll required -->
@@ -2194,7 +2315,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
           <div class="hero-card-ba hero-card-ba--after">
             <div class="hero-card-ba-label">What fixes it</div>
             <div class="hero-card-ba-score">3 verified sources</div>
-            <div class="hero-card-ba-desc">Two Google reviews and one Yelp listing — that's all it takes to get recommended.</div>
+            <div class="hero-card-ba-desc">Build current, independent sources that let AI verify the restaurant and understand why buyers choose it.</div>
           </div>
         </div>
       </div>
@@ -2265,7 +2386,7 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
   <div class="diag-inner">
     <div class="diag-header">
       <h2 class="diag-h2">The verdict on your business.<br><em>In 45 seconds.</em></h2>
-      <p class="diag-sub">Enter your business details below. We check across ChatGPT, Perplexity, and Google AI to see whether your business gets recommended — and exactly why it might not be. Free. No signup. 45 seconds.</p>
+      <p class="diag-sub">Enter your business details below. We measure Claude, OpenAI, Perplexity, and Gemini to see whether your business gets recommended — and exactly why it might not be. Free. No signup. 45 seconds.</p>
     </div>
     <div id="dI" class="diag-form-panel">
       <div class="diag-form-grid">
@@ -2296,27 +2417,30 @@ select.diag-input option { background:var(--void); color:var(--ghost); }
           <label class="diag-label" for="bComp">A competitor you know</label>
           <input id="bComp" type="text" class="diag-input" placeholder="e.g. their name or website" autocomplete="off"/>
         </div>
-        <select id="bLang" class="diag-input" aria-label="Language your customers search in">
-          <option value="" selected>Customer language — Auto (recommended)</option>
-          <option value="en">English</option>
-          <option value="de">German — Deutsch</option>
-          <option value="es">Spanish — Español</option>
-          <option value="fr">French — Français</option>
-          <option value="it">Italian — Italiano</option>
-          <option value="nl">Dutch — Nederlands</option>
-          <option value="pt">Portuguese — Português</option>
-          <option value="pl">Polish — Polski</option>
-          <option value="tr">Turkish — Türkçe</option>
-          <option value="sv">Swedish — Svenska</option>
-          <option value="da">Danish — Dansk</option>
-          <option value="ja">Japanese — 日本語</option>
-          <option value="ko">Korean — 한국어</option>
-          <option value="zh">Chinese — 中文</option>
-          <option value="ar">Arabic — العربية</option>
-          <option value="ru">Russian — Русский</option>
-          <option value="hi">Hindi — हिन्दी</option>
-          <option value="id">Indonesian — Bahasa Indonesia</option>
-        </select>
+        <div class="diag-field diag-field--full">
+          <label class="diag-label" for="bLang">Customer search language</label>
+          <select id="bLang" class="diag-input" aria-label="Language your customers search in">
+            <option value="" selected>Auto-detect (recommended)</option>
+            <option value="en">English</option>
+            <option value="de">German — Deutsch</option>
+            <option value="es">Spanish — Español</option>
+            <option value="fr">French — Français</option>
+            <option value="it">Italian — Italiano</option>
+            <option value="nl">Dutch — Nederlands</option>
+            <option value="pt">Portuguese — Português</option>
+            <option value="pl">Polish — Polski</option>
+            <option value="tr">Turkish — Türkçe</option>
+            <option value="sv">Swedish — Svenska</option>
+            <option value="da">Danish — Dansk</option>
+            <option value="ja">Japanese — 日本語</option>
+            <option value="ko">Korean — 한국어</option>
+            <option value="zh">Chinese — 中文</option>
+            <option value="ar">Arabic — العربية</option>
+            <option value="ru">Russian — Русский</option>
+            <option value="hi">Hindi — हिन्दी</option>
+            <option value="id">Indonesian — Bahasa Indonesia</option>
+          </select>
+        </div>
       </div>
       <button class="diag-btn" id="diagBtn" onclick="runDiagnostic()">
         Find out what AI says about you →
@@ -3127,6 +3251,37 @@ function showResults(r, jobId) {
   var cd = r.competitorDecision || {};
   var marketComp = cd.realCompetitor || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : '');
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
+  function buildTopPlatformLanes() {
+    var laneOrder = [
+      { key: 'claude', platform: 'Claude' },
+      { key: 'openai', platform: 'OpenAI' },
+      { key: 'perplexity', platform: 'Perplexity' },
+      { key: 'gemini', platform: 'Gemini' }
+    ];
+    var supplied = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+    var legacy = r.multiPlatformRecommendations || {};
+    var statusText = {
+      not_configured: 'API not configured',
+      failed: 'Measurement failed',
+      no_recommendation: 'No named recommendation established'
+    };
+    var cards = laneOrder.map(function(base) {
+      var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
+      var legacyNames = Array.isArray(legacy[base.key]) ? legacy[base.key].filter(Boolean) : [];
+      var recommendation = lane.recommendation || legacyNames[0] || '';
+      var state = recommendation ? 'recommended' : (lane.status || 'no_recommendation');
+      return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
+        + esc(recommendation || statusText[state] || 'No named recommendation established') + '</div>'
+        + (recommendation && lane.subjectAppeared === false ? '<div style="font-size:10px;color:rgba(245,242,238,0.42);margin-top:7px;">Subject was not named in this platform sample</div>' : '')
+        + '</div>';
+    }).join('');
+    return '<div style="margin:4px 0 20px;">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends instead of you</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
+      + '</div>';
+  }
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
         ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
@@ -3169,40 +3324,44 @@ function showResults(r, jobId) {
     if (isConfirmedRecommendationLeader) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:#E05252;margin-bottom:6px;">Claude is consistently recommending instead of you</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:#E05252;letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);">Named across ' + Number(cd.distinctQueryCount || 0) + ' of ' + Number(cd.totalQueries || 0) + ' different buyer questions (' + Number(cd.mentionCount || 0) + ' recorded samples), including: <em>"' + esc(simQuery) + '"</em></div>'
-        + secondCompRow
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((bestFitComp && bestFitComp.reason) || (topComp + ' is the closest verified purchasing substitute identified in this diagnostic.')) + '</div>'
+        + buildTopPlatformLanes()
         + '</div>';
     } else {
       // UNCONFIRMED this sample: different headline entirely \u2014 an open
       // contest, not a false alarm. Urgency comes from the stakes being live
       // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Best-matched competitor across AI recommendations</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
         + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((bestFitComp && bestFitComp.reason) || (topComp + ' is the closest purchasing substitute among the candidates returned by the measured AI platforms.')) + '</div>'
-        + secondCompRow
+        + buildTopPlatformLanes()
         + '</div>';
     }
   } else if (cd.categoryUnowned) {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">No consistent AI recommendation leader</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? esc(marketComp) + ' is the closest head-to-head market competitor identified in this run, but no company appeared across enough different buyer questions to qualify as the consistent AI recommendation leader.'
         : 'No company appeared consistently enough to qualify as the recommendation leader, and the evidence did not support a reliable head-to-head market competitor in this run.')
-      + '</div></div>';
+      + '</div>'
+      + buildTopPlatformLanes()
+      + '</div>';
   } else {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Competitive position</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? 'This is the closest verified market competitor found in the diagnostic. It was not established as a consistent AI recommendation leader.'
         : 'This diagnostic did not establish a competitor strongly enough to present one as the current recommendation leader.')
-      + '</div></div>';
+      + '</div>'
+      + buildTopPlatformLanes()
+      + '</div>';
   }
 
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
@@ -3333,28 +3492,7 @@ function showResults(r, jobId) {
   }
 
   function buildPlatformRecommendationBlock() {
-    var multi = r.multiPlatformRecommendations;
-    if (!multi || typeof multi !== 'object') return '';
-    var claudeNames = Array.isArray(multi.claude) ? multi.claude.filter(Boolean) : [];
-    var openaiNames = Array.isArray(multi.openai) ? multi.openai.filter(Boolean) : [];
-    if (!claudeNames.length && !openaiNames.length) return '';
-    var provider = function(label, names, complete) {
-      return '<div style="background:var(--paper-2);padding:20px 24px;min-width:0;">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">' + label + '</div>'
-        + (names.length
-          ? '<div style="font-size:15px;font-weight:700;color:var(--ink);line-height:1.65;overflow-wrap:anywhere;">' + names.map(esc).join(' · ') + '</div>'
-          : '<div style="font-size:13px;color:var(--muted);">No named alternative established</div>')
-        + (complete === false ? '<div style="font-size:11px;color:var(--amber);margin-top:8px;">Partial measurement</div>' : '')
-        + '</div>';
-    };
-    return '<div style="margin:2px 0;background:var(--rule);">'
-      + '<div style="background:var(--paper);padding:16px 24px 12px;">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink);">Recommendations by measured platform</div>'
-      + '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:5px;">Different models can produce different valid buyer shortlists. These names are kept separate rather than forced into one answer.</div></div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;">'
-      + provider('Claude', claudeNames, true)
-      + provider('OpenAI API', openaiNames, multi.openaiComplete)
-      + '</div></div>';
+    return '';
   }
 
   zone.innerHTML =
@@ -3494,7 +3632,20 @@ function showResults(r, jobId) {
     if (comparisonEntries.length) {
       function comparisonCard(entry, index) {
         var scoreData = entry && entry.score;
-        if (!scoreData || !scoreData.pillars) return '';
+        var platformLabel = (entry && entry.platform) || ('Platform ' + (index + 1));
+        var emptyState = {
+          not_configured: 'API not configured',
+          failed: 'Measurement failed',
+          no_recommendation: 'No named recommendation established'
+        };
+        if (!entry || !entry.name || !scoreData || !scoreData.pillars) {
+          return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;min-height:190px;">'
+            + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(platformLabel) + '</div>'
+            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:18px;font-weight:700;line-height:1.45;color:var(--muted);overflow-wrap:anywhere;">'
+            + esc((entry && entry.name) || emptyState[entry && entry.status] || 'Comparison score unavailable') + '</div>'
+            + (entry && entry.name ? '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px;">Recommendation measured; comparison scoring was unavailable for this lane.</div>' : '')
+            + '</div>';
+        }
         var rows = ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
           var p = scoreData.pillars[key] || {};
           var you = Math.max(0, Math.min(25, Number(p.you) || 0));
@@ -3507,17 +3658,17 @@ function showResults(r, jobId) {
             + '<div style="height:2px;background:var(--rule);position:relative;margin-top:3px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ink);opacity:0.25;width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
         }).join('');
         return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
-          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Competitor ' + (index + 1) + ' · ' + esc(entry.source || 'Verified evidence') + '</div>'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + ' recommendation</div>'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
           + rows
           + (scoreData.keyGap ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest gap: <strong style="color:var(--ink);">' + esc(scoreData.keyGap) + '</strong></div>' : '')
           + (scoreData.priorityAction ? '<div style="font-size:12px;line-height:1.7;color:var(--body);margin-top:8px;">' + esc(scoreData.priorityAction) + '</div>' : '')
           + '</div>';
       }
-      competitorComparisonBlock = '<div class="pay-section"><div class="pay-eyebrow">Top Competitor Comparison</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Your four CHOIVE pillars compared with the top two verified alternatives returned across the measured AI platforms.</div>'
+      competitorComparisonBlock = '<div class="pay-section"><div class="pay-eyebrow">AI Recommendation Arena</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, OpenAI, Perplexity, and Gemini. Matching company names remain in separate platform lanes.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
-        + comparisonEntries.slice(0, 2).map(comparisonCard).join('') + '</div></div>';
+        + comparisonEntries.map(comparisonCard).join('') + '</div></div>';
     }
   } catch(e) { console.warn('[CHOIVE] competitor comparison display failed:', e.message); }
 
