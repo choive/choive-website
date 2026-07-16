@@ -131,9 +131,7 @@ async function requestPerplexity(source) {
 
 async function runProvider(provider, input, requestFn, configured) {
   var sources = Array.isArray(input && input.sourceResults)
-    ? input.sourceResults.filter(function(source) {
-        return String(source && source.label || '').toLowerCase().indexOf('named competitor') === -1;
-      }).slice(0, 3)
+    ? input.sourceResults.filter(function(source) { return source && source.query; }).slice(0, 4)
     : [];
   if (!configured) return { available: false, configured: false, provider: provider, status: 'not_configured', results: [] };
   if (!sources.length) return { available: false, configured: true, provider: provider, status: 'no_queries', results: [] };
@@ -156,7 +154,9 @@ async function runProvider(provider, input, requestFn, configured) {
     };
   });
   var direct = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('direct recommendation') !== -1; })[0];
-  var fallback = results.slice().reverse().filter(function(result) { return result.topRecommendation; })[0];
+  var namedCompetitor = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') !== -1; })[0];
+  var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') === -1; });
+  var fallback = buyerResults.slice().reverse().filter(function(result) { return result.topRecommendation; })[0];
   var chosen = direct && direct.topRecommendation ? direct : fallback;
   var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
   return {
@@ -168,9 +168,11 @@ async function runProvider(provider, input, requestFn, configured) {
     status: completed === sources.length ? 'complete' : (completed > 0 ? 'partial' : 'failed'),
     completedSamples: completed,
     expectedSamples: sources.length,
-    appearedCount: results.filter(function(result) { return result.appeared; }).length,
-    totalQueries: results.length,
+    appearedCount: buyerResults.filter(function(result) { return result.appeared; }).length,
+    totalQueries: buyerResults.length,
     topRecommendation: chosen ? chosen.topRecommendation : null,
+    competitorRecommendation: namedCompetitor ? namedCompetitor.topRecommendation : null,
+    competitorRecommendationQuery: namedCompetitor ? namedCompetitor.query : null,
     recommendationQuery: chosen ? chosen.query : null,
     recommendationResponse: chosen ? chosen.response : null,
     results: results
