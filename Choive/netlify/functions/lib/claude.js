@@ -1333,7 +1333,38 @@ async function selectBestFitCompetitors(evidence, candidates) {
       .map(function(block) { return block.text || ''; }).join('').replace(/```json|```/g, '').trim();
     var start = text.indexOf('{'), end = text.lastIndexOf('}');
     if (start >= 0 && end > start) text = text.slice(start, end + 1);
-    var parsed = JSON.parse(text);
+    var parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (parseError) {
+      // Web-search models occasionally return a sourced narrative even when
+      // JSON-only was requested. Normalize that completed research in a short,
+      // tool-free pass instead of discarding the cross-platform adjudication.
+      var normalizeController = new AbortController();
+      var normalizeTimer = setTimeout(function() { normalizeController.abort(); }, 15000);
+      var normalizeResponse = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: ANTHROPIC_FAST_MODEL,
+          max_tokens: 400,
+          temperature: 0,
+          messages: [{ role: 'user', content: 'Convert the research below into the required JSON. Choose only from these candidates: '
+            + cleanCandidates.map(function(candidate) { return candidate.name; }).join(', ')
+            + '\nReturn exactly {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}.\n\nRESEARCH:\n'
+            + text.slice(0, 5000) }]
+        }),
+        signal: normalizeController.signal
+      });
+      clearTimeout(normalizeTimer);
+      if (!normalizeResponse.ok) throw parseError;
+      var normalizeData = await normalizeResponse.json();
+      var normalizeText = (normalizeData.content || []).filter(function(block) { return block.type === 'text'; })
+        .map(function(block) { return block.text || ''; }).join('').replace(/```json|```/g, '').trim();
+      var normalizeStart = normalizeText.indexOf('{'), normalizeEnd = normalizeText.lastIndexOf('}');
+      if (normalizeStart >= 0 && normalizeEnd > normalizeStart) normalizeText = normalizeText.slice(normalizeStart, normalizeEnd + 1);
+      parsed = JSON.parse(normalizeText);
+    }
     var allowed = {};
     cleanCandidates.forEach(function(candidate) {
       allowed[String(candidate.name).toLowerCase().replace(/[^a-z0-9]/g, '')] = candidate;
