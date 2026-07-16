@@ -9,6 +9,7 @@ const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOff
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors } = require('./lib/claude');
 const { runOpenAISimulation } = require('./lib/openai-simulation');
+const { runGeminiSimulation, runPerplexitySimulation } = require('./lib/additional-platform-simulations');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
@@ -634,18 +635,24 @@ exports.handler = async function (event) {
                 ? directCompetitorCheck.results
                 : []
             );
-            // Measure OpenAI against the exact same localized buyer questions.
-            // Results remain platform-separated; Claude stays the existing
-            // scoring authority until a true cross-platform aggregation rule is
-            // introduced and validated.
+            // Measure every external provider against the exact same localized
+            // buyer questions. Each provider remains independently attributed.
             try {
-              var openaiSimulation = await runOpenAISimulation({
+              var externalPlatformInput = {
                 name: name,
                 category: evidence['inferredCategory'] || category,
                 city: city,
                 language: simBefore.before.language,
                 sourceResults: sharedPlatformQueries
-              });
+              };
+              var externalRuns = await Promise.allSettled([
+                runOpenAISimulation(externalPlatformInput),
+                runGeminiSimulation(externalPlatformInput),
+                runPerplexitySimulation(externalPlatformInput)
+              ]);
+              var openaiSimulation = externalRuns[0].status === 'fulfilled' ? externalRuns[0].value : { available: false, provider: 'openai', status: 'failed', reason: String(externalRuns[0].reason && externalRuns[0].reason.message || 'Request failed') };
+              var geminiSimulation = externalRuns[1].status === 'fulfilled' ? externalRuns[1].value : { available: false, provider: 'gemini', status: 'failed', reason: String(externalRuns[1].reason && externalRuns[1].reason.message || 'Request failed') };
+              var perplexitySimulation = externalRuns[2].status === 'fulfilled' ? externalRuns[2].value : { available: false, provider: 'perplexity', status: 'failed', reason: String(externalRuns[2].reason && externalRuns[2].reason.message || 'Request failed') };
               evidence['platformSimulations'] = evidence['platformSimulations'] || {};
               evidence['platformSimulations']['claude'] = {
                 available: true,
@@ -656,9 +663,11 @@ exports.handler = async function (event) {
                 results: sharedPlatformQueries
               };
               evidence['platformSimulations']['openai'] = openaiSimulation;
-              console.log('[' + jobId + '] OpenAI simulation: ' + (openaiSimulation.available ? 'completed' : 'unavailable'));
+              evidence['platformSimulations']['gemini'] = geminiSimulation;
+              evidence['platformSimulations']['perplexity'] = perplexitySimulation;
+              console.log('[' + jobId + '] External simulations: OpenAI=' + (openaiSimulation.status || 'unknown') + ', Gemini=' + (geminiSimulation.status || 'unknown') + ', Perplexity=' + (perplexitySimulation.status || 'unknown'));
             } catch (openaiErr) {
-              console.warn('[' + jobId + '] OpenAI simulation failed:', openaiErr.message);
+              console.warn('[' + jobId + '] External platform simulations failed:', openaiErr.message);
               evidence['platformSimulations'] = evidence['platformSimulations'] || {};
               evidence['platformSimulations']['openai'] = {
                 available: false,
@@ -975,6 +984,52 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] OpenAI cache backfill failed:', openaiBackfillErr.message);
     }
 
+    // Backfill Gemini and Perplexity independently for cached evidence. Their
+    // absence must never be hidden by another provider's successful result.
+    try {
+      var cachedBeforeForNewPlatforms = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before;
+      if (cachedBeforeForNewPlatforms) {
+        var cachedSharedQueries = (cachedBeforeForNewPlatforms.results || []).concat(
+          evidence['directCompetitorCheck'] && Array.isArray(evidence['directCompetitorCheck'].results)
+            ? evidence['directCompetitorCheck'].results : []
+        );
+        var cachedPlatformInput = {
+          name: name,
+          category: evidence['inferredCategory'] || category,
+          city: city,
+          language: cachedBeforeForNewPlatforms.language,
+          sourceResults: cachedSharedQueries
+        };
+        evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+        var cachedGemini = evidence['platformSimulations']['gemini'];
+        var cachedPerplexity = evidence['platformSimulations']['perplexity'];
+        var backfillJobs = [];
+        var backfillKeys = [];
+        if (!cachedGemini || !cachedGemini.available || cachedGemini.complete === false) {
+          backfillKeys.push('gemini');
+          backfillJobs.push(runGeminiSimulation(cachedPlatformInput));
+        }
+        if (!cachedPerplexity || !cachedPerplexity.available || cachedPerplexity.complete === false) {
+          backfillKeys.push('perplexity');
+          backfillJobs.push(runPerplexitySimulation(cachedPlatformInput));
+        }
+        if (backfillJobs.length) {
+          var backfillResults = await Promise.allSettled(backfillJobs);
+          backfillResults.forEach(function(result, index) {
+            var key = backfillKeys[index];
+            evidence['platformSimulations'][key] = result.status === 'fulfilled'
+              ? result.value
+              : { available: false, configured: true, provider: key, status: 'failed', reason: String(result.reason && result.reason.message || 'Request failed'), results: [] };
+          });
+          await saveEvidence(jobId, evidence).catch(function(err) {
+            console.warn('[' + jobId + '] New-platform cache backfill save failed:', err.message);
+          });
+        }
+      }
+    } catch (newPlatformBackfillErr) {
+      console.warn('[' + jobId + '] Gemini/Perplexity cache backfill failed:', newPlatformBackfillErr.message);
+    }
+
     // ── COMPETITOR STABILITY — look up previously identified competitor ────────
     // This prevents drift between runs (e.g. Semrush one day, Profound the next)
     // by giving Claude a strong prior anchored to the last verified run.
@@ -1283,6 +1338,14 @@ exports.handler = async function (event) {
     if (evidence['platformSimulations']) {
       var measuredClaude = evidence['platformSimulations']['claude'];
       var measuredOpenAI = evidence['platformSimulations']['openai'];
+      var measuredGemini = evidence['platformSimulations']['gemini'];
+      var measuredPerplexity = evidence['platformSimulations']['perplexity'];
+      var coverageForRun = function(run, label) {
+        if (!run || run.configured === false || run.status === 'not_configured') return { status: 'unmeasured', detail: label + ' API is not configured.' };
+        if (!run.available) return { status: 'failed', detail: label + ' measurement failed.' };
+        var state = run.complete === false ? 'partial' : (Number(run.appearedCount || 0) > 0 ? 'present' : 'absent');
+        return { status: state, detail: 'Measured with ' + label + (run.model ? ' ' + run.model : '') + '. ' + Number(run.completedSamples || run.totalQueries || 0) + ' of ' + Number(run.expectedSamples || run.totalQueries || 0) + ' samples completed.' };
+      };
       finalResult['platformCoverage'] = {
         chatgpt: measuredOpenAI && measuredOpenAI.available
           ? { status: measuredOpenAI.complete === false ? 'partial' : (measuredOpenAI.appearedCount > 0 ? 'present' : 'absent'), detail: 'Measured with OpenAI ' + (measuredOpenAI.model || 'API') + ' and web search. ' + Number(measuredOpenAI.completedSamples || 0) + ' of ' + Number(measuredOpenAI.expectedSamples || 0) + ' samples completed.' }
@@ -1290,8 +1353,8 @@ exports.handler = async function (event) {
         claude: measuredClaude && measuredClaude.available
           ? { status: measuredClaude.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with Claude and web search.' }
           : { status: 'unmeasured', detail: 'Claude was not measured in this run.' },
-        perplexity: { status: 'unmeasured', detail: 'Not measured.' },
-        gemini: { status: 'unmeasured', detail: 'Not measured.' }
+        perplexity: coverageForRun(measuredPerplexity, 'Perplexity'),
+        gemini: coverageForRun(measuredGemini, 'Gemini')
       };
       var openaiRecommendations = measuredOpenAI && measuredOpenAI.recommendations
         ? [measuredOpenAI.recommendations.primary, measuredOpenAI.recommendations.second, measuredOpenAI.recommendations.third].filter(Boolean)
@@ -1326,13 +1389,46 @@ exports.handler = async function (event) {
           return true;
         });
       };
-      finalResult['multiPlatformRecommendations'] = {
-        claude: dedupeRecommendations(claudeRecommendations).slice(0, 3),
-        openai: dedupeRecommendations(openaiRecommendations).slice(0, 3),
-        openaiComplete: measuredOpenAI ? measuredOpenAI.complete !== false : false,
-        note: 'Platform-specific recommendations are reported separately because different models can return different shortlists.'
+      var firstValidRecommendation = function(values) {
+        return dedupeRecommendations(values || [])[0] || null;
       };
-      var completedPlatformRuns = [measuredClaude, measuredOpenAI].filter(function(run) {
+      var laneStatus = function(run, recommendation) {
+        if (!run || run.configured === false || run.status === 'not_configured') return 'not_configured';
+        if (!run.available || run.status === 'failed') return 'failed';
+        return recommendation ? 'recommended' : 'no_recommendation';
+      };
+      var claudeTop = firstValidRecommendation(claudeRecommendations);
+      var openaiTop = firstValidRecommendation(openaiRecommendations);
+      var geminiTop = firstValidRecommendation([measuredGemini && measuredGemini.topRecommendation]);
+      var perplexityTop = firstValidRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
+      var platformLanes = [
+        { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: null },
+        { key: 'openai', label: 'OpenAI', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
+        { key: 'perplexity', label: 'Perplexity', run: measuredPerplexity, recommendation: perplexityTop, query: measuredPerplexity && measuredPerplexity.recommendationQuery || null },
+        { key: 'gemini', label: 'Gemini', run: measuredGemini, recommendation: geminiTop, query: measuredGemini && measuredGemini.recommendationQuery || null }
+      ].map(function(lane) {
+        return {
+          key: lane.key,
+          platform: lane.label,
+          recommendation: lane.recommendation,
+          status: laneStatus(lane.run, lane.recommendation),
+          query: lane.query,
+          subjectAppeared: Boolean(lane.run && Number(lane.run.appearedCount || 0) > 0),
+          completedSamples: Number(lane.run && lane.run.completedSamples || 0),
+          expectedSamples: Number(lane.run && lane.run.expectedSamples || 0),
+          model: lane.run && lane.run.model || null
+        };
+      });
+      finalResult['platformRecommendationLanes'] = platformLanes;
+      finalResult['multiPlatformRecommendations'] = {
+        claude: claudeTop ? [claudeTop] : [],
+        openai: openaiTop ? [openaiTop] : [],
+        perplexity: perplexityTop ? [perplexityTop] : [],
+        gemini: geminiTop ? [geminiTop] : [],
+        openaiComplete: measuredOpenAI ? measuredOpenAI.complete !== false : false,
+        note: 'Each platform reports one independently measured top recommendation. Identical names remain separately attributed.'
+      };
+      var completedPlatformRuns = [measuredClaude, measuredOpenAI, measuredPerplexity, measuredGemini].filter(function(run) {
         return run && run.available;
       });
       var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
@@ -1354,14 +1450,16 @@ exports.handler = async function (event) {
     if (evidence['inferredCategory']) finalResult['inferredCategory'] = evidence['inferredCategory'];
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictHeadline);
 
-    // ── UNIVERSAL TOP-TWO COMPETITOR COMPARISON ─────────────────────────────
-    // Use one leading alternative from each measured model first. Fill any
-    // missing/duplicate slot from the remaining verified market shortlist.
-    // This runs for every business type; it is not limited to DTC products.
+    // ── FOUR-PLATFORM RECOMMENDATION ARENA ──────────────────────────────────
+    // Keep one lane per measured platform, even when two platforms return the
+    // same company. Duplicate companies are scored once and reused so the UI
+    // preserves attribution without paying for duplicate comparison calls.
     try {
       var multiRecs = finalResult['multiPlatformRecommendations'] || {};
       var claudeRecs = Array.isArray(multiRecs.claude) ? multiRecs.claude : [];
       var openaiRecs = Array.isArray(multiRecs.openai) ? multiRecs.openai : [];
+      var perplexityRecs = Array.isArray(multiRecs.perplexity) ? multiRecs.perplexity : [];
+      var geminiRecs = Array.isArray(multiRecs.gemini) ? multiRecs.gemini : [];
       var openaiResearchRecs = measuredOpenAI && measuredOpenAI.competitorShortlist
         ? [measuredOpenAI.competitorShortlist.primary, measuredOpenAI.competitorShortlist.second, measuredOpenAI.competitorShortlist.third].filter(Boolean)
         : [];
@@ -1369,6 +1467,8 @@ exports.handler = async function (event) {
       var orderedComparisonCandidates = [];
       claudeRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
       openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
+      perplexityRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Perplexity' }); });
+      geminiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Gemini' }); });
       openaiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI competitor research' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
       var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1381,47 +1481,55 @@ exports.handler = async function (event) {
       });
       var combinedCandidates = Object.keys(candidateMap).map(function(key) { return candidateMap[key]; });
       var adjudicated = await selectBestFitCompetitors(evidence, combinedCandidates);
-      var topComparisonCandidates = [];
       if (adjudicated && adjudicated.best) {
-        topComparisonCandidates.push({
-          name: adjudicated.best.name,
-          source: (adjudicated.best.sources || []).join(' + ') || 'AI recommendations',
-          reason: adjudicated.best.reason
-        });
-        if (adjudicated.runnerUp) {
-          topComparisonCandidates.push({
-            name: adjudicated.runnerUp.name,
-            source: (adjudicated.runnerUp.sources || []).join(' + ') || 'AI recommendations',
-            reason: adjudicated.runnerUp.reason
-          });
-        }
         finalResult['bestFitCompetitor'] = adjudicated.best;
       }
-      // Fail-soft fallback if adjudication is unavailable.
-      if (topComparisonCandidates.length < 2) {
-        combinedCandidates.forEach(function(candidate) {
-          if (topComparisonCandidates.length >= 2) return;
-          if (!topComparisonCandidates.some(function(existing) { return existing.name === candidate.name; })) {
-            topComparisonCandidates.push({ name: candidate.name, source: candidate.sources.join(' + ') || 'Verified evidence', reason: '' });
-          }
-        });
+      if (!finalResult['bestFitCompetitor'] && combinedCandidates.length) {
+        finalResult['bestFitCompetitor'] = {
+          name: combinedCandidates[0].name,
+          reason: 'Fallback only: this was the first independently measured recommendation; full-fit adjudication was unavailable.'
+        };
       }
 
-      if (topComparisonCandidates.length === 2) {
-        var comparisonScores = await Promise.allSettled(topComparisonCandidates.map(function(candidate) {
-          return scoreArena(evidence, finalResult, candidate.name, 'competitor');
-        }));
-        var comparisonEntries = topComparisonCandidates.map(function(candidate, index) {
-          var score = comparisonScores[index].status === 'fulfilled' ? comparisonScores[index].value : null;
-          return score ? { name: candidate.name, source: candidate.source, reason: candidate.reason || '', score: score } : null;
-        }).filter(Boolean);
-        if (comparisonEntries.length) {
-          finalResult['competitorComparison'] = {
-            entries: comparisonEntries,
-            selectionRule: 'Closest overall business-model matches adjudicated from the combined measured AI recommendations.'
-          };
+      var recommendationLanes = Array.isArray(finalResult['platformRecommendationLanes'])
+        ? finalResult['platformRecommendationLanes'] : [];
+      var uniqueArenaNames = [];
+      var arenaNameByKey = {};
+      recommendationLanes.forEach(function(lane) {
+        var laneName = String(lane && lane.recommendation || '').trim();
+        var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!laneKey || laneKey === subjectComparisonKey || isPlatformName(laneName)) return;
+        if (!arenaNameByKey[laneKey]) {
+          arenaNameByKey[laneKey] = laneName;
+          uniqueArenaNames.push(laneName);
         }
-      }
+      });
+      var arenaScores = await Promise.allSettled(uniqueArenaNames.map(function(arenaName) {
+        return scoreArena(evidence, finalResult, arenaName, 'competitor');
+      }));
+      var arenaScoreByKey = {};
+      uniqueArenaNames.forEach(function(arenaName, index) {
+        var scoreResult = arenaScores[index];
+        if (scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value) {
+          arenaScoreByKey[arenaName.toLowerCase().replace(/[^a-z0-9]/g, '')] = scoreResult.value;
+        }
+      });
+      finalResult['competitorComparison'] = {
+        entries: recommendationLanes.map(function(lane) {
+          var laneName = String(lane && lane.recommendation || '').trim();
+          var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return {
+            platform: lane.platform,
+            platformKey: lane.key,
+            name: laneName || null,
+            status: lane.status,
+            query: lane.query || null,
+            subjectAppeared: Boolean(lane.subjectAppeared),
+            score: laneKey ? (arenaScoreByKey[laneKey] || null) : null
+          };
+        }),
+        selectionRule: 'One independently measured top recommendation per platform. Identical company names remain in separate attributed lanes.'
+      };
     } catch (comparisonErr) {
       console.warn('[' + jobId + '] Universal competitor comparison failed (non-critical):', comparisonErr.message);
     }
