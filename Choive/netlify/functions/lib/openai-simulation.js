@@ -77,6 +77,13 @@ function businessMentioned(response, name) {
   return false;
 }
 
+function extractTopRecommendation(response) {
+  var match = String(response || '').match(/(?:^|\n)TOP_RECOMMENDATION\s*:\s*([^\n]+)/i);
+  if (!match) return null;
+  var candidate = match[1].replace(/\[[^\]]*\]/g, '').replace(/[.;]+$/, '').trim().slice(0, 100);
+  return candidate && !/^(none|no named recommendation|not established)$/i.test(candidate) ? candidate : null;
+}
+
 async function requestOpenAIWithModel(systemPrompt, query, useSearch, model) {
   if (!process.env.OPENAI_API_KEY) return null;
   var controller = new AbortController();
@@ -228,7 +235,8 @@ async function runOpenAISimulation(input) {
   });
   var settled = await Promise.allSettled(jobs.map(function(job) {
     var system = 'You are a helpful AI assistant with live web search. Search before answering. '
-      + 'Name specific, real companies that serve the buyer\'s market. Be concrete and explain the recommendation briefly.';
+      + 'Name specific, real companies that serve the buyer\'s market. Be concrete and explain the recommendation briefly. '
+      + 'At the very end add exactly one separate line: TOP_RECOMMENDATION: Company Name. Use the single company you most clearly recommend for this exact question, including the subject when it is your choice; otherwise write TOP_RECOMMENDATION: NONE.';
     return requestOpenAI(system, job.result.query, true);
   }));
 
@@ -277,6 +285,12 @@ async function runOpenAISimulation(input) {
   var visibilityResults = results.filter(function(result) {
     return String(result && result.label || '').toLowerCase().indexOf('named competitor') === -1;
   });
+  var directResult = results.filter(function(result) {
+    return String(result && result.label || '').toLowerCase().indexOf('direct recommendation') !== -1;
+  })[0];
+  var directTopRecommendation = directResult && Array.isArray(directResult.allResponses)
+    ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean)[0] || null
+    : null;
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
     complete: results.every(function(result) { return result.sampleCount === samples; }),
@@ -293,6 +307,8 @@ async function runOpenAISimulation(input) {
     appearedCount: visibilityResults.filter(function(result) { return result.appeared; }).length,
     totalQueries: visibilityResults.length,
     recommendations: recommendations,
+    topRecommendation: directTopRecommendation,
+    recommendationQuery: directResult ? directResult.query : null,
     competitorShortlist: competitorShortlist,
     results: results
   };
