@@ -88,11 +88,17 @@ exports.handler = async function(event) {
   var backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
 
   try {
-    await fetch(backgroundUrl, {
+    var triggerResponse = await fetch(backgroundUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': process.env.INTERNAL_DIAGNOSTIC_SECRET || process.env.INTERNAL_REPORT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      },
       body: JSON.stringify({ jobId: newJobId, input: input })
     });
+    if (!triggerResponse.ok) {
+      throw new Error('Background trigger HTTP ' + triggerResponse.status);
+    }
   } catch (err) {
     await supabase.saveError(newJobId, 'Background trigger failed: ' + err.message).catch(() => {});
     return {
