@@ -154,13 +154,11 @@ async function runProvider(provider, input, requestFn, configured) {
       error: settled[index].status === 'rejected' ? String(settled[index].reason && settled[index].reason.message || 'Request failed') : null
     };
   });
-  var direct = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('direct recommendation') !== -1; })[0];
-  var namedCompetitor = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') !== -1; })[0];
-  var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('named competitor') === -1; });
-  // Only the direct buyer-decision question may populate a provider's top
-  // recommendation lane. Discovery and comparison answers are context, not a
-  // substitute when the direct answer recommends the subject or names nobody.
-  var chosen = direct && direct.topRecommendation ? direct : null;
+  var replacement = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') !== -1; })[0];
+  var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') === -1; });
+  // Only the explicit branded "who instead?" question populates this lane.
+  // Unbranded discovery answers remain visibility evidence.
+  var chosen = replacement && replacement.topRecommendation ? replacement : null;
   var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
   return {
     available: completed > 0,
@@ -174,8 +172,8 @@ async function runProvider(provider, input, requestFn, configured) {
     appearedCount: buyerResults.filter(function(result) { return result.appeared; }).length,
     totalQueries: buyerResults.length,
     topRecommendation: chosen ? chosen.topRecommendation : null,
-    competitorRecommendation: namedCompetitor ? namedCompetitor.topRecommendation : null,
-    competitorRecommendationQuery: namedCompetitor ? namedCompetitor.query : null,
+    competitorRecommendation: chosen ? chosen.topRecommendation : null,
+    competitorRecommendationQuery: replacement ? replacement.query : null,
     recommendationQuery: chosen ? chosen.query : null,
     recommendationResponse: chosen ? chosen.response : null,
     results: results
