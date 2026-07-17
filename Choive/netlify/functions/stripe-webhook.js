@@ -12,7 +12,7 @@
 //
 // ENV: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
-const { markDiagnosticPaid, markReportSent, saveLead, getSlugForJob } = require('./lib/supabase');
+const { markDiagnosticPaid, saveLead, getSlugForJob } = require('./lib/supabase');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -181,14 +181,27 @@ exports.handler = async function (event) {
     console.log('stripe-webhook: Report payment detected — triggering generate-report');
     var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
     var generateUrl = siteUrl + '/.netlify/functions/generate-report-background';
-    fetch(generateUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Internal-Token': process.env.INTERNAL_REPORT_SECRET || '' },
-      body: JSON.stringify({ jobId: jobId, email: customerEmail })
-    }).catch(function(err) {
-      console.warn('stripe-webhook: generate-report-background trigger failed:', err.message);
-    });
-    console.log('stripe-webhook: Report generation queued for jobId', jobId);
+    try {
+      var reportTrigger = await fetch(generateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Token': process.env.INTERNAL_REPORT_SECRET || process.env.INTERNAL_DIAGNOSTIC_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+        },
+        body: JSON.stringify({ jobId: jobId, email: customerEmail })
+      });
+      if (!reportTrigger.ok) {
+        throw new Error('Report trigger HTTP ' + reportTrigger.status);
+      }
+      console.log('stripe-webhook: Report generation queued for jobId', jobId);
+    } catch (err) {
+      console.error('stripe-webhook: generate-report-background trigger failed:', err.message);
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Payment recorded but report generation could not be queued' })
+      };
+    }
   }
 
   // Send confirmation email for $99 Analysis payments
@@ -199,7 +212,7 @@ exports.handler = async function (event) {
     } else {
       try {
         // Sanitize jobId — strip null bytes and any non-UUID character before embedding in URL.
-        // Stripe sometimes delivers client_reference_id with a leading null byte ( )
+        // Stripe sometimes delivers client_reference_id with a leading null byte (\0)
         // which encodeURIComponent would encode as %00, making the link dead in email clients.
         // Use slug-based URL — Resend strips = from href query params, so ?jobId=UUID breaks.
         // /results/nike-sportswear has no = sign and is human-readable.
@@ -224,22 +237,22 @@ exports.handler = async function (event) {
             to: [customerEmail],
             subject: 'Your CHOIVE Analysis is unlocked',
             html: [
-              '<div style=”font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#0C0C0E;”>',
-              '<div style=”font-size:18px;font-weight:700;letter-spacing:0.08em;margin-bottom:32px;”>CHOIVE<span style=”color:#C9A86A;”>·</span></div>',
-              '<h1 style=”font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;”>Your Analysis is unlocked.</h1>',
-              '<p style=”font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 32px;”>',
+              '<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#0C0C0E;">',
+              '<div style="font-size:18px;font-weight:700;letter-spacing:0.08em;margin-bottom:32px;">CHOIVE<span style="color:#C9A86A;">·</span></div>',
+              '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;">Your Analysis is unlocked.</h1>',
+              '<p style="font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 32px;">',
               'Your CHOIVE Analysis is ready — competitor intelligence, pillar breakdown with evidence, priority actions, and ready-to-use assets. Click below to view everything.',
               '</p>',
-              '<div style=”text-align:center;margin:0 0 40px;”>',
-              '<a href=”' + resultUrl + '” style=”display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:16px 36px;”>',
+              '<div style="text-align:center;margin:0 0 40px;">',
+              '<a href="' + resultUrl + '" style="display:inline-block;background:#C9A86A;color:#0C0C0E;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.06em;padding:16px 36px;">',
               'View Your Analysis &rarr;',
               '</a>',
               '</div>',
-              '<p style=”font-size:12px;color:#BBBBC2;margin:0 0 8px;line-height:1.7;”>',
+              '<p style="font-size:12px;color:#BBBBC2;margin:0 0 8px;line-height:1.7;">',
               'This link is unique to your diagnostic. Keep it to return to your results at any time.<br>',
-              'Questions? Reply to this email or contact <a href=”mailto:hello@choive.com” style=”color:#C9A86A;”>hello@choive.com</a>',
+              'Questions? Reply to this email or contact <a href="mailto:hello@choive.com" style="color:#C9A86A;">hello@choive.com</a>',
               '</p>',
-              '<div style=”margin-top:32px;padding-top:24px;border-top:1px solid #F5F2EE;font-size:11px;color:#BBBBC2;”>',
+              '<div style="margin-top:32px;padding-top:24px;border-top:1px solid #F5F2EE;font-size:11px;color:#BBBBC2;">',
               'CHOIVE· — Be the answer. Not the alternative.',
               '</div>',
               '</div>'
@@ -249,9 +262,6 @@ exports.handler = async function (event) {
 
         if (emailRes.ok) {
           console.log('stripe-webhook: confirmation email sent to', customerEmail);
-          try { await markReportSent(jobId); } catch (e) {
-            console.warn('stripe-webhook: markReportSent failed (non-critical):', e.message);
-          }
         } else {
           var errBody = await emailRes.text();
           console.error('stripe-webhook: Resend API error', emailRes.status, errBody);
