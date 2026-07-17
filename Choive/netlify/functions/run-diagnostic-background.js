@@ -2,8 +2,7 @@
 // CHOIVE™ background diagnostic engine
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
-// Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL,
-// OPENAI_GROUND_TRUTH_SAMPLES
+// Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL
 const { updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
@@ -639,12 +638,31 @@ exports.handler = async function (event) {
               var geminiSimulation = externalRuns[1].status === 'fulfilled' ? externalRuns[1].value : { available: false, provider: 'gemini', status: 'failed', reason: String(externalRuns[1].reason && externalRuns[1].reason.message || 'Request failed') };
               var perplexitySimulation = externalRuns[2].status === 'fulfilled' ? externalRuns[2].value : { available: false, provider: 'perplexity', status: 'failed', reason: String(externalRuns[2].reason && externalRuns[2].reason.message || 'Request failed') };
               evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+              var claudeCompletedSamples = sharedPlatformQueries.reduce(function(total, result) {
+                return total + Number(result && result.sampleCount || 0);
+              }, 0);
+              var claudeExpectedSamples = sharedPlatformQueries.reduce(function(total, result) {
+                return total + Number(result && result.expectedSamples || 1);
+              }, 0);
+              var claudeReplacementResult = sharedPlatformQueries.find(function(result) {
+                return result && /branded replacement/i.test(String(result.label || ''));
+              });
               evidence['platformSimulations']['claude'] = {
-                available: true,
+                available: claudeCompletedSamples > 0,
+                configured: Boolean(process.env.ANTHROPIC_API_KEY),
                 provider: 'anthropic',
+                status: claudeCompletedSamples === claudeExpectedSamples
+                  ? 'complete'
+                  : (claudeCompletedSamples > 0 ? 'partial' : 'failed'),
+                complete: claudeCompletedSamples === claudeExpectedSamples,
                 language: simBefore.before.language,
                 appearedCount: simBefore.before.appearedCount,
                 totalQueries: simBefore.before.totalQueries,
+                completedSamples: claudeCompletedSamples,
+                expectedSamples: claudeExpectedSamples,
+                recommendationCompleted: Boolean(claudeReplacementResult && Number(claudeReplacementResult.sampleCount || 0) > 0),
+                recommendationQuery: claudeReplacementResult && claudeReplacementResult.query || null,
+                recommendationResponse: claudeReplacementResult && claudeReplacementResult.response || null,
                 results: sharedPlatformQueries
               };
               evidence['platformSimulations']['openai'] = openaiSimulation;
@@ -1410,6 +1428,7 @@ exports.handler = async function (event) {
       var laneStatus = function(run, recommendation) {
         if (!run || run.configured === false || run.status === 'not_configured') return 'not_configured';
         if (!run.available || run.status === 'failed') return 'failed';
+        if (run.recommendationCompleted === false) return 'failed';
         return recommendation ? 'recommended' : 'no_recommendation';
       };
       var claudeTop = firstLaneRecommendation([extractDirectRecommendation(measuredClaude)]);
