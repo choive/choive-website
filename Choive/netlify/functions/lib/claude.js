@@ -878,12 +878,12 @@ async function selectDominantCompetitor(evidence) {
     + 'A — realCompetitor: the single most direct head-to-head rival. The company a buyer would most naturally compare this business against in a deal. Must be a CURRENTLY OPERATING named company.\n'
     + 'TIEBREAKER RULE: use popularity signals only after candidates have independently passed every product, buyer, commercial-model, production-ownership, tier, and geography test. Review volume or search presence can never compensate for a failed or unverified business-model match. Among equally valid candidates, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search presence — in that order.\n'
     + 'B — aiRecommends: the company AI most prominently names when buyers search for this category right now. Apply the SAME TIEBREAKER RULE as Answer A: if multiple names appear, prefer the one with more third-party review volume, then longer market presence. May be the same as realCompetitor or different.\n'
-    + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Null if no clear second name exists.\n'
-    + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Null if same as realCompetitor or aiRecommends.\n\n'
+    + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Use an empty string if no clear second name exists.\n'
+    + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Use an empty string if it is the same as realCompetitor or aiRecommends.\n\n'
     + 'TIEBREAKER FOR ALL ANSWERS: when multiple candidates qualify, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search/analyst presence.\n\n'
     + 'IMPORTANT: Only return a company when the supplied evidence or reliable category knowledge supports that it currently operates. Use its current name when a rebrand is established.\n\n'
     + 'Respond with exactly this JSON — no markdown, no preamble:\n'
-    + '{"realCompetitor": <name or null>, "aiRecommends": <name or null>, "secondAiCompetitor": <name or null>, "globalBenchmark": <name or null>, "source": "evidence_analysis", "categoryUnowned": <true|false>, "contested": <true|false>, "reason": "<one sentence explaining why realCompetitor is the true rival>"}';
+    + '{"realCompetitor":"<name or empty string>","aiRecommends":"<name or empty string>","secondAiCompetitor":"<name or empty string>","globalBenchmark":"<name or empty string>","source":"evidence_analysis","categoryUnowned":<true|false>,"contested":<true|false>,"reason":"<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 30000);
@@ -900,10 +900,10 @@ async function selectDominantCompetitor(evidence) {
           schema: {
             type: 'object',
             properties: {
-              realCompetitor: { type: ['string', 'null'] },
-              aiRecommends: { type: ['string', 'null'] },
-              secondAiCompetitor: { type: ['string', 'null'] },
-              globalBenchmark: { type: ['string', 'null'] },
+              realCompetitor: { type: 'string' },
+              aiRecommends: { type: 'string' },
+              secondAiCompetitor: { type: 'string' },
+              globalBenchmark: { type: 'string' },
               source: { type: 'string' },
               categoryUnowned: { type: 'boolean' },
               contested: { type: 'boolean' },
@@ -1506,10 +1506,15 @@ async function selectBestFitCompetitors(evidence, candidates) {
       var candidateName = String(value && value.name || '').trim();
       var match = allowed[candidateName.toLowerCase().replace(/[^a-z0-9]/g, '')];
       if (!match) return null;
+      var fullReason = String(value.reason || '').trim();
+      if (fullReason.length > 800) {
+        var reasonCut = fullReason.lastIndexOf('.', 800);
+        fullReason = reasonCut > 250 ? fullReason.slice(0, reasonCut + 1) : fullReason.slice(0, 800);
+      }
       return {
         name: match.name,
         sources: match.sources || [],
-        reason: String(value.reason || '').slice(0, 400)
+        reason: fullReason
       };
     }
     var best = validated(parsed.best);
