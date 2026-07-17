@@ -2238,7 +2238,7 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
 
     <!-- Sub — the consequence -->
     <p class="hero-sub">
-      When someone asks Claude, OpenAI, Perplexity, or Gemini which business to choose, specific companies get named. Most business owners have no idea whether theirs is one of them.
+      When someone asks Claude, ChatGPT, Perplexity, or Gemini which business to choose, specific companies get named. Most business owners have no idea whether theirs is one of them.
     </p>
 
     <!-- CTA — immediate, no scroll required -->
@@ -2391,7 +2391,7 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
   <div class="diag-inner">
     <div class="diag-header">
       <h2 class="diag-h2">The verdict on your business.<br><em>In 45 seconds.</em></h2>
-      <p class="diag-sub">Enter your business details below. We measure Claude, OpenAI, Perplexity, and Gemini to see whether your business gets recommended — and exactly why it might not be. Free. No signup. 45 seconds.</p>
+      <p class="diag-sub">Enter your business details below. We measure Claude, ChatGPT, Perplexity, and Gemini to see whether your business gets recommended — and exactly why it might not be. Free. No signup. 45 seconds.</p>
     </div>
     <div id="dI" class="diag-form-panel">
       <div class="diag-form-grid">
@@ -3202,15 +3202,15 @@ function showResults(r, jobId) {
   // Trust-aware label: the flat score ladder alone can't tell a genuinely
   // established-but-flaky business from a brand-new one with zero track
   // record at all \u2014 both can land at the same overall score, but "not
-  // consistently chosen" wrongly implies the latter has been chosen before.
+  // consistently recommended" states the measured outcome directly.
   const trustScore = (r.pillars && r.pillars.trust && Number(r.pillars.trust.score)) || 0;
   const noTrackRecord = trustScore < 8;
   const scoreLabel = noTrackRecord
     ? (score >= 56 ? 'Understood by AI. Not yet trusted by anyone else.' : 'Not yet on anyone\'s radar.')
-    : score >= 76 ? 'Chosen. The default option in your category.'
-    : score >= 56 ? 'Considered. Not consistently chosen.'
-    : score >= 31 ? 'Seen. Not selected.'
-    : 'Not seen. Not chosen.';
+    : score >= 76 ? 'Consistently recommended by AI.'
+    : score >= 56 ? 'Considered. Not consistently recommended.'
+    : score >= 31 ? 'Mentioned by AI. Not recommended.'
+    : 'Not mentioned or recommended by AI.';
 
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
@@ -3230,10 +3230,6 @@ function showResults(r, jobId) {
   // rival. Platform recommendations belong only in their attributed lanes and
   // must never replace this value when cross-platform adjudication is absent.
   var cd = r.competitorDecision || {};
-  var savedHeadToHead = r.headToHeadDecision && r.headToHeadDecision.name
-    ? r.headToHeadDecision : null;
-  var bestFitComp = r.bestFitCompetitor && r.bestFitCompetitor.name
-    ? r.bestFitCompetitor : null;
   var explicitHeadToHead = Array.isArray(r.competitors)
     ? r.competitors.find(function(comp) {
         return comp && comp.name && String(comp.queryContext || '').toLowerCase() === 'head-to-head';
@@ -3241,11 +3237,14 @@ function showResults(r, jobId) {
     : null;
   var firstResearchedCompetitor = Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name
     ? r.competitors[0].name : '';
-  var topComp = explicitHeadToHead
-    ? explicitHeadToHead.name
-    : (savedHeadToHead
-      ? savedHeadToHead.name
-      : (bestFitComp ? bestFitComp.name : (cd.realCompetitor || firstResearchedCompetitor)));
+  var topComp = cd.realCompetitor
+    || (explicitHeadToHead && explicitHeadToHead.name)
+    || firstResearchedCompetitor;
+  var topCompReason = (explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage))
+    || cd.reason
+    || (topComp ? topComp + ' is the closest verified purchasing substitute identified in this diagnostic.' : '');
+  var widerMarketDecision = r.marketCompetitorDecision && r.marketCompetitorDecision.name
+    ? r.marketCompetitorDecision : null;
   window.__choiveTopComp = topComp;
   
   var topCompQuery = (r.displacement && r.displacement.competitorQuery)
@@ -3264,14 +3263,14 @@ function showResults(r, jobId) {
   // (headline screams urgency, body sentence immediately retracts it). Two
   // honest states, each with its own headline AND its own path to urgency:
   // confirmed \u2192 direct threat; unconfirmed \u2192 open contest, stakes still high.
-  var marketComp = explicitHeadToHead
-    ? explicitHeadToHead.name
-    : (cd.realCompetitor || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : ''));
+  var marketComp = cd.realCompetitor
+    || (explicitHeadToHead && explicitHeadToHead.name)
+    || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : '');
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   function buildTopPlatformLanes() {
     var laneOrder = [
       { key: 'claude', platform: 'Claude' },
-      { key: 'openai', platform: 'OpenAI' },
+      { key: 'openai', platform: 'ChatGPT' },
       { key: 'perplexity', platform: 'Perplexity' },
       { key: 'gemini', platform: 'Gemini' }
     ];
@@ -3301,6 +3300,15 @@ function showResults(r, jobId) {
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
       + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends for this buyer question</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
+      + '</div>';
+  }
+  function buildMarketCompetitorRow() {
+    if (!widerMarketDecision || !widerMarketDecision.name) return '';
+    if (String(widerMarketDecision.name).toLowerCase() === String(topComp || '').toLowerCase()) return '';
+    return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Wider market competitor</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
+      + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
       + '</div>';
   }
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
@@ -3347,7 +3355,8 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage)) || (savedHeadToHead && savedHeadToHead.reason) || (bestFitComp && bestFitComp.reason) || (topComp + ' is the closest verified purchasing substitute identified in this diagnostic.')) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReason) + '</div>'
+        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     } else {
@@ -3357,7 +3366,8 @@ function showResults(r, jobId) {
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc((explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage)) || (savedHeadToHead && savedHeadToHead.reason) || (bestFitComp && bestFitComp.reason) || (topComp + ' is the closest purchasing substitute identified in this diagnostic.')) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReason) + '</div>'
+        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     }
@@ -3370,6 +3380,7 @@ function showResults(r, jobId) {
         ? esc(marketComp) + ' is the closest head-to-head market competitor identified in this run, but no company appeared across enough different buyer questions to qualify as the consistent AI recommendation leader.'
         : 'No company appeared consistently enough to qualify as the recommendation leader, and the evidence did not support a reliable head-to-head market competitor in this run.')
       + '</div>'
+      + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
       + '</div>';
   } else {
@@ -3381,6 +3392,7 @@ function showResults(r, jobId) {
         ? 'This is the closest verified market competitor found in the diagnostic. It was not established as a consistent AI recommendation leader.'
         : 'This diagnostic did not establish a competitor strongly enough to present one as the current recommendation leader.')
       + '</div>'
+      + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
       + '</div>';
   }
@@ -3687,7 +3699,7 @@ function showResults(r, jobId) {
           + '</div>';
       }
       competitorComparisonBlock = '<div class="pay-section"><div class="pay-eyebrow">AI Recommendation Arena</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, OpenAI, Perplexity, and Gemini. Matching company names remain in separate platform lanes.</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, ChatGPT, Perplexity, and Gemini. Matching company names remain in separate platform lanes.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></div>';
     }
@@ -4110,23 +4122,10 @@ async function runAISimulation(r) {
     if (r.aiSimulation && r.aiSimulation.before && Array.isArray(r.aiSimulation.before.results) && r.aiSimulation.before.results.length > 0) {
       data = r.aiSimulation;
     } else {
-      var diffEv  = (r.pillars && r.pillars.difference && r.pillars.difference.evidence) || '';
-      var trustEv = (r.pillars && r.pillars.trust      && r.pillars.trust.evidence)      || '';
-
-      var res = await fetch('/.netlify/functions/ai-simulation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name:             bizData.name             || '',
-          category:         bizData.category         || '',
-          city:             bizData.city             || '',
-          inferredCategory: r.inferredCategory       || bizData.category || '',
-          differentiator:   diffEv.slice(0, 200),
-          trustSignal:      trustEv.slice(0, 200)
-        })
-      });
-
-      data = await res.json();
+      loading.style.display = 'none';
+      results.style.display = 'flex';
+      results.innerHTML = '<div class="sim-query"><div class="sim-response">This older diagnostic did not store an AI simulation. Run a new diagnostic to capture a fresh measurement.</div></div>';
+      return;
     }
     loading.style.display = 'none';
     results.style.display = 'flex';
@@ -4185,14 +4184,14 @@ async function runAISimulation(r) {
       var recNames = [rec.primary, rec.second, rec.third].filter(Boolean);
       results.innerHTML += '<div style="margin-top:26px;padding-top:22px;border-top:2px solid var(--rule-d);">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tp);">OpenAI measurement</div>'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tp);">ChatGPT measurement</div>'
         + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search'
         + (openaiRun.complete === false ? ' · partial run (' + Number(openaiRun.completedSamples || 0) + '/' + Number(openaiRun.expectedSamples || 0) + ' samples)' : '') + '</div></div>'
         + (recNames.length
           ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Recommended alternatives: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
           : '')
-        + renderQSet(openaiRun.results, 'Same buyer questions asked through OpenAI')
-        + '<div style="font-size:11px;color:var(--tm);line-height:1.6;margin-top:10px;">This is an OpenAI API measurement. Consumer ChatGPT may answer differently because its model, search context, and product settings can vary.</div>'
+        + renderQSet(openaiRun.results, 'Same buyer questions measured for ChatGPT')
+        + '<div style="font-size:11px;color:var(--tm);line-height:1.6;margin-top:10px;">Measured through the OpenAI API. The consumer ChatGPT app may answer differently because its model, search context, and product settings can vary.</div>'
         + '</div>';
     }
 
