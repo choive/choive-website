@@ -1556,7 +1556,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Simulation</div><div class="sdp-sub">Real queries your customers are asking right now. This is exactly what AI said — word for word.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Platform Measurements</div><div class="sdp-sub">Buyer-style questions and the provider responses recorded during this diagnostic run. Consumer-app answers may differ because models, search context, settings, and personalization can vary.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Real queries · Real AI responses · Unedited</div>');
   function renderSimSet(label, results) {
@@ -1913,7 +1913,7 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
     '→ What AI currently thinks you are<br>',
     '→ Four pillar breakdown with evidence<br>',
     '→ Platform coverage across ChatGPT, Perplexity, Gemini, Claude<br>',
-    '→ AI simulation — real queries, word for word<br>',
+    '→ Separately attributed AI provider responses from this diagnostic run<br>',
     '→ Competitor intelligence<br>',
     '→ Priority actions with consequence blocks<br>',
     '→ Ready-to-use assets<br>',
