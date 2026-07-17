@@ -858,7 +858,7 @@ var CSS = [
       { label: 'NOT SEEN',    from: 0,  to: 30, fill: '#FBE9E9' },
       { label: 'SEEN',        from: 30, to: 55, fill: '#FFF3DC' },
       { label: 'CONSIDERED',  from: 55, to: 75, fill: '#E8F4EE' },
-      { label: 'CHOSEN',      from: 75, to: 100, fill: '#D0EDDB' },
+      { label: 'RECOMMENDED', from: 75, to: 100, fill: '#D0EDDB' },
     ];
     var tx = function(s) { return ((s / 100) * W).toFixed(1); };
     var zoneSVG = zones.map(function(z) {
@@ -992,11 +992,11 @@ var CSS = [
   var ea     = pillarScore(r, 'ease');
 
   // Score tier
-  var tier = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
-  var scoreLabel = score >= 76 ? 'Chosen. The default option in your category.'
-    : score >= 56 ? 'Considered. Not consistently chosen.'
-    : score >= 31 ? 'Seen. Not selected.'
-    : 'Not seen. Not chosen.';
+  var tier = score >= 76 ? 'Recommended' : score >= 56 ? 'Considered' : score >= 31 ? 'Mentioned' : 'Not mentioned';
+  var scoreLabel = score >= 76 ? 'Consistently recommended by AI.'
+    : score >= 56 ? 'Considered. Not consistently recommended.'
+    : score >= 31 ? 'Mentioned by AI. Not recommended.'
+    : 'Not mentioned or recommended by AI.';
 
   // Projection — weighted by actual pillar headroom so each business gets
   // numbers that reflect their specific starting position, not a flat formula.
@@ -1135,7 +1135,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   var actTitle  = safeStr(act0.title, '');
   var actBody   = safeStr(act0.body,  '');
   var tierCol   = score >= 76 ? '#2A7A48' : score >= 56 ? '#9A6A14' : '#B83232';
-  var tier      = score >= 76 ? 'Chosen' : score >= 56 ? 'Considered' : score >= 31 ? 'Seen' : 'Not seen';
+  var tier      = score >= 76 ? 'Recommended' : score >= 56 ? 'Considered' : score >= 31 ? 'Mentioned' : 'Not mentioned';
   var barCol    = score >= 76 ? '#2A7A48' : score >= 56 ? '#C9A86A' : score >= 31 ? '#9A6A14' : '#B83232';
 
   function pillarRow(label, val) {
@@ -1965,9 +1965,15 @@ exports.handler = async function(event) {
     return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
   
-// Internal auth — only stripe-webhook may call this
-  var internalToken = process.env.INTERNAL_REPORT_SECRET;
-  if (internalToken && event.headers['x-internal-token'] !== internalToken) {
+  // Internal auth — only stripe-webhook may call this
+  var internalToken = process.env.INTERNAL_REPORT_SECRET
+    || process.env.INTERNAL_DIAGNOSTIC_SECRET
+    || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!internalToken) {
+    console.error('[generate-report] no internal service credential is configured');
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Report service is not configured' }) };
+  }
+  if (event.headers['x-internal-token'] !== internalToken) {
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
   var body;
