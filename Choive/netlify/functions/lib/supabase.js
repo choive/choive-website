@@ -125,6 +125,8 @@ async function createDiagnosticWithParent(jobId, input, parentJobId) {
       evidence:             null,
       result:               null,
       error:                null,
+      paid:                 true,
+      paid_at:              new Date().toISOString(),
       business_fingerprint: fingerprint,
       parent_job_id:        parentJobId,
       version:              nextVersion
