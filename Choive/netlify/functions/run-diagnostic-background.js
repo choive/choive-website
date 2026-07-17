@@ -1400,7 +1400,7 @@ exports.handler = async function (event) {
         var seen = {};
         return (values || []).filter(function(value) {
           var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!key || seen[key] || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
+          if (!key || seen[key] || subjectRecommendationKeys[key] || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
           seen[key] = true;
           return true;
         })[0] || null;
@@ -1494,7 +1494,7 @@ exports.handler = async function (event) {
       var candidateMap = {};
       orderedComparisonCandidates.forEach(function(candidate) {
         var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!key || key === subjectComparisonKey || isPlatformName(candidate.name)) return;
+        if (!key || key === subjectComparisonKey || subjectRecommendationKeys[key] || isPlatformName(candidate.name)) return;
         if (!candidateMap[key]) candidateMap[key] = { name: candidate.name, sources: [] };
         if (candidateMap[key].sources.indexOf(candidate.source) === -1) candidateMap[key].sources.push(candidate.source);
       });
@@ -1533,7 +1533,7 @@ exports.handler = async function (event) {
       recommendationLanes.forEach(function(lane) {
         var laneName = String(lane && lane.recommendation || '').trim();
         var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!laneKey || laneKey === subjectComparisonKey || isPlatformName(laneName)) return;
+        if (!laneKey || laneKey === subjectComparisonKey || subjectRecommendationKeys[laneKey] || isPlatformName(laneName)) return;
         if (!arenaNameByKey[laneKey]) {
           arenaNameByKey[laneKey] = laneName;
           uniqueArenaNames.push(laneName);
