@@ -29,6 +29,7 @@ function outputText(data) {
 function cleanResponse(response, maxLength) {
   if (!response) return '';
   maxLength = Number(maxLength || 900);
+  var recommendationMarker = String(response).match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
   var cleaned = String(response)
     .replace(/[#]+ /g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -40,6 +41,9 @@ function cleanResponse(response, maxLength) {
   if (cleaned.length > maxLength) {
     var cut = cleaned.lastIndexOf('.', maxLength);
     cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, maxLength);
+  }
+  if (recommendationMarker && !/(?:^|\n)\s*TOP_RECOMMENDATION\s*:/i.test(cleaned)) {
+    cleaned += '\nTOP_RECOMMENDATION: ' + recommendationMarker[1].trim();
   }
   return cleaned;
 }
@@ -145,7 +149,7 @@ async function extractRecommendations(name, category, city, results, mode) {
   // truthfully describe what the platform recommends before the subject is
   // named.
   var namedShortlistResults = (results || []).filter(function(result) {
-    return String(result && result.label || '').toLowerCase().indexOf('named competitor') !== -1
+    return String(result && result.label || '').toLowerCase().indexOf('branded replacement') !== -1
       && Array.isArray(result.allResponses)
       && result.allResponses.some(Boolean);
   });
@@ -234,7 +238,12 @@ async function runOpenAISimulation(input) {
     for (var i = 0; i < samples; i++) jobs.push({ queryIndex: queryIndex, result: result });
   });
   var settled = await Promise.allSettled(jobs.map(function(job) {
-    var system = 'You are a helpful AI assistant with live web search. Search before answering. '
+    // Preserve the exact buyer-role framing used for the shared query. Without
+    // this, a B2B procurement question can be interpreted as an end-consumer
+    // shopping question even though Claude received the correct instruction.
+    var sharedInstruction = String(job.result && job.result.system || '').trim();
+    var system = (sharedInstruction ? sharedInstruction + '\n\n' : '')
+      + 'You are a helpful AI assistant with live web search. Search before answering. '
       + 'Name specific, real companies that serve the buyer\'s market. Use each company\'s exact current public brand name, not a guessed abbreviation, domain, legacy owner, or translated name. Be concrete and explain the recommendation briefly. '
       + 'At the very end add exactly one separate line: TOP_RECOMMENDATION: Company Name. Use the single company you most clearly recommend for this exact question, including the subject when it is your choice; otherwise write TOP_RECOMMENDATION: NONE.';
     return requestOpenAI(system, job.result.query, true);
@@ -283,10 +292,10 @@ async function runOpenAISimulation(input) {
     'competitor-shortlist'
   );
   var visibilityResults = results.filter(function(result) {
-    return String(result && result.label || '').toLowerCase().indexOf('named competitor') === -1;
+    return String(result && result.label || '').toLowerCase().indexOf('branded replacement') === -1;
   });
   var directResult = results.filter(function(result) {
-    return String(result && result.label || '').toLowerCase().indexOf('direct recommendation') !== -1;
+    return String(result && result.label || '').toLowerCase().indexOf('branded replacement') !== -1;
   })[0];
   var directTopRecommendation = directResult && Array.isArray(directResult.allResponses)
     ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean)[0] || null
