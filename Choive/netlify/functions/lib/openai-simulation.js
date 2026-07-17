@@ -235,7 +235,7 @@ async function runOpenAISimulation(input) {
   });
   var settled = await Promise.allSettled(jobs.map(function(job) {
     var system = 'You are a helpful AI assistant with live web search. Search before answering. '
-      + 'Name specific, real companies that serve the buyer\'s market. Be concrete and explain the recommendation briefly. '
+      + 'Name specific, real companies that serve the buyer\'s market. Use each company\'s exact current public brand name, not a guessed abbreviation, domain, legacy owner, or translated name. Be concrete and explain the recommendation briefly. '
       + 'At the very end add exactly one separate line: TOP_RECOMMENDATION: Company Name. Use the single company you most clearly recommend for this exact question, including the subject when it is your choice; otherwise write TOP_RECOMMENDATION: NONE.';
     return requestOpenAI(system, job.result.query, true);
   }));
