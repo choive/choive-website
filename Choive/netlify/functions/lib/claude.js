@@ -247,6 +247,8 @@ function buildPrompt(evidence) {
     + '- If "Title tag: YES" and "H1: YES" and "Meta description: YES" → clarity cannot be below 14\n'
     + '- If "Title tag: NO" and "H1: NO" → clarity cannot exceed 8\n'
     + 'These are not suggestions. They are hard constraints derived from real data.\n\n'
+    + 'PILLAR SCORE ISOLATION — ABSOLUTE:\n'
+    + 'Calculate Clarity, Trust, Difference, and Ease only from the subject business evidence: its website, structured signals, search presence, independent reviews, press, partnerships, clients, and public proof. AI recommendation transcripts, provider visibility, competitor identities, competitor scores, and whether another company was recommended must have zero effect on any pillar score, pillar finding, or pillar analysis. Those AI and competitor sections may inform only the separate recommendation, competitor, summary, and action fields. First determine all four pillar scores from subject evidence alone; never raise or lower a pillar because an AI provider named or omitted the business.\n\n'
     + 'STRICT RULES:\n'
     + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
     + '2. Every score must be justified by specific evidence.\n'
@@ -895,8 +897,9 @@ async function selectDominantCompetitor(evidence) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 400,
+        max_tokens: 700,
         temperature: 0,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
