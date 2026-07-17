@@ -4,6 +4,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  
 const { getDiagnostic } = require('./lib/supabase');
+const { buildPublicResult } = require('./lib/public-result');
  
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,7 +77,7 @@ exports.handler = async function (event) {
         jobId: job.job_id,
         status: 'complete',
         stage: 'preparing_result',
-        result: job.result,
+        result: job.paid === true ? job.result : buildPublicResult(job.result),
         paid: job.paid === true
       })
     };
