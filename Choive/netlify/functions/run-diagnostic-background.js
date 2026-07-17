@@ -1338,7 +1338,7 @@ exports.handler = async function (event) {
       var extractDirectRecommendation = function(run) {
         if (!run || !Array.isArray(run.results)) return null;
         var direct = run.results.find(function(result) {
-          return result && /direct recommendation/i.test(String(result.label || ''));
+          return result && /branded replacement/i.test(String(result.label || ''));
         });
         if (!direct) return null;
         var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
