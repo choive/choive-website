@@ -587,6 +587,9 @@ async function runQuerySet(queries, name, useSearch) {
       label: q.label,
       intent: q.intent,
       query: q.query,
+      // Preserve the buyer-role instruction so independently measured
+      // providers receive the same B2B/B2C framing as Claude.
+      system: q.system,
       response: shown,
       appeared: appearances.length > 0,
       sampleCount: responses.length,
@@ -958,14 +961,22 @@ async function runBeforeSimulation(input, useWebSearch) {
   // a safe fallback. This is deterministic — not reliant on the model.
   if (rawQueries && rawQueries.length) {
     var bvbPattern = /\b(besser\s+(als\s+)?|better\s+(than\s+)?|soll(en)?\s+wir|should\s+we|eigene?\s+\w+\s+(entwickeln|bauen)|own\s+\w+\s+(build|develop)|in.house|in-house|selbst\s+(entwickeln|bauen)|build\s+(your|our|vs)|versus\s+(buy|licens)|oder\s+liz[ei]n|or\s+licens|or\s+buy\b)/i;
+    // A B2B vendor's customer is the operator/OEM procuring the software, not
+    // that customer's subscribers, viewers, drivers, or car owners. Queries
+    // framed around end users invite consumer streaming brands such as
+    // YouTube TV into an enterprise software comparison.
+    var b2bEndUserPattern = /\b(subscribers?|viewers?|car owners?|drivers?|passengers?|people watching|watch across)\b/i;
     var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
     var fbIdx = 0;
     rawQueries = rawQueries.map(function(q, i) {
       if (!q) return q;
       var queryText = typeof q === 'string' ? q : (q.query || '');
-      if (bvbPattern.test(queryText)) {
-        console.warn('[simulation] build-vs-buy query REJECTED at code level: ' + queryText.slice(0, 100));
-        var safe = staticFallback[fbIdx % staticFallback.length];
+      var rejectsBuildVsBuy = bvbPattern.test(queryText);
+      var queryPlanIsB2B = queryPlan && String(queryPlan.buyerType || '').toLowerCase() === 'b2b';
+      var rejectsB2BEndUser = (n.businessModel === 'b2b' || queryPlanIsB2B) && b2bEndUserPattern.test(queryText);
+      if (rejectsBuildVsBuy || rejectsB2BEndUser) {
+        console.warn('[simulation] unsafe buyer query REJECTED at code level: ' + queryText.slice(0, 100));
+        var safe = staticFallback[i] || staticFallback[fbIdx % staticFallback.length];
         fbIdx++;
         return typeof q === 'string' ? safe.query : safe;
       }
