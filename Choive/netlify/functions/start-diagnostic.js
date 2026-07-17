@@ -169,7 +169,10 @@ exports.handler = async function (event) {
   try {
     var triggerRes = await fetch(backgroundUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': process.env.INTERNAL_DIAGNOSTIC_SECRET || process.env.INTERNAL_REPORT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      },
       body: JSON.stringify({ jobId: jobId, input: input })
     });
     if (!triggerRes.ok) {
