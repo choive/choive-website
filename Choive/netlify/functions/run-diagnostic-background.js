@@ -913,8 +913,12 @@ exports.handler = async function (event) {
                     distinctQueryCount: bestQueryCount,
                     secondMentionCount: secondCount,
                     secondDistinctQueryCount: secondQueryCount,
-                    aiMentionedCompetitor: bestCount > 0 ? bestName : null,
-                    secondAiMentionedCompetitor: secondCount > 0 ? secondName : null,
+                    // Frequency matching against search-result domains is useful
+                    // debugging evidence, but it is not a verified recommendation.
+                    // Never promote a domain hint (for example market.us) into a
+                    // customer-facing competitor when structured extraction failed.
+                    aiMentionedCompetitor: null,
+                    secondAiMentionedCompetitor: null,
                     aiMentionedCount: bestCount,
                     secondAiMentionedCount: secondCount,
                     aiMentionedQueryCount: bestQueryCount,
