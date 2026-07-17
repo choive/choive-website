@@ -551,6 +551,7 @@ var GROUND_TRUTH_SAMPLES = Math.max(1, Math.min(4, Math.floor(configuredGroundTr
 
 async function runQuerySet(queries, name, useSearch) {
   var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
+  var directRecommendationInstruction = '\n\nAt the very end of your answer, add exactly one separate line in this format: TOP_RECOMMENDATION: Company Name. Use the single company you genuinely recommend for this exact question. If the subject business is your top choice, use its exact name. If you cannot establish one recommendation, write TOP_RECOMMENDATION: NONE.';
 
   // Fire every (query \u00d7 sample) combination in one parallel batch.
   var jobs = [];
@@ -558,7 +559,13 @@ async function runQuerySet(queries, name, useSearch) {
     for (var s = 0; s < sampleCount; s++) jobs.push({ qi: qi, q: q });
   });
   var settled = await Promise.allSettled(
-    jobs.map(function(j) { return runQuery(j.q.system, j.q.query, !!useSearch); })
+    jobs.map(function(j) {
+      var system = String(j.q.system || '');
+      if (/direct recommendation/i.test(String(j.q.label || ''))) {
+        system += directRecommendationInstruction;
+      }
+      return runQuery(system, j.q.query, !!useSearch);
+    })
   );
 
   // Group raw responses back by query index.
