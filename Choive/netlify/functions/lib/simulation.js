@@ -1014,13 +1014,15 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   var n = normalizeSimInput(input);
   var market = n.marketStr || n.city || '';
   var officialWebsite = String(input && input.website || '').trim();
-  var englishQuery = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '') + ' is a ' + n.catClean
-    + (market ? ' serving ' + market : '')
-    + '. Begin by opening the supplied official website and confirm the subject identity before searching for alternatives. Research what ' + n.name + ' actually sells and who buys it before answering. Which one company would you recommend instead of ' + n.name + ' for the same purchasing requirement? Name one company and explain briefly. If no genuine replacement can be established, say so.';
+  var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
+    + (n.catClean ? ' is a ' + n.catClean : '')
+    + (market ? ' serving ' + market : '') + '. ';
+  var englishQuery = identityContext
+    + 'Which one company would you recommend instead of ' + n.name + '? Briefly explain why.';
   var localized = await applyMarketLanguage([{
     label: 'Branded replacement recommendation',
     intent: 'A buyer asking which one company to choose instead of the subject',
-    system: 'You are a buyer research assistant with live web search. Open the supplied official website first to confirm what the subject sells and who buys it. Then name the single company you would genuinely recommend instead of the subject for the same purchasing requirement. The replacement must sell the same product or service type to the same buyer under the same commercial model and serve the same market. Exclude the subject itself, customers, suppliers, infrastructure components, directories, and adjacent products. Do not produce a broad list.',
+    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly, then answer the buyer question naturally. Name one real company you would recommend instead of the subject and briefly explain why. If you cannot identify a credible alternative, say so rather than guessing.',
     query: englishQuery
   }], n.city, input.language);
   var results = await runQuerySet(localized.queries, n.name, useWebSearch);
