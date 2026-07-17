@@ -3305,11 +3305,16 @@ function showResults(r, jobId) {
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(recommendation || statusText[state] || 'No named recommendation established') + '</div>'
         + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
-        + (recommendation && lane.subjectAppeared === false ? '<div style="font-size:10px;color:rgba(245,242,238,0.42);margin-top:7px;">Subject was not named in this platform sample</div>' : '')
         + '</div>';
     }).join('');
+    var measuredQuestion = supplied.map(function(lane) {
+      return lane && lane.query ? String(lane.query).trim() : '';
+    }).filter(Boolean)[0] || '';
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
       + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends for this buyer question</div>'
+      + (measuredQuestion
+        ? '<div style="font-size:12px;color:rgba(245,242,238,0.62);line-height:1.65;margin:-2px 0 12px;">&ldquo;' + esc(measuredQuestion) + '&rdquo;</div>'
+        : '')
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
       + '</div>';
   }
@@ -4201,7 +4206,7 @@ async function runAISimulation(r) {
         + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search'
         + (openaiRun.complete === false ? ' · partial run (' + Number(openaiRun.completedSamples || 0) + '/' + Number(openaiRun.expectedSamples || 0) + ' samples)' : '') + '</div></div>'
         + (recNames.length
-          ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Recommended alternatives: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
+          ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Companies named across the unbranded buyer questions: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
           : '')
         + renderQSet(openaiRun.results, 'Same buyer questions measured for ChatGPT')
         + '<div style="font-size:11px;color:var(--tm);line-height:1.6;margin-top:10px;">Measured through the OpenAI API. The consumer ChatGPT app may answer differently because its model, search context, and product settings can vary.</div>'
