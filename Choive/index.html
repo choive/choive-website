@@ -2938,27 +2938,12 @@ function buildGapBlock(r) {
   // "Angus-Rindfleisch-kaufen.de" in the banner and "The Meatlovers" here,
   // two different real companies both presented as \u201cthe competitor.\u201d One
   // page, one authoritative name, everywhere.
-  var activeThreatName = null;
-  try {
-    var aiRec = r && r.competitorDecision && r.competitorDecision.aiRecommends;
-    if (aiRec) {
-      var simRes = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results;
-      if (Array.isArray(simRes)) {
-        var normG = function(s) {
-          s = String(s || '').toLowerCase();
-          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-          return s.replace(/[^a-z0-9]+/g, ' ').trim();
-        };
-        var targetG = normG(aiRec).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
-        // FIX K — word-boundary check only; space-stripped fallback removed (caused domain substring false positives)
-        var confirmed = simRes.some(function(q) {
-          var body = ' ' + normG(q.response) + ' ';
-          return targetG && body.indexOf(' ' + targetG + ' ') !== -1;
-        });
-        if (confirmed) activeThreatName = aiRec;
-      }
-    }
-  } catch (e) {}
+  var decision = r && r.competitorDecision;
+  var activeThreatName = decision
+    && decision.aiRecommends
+    && Number(decision.distinctQueryCount || 0) > 0
+      ? decision.aiRecommends
+      : null;
   var gap = likelihood - readability;
 
   var likeLabel = likelihood >= 80 ? 'HIGH'  : likelihood >= 55 ? 'MID'  : 'LOW';
@@ -3207,7 +3192,7 @@ function showResults(r, jobId) {
   const trustScore = (r.pillars && r.pillars.trust && Number(r.pillars.trust.score)) || 0;
   const noTrackRecord = trustScore < 8;
   const scoreLabel = noTrackRecord
-    ? (score >= 56 ? 'Understood by AI. Not yet trusted by anyone else.' : 'Not yet on anyone\'s radar.')
+    ? (score >= 56 ? 'Understood by AI. Independent trust evidence is still weak.' : 'Not yet appearing in the measured AI answers.')
     : score >= 76 ? 'Consistently recommended by AI.'
     : score >= 56 ? 'Considered. Not consistently recommended.'
     : score >= 31 ? 'Mentioned by AI. Not recommended.'
