@@ -75,6 +75,7 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
 
 function cleanResponse(response) {
   if (!response) return 'Query failed.';
+  var recommendationMarker = String(response).match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
   var cleaned = response
     .replace(/[#]+ /g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -86,6 +87,9 @@ function cleanResponse(response) {
   if (cleaned.length > 1200) {
     var cut = cleaned.lastIndexOf('.', 1200);
     cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 1200);
+  }
+  if (recommendationMarker && !/(?:^|\n)\s*TOP_RECOMMENDATION\s*:/i.test(cleaned)) {
+    cleaned += '\nTOP_RECOMMENDATION: ' + recommendationMarker[1].trim();
   }
   return cleaned;
 }
@@ -561,7 +565,7 @@ async function runQuerySet(queries, name, useSearch) {
   var settled = await Promise.allSettled(
     jobs.map(function(j) {
       var system = String(j.q.system || '');
-      if (/direct recommendation/i.test(String(j.q.label || ''))) {
+      if (/direct recommendation|branded replacement/i.test(String(j.q.label || ''))) {
         system += directRecommendationInstruction;
       }
       return runQuery(system, j.q.query, !!useSearch);
@@ -1001,10 +1005,10 @@ async function runBeforeSimulation(input, useWebSearch) {
   };
 }
 
-// Separate named-brand competitor test. It is deliberately excluded from the
-// unbranded visibility score: mentioning the subject in the question would
-// otherwise make "appeared" meaningless. The result is used only for the
-// competitor shortlist and platform comparison.
+// Separate branded replacement measurement. It is deliberately excluded from
+// the unbranded visibility score: mentioning the subject in the question would
+// otherwise make "appeared" meaningless. This exact question populates each
+// provider's attributed "who instead of this business?" lane.
 async function runDirectCompetitorQuestion(input, useWebSearch) {
   if (useWebSearch === undefined) useWebSearch = true;
   var n = normalizeSimInput(input);
@@ -1012,11 +1016,11 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   var officialWebsite = String(input && input.website || '').trim();
   var englishQuery = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '') + ' is a ' + n.catClean
     + (market ? ' serving ' + market : '')
-    + '. Begin by opening the supplied official website and confirm the subject identity before searching for alternatives. Research what ' + n.name + ' actually sells and who buys it before answering. What are its three closest direct competitors? Which one is the best replacement for the entire business scope, and would your recommendation change for a narrower use case?';
+    + '. Begin by opening the supplied official website and confirm the subject identity before searching for alternatives. Research what ' + n.name + ' actually sells and who buys it before answering. Which one company would you recommend instead of ' + n.name + ' for the same purchasing requirement? Name one company and explain briefly. If no genuine replacement can be established, say so.';
   var localized = await applyMarketLanguage([{
-    label: 'Named competitor shortlist',
-    intent: 'A buyer explicitly comparing the subject with alternatives',
-    system: 'You are a competitive intelligence analyst with live web search. Search the subject\'s official website first, then verify every candidate using official candidate pages and credible independent comparison sources. Do not begin with a broad category list. A direct competitor must sell the same product scope to the same buyer type under the same commercial model and serve the same market. For a multi-market business, distinguish a full-scope replacement from specialists covering only one use case. Return three verified direct competitors, name the best replacement for the subject\'s entire scope, and separately name the best specialist by use case when relevant. Exclude customers, suppliers, infrastructure components, directories, and adjacent tools.',
+    label: 'Branded replacement recommendation',
+    intent: 'A buyer asking which one company to choose instead of the subject',
+    system: 'You are a buyer research assistant with live web search. Open the supplied official website first to confirm what the subject sells and who buys it. Then name the single company you would genuinely recommend instead of the subject for the same purchasing requirement. The replacement must sell the same product or service type to the same buyer under the same commercial model and serve the same market. Exclude the subject itself, customers, suppliers, infrastructure components, directories, and adjacent products. Do not produce a broad list.',
     query: englishQuery
   }], n.city, input.language);
   var results = await runQuerySet(localized.queries, n.name, useWebSearch);
