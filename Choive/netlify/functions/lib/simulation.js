@@ -74,7 +74,9 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
 }
 
 function cleanResponse(response) {
-  if (!response) return 'Query failed.';
+  // Empty or rejected provider calls must remain empty. Returning a visible
+  // error string here made failed requests look like completed samples.
+  if (!response) return '';
   var recommendationMarker = String(response).match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
   var cleaned = response
     .replace(/[#]+ /g, '')
@@ -84,10 +86,6 @@ function cleanResponse(response) {
     .replace(/^[-*] /gm, '\u2022 ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (cleaned.length > 1200) {
-    var cut = cleaned.lastIndexOf('.', 1200);
-    cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 1200);
-  }
   if (recommendationMarker && !/(?:^|\n)\s*TOP_RECOMMENDATION\s*:/i.test(cleaned)) {
     cleaned += '\nTOP_RECOMMENDATION: ' + recommendationMarker[1].trim();
   }
@@ -545,13 +543,10 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   ];
 }
 
-// Two independent search-grounded attempts preserve a repeatability signal
-// without multiplying every diagnostic into sixteen Claude web-search calls.
-// The environment override is capped so production spend cannot accidentally
-// grow without an explicit configuration change.
-var configuredGroundTruthSamples = Number(process.env.CLAUDE_GROUND_TRUTH_SAMPLES || 2);
-if (!Number.isFinite(configuredGroundTruthSamples)) configuredGroundTruthSamples = 2;
-var GROUND_TRUTH_SAMPLES = Math.max(1, Math.min(4, Math.floor(configuredGroundTruthSamples)));
+// One consumer-style answer per question keeps attribution literal and costs
+// predictable. Repeat diagnostics are separate measurements, not hidden
+// duplicate calls inside one result.
+var GROUND_TRUTH_SAMPLES = 1;
 
 async function runQuerySet(queries, name, useSearch) {
   var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
@@ -597,6 +592,7 @@ async function runQuerySet(queries, name, useSearch) {
       response: shown,
       appeared: appearances.length > 0,
       sampleCount: responses.length,
+      expectedSamples: sampleCount,
       appearedCount: appearances.length,
       // Full raw corpus \u2014 every independent response, not just the shown
       // one \u2014 so competitor frequency can be counted across ALL of them,
@@ -647,11 +643,13 @@ function detectMarketLanguage(city) {
 async function localizeQueries(queries, lang) {
   var langName = LANG_NAMES[lang];
   if (!langName) return null;
-  var prompt = 'Translate these three buyer search queries into natural, native ' + langName
+  var queryCount = Array.isArray(queries) ? queries.length : 0;
+  if (!queryCount) return null;
+  var prompt = 'Translate these ' + queryCount + ' buyer search ' + (queryCount === 1 ? 'query' : 'queries') + ' into natural, native ' + langName
     + ' \u2014 phrased exactly as a local customer would type them to an AI assistant. '
     + 'CRITICAL: preserve every specific breed, material, technology, certification, or niche term EXACTLY \u2014 translate it, never generalize it away. '
     + 'Example: "Black Angus beef" must become the specific German term for Black Angus beef, NOT a generic word for "beef" or "meat". Losing the specific term changes what the question is actually asking. '
-    + 'Respond ONLY with a JSON array of exactly 3 strings, no markdown.\n\n'
+    + 'Respond ONLY with a JSON array of exactly ' + queryCount + ' string' + (queryCount === 1 ? '' : 's') + ', no markdown.\n\n'
     + JSON.stringify(queries.map(function(q) { return q.query; }));
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 25000);
@@ -667,7 +665,7 @@ async function localizeQueries(queries, lang) {
     var data = await res.json();
     var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
     var arr = JSON.parse(text);
-    if (!Array.isArray(arr) || arr.length !== 3) return null;
+    if (!Array.isArray(arr) || arr.length !== queryCount) return null;
     return arr.map(String);
   } catch (err) {
     clearTimeout(timer);
