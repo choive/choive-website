@@ -39,9 +39,7 @@ function cleanResponse(value) {
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (cleaned.length <= 1600) return cleaned;
-  var cut = cleaned.lastIndexOf('.', 1600);
-  return cut > 500 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, 1600);
+  return cleaned;
 }
 
 function extractTopRecommendation(response, subjectName) {
@@ -174,8 +172,10 @@ async function runProvider(provider, input, requestFn, configured) {
     topRecommendation: chosen ? chosen.topRecommendation : null,
     competitorRecommendation: chosen ? chosen.topRecommendation : null,
     competitorRecommendationQuery: replacement ? replacement.query : null,
-    recommendationQuery: chosen ? chosen.query : null,
-    recommendationResponse: chosen ? chosen.response : null,
+    recommendationQuery: replacement ? replacement.query : null,
+    recommendationResponse: replacement ? replacement.response : null,
+    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1),
+    recommendationError: replacement && replacement.error || null,
     results: results
   };
 }
