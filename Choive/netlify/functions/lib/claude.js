@@ -888,6 +888,42 @@ async function selectDominantCompetitor(evidence) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 30000);
   try {
+    var selectionRequest = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: 1400,
+      temperature: 0,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }],
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              realCompetitor: { type: ['string', 'null'] },
+              aiRecommends: { type: ['string', 'null'] },
+              secondAiCompetitor: { type: ['string', 'null'] },
+              globalBenchmark: { type: ['string', 'null'] },
+              source: { type: 'string' },
+              categoryUnowned: { type: 'boolean' },
+              contested: { type: 'boolean' },
+              reason: { type: 'string' }
+            },
+            required: [
+              'realCompetitor',
+              'aiRecommends',
+              'secondAiCompetitor',
+              'globalBenchmark',
+              'source',
+              'categoryUnowned',
+              'contested',
+              'reason'
+            ],
+            additionalProperties: false
+          }
+        }
+      }
+    };
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -895,13 +931,7 @@ async function selectDominantCompetitor(evidence) {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 700,
-        temperature: 0,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      }),
+      body: JSON.stringify(selectionRequest),
       signal: controller.signal
     });
     clearTimeout(timer);
@@ -911,6 +941,38 @@ async function selectDominantCompetitor(evidence) {
       return null;
     }
     var data = await res.json();
+    // Server-side web search can pause a long-running turn. Continue that same
+    // turn once, preserving its tool state, instead of trying to parse the
+    // preliminary "I'll research..." text as the final structured result.
+    if (data.stop_reason === 'pause_turn') {
+      var continuationController = new AbortController();
+      var continuationTimer = setTimeout(function() { continuationController.abort(); }, 30000);
+      selectionRequest.messages = [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: data.content || [] }
+      ];
+      var continuation = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(selectionRequest),
+        signal: continuationController.signal
+      });
+      clearTimeout(continuationTimer);
+      if (!continuation.ok) {
+        var continuationError = await continuation.json().catch(function() { return {}; });
+        console.warn('[competitor-selection] continuation API error:', continuation.status, continuationError.error && continuationError.error.message);
+        return null;
+      }
+      data = await continuation.json();
+    }
+    if (data.stop_reason === 'max_tokens') {
+      console.warn('[competitor-selection] structured response reached max_tokens');
+      return null;
+    }
     // Extract text from response — may include tool_use blocks from web search
     var text = (data.content || [])
       .filter(function(b) { return b.type === 'text'; })
@@ -1236,7 +1298,37 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: ANTHROPIC_FAST_MODEL, max_tokens: 350, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({
+        model: ANTHROPIC_FAST_MODEL,
+        max_tokens: 500,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                pillars: {
+                  type: 'object',
+                  properties: {
+                    clarity: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    trust: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    difference: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    ease: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false }
+                  },
+                  required: ['clarity', 'trust', 'difference', 'ease'],
+                  additionalProperties: false
+                },
+                keyGap: { type: 'string' },
+                priorityAction: { type: 'string' }
+              },
+              required: ['pillars', 'keyGap', 'priorityAction'],
+              additionalProperties: false
+            }
+          }
+        }
+      }),
       signal: controller.signal
     });
     clearTimeout(timer);
@@ -1322,10 +1414,34 @@ async function selectBestFitCompetitors(evidence, candidates) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 700,
+        max_tokens: 1200,
         temperature: 0,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                best: {
+                  type: 'object',
+                  properties: { name: { type: 'string' }, reason: { type: 'string' } },
+                  required: ['name', 'reason'],
+                  additionalProperties: false
+                },
+                runnerUp: {
+                  type: 'object',
+                  properties: { name: { type: 'string' }, reason: { type: 'string' } },
+                  required: ['name', 'reason'],
+                  additionalProperties: false
+                }
+              },
+              required: ['best', 'runnerUp'],
+              additionalProperties: false
+            }
+          }
+        }
       }),
       signal: controller.signal
     });
@@ -1350,12 +1466,26 @@ async function selectBestFitCompetitors(evidence, candidates) {
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model: ANTHROPIC_FAST_MODEL,
-          max_tokens: 400,
+          max_tokens: 500,
           temperature: 0,
           messages: [{ role: 'user', content: 'Convert the research below into the required JSON. Choose only from these candidates: '
             + cleanCandidates.map(function(candidate) { return candidate.name; }).join(', ')
             + '\nReturn exactly {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}.\n\nRESEARCH:\n'
-            + text.slice(0, 5000) }]
+            + text.slice(0, 5000) }],
+          output_config: {
+            format: {
+              type: 'json_schema',
+              schema: {
+                type: 'object',
+                properties: {
+                  best: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name', 'reason'], additionalProperties: false },
+                  runnerUp: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name', 'reason'], additionalProperties: false }
+                },
+                required: ['best', 'runnerUp'],
+                additionalProperties: false
+              }
+            }
+          }
         }),
         signal: normalizeController.signal
       });
