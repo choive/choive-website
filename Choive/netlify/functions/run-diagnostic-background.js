@@ -4,7 +4,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 // Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL,
 // OPENAI_GROUND_TRUTH_SAMPLES
-const { updateStatus, saveEvidence, saveResult, saveError, getCachedEvidence, buildFingerprint, getPreviousCompetitor, getPreviousResult } = require('./lib/supabase');
+const { updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors } = require('./lib/claude');
@@ -117,7 +117,7 @@ function categoryFaithful(ownerCategory, inferred) {
     // generic tech/product words — user typed these when unsure of real category
     software:1, tech:1, technology:1, technologies:1, solution:1, solutions:1,
     app:1, application:1, applications:1, system:1, systems:1, product:1, products:1,
-    digital:1, web:1, saas:1, cloud:1, startup:1, startup:1, enterprise:1
+    digital:1, web:1, saas:1, cloud:1, startup:1, enterprise:1
   };
   var toks = function(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
@@ -177,6 +177,11 @@ var CERT_SCHEME_RE = /\b(bioland|demeter|naturland|eu-?bio|usda|non-?gmo|fairtra
 function isGenericEntity(n) {
   var name = String(n || '').trim();
   if (!name) return false;
+  // Legitimate compact brands such as 3SS, RT-RK, 24i, NAGRA, and ADB must
+  // not be rejected merely because none of their tokens exceeds two letters.
+  // Generic phrases are word-like; an uppercase/digit compact mark is an
+  // identity shape and remains subject to the other competitor checks.
+  if (/^[A-Z0-9][A-Z0-9&.+-]{1,15}$/.test(name) && /[A-Z]{2}|[A-Z].*\d|\d.*[A-Z]/.test(name)) return false;
   var stripped = name.replace(CERT_SCHEME_RE, ' ').replace(GENERIC_ENTITY_RE, ' ').replace(/[-\u2013\u2014]/g, ' ').replace(/\s+/g, ' ').trim();
   // If removing every generic/category word leaves nothing (or only 1-2 tiny
   // leftover characters), the whole name was built from category vocabulary
@@ -278,6 +283,19 @@ exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
+  }
+  var diagnosticSecret = process.env.INTERNAL_DIAGNOSTIC_SECRET
+    || process.env.INTERNAL_REPORT_SECRET
+    || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!diagnosticSecret) {
+    console.error('run-diagnostic-background: internal diagnostic secret is not configured');
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Diagnostic service is not configured' }) };
+  }
+  if ((event.headers || {})['x-internal-token'] !== diagnosticSecret) {
+    return { statusCode: 401, headers: corsHeaders, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
   let jobId;
   try {
     const body  = JSON.parse(event.body || '{}');
@@ -293,46 +311,12 @@ exports.handler = async function (event) {
     if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
-    // ── CACHE CHECK — reuse recent evidence for the same business ────────────
-    const fingerprint = buildFingerprint({ name, category, city });
-    const cached = await getCachedEvidence(fingerprint, 24).catch(() => null);
+    // Every diagnostic is a fresh measurement. Historical jobs remain stored
+    // for audit and progress comparison, but their evidence, provider answers,
+    // and competitor decisions are never used as the input to this run.
+    const fingerprint = buildFingerprint({ name, category, city, website });
     let evidence = null;
     let cacheBustedThisRun = false;
-
-    if (cached && cached.evidence) {
-      // ── REALITY CHECK — the cache is valid only if the website hasn't changed.
-      // One cheap fetch. If the customer implemented fixes since the cached run
-      // (new llms.txt, new H1, new schema types...), the cache is stale by
-      // definition: bust it and re-measure everything NOW, so verification
-      // never makes someone wait a day to see their own work count.
-      var cacheValid = true;
-      if (website) {
-        try {
-          var freshSite = await fetchWebsiteText(website);
-          var freshSig  = (freshSite && freshSite.signals) || {};
-          var cachedSig = (cached.evidence && cached.evidence.websiteSignals) || {};
-          var sigKeys = ['hasSchema','hasLlmsTxt','hasH1','hasTitle','hasMetaDescription','hasCanonical','hasSitemap','hasRobots','hasOgTags'];
-          var changed = sigKeys.filter(function(k) { return (freshSig[k] === true) !== (cachedSig[k] === true); });
-          var freshTypes  = Array.isArray(freshSig.schemaTypes)  ? freshSig.schemaTypes.length  : 0;
-          var cachedTypes = Array.isArray(cachedSig.schemaTypes) ? cachedSig.schemaTypes.length : 0;
-          if (freshTypes !== cachedTypes) changed.push('schemaTypes(' + cachedTypes + '\u2192' + freshTypes + ')');
-          if (changed.length > 0) {
-            cacheValid = false;
-            cacheBustedThisRun = true;
-            console.log('[' + jobId + '] Cache busted \u2014 website changed since cached run: ' + changed.join(', '));
-          }
-        } catch (err) {
-          console.warn('[' + jobId + '] Cache revalidation fetch failed, keeping cache:', err.message);
-        }
-      }
-      if (cacheValid) {
-        console.log('[' + jobId + '] Using cached evidence from job ' + cached.job_id + ' (within 24h, website unchanged)');
-        evidence = cached.evidence;
-        await saveEvidence(jobId, evidence).catch(err =>
-          console.warn('[' + jobId + '] saveEvidence (cached) failed:', err.message)
-        );
-      }
-    }
     if (!evidence) {
       await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
       // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
@@ -586,8 +570,8 @@ exports.handler = async function (event) {
       // Runs the three real "who would you recommend" queries BEFORE scoring,
       // so the dominant competitor is chosen from what AI actually recommends
       // today — not from whoever happens to SEO-rank in search evidence.
-      // Saved inside evidence so it caches with the fingerprint: competitor
-      // identity stays stable across runs within the cache window.
+      // Stored with this job for its audit trail. New diagnostics explicitly
+      // discard cached AI responses above and measure every provider again.
       var cachedSimLang = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before
         && evidence['aiSimulationBefore'].before.language;
       if (!evidence['aiSimulationBefore'] || (languagePref && cachedSimLang !== languagePref)) {
@@ -1050,19 +1034,6 @@ exports.handler = async function (event) {
       console.warn('[' + jobId + '] Gemini/Perplexity cache backfill failed:', newPlatformBackfillErr.message);
     }
 
-    // ── COMPETITOR STABILITY — look up previously identified competitor ────────
-    // This prevents drift between runs (e.g. Semrush one day, Profound the next)
-    // by giving Claude a strong prior anchored to the last verified run.
-    try {
-      var previousCompetitor = await getPreviousCompetitor(fingerprint);
-      if (previousCompetitor) {
-        evidence['previousCompetitor'] = previousCompetitor;
-        console.log('[' + jobId + '] Previous competitor: ' + previousCompetitor);
-      }
-    } catch (err) {
-      console.warn('[' + jobId + '] Previous competitor lookup failed:', err.message);
-    }
-
     // Declared rivals from the subject's own site → owner-named priority.
     try {
       var declared = extractDeclaredCompetitors(evidence['websiteText'], name);
@@ -1352,9 +1323,8 @@ exports.handler = async function (event) {
     if (evidence['googleReviews'])    finalResult['googleReviews']    = evidence['googleReviews'];
     if (evidence['competitorApify'])  finalResult['competitorApify']  = evidence['competitorApify'];
     if (evidence['platformSimulations']) finalResult['platformSimulations'] = evidence['platformSimulations'];
-    // Platform coverage must describe measurements that actually ran. The
-    // OpenAI API is labelled OpenAI rather than consumer ChatGPT because API
-    // and chat product answers are not guaranteed to be identical.
+    // Platform coverage must describe measurements that actually ran. The UI
+    // uses "ChatGPT"; the detail remains explicit that this is an API measure.
     if (evidence['platformSimulations']) {
       var measuredClaude = evidence['platformSimulations']['claude'];
       var measuredOpenAI = evidence['platformSimulations']['openai'];
@@ -1379,12 +1349,22 @@ exports.handler = async function (event) {
       var openaiRecommendations = measuredOpenAI && measuredOpenAI.recommendations
         ? [measuredOpenAI.recommendations.primary, measuredOpenAI.recommendations.second, measuredOpenAI.recommendations.third].filter(Boolean)
         : [];
-      var claudeDecision = evidence['competitorDecision'] || {};
-      var claudeRecommendations = [
-        claudeDecision.aiRecommends,
-        claudeDecision.aiMentionedCompetitor,
-        claudeDecision.secondAiMentionedCompetitor
-      ].filter(Boolean);
+      var extractDirectRecommendation = function(run) {
+        if (!run || !Array.isArray(run.results)) return null;
+        var direct = run.results.find(function(result) {
+          return result && /direct recommendation/i.test(String(result.label || ''));
+        });
+        if (!direct) return null;
+        var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
+          ? direct.allResponses : [direct.response];
+        for (var i = 0; i < responses.length; i++) {
+          var matches = String(responses[i] || '').match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
+          if (!matches) continue;
+          var value = String(matches[1] || '').replace(/[*_`]/g, '').trim();
+          if (value && !/^none\b/i.test(value)) return value;
+        }
+        return null;
+      };
       var subjectRecommendationKeys = {};
       var addSubjectKey = function(value) {
         var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1426,13 +1406,13 @@ exports.handler = async function (event) {
         if (!run.available || run.status === 'failed') return 'failed';
         return recommendation ? 'recommended' : 'no_recommendation';
       };
-      var claudeTop = firstValidRecommendation(claudeRecommendations);
-      var openaiTop = firstLaneRecommendation([measuredOpenAI && measuredOpenAI.topRecommendation].concat(openaiRecommendations));
+      var claudeTop = firstLaneRecommendation([extractDirectRecommendation(measuredClaude)]);
+      var openaiTop = firstLaneRecommendation([measuredOpenAI && measuredOpenAI.topRecommendation]);
       var geminiTop = firstLaneRecommendation([measuredGemini && measuredGemini.topRecommendation]);
       var perplexityTop = firstLaneRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
       var platformLanes = [
         { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: null },
-        { key: 'openai', label: 'OpenAI', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
+        { key: 'openai', label: 'ChatGPT', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
         { key: 'perplexity', label: 'Perplexity', run: measuredPerplexity, recommendation: perplexityTop, query: measuredPerplexity && measuredPerplexity.recommendationQuery || null },
         { key: 'gemini', label: 'Gemini', run: measuredGemini, recommendation: geminiTop, query: measuredGemini && measuredGemini.recommendationQuery || null }
       ].map(function(lane) {
@@ -1470,7 +1450,7 @@ exports.handler = async function (event) {
         });
         finalResult['verdictHeadline'] = visibleInEveryQueryOnEveryPlatform
           ? 'Visible across measured AI platforms'
-          : 'Recognized, but not consistently chosen';
+          : 'Considered. Not consistently recommended.';
       }
     }
     // The dedicated category pass is authoritative for business-model fidelity.
@@ -1499,10 +1479,10 @@ exports.handler = async function (event) {
       var researchedRecs = (finalResult['competitors'] || []).map(function(comp) { return comp && comp.name; }).filter(Boolean);
       var orderedComparisonCandidates = [];
       claudeRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
-      openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI API' }); });
+      openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'ChatGPT measurement (OpenAI API)' }); });
       perplexityRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Perplexity' }); });
       geminiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Gemini' }); });
-      openaiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'OpenAI competitor research' }); });
+      openaiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'ChatGPT competitor research (OpenAI API)' }); });
       perplexityResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Perplexity competitor research' }); });
       geminiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Gemini competitor research' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
@@ -1517,42 +1497,29 @@ exports.handler = async function (event) {
       var combinedCandidates = Object.keys(candidateMap).map(function(key) { return candidateMap[key]; });
       var adjudicated = await selectBestFitCompetitors(evidence, combinedCandidates);
       if (adjudicated && adjudicated.best) {
-        finalResult['bestFitCompetitor'] = adjudicated.best;
-        finalResult['headToHeadDecision'] = {
+        finalResult['bestFitMarketCompetitor'] = adjudicated.best;
+        finalResult['marketCompetitorDecision'] = {
           name: adjudicated.best.name,
           reason: adjudicated.best.reason,
           supportingSources: adjudicated.best.sources || [],
           runnerUp: adjudicated.runnerUp || null,
-          selectionRule: 'Closest whole-business purchasing substitute after same-product, same-buyer, same-commercial-model, geography, and market-breadth checks across all completed provider research.'
+          selectionRule: 'Strongest wider-market alternative across completed provider research; this does not replace the separately researched head-to-head competitor.'
         };
-        finalResult['competitorDecision'] = finalResult['competitorDecision'] || {};
-        finalResult['competitorDecision']['realCompetitor'] = adjudicated.best.name;
-        finalResult['competitorDecision']['source'] = 'cross_platform_fit_adjudication';
-        finalResult['competitorDecision']['reason'] = adjudicated.best.reason;
         if (Array.isArray(finalResult['competitors'])) {
           var adjudicatedKey = String(adjudicated.best.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var headToHeadKey = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
           var adjudicatedIndex = finalResult['competitors'].findIndex(function(comp) {
             return String(comp && comp.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') === adjudicatedKey;
           });
           var adjudicatedCard = adjudicatedIndex >= 0
             ? finalResult['competitors'].splice(adjudicatedIndex, 1)[0]
             : { name: adjudicated.best.name };
-          adjudicatedCard.queryContext = 'head-to-head';
+          adjudicatedCard.queryContext = adjudicatedKey === headToHeadKey ? 'head-to-head' : 'market-competitor';
           adjudicatedCard.evidence = adjudicated.best.reason;
           adjudicatedCard.selectionSources = adjudicated.best.sources || [];
-          finalResult['competitors'].forEach(function(comp) {
-            if (comp && comp !== adjudicatedCard && String(comp.queryContext || '').toLowerCase() === 'head-to-head') {
-              comp.queryContext = 'market-runner-up';
-            }
-          });
-          finalResult['competitors'].unshift(adjudicatedCard);
+          if (adjudicatedKey === headToHeadKey) finalResult['competitors'].unshift(adjudicatedCard);
+          else finalResult['competitors'].push(adjudicatedCard);
         }
-      }
-      if (!finalResult['bestFitCompetitor'] && combinedCandidates.length) {
-        finalResult['bestFitCompetitor'] = {
-          name: combinedCandidates[0].name,
-          reason: 'Fallback only: this was the first independently measured recommendation; full-fit adjudication was unavailable.'
-        };
       }
 
       var recommendationLanes = Array.isArray(finalResult['platformRecommendationLanes'])
