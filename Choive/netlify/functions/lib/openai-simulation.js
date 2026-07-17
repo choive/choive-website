@@ -1,7 +1,7 @@
 // OpenAI buyer-answer measurement for CHOIVE.
 // Uses the exact queries already generated for the Claude simulation so the
 // platform comparison measures model behavior, not differences in prompting.
-// ENV: OPENAI_API_KEY. Optional: OPENAI_MODEL, OPENAI_GROUND_TRUTH_SAMPLES.
+// ENV: OPENAI_API_KEY. Optional: OPENAI_MODEL.
 
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
@@ -9,9 +9,7 @@ const OPENAI_FALLBACK_MODEL = 'gpt-5-mini';
 const REQUEST_TIMEOUT_MS = 90000;
 
 function sampleCount() {
-  var configured = Number(process.env.OPENAI_GROUND_TRUTH_SAMPLES || 2);
-  if (!Number.isFinite(configured)) configured = 2;
-  return Math.max(1, Math.min(4, Math.floor(configured)));
+  return 1;
 }
 
 function outputText(data) {
@@ -26,9 +24,8 @@ function outputText(data) {
   return parts.join('\n').trim();
 }
 
-function cleanResponse(response, maxLength) {
+function cleanResponse(response) {
   if (!response) return '';
-  maxLength = Number(maxLength || 900);
   var recommendationMarker = String(response).match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
   var cleaned = String(response)
     .replace(/[#]+ /g, '')
@@ -38,10 +35,6 @@ function cleanResponse(response, maxLength) {
     .replace(/^[-*] /gm, '\u2022 ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  if (cleaned.length > maxLength) {
-    var cut = cleaned.lastIndexOf('.', maxLength);
-    cleaned = cut > 300 ? cleaned.slice(0, cut + 1) : cleaned.slice(0, maxLength);
-  }
   if (recommendationMarker && !/(?:^|\n)\s*TOP_RECOMMENDATION\s*:/i.test(cleaned)) {
     cleaned += '\nTOP_RECOMMENDATION: ' + recommendationMarker[1].trim();
   }
@@ -252,11 +245,7 @@ async function runOpenAISimulation(input) {
   var grouped = sourceResults.map(function() { return []; });
   var errors = sourceResults.map(function() { return []; });
   settled.forEach(function(outcome, index) {
-    var sourceLabel = String(jobs[index] && jobs[index].result && jobs[index].result.label || '').toLowerCase();
-    // Competitor research answers begin by explaining the subject. Preserve
-    // enough of the answer to reach the actual shortlist and recommendation.
-    var responseLimit = sourceLabel.indexOf('named competitor') !== -1 ? 2800 : 1200;
-    var text = outcome.status === 'fulfilled' ? cleanResponse(outcome.value, responseLimit) : '';
+    var text = outcome.status === 'fulfilled' ? cleanResponse(outcome.value) : '';
     if (text) grouped[jobs[index].queryIndex].push(text);
     if (outcome.status === 'rejected') {
       errors[jobs[index].queryIndex].push(String(outcome.reason && outcome.reason.message || 'Request failed'));
@@ -300,6 +289,7 @@ async function runOpenAISimulation(input) {
   var directTopRecommendation = directResult && Array.isArray(directResult.allResponses)
     ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean)[0] || null
     : null;
+  var recommendationCompleted = Boolean(directResult && directResult.sampleCount > 0);
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
     complete: results.every(function(result) { return result.sampleCount === samples; }),
@@ -318,6 +308,9 @@ async function runOpenAISimulation(input) {
     recommendations: recommendations,
     topRecommendation: directTopRecommendation,
     recommendationQuery: directResult ? directResult.query : null,
+    recommendationResponse: directResult ? directResult.response : null,
+    recommendationCompleted: recommendationCompleted,
+    recommendationError: directResult && directResult.error || null,
     competitorShortlist: competitorShortlist,
     results: results
   };
