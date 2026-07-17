@@ -1335,11 +1335,14 @@ exports.handler = async function (event) {
       var openaiRecommendations = measuredOpenAI && measuredOpenAI.recommendations
         ? [measuredOpenAI.recommendations.primary, measuredOpenAI.recommendations.second, measuredOpenAI.recommendations.third].filter(Boolean)
         : [];
-      var extractDirectRecommendation = function(run) {
+      var findDirectRecommendationResult = function(run) {
         if (!run || !Array.isArray(run.results)) return null;
-        var direct = run.results.find(function(result) {
+        return run.results.find(function(result) {
           return result && /branded replacement/i.test(String(result.label || ''));
         });
+      };
+      var extractDirectRecommendation = function(run) {
+        var direct = findDirectRecommendationResult(run);
         if (!direct) return null;
         var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
           ? direct.allResponses : [direct.response];
@@ -1413,8 +1416,9 @@ exports.handler = async function (event) {
       var openaiTop = firstLaneRecommendation([measuredOpenAI && measuredOpenAI.topRecommendation]);
       var geminiTop = firstLaneRecommendation([measuredGemini && measuredGemini.topRecommendation]);
       var perplexityTop = firstLaneRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
+      var claudeDirectResult = findDirectRecommendationResult(measuredClaude);
       var platformLanes = [
-        { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: null },
+        { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: claudeDirectResult && claudeDirectResult.query || null },
         { key: 'openai', label: 'ChatGPT', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
         { key: 'perplexity', label: 'Perplexity', run: measuredPerplexity, recommendation: perplexityTop, query: measuredPerplexity && measuredPerplexity.recommendationQuery || null },
         { key: 'gemini', label: 'Gemini', run: measuredGemini, recommendation: geminiTop, query: measuredGemini && measuredGemini.recommendationQuery || null }
