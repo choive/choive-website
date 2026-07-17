@@ -143,71 +143,6 @@ async function getDiagnosticHistory(fingerprint) {
   if (error) throw new Error('Supabase history fetch failed: ' + error.message);
   return data || [];
 }
-// Looks up the most recent COMPLETE diagnostic for this business fingerprint,
-// if it was created within the cache window. Used to avoid re-fetching live
-// evidence (Serper/website/Apify) on every run for the same business — this
-// is what makes repeated runs of the same business return a stable score.
-async function getCachedEvidence(fingerprint, maxAgeHours) {
-  const supabase = getClient();
-  const cutoff = new Date(Date.now() - (maxAgeHours || 24) * 60 * 60 * 1000).toISOString();
-  const { data, error } = await supabase
-    .from('diagnostics')
-    .select('job_id, evidence, created_at')
-    .eq('business_fingerprint', fingerprint)
-    .eq('status', 'complete')
-    .not('evidence', 'is', null)
-    .gte('created_at', cutoff)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    console.warn('getCachedEvidence failed:', error.message);
-    return null;
-  }
-  return data;
-}
-// Returns the competitor name identified in the most recent complete diagnostic
-// for this business fingerprint. Used to stabilise competitor identification
-// across runs — prevents Semrush→Profound type drift between cached windows.
-async function getPreviousCompetitor(fingerprint) {
-  const supabase = getClient();
-  const { data, error } = await supabase
-    .from('diagnostics')
-    .select('result')
-    .eq('business_fingerprint', fingerprint)
-    .eq('status', 'complete')
-    .not('result', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    console.warn('getPreviousCompetitor failed:', error.message);
-    return null;
-  }
-  if (!data || !data.result) return null;
-  var result = data.result;
-  // VERSION GATE: only a decision made by the market-test-era selection engine
-  // (selectionVersion >= 3) may seed continuity. Older crowns — chosen before
-  // the market/confidence rules existed — are poisoned priors and are dropped
-  // mechanically, so the next run selects fresh under the current rules.
-  var cd = result.competitorDecision || {};
-  if (!cd.selectionVersion || cd.selectionVersion < 3) {
-    console.log('[continuity] previous competitor predates selection v3 — discarded, selecting fresh');
-    return null;
-  }
-  // Source continuity from the DEDICATED STAGE'S OWN verified decision
-  // (cd.realCompetitor), never from competitors[0].name generically \u2014 that
-  // array can hold the raw scoring model's unchallenged guess whenever the
-  // dedicated stage abstained (returned null), and trusting it let an
-  // unverified name get v3-stamped and poison the very next run's lineage.
-  if (cd.realCompetitor && String(cd.realCompetitor).trim()) {
-    return String(cd.realCompetitor).trim();
-  }
-  // Fallback: check displacement object
-  var disp = (result.displacement && typeof result.displacement === 'object') ? result.displacement : {};
-  return (disp.competitorName && String(disp.competitorName).trim()) || null;
-}
-
 async function updateStatus(jobId, status, stage) {
   const supabase = getClient();
   const { error } = await supabase
@@ -247,7 +182,7 @@ async function getDiagnostic(jobId) {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('diagnostics')
-    .select('job_id, status, stage, input, result, error, paid, paid_at, business_fingerprint, parent_job_id, version, created_at, updated_at')
+    .select('job_id, status, stage, input, result, error, paid, paid_at, report_sent_at, business_fingerprint, parent_job_id, version, created_at, updated_at')
     .eq('job_id', jobId)
     .maybeSingle();
   if (error) throw new Error('Supabase fetch failed: ' + error.message);
@@ -379,7 +314,5 @@ module.exports = {
   markDiagnosticPaid,
   saveLead,
   buildFingerprint,
-  getCachedEvidence,
-  getPreviousCompetitor,
   getPreviousResult
 };
