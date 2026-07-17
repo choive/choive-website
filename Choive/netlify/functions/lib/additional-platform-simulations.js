@@ -54,7 +54,9 @@ function extractTopRecommendation(response, subjectName) {
 }
 
 function providerPrompt(source) {
-  return String(source.query || '') + '\n\n'
+  var sourceInstruction = String(source.system || '').trim();
+  return (sourceInstruction ? sourceInstruction + '\n\n' : '')
+    + String(source.query || '') + '\n\n'
     + 'Search current public sources before answering. Answer the buyer naturally and name real companies only. Use each company\'s exact current public brand name, not a guessed abbreviation, domain, legacy owner, or translated name. '
     + 'At the very end, add exactly one separate line in this format: TOP_RECOMMENDATION: Company Name. '
     + 'Use the single company you most clearly recommend for this exact question. If you do not recommend a specific company, write TOP_RECOMMENDATION: NONE.';
