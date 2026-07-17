@@ -777,9 +777,25 @@ exports.handler = async function (event) {
                       },
                       body: JSON.stringify({
                         model: 'claude-sonnet-4-6',
-                        max_tokens: 120,
+                        max_tokens: 400,
                         temperature: 0,
-                        messages: [{ role: 'user', content: extractPrompt }]
+                        messages: [{ role: 'user', content: extractPrompt }],
+                        output_config: {
+                          format: {
+                            type: 'json_schema',
+                            schema: {
+                              type: 'object',
+                              properties: {
+                                first: { type: 'string' },
+                                second: { type: 'string' },
+                                firstCount: { type: 'integer' },
+                                secondCount: { type: 'integer' }
+                              },
+                              required: ['first', 'second', 'firstCount', 'secondCount'],
+                              additionalProperties: false
+                            }
+                          }
+                        }
                       }),
                       signal: extractController.signal
                     });
@@ -811,7 +827,7 @@ exports.handler = async function (event) {
                       console.warn('[' + jobId + '] Direct extraction API error: ' + extractResp.status);
                     }
                   } catch (extractErr) {
-                    console.warn('[' + jobId + '] Direct extraction failed, will use frequency fallback:', extractErr.message);
+                    console.warn('[' + jobId + '] Structured recommendation extraction failed; leaving recommendation empty:', extractErr.message);
                   }
                 }
 
@@ -870,65 +886,31 @@ exports.handler = async function (event) {
                   };
                   console.log('[' + jobId + '] competitorDecision (verified): ' + (verifiedFirst || 'no consistent leader') + ' (' + verifiedFirstCount + '/' + allSimResponses.length + ' samples, ' + verifiedFirstQueryCount + '/' + simResponseGroups.length + ' queries)' + (verifiedSecond ? ' | second: ' + verifiedSecond + ' (' + verifiedSecondQueryCount + ' queries)' : ''));
                 } else {
-                  // Fallback: frequency count mentions of Serper/known candidates across responses
-                  console.log('[' + jobId + '] Direct extraction returned no names — using frequency fallback on ' + uniqueCandidates.length + ' candidates');
-                  var bestName = null, bestCount = 0;
-                  var secondName = null, secondCount = 0;
-                  uniqueCandidates.forEach(function(n) {
-                    // Strip domain TLD so "gourmetfleisch.de" → needle "gourmetfleisch"
-                    // matches AI response that says "Gourmetfleisch".
-                    var forNeedle = n.replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
-                    var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (!needle) return;
-                    var cnt = allSimResponses.filter(function(r) {
-                      return r.replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
-                    }).length;
-                    if (cnt > bestCount) {
-                      secondName = bestName; secondCount = bestCount;
-                      bestName = n; bestCount = cnt;
-                    } else if (cnt > 0 && cnt > secondCount) {
-                      secondName = n; secondCount = cnt;
-                    }
-                  });
-                  var fallbackQueryCount = function(candidate) {
-                    var forNeedle = String(candidate || '').replace(/\.[a-z]{2,4}(\s|\/|$)/i, ' ').replace(/\.[a-z]{2,4}$/, '');
-                    var needle = forNeedle.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (!needle) return 0;
-                    return simResponseGroups.filter(function(group) {
-                      return group.some(function(response) {
-                        return String(response || '').toLowerCase().replace(/[^a-z0-9]/g, '').indexOf(needle) !== -1;
-                      });
-                    }).length;
-                  };
-                  var bestQueryCount = fallbackQueryCount(bestName);
-                  var secondQueryCount = fallbackQueryCount(secondName);
+                  // Search-result domains are identity hints, not verified
+                  // recommendations. If structured extraction returns no name,
+                  // preserve an honest empty result instead of frequency-
+                  // matching a source domain such as market.us.
+                  console.log('[' + jobId + '] Direct extraction returned no verified names — no recommendation inferred');
                   evidence['competitorDecision'] = {
                     realCompetitor:     null,
                     aiRecommends:       null,
                     secondAiCompetitor: null,
                     source:             'ai-ground-truth',
                     selectionVersion:   3,
-                    mentionCount:       bestCount,
+                    mentionCount:       0,
                     totalResponses:     allSimResponses.length,
-                    distinctQueryCount: bestQueryCount,
-                    secondMentionCount: secondCount,
-                    secondDistinctQueryCount: secondQueryCount,
-                    // Frequency matching against search-result domains is useful
-                    // debugging evidence, but it is not a verified recommendation.
-                    // Never promote a domain hint (for example market.us) into a
-                    // customer-facing competitor when structured extraction failed.
+                    distinctQueryCount: 0,
+                    secondMentionCount: 0,
+                    secondDistinctQueryCount: 0,
                     aiMentionedCompetitor: null,
                     secondAiMentionedCompetitor: null,
-                    aiMentionedCount: bestCount,
-                    secondAiMentionedCount: secondCount,
-                    aiMentionedQueryCount: bestQueryCount,
-                    secondAiMentionedQueryCount: secondQueryCount,
+                    aiMentionedCount: 0,
+                    secondAiMentionedCount: 0,
+                    aiMentionedQueryCount: 0,
+                    secondAiMentionedQueryCount: 0,
                     totalQueries:       simResponseGroups.length,
                     categoryUnowned:    true
                   };
-                  console.log('[' + jobId + '] competitorDecision (fallback): ' +
-                    (bestName ? bestName + ' (' + bestCount + '/' + allSimResponses.length + ' responses)' : 'no named competitor found — categoryUnowned') +
-                    (secondName ? ' | second: ' + secondName + ' (' + secondCount + ')' : ''));
                 }
               }
             } catch (freqErr) {
@@ -1379,16 +1361,33 @@ exports.handler = async function (event) {
       addSubjectKey(subjectDomain);
       addSubjectKey(String(subjectDomain || '').split('.')[0]);
       var subjectTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+      var subjectAcronymKey = '';
       if (subjectTokens.length >= 3 && subjectTokens.some(function(token) { return /\d/.test(token); })) {
-        addSubjectKey(subjectTokens.map(function(token) {
+        subjectAcronymKey = subjectTokens.map(function(token) {
           return /^\d+$/.test(token) ? token : token.charAt(0);
-        }).join(''));
+        }).join('');
+        addSubjectKey(subjectAcronymKey);
       }
+      var isSubjectRecommendation = function(value) {
+        var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!key || subjectRecommendationKeys[key]) return Boolean(key);
+        // Providers often return a compact brand plus its expanded legal or
+        // descriptive name, e.g. "3SS (3 Screen Solutions)". Treat any value
+        // containing the full normalized subject identity as the subject.
+        var fullSubjectKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (fullSubjectKey.length >= 5 && key.indexOf(fullSubjectKey) !== -1) return true;
+        // Digit-bearing coined acronyms such as 3SS are sufficiently specific
+        // to match combined forms even when the expansion varies slightly
+        // ("3 Screen Solutions" versus "3 screens solutions").
+        return subjectAcronymKey.length >= 3
+          && /\d/.test(subjectAcronymKey)
+          && (key.indexOf(subjectAcronymKey) === 0 || key.lastIndexOf(subjectAcronymKey) === key.length - subjectAcronymKey.length);
+      };
       var dedupeRecommendations = function(values) {
         var seen = {};
         return values.filter(function(value) {
           var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!key || seen[key] || subjectRecommendationKeys[key]) return false;
+          if (!key || seen[key] || isSubjectRecommendation(value)) return false;
           seen[key] = true;
           return true;
         });
@@ -1400,7 +1399,7 @@ exports.handler = async function (event) {
         var seen = {};
         return (values || []).filter(function(value) {
           var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!key || seen[key] || subjectRecommendationKeys[key] || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
+          if (!key || seen[key] || isSubjectRecommendation(value) || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
           seen[key] = true;
           return true;
         })[0] || null;
@@ -1494,7 +1493,7 @@ exports.handler = async function (event) {
       var candidateMap = {};
       orderedComparisonCandidates.forEach(function(candidate) {
         var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!key || key === subjectComparisonKey || subjectRecommendationKeys[key] || isPlatformName(candidate.name)) return;
+        if (!key || key === subjectComparisonKey || isSubjectRecommendation(candidate.name) || isPlatformName(candidate.name)) return;
         if (!candidateMap[key]) candidateMap[key] = { name: candidate.name, sources: [] };
         if (candidateMap[key].sources.indexOf(candidate.source) === -1) candidateMap[key].sources.push(candidate.source);
       });
@@ -1533,7 +1532,7 @@ exports.handler = async function (event) {
       recommendationLanes.forEach(function(lane) {
         var laneName = String(lane && lane.recommendation || '').trim();
         var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!laneKey || laneKey === subjectComparisonKey || subjectRecommendationKeys[laneKey] || isPlatformName(laneName)) return;
+        if (!laneKey || laneKey === subjectComparisonKey || isSubjectRecommendation(laneName) || isPlatformName(laneName)) return;
         if (!arenaNameByKey[laneKey]) {
           arenaNameByKey[laneKey] = laneName;
           uniqueArenaNames.push(laneName);
