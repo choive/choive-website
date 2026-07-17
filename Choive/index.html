@@ -60,7 +60,7 @@
       "url": "https://choive.com",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
-      "description": "CHOIVE checks whether Claude, ChatGPT, Perplexity, Gemini, and Claude recommend a business, reports each platform separately, and scores the business across Clarity, Trust, Difference, and Ease.",
+      "description": "CHOIVE checks whether Claude, ChatGPT, Perplexity, and Gemini recommend a business, reports each platform separately, and scores the business across Clarity, Trust, Difference, and Ease.",
       "offers": [
         {
           "@type": "Offer",
@@ -3236,11 +3236,9 @@ function showResults(r, jobId) {
         return comp && comp.name && String(comp.queryContext || '').toLowerCase() === 'head-to-head';
       })
     : null;
-  var firstResearchedCompetitor = Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name
-    ? r.competitors[0].name : '';
   var topComp = cd.realCompetitor
     || (explicitHeadToHead && explicitHeadToHead.name)
-    || firstResearchedCompetitor;
+    || '';
   var topCompReason = (explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage))
     || cd.reason
     || (topComp ? topComp + ' is the closest verified purchasing substitute identified in this diagnostic.' : '');
@@ -3266,7 +3264,7 @@ function showResults(r, jobId) {
   // confirmed \u2192 direct threat; unconfirmed \u2192 open contest, stakes still high.
   var marketComp = cd.realCompetitor
     || (explicitHeadToHead && explicitHeadToHead.name)
-    || ((Array.isArray(r.competitors) && r.competitors[0] && r.competitors[0].name) ? r.competitors[0].name : '');
+    || '';
   var simQuery = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results && r.aiSimulation.before.results[0] && r.aiSimulation.before.results[0].query) || displayQuery;
   function buildTopPlatformLanes() {
     var laneOrder = [
@@ -3283,13 +3281,25 @@ function showResults(r, jobId) {
       no_recommendation: 'No named recommendation established'
     };
     var subjectLaneKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var subjectLaneTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+    var subjectLaneAcronym = subjectLaneTokens.length >= 3 && subjectLaneTokens.some(function(token) { return /\d/.test(token); })
+      ? subjectLaneTokens.map(function(token) { return /^\d+$/.test(token) ? token : token.charAt(0); }).join('')
+      : '';
+    function laneNamesSubject(value) {
+      var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!key) return false;
+      if (key === subjectLaneKey || (subjectLaneKey.length >= 5 && key.indexOf(subjectLaneKey) !== -1)) return true;
+      return subjectLaneAcronym.length >= 3
+        && /\d/.test(subjectLaneAcronym)
+        && (key.indexOf(subjectLaneAcronym) === 0 || key.lastIndexOf(subjectLaneAcronym) === key.length - subjectLaneAcronym.length);
+    }
     var cards = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var legacyNames = Array.isArray(legacy[base.key]) ? legacy[base.key].filter(Boolean) : [];
       var recommendation = lane.recommendation || legacyNames[0] || '';
       var state = recommendation ? 'recommended' : (lane.status || 'no_recommendation');
       var recommendationKey = String(recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      var recommendsSubject = Boolean(recommendationKey && recommendationKey === subjectLaneKey);
+      var recommendsSubject = laneNamesSubject(recommendation);
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
@@ -3307,7 +3317,7 @@ function showResults(r, jobId) {
     if (!widerMarketDecision || !widerMarketDecision.name) return '';
     if (String(widerMarketDecision.name).toLowerCase() === String(topComp || '').toLowerCase()) return '';
     return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Wider market competitor</div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
       + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
       + '</div>';
@@ -3512,7 +3522,9 @@ function showResults(r, jobId) {
           // Free: show name + locked analysis teaser
           return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
             + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
-            + (i === 0 ? 'Head-to-head competitor' : (cp.queryContext === 'ai-ground-truth' ? 'Also named by Claude' : 'Market competitor')) + '</div>'
+            + (String(cp.queryContext || '').toLowerCase() === 'head-to-head'
+              ? 'Head-to-head competitor'
+              : (cp.queryContext === 'ai-ground-truth' ? 'Supporting AI mention' : 'Market competitor')) + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
