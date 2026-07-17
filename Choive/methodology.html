@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How CHOIVE Measures AI Recommendations — Methodology</title>
+<meta name="description" content="The CHOIVE methodology: how four AI platform responses, public evidence, competitors, and the Clarity, Trust, Difference, and Ease scores are measured.">
+<link rel="canonical" href="https://choive.com/methodology">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "How CHOIVE Measures AI Recommendations",
+  "description": "The public methodology and limitations for the CHOIVE AI recommendation diagnostic.",
+  "dateModified": "2026-07-17",
+  "author": {
+    "@type": "Organization",
+    "name": "CHOIVE",
+    "url": "https://choive.com"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CHOIVE",
+    "url": "https://choive.com"
+  }
+}
+</script>
+<style>
+:root{--ink:#101012;--muted:#68686f;--paper:#f5f2ee;--paper2:#e9e5df;--void:#0c0c0e;--gold:#c9a86a;--rule:#d6d1c9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:var(--paper);color:var(--ink);line-height:1.75}
+header{background:var(--void);color:#f5f2ee;padding:20px 32px;position:sticky;top:0;z-index:2}
+.nav{max-width:1040px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{color:#f5f2ee;text-decoration:none;font-weight:700;letter-spacing:.08em}.brand span{color:var(--gold)}
+.nav a:last-child{color:var(--gold);font-size:13px;text-decoration:none}
+main{max-width:880px;margin:auto;padding:88px 28px 112px}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:#8b6d38;margin-bottom:18px}
+h1{font-family:"Libre Baskerville",serif;font-size:clamp(38px,6vw,68px);line-height:1.08;margin-bottom:28px}
+.lede{font-size:19px;color:#4f4f56;max-width:760px;margin-bottom:56px}
+.plain{background:var(--void);color:#f5f2ee;padding:30px;margin:0 0 64px}
+.plain strong{color:var(--gold)}
+section{padding:40px 0;border-top:1px solid var(--rule)}
+h2{font-family:"Libre Baskerville",serif;font-size:28px;line-height:1.25;margin-bottom:18px}
+h3{font-size:15px;margin:24px 0 8px}
+p{margin-bottom:16px;color:#424248}
+ol,ul{padding-left:22px;color:#424248}
+li{margin:9px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}
+.item{border:1px solid var(--rule);padding:22px;background:#faf8f5}
+.item strong{display:block;margin-bottom:5px}
+.note{border-left:3px solid var(--gold);padding:4px 0 4px 20px;margin:24px 0;color:#424248}
+.stamp{font-size:12px;color:var(--muted);margin-top:42px}
+footer{background:var(--void);color:#aaa;padding:32px;text-align:center;font-size:12px}
+footer a{color:#ddd}
+@media(max-width:640px){header{padding:18px 20px}main{padding:64px 20px 88px}.grid{grid-template-columns:1fr}.plain{padding:24px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a class="brand" href="/">CHOIVE<span>·</span></a>
+    <a href="/#diagnostic">Run free diagnostic</a>
+  </div>
+</header>
+<main>
+  <div class="eyebrow">Public methodology · Version 1.0 · 17 July 2026</div>
+  <h1>How CHOIVE measures an AI recommendation.</h1>
+  <p class="lede">This page explains what CHOIVE measures, what the score means, how competitors are selected, and where the product has limits. The method applies to every business, including CHOIVE itself.</p>
+
+  <div class="plain"><strong>In plain English:</strong> CHOIVE asks four AI providers which business they recommend, records each answer separately, checks public evidence about the subject business, and explains what that business can improve.</div>
+
+  <section>
+    <h2>1. What you provide</h2>
+    <p>You enter a business name, website, category, and location. You may also add a differentiator, known competitor, and customer language. CHOIVE uses this information to identify the correct business and create buyer-style questions.</p>
+  </section>
+
+  <section>
+    <h2>2. What CHOIVE checks</h2>
+    <p>Each new diagnostic checks the submitted website and current public evidence. Depending on availability, this can include page content, structured data, search results, reviews, citations, press, partnerships, client evidence, and technical discoverability.</p>
+    <p>Earlier provider answers and competitor decisions are not reused as the answer to a new diagnostic. Previous completed runs can be retained for audit and progress comparison.</p>
+  </section>
+
+  <section>
+    <h2>3. The four AI measurements</h2>
+    <p>CHOIVE sends independently measured recommendation questions through official APIs associated with these consumer-facing products:</p>
+    <div class="grid">
+      <div class="item"><strong>Claude</strong>Measured through the Anthropic API.</div>
+      <div class="item"><strong>ChatGPT</strong>Measured through the OpenAI API.</div>
+      <div class="item"><strong>Perplexity</strong>Measured through the Perplexity API.</div>
+      <div class="item"><strong>Gemini</strong>Measured through the Google Gemini API.</div>
+    </div>
+    <p class="note">The four answers remain separate. If two providers recommend the same company, CHOIVE still shows both provider results rather than merging them into one vote.</p>
+    <p>An API response is a real provider response for that diagnostic run. It is not a guarantee of the answer every person will see inside a consumer app. Consumer apps can use different models, search context, product settings, conversation history, location, or personalization.</p>
+  </section>
+
+  <section>
+    <h2>4. The CHOIVE Index</h2>
+    <p>The CHOIVE Index is a score from 0 to 100. It is the sum of four pillars worth 25 points each:</p>
+    <div class="grid">
+      <div class="item"><strong>Clarity</strong>Can a person or AI clearly determine what the business does, for whom, and where?</div>
+      <div class="item"><strong>Trust</strong>Do independent, public sources support the business's claims and credibility?</div>
+      <div class="item"><strong>Difference</strong>Is there a specific, evidenced reason to choose this business over alternatives?</div>
+      <div class="item"><strong>Ease</strong>Can people, search engines, and AI systems find, read, and act on the business information?</div>
+    </div>
+    <p class="note">The pillar scores use evidence about the subject business. Whether an AI provider recommended or omitted the business does not automatically raise or lower any pillar score.</p>
+  </section>
+
+  <section>
+    <h2>5. Competitor roles</h2>
+    <h3>AI recommendation</h3>
+    <p>The company a named AI provider recommended during the recorded query. Each provider can return a different company.</p>
+    <h3>Head-to-head competitor</h3>
+    <p>The closest verified purchasing substitute: a business selling a comparable product or service to the same buyer type, in a market the subject can actually serve.</p>
+    <h3>Wider market competitor</h3>
+    <p>A relevant competitor in the broader category that may not be the closest like-for-like substitute.</p>
+    <p>CHOIVE does not describe a market competitor as an AI recommendation unless the recorded provider response names it.</p>
+  </section>
+
+  <section>
+    <h2>6. What the three products contain</h2>
+    <ul>
+      <li><strong>Free Diagnostic, $0:</strong> headline verdict, CHOIVE Index, four pillar scores, platform recommendations when successfully measured, and competitor exposure.</li>
+      <li><strong>CHOIVE Analysis, $99 once:</strong> the full online evidence breakdown, platform coverage, competitor comparison, prioritized actions, and ready-to-use assets.</li>
+      <li><strong>CHOIVE Report, $499 once:</strong> the Analysis plus a structured ten-section report, implementation plan, and clearly labelled planning projections.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>7. Failures, uncertainty, and missing evidence</h2>
+    <p>If a provider request fails or an answer cannot support a reliable company name, CHOIVE should show the measurement as unavailable, partial, or not established. It should not silently invent a recommendation.</p>
+    <p>A low-confidence competitor must not be presented as a confirmed recommendation leader. A missing public trust signal means CHOIVE did not verify that signal during the run; it does not prove the signal can never exist.</p>
+  </section>
+
+  <section>
+    <h2>8. What CHOIVE does not promise</h2>
+    <ul>
+      <li>It does not guarantee that an AI platform will recommend a business in the future.</li>
+      <li>It does not guarantee an API response will match every consumer-app conversation.</li>
+      <li>It does not treat the CHOIVE score as a vote from an AI provider.</li>
+      <li>It does not guarantee that implementing an action will produce a specific future score or commercial result.</li>
+      <li>It does not replace legal, financial, or professional advice.</li>
+    </ul>
+  </section>
+
+  <p class="stamp">Method owner: CHOIVE · Founder: Blessing Ashionye Ebogu · Questions or corrections: <a href="mailto:hello@choive.com">hello@choive.com</a></p>
+</main>
+<footer>CHOIVE· · <a href="/">Home</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
+</body>
+</html>
