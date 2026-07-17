@@ -1,203 +1,141 @@
-// start-diagnostic.js
-// CHOIVE Stage 1 — Entry point
+// self-diagnostic.js
+// CHOIVE™ — Runs CHOIVE's own diagnostic on choive.com
+// Scheduled to run once per month via Netlify scheduled functions
+// Stores result in Supabase 'self_diagnostic' table
+// Displayed on choive.com homepage as live proof the product works on itself
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, URL
 
-const crypto = require('crypto');
-const supabase = require('./lib/supabase');
-const valid = require('./lib/validators');
+const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
 };
 
-// ── IP Rate Limiting ──────────────────────────────────────────────────────────
-// Simple in-memory store. Resets on each cold start (acceptable for Netlify
-// functions — the goal is preventing obvious abuse, not perfect enforcement).
-// Limit: 3 free diagnostics per IP per hour.
-const RATE_LIMIT_MAX = 3;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const ipTracker = new Map();
-
-function getClientIP(event) {
-  var headers = event.headers || {};
-  return (
-    headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    headers['x-real-ip'] ||
-    headers['client-ip'] ||
-    'unknown'
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { realtime: { transport: ws } }
   );
 }
 
-function isRateLimited(ip) {
-  var now = Date.now();
-  var record = ipTracker.get(ip);
-
-  if (!record || now - record.windowStart > RATE_LIMIT_WINDOW_MS) {
-    // Fresh window
-    ipTracker.set(ip, { windowStart: now, count: 1 });
-    return false;
-  }
-
-  if (record.count >= RATE_LIMIT_MAX) {
-    return true;
-  }
-
-  record.count++;
-  return false;
-}
-
-// Clean up old entries periodically to prevent memory leak
-function cleanupTracker() {
-  var now = Date.now();
-  for (var [ip, record] of ipTracker.entries()) {
-    if (now - record.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
-      ipTracker.delete(ip);
-    }
-  }
-}
-
-exports.handler = async function (event) {
+exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
-  }
 
-  // Rate limit check — skipped in dev mode (set CHOIVE_DEV_MODE=true in Netlify env)
-  var devMode = process.env.CHOIVE_DEV_MODE === 'true';
-  var clientIP = getClientIP(event);
-  cleanupTracker();
-  if (!devMode && isRateLimited(clientIP)) {
-    console.warn('start-diagnostic: rate limit hit for IP:', clientIP);
-    return {
-      statusCode: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: 'Too many diagnostics. Please wait an hour before running another.'
-      })
-    };
-  }
+  // GET — return the latest self-diagnostic result for display on homepage
+  if (event.httpMethod === 'GET') {
+    try {
+      var supabase = getSupabase();
+      var { data, error } = await supabase
+        .from('self_diagnostic')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-  var body;
-  try {
-    body = JSON.parse(event.body || '{}');
-  } catch (_) {
-    return {
-      statusCode: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON body' })
-    };
-  }
-
-  var validation = valid.validateInput(body);
-  if (!validation.valid) {
-    return {
-      statusCode: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: validation.error })
-    };
-  }
-
-  var input = {
-    name: String(body['name'] || '').trim(),
-    category: String(body['category'] || '').trim(),
-    city: String(body['city'] || '').trim(),
-    website: String(body['website'] || '').trim(),
-    description: String(body['description'] || '').trim(),
-    knownCompetitors: String(body['knownCompetitors'] || '').trim(),
-    // Customer-market language override; '' = auto-detect from location
-    language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
-      ? String(body['language']).trim().toLowerCase() : ''
-  };
-
-  // ── DURABLE RATE CAPS (Supabase-backed; the in-memory limiter above only
-  // guards a single warm instance). Per-IP daily cap + global daily ceiling.
-  // Fails open, bypassed in dev mode, IPs stored only as salted hashes.
-  var ipHash = null;
-  try {
-    var rawIp = getClientIP(event);
-    if (rawIp && rawIp !== 'unknown') {
-      ipHash = crypto.createHash('sha256')
-        .update(rawIp + (process.env.RATE_SALT || 'choive-rate'))
-        .digest('hex');
-    }
-  } catch (e) {}
-
-  if (process.env.CHOIVE_DEV_MODE !== 'true') {
-    var ipCap     = parseInt(process.env.RATE_IP_CAP     || '5', 10);
-    var globalCap = parseInt(process.env.RATE_GLOBAL_CAP || '300', 10);
-    var globalCount = await supabase.countDiagnosticsToday(null);
-    if (globalCount >= globalCap) {
-      return {
-        statusCode: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'CHOIVE is at full capacity today — the diagnostic queue reopens tomorrow. Email hello@choive.com if it\u2019s urgent.' })
-      };
-    }
-    if (ipHash) {
-      var ipCount = await supabase.countDiagnosticsToday(ipHash);
-      if (ipCount >= ipCap) {
+      if (error || !data) {
         return {
-          statusCode: 429,
+          statusCode: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ error: 'Daily limit reached — ' + ipCap + ' diagnostics per day per connection. Try again tomorrow, or email hello@choive.com if you need more.' })
+          body: JSON.stringify({ result: null })
         };
       }
+
+      return {
+        statusCode: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ result: data })
+      };
+    } catch (err) {
+      return {
+        statusCode: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: err.message })
+      };
     }
   }
 
-  var jobId = crypto.randomUUID();
-
-  try {
-    await supabase.createDiagnostic(jobId, input, ipHash);
-  } catch (err) {
-    console.error('start-diagnostic: Supabase create failed:', err.message);
+  // POST — run a new self-diagnostic (called by scheduler or manually)
+  var selfSecret = process.env.SELF_DIAGNOSTIC_SECRET || process.env.INTERNAL_AI_SECRET;
+  if (!selfSecret || event.headers['x-internal-token'] !== selfSecret) {
     return {
-      statusCode: 500,
+      statusCode: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Failed to initialize diagnostic' })
+      body: JSON.stringify({ error: 'Unauthorized' })
     };
   }
-
   var siteUrl = (process.env.URL || 'https://choive.com').replace(/\/$/, '');
-  var backgroundUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
-  console.log('CHOIVE background trigger:', backgroundUrl);
+
+  // Trigger a real diagnostic on CHOIVE itself
+  var crypto = require('crypto');
+  var jobId  = crypto.randomUUID();
+
+  var input = {
+    name:        'CHOIVE',
+    category:    'AI selection diagnostic',
+    city:        'Global',
+    website:     'https://choive.com',
+    description: 'A diagnostic that identifies why AI is not recommending your business and delivers an instant verdict on exactly what to fix'
+  };
 
   try {
-    var triggerRes = await fetch(backgroundUrl, {
+    // Create the diagnostic record
+    var supabase = getSupabase();
+    var insertResult = await supabase.from('diagnostics').insert({
+      job_id:               jobId,
+      status:               'queued',
+      stage:                null,
+      input:                input,
+      evidence:             null,
+      result:               null,
+      error:                null,
+      business_fingerprint: 'choive-self',
+      parent_job_id:        null,
+      version:              1
+    });
+    if (insertResult.error) {
+      throw new Error('Self-diagnostic insert failed: ' + insertResult.error.message);
+    }
+
+    // Fire the background engine and return immediately — do NOT poll here.
+    // Regular Netlify functions timeout at 10s; the background engine takes
+    // 60-120s. The background function writes the result to self_diagnostic
+    // when it finishes; the GET handler above reads from there.
+    var bgUrl = siteUrl + '/.netlify/functions/run-diagnostic-background';
+    var triggerResponse = await fetch(bgUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Internal-Token': process.env.INTERNAL_DIAGNOSTIC_SECRET || process.env.INTERNAL_REPORT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
       },
-      body: JSON.stringify({ jobId: jobId, input: input })
+      body: JSON.stringify({ jobId, input })
     });
-    if (!triggerRes.ok) {
-      var errText = await triggerRes.text().catch(() => 'no body');
-      console.error('start-diagnostic: trigger returned', triggerRes.status, errText);
-      await supabase.saveError(jobId, 'Background trigger failed: ' + triggerRes.status).catch(() => {});
-      return {
-        statusCode: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Diagnostic engine could not be started. Please try again.' })
-      };
+    if (!triggerResponse.ok) {
+      throw new Error('Background trigger HTTP ' + triggerResponse.status);
     }
-  } catch (err) {
-    console.error('start-diagnostic: trigger threw:', err.message);
-    await supabase.saveError(jobId, 'Background trigger error: ' + err.message).catch(() => {});
+
+    console.log('[self-diagnostic] Queued jobId:', jobId);
+
     return {
-      statusCode: 502,
+      statusCode: 202,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Could not start diagnostic. Please try again.' })
+      body: JSON.stringify({ ok: true, jobId, status: 'queued' })
+    };
+    // The background function (run-diagnostic-background.js) writes the result
+    // to the self_diagnostic table automatically when it finishes (it detects
+    // choive.com and saves there). The GET handler above reads from that table.
+
+  } catch (err) {
+    console.error('[self-diagnostic] Error:', err.message);
+    return {
+      statusCode: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: err.message })
     };
   }
-
-  return {
-    statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobId: jobId, status: 'queued' })
-  };
 };
