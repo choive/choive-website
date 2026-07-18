@@ -1420,7 +1420,12 @@ exports.handler = async function (event) {
         var seen = {};
         return (values || []).filter(function(value) {
           var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!key || seen[key] || isSubjectRecommendation(value) || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
+          // A provider may honestly recommend the diagnosed business itself.
+          // Preserve that answer in the attributed provider lane. Subject
+          // filtering still happens later when constructing the competitor
+          // candidate list and comparison arena, where the subject cannot be
+          // its own competitor.
+          if (!key || seen[key] || isPlatformName(value) || isGenericEntity(value) || isGenericPhrase(value)) return false;
           seen[key] = true;
           return true;
         })[0] || null;
