@@ -8,6 +8,7 @@
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_FAST_MODEL = 'claude-haiku-4-5-20251001';
+const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
 const MAX_TOKENS      = 6500; // raised: richer ground-truth + decision context was clipping long responses mid-JSON
 
@@ -71,6 +72,7 @@ async function inferCategory(name, category, websiteText, searchText) {
     clearTimeout(timer);
     if (!response.ok) return category;
     var data = await response.json();
+    logAnthropicUsage('category-inference', data);
     var text = (data.content || []).filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; }).join('').trim();
     var clean = text.replace(/```json|```/g, '').trim();
@@ -886,7 +888,12 @@ async function selectDominantCompetitor(evidence) {
     + '{"realCompetitor":"<name or empty string>","aiRecommends":"<name or empty string>","secondAiCompetitor":"<name or empty string>","globalBenchmark":"<name or empty string>","source":"evidence_analysis","categoryUnowned":<true|false>,"contested":<true|false>,"reason":"<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 30000);
+  // Grounded competitor research commonly needs more than 30 seconds,
+  // especially when the provider pauses a turn while web search completes.
+  // A 30-second abort produced valid recommendation lanes but a null
+  // head-to-head competitor. The background function has a 15-minute budget,
+  // so allow this accuracy-critical stage to finish.
+  var timer = setTimeout(function() { controller.abort(); }, 75000);
   try {
     var selectionRequest = {
       model: ANTHROPIC_MODEL,
@@ -941,12 +948,13 @@ async function selectDominantCompetitor(evidence) {
       return null;
     }
     var data = await res.json();
+    logAnthropicUsage('head-to-head-research', data);
     // Server-side web search can pause a long-running turn. Continue that same
     // turn once, preserving its tool state, instead of trying to parse the
     // preliminary "I'll research..." text as the final structured result.
     if (data.stop_reason === 'pause_turn') {
       var continuationController = new AbortController();
-      var continuationTimer = setTimeout(function() { continuationController.abort(); }, 30000);
+      var continuationTimer = setTimeout(function() { continuationController.abort(); }, 75000);
       selectionRequest.messages = [
         { role: 'user', content: prompt },
         { role: 'assistant', content: data.content || [] }
@@ -968,6 +976,7 @@ async function selectDominantCompetitor(evidence) {
         return null;
       }
       data = await continuation.json();
+      logAnthropicUsage('head-to-head-research-continuation', data);
     }
     if (data.stop_reason === 'max_tokens') {
       console.warn('[competitor-selection] structured response reached max_tokens');
@@ -1144,6 +1153,7 @@ async function scoreWithClaudeOnce(evidence) {
       throw new Error(errBody || 'Anthropic HTTP ' + response.status);
     }
     var data = await response.json();
+    logAnthropicUsage('four-pillar-scoring', data);
     if (data.stop_reason && data.stop_reason !== 'end_turn') {
       console.warn('[CHOIVE] Unexpected stop_reason:', data.stop_reason, '— response may be truncated');
     }
@@ -1203,6 +1213,7 @@ async function selectChannelCompetitor(evidence, channelResults) {
     clearTimeout(timer);
     if (!res.ok) { console.warn('[channel-competitor] Anthropic ' + res.status); return null; }
     var data = await res.json();
+    logAnthropicUsage('channel-competitor-selection', data);
     var text = (data.content || [])
       .filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; })
@@ -1334,6 +1345,7 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
     clearTimeout(timer);
     if (!res.ok) { console.warn('[scoreArena] Anthropic ' + res.status); return null; }
     var data = await res.json();
+    logAnthropicUsage('competitor-arena-score-' + arenaType, data);
     var text = (data.content || [])
       .filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text || ''; })
@@ -1448,6 +1460,7 @@ async function selectBestFitCompetitors(evidence, candidates) {
     clearTimeout(timer);
     if (!res.ok) return null;
     var data = await res.json();
+    logAnthropicUsage('market-competitor-adjudication', data);
     var text = (data.content || []).filter(function(block) { return block.type === 'text'; })
       .map(function(block) { return block.text || ''; }).join('').replace(/```json|```/g, '').trim();
     var start = text.indexOf('{'), end = text.lastIndexOf('}');
@@ -1492,6 +1505,7 @@ async function selectBestFitCompetitors(evidence, candidates) {
       clearTimeout(normalizeTimer);
       if (!normalizeResponse.ok) throw parseError;
       var normalizeData = await normalizeResponse.json();
+      logAnthropicUsage('market-competitor-json-normalization', normalizeData);
       var normalizeText = (normalizeData.content || []).filter(function(block) { return block.type === 'text'; })
         .map(function(block) { return block.text || ''; }).join('').replace(/```json|```/g, '').trim();
       var normalizeStart = normalizeText.indexOf('{'), normalizeEnd = normalizeText.lastIndexOf('}');
