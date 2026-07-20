@@ -13,7 +13,7 @@ const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
-const { runSimulation, runBeforeSimulation, runAfterSimulation, runDirectCompetitorQuestion } = require('./lib/simulation');
+const { runBeforeSimulation, runDirectCompetitorQuestion } = require('./lib/simulation');
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -729,6 +729,16 @@ exports.handler = async function (event) {
                     return /^\d+$/.test(token) ? token : token.charAt(0);
                   }).join('')] = true;
                 }
+                var isExtractedSubject = function(value) {
+                  var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (!key) return false;
+                  if (subjectCandidateKeys[key]) return true;
+                  // Handle combined forms such as "3SS (3 Screen Solutions)".
+                  return Object.keys(subjectCandidateKeys).some(function(subjectKey) {
+                    return subjectKey.length >= 3
+                      && (key === subjectKey || key.indexOf(subjectKey) === 0 || key.lastIndexOf(subjectKey) === key.length - subjectKey.length);
+                  });
+                };
                 var seenKeys = {};
                 var uniqueCandidates = allCandidates.filter(function(n) {
                   if (!n) return false;
@@ -747,8 +757,38 @@ exports.handler = async function (event) {
                 // by using language understanding instead of pattern matching.
                 // Serper domain candidates are passed as hints.
                 // Falls back to frequency counting if the API call fails.
-                var extractedCompetitors = null;
-                if (allSimResponsesOrig.length > 0) {
+                var brandedRecommendationResult = sharedPlatformQueries.find(function(result) {
+                  return result && /branded replacement/i.test(String(result.label || ''));
+                });
+                var brandedResponses = brandedRecommendationResult
+                  ? ((Array.isArray(brandedRecommendationResult.allResponses) && brandedRecommendationResult.allResponses.length)
+                    ? brandedRecommendationResult.allResponses
+                    : [brandedRecommendationResult.response])
+                  : [];
+                var directMarkerRecommendation = null;
+                brandedResponses.some(function(response) {
+                  var marker = String(response || '').match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
+                  if (!marker) return false;
+                  var value = String(marker[1] || '').replace(/[*_`]/g, '').trim();
+                  if (!value || /^none\b/i.test(value) || isExtractedSubject(value)) return false;
+                  directMarkerRecommendation = value;
+                  return true;
+                });
+                // The explicit branded buyer question already returns one
+                // machine-readable recommendation. Use that literal answer
+                // instead of paying Sonnet to reinterpret the same transcript.
+                var extractedCompetitors = directMarkerRecommendation ? {
+                  first: directMarkerRecommendation,
+                  second: null,
+                  firstCount: 1,
+                  secondCount: 0,
+                  directMarker: true
+                } : null;
+                // Legacy transcript-wide extraction is opt-in only. It is
+                // expensive and can confuse the subject with a competitor.
+                if (!extractedCompetitors
+                    && process.env.ENABLE_LEGACY_RECOMMENDATION_EXTRACTION === 'true'
+                    && allSimResponsesOrig.length > 0) {
                   try {
                     var hintList = uniqueCandidates.slice(0, 12).map(function(c) {
                       // Strip TLD for cleaner display (doncarne.de → doncarne.de shown as-is; scoring strips it)
@@ -833,6 +873,14 @@ exports.handler = async function (event) {
                       if (extractParsed && typeof extractParsed === 'object') {
                         var f = String(extractParsed.first  || '').trim();
                         var s = String(extractParsed.second || '').trim();
+                        if (isExtractedSubject(f)) {
+                          console.warn('[' + jobId + '] Direct extraction returned the subject as first competitor — excluded: ' + f);
+                          f = '';
+                        }
+                        if (isExtractedSubject(s)) {
+                          console.warn('[' + jobId + '] Direct extraction returned the subject as second competitor — excluded: ' + s);
+                          s = '';
+                        }
                         extractedCompetitors = {
                           first:        f || null,
                           second:       s || null,
@@ -880,7 +928,9 @@ exports.handler = async function (event) {
                   var verifiedSecondCount = countExactMentions(extractedCompetitors.second);
                   var verifiedFirstQueryCount = countDistinctQueries(extractedCompetitors.first);
                   var verifiedSecondQueryCount = countDistinctQueries(extractedCompetitors.second);
-                  var verifiedFirst = verifiedFirstQueryCount >= 2 ? extractedCompetitors.first : null;
+                  var verifiedFirst = extractedCompetitors.directMarker
+                    ? extractedCompetitors.first
+                    : (verifiedFirstQueryCount >= 2 ? extractedCompetitors.first : null);
                   var verifiedSecond = verifiedSecondQueryCount >= 2 ? extractedCompetitors.second : null;
                   evidence['competitorDecision'] = {
                     realCompetitor:     null,
@@ -1672,7 +1722,7 @@ exports.handler = async function (event) {
       var normComp = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
       var cd2 = evidence['competitorDecision'];
       var secondAiName = cd2 && cd2.secondAiCompetitor;
-      if (secondAiName && !isPlatformName(secondAiName) && !isGenericEntity(secondAiName)) {
+      if (secondAiName && !isSubjectRecommendation(secondAiName) && !isPlatformName(secondAiName) && !isGenericEntity(secondAiName)) {
         if (!Array.isArray(finalResult['competitors'])) finalResult['competitors'] = [];
         var alreadyIn2 = finalResult['competitors'].some(function(c) {
           return normComp(c && c.name) === normComp(secondAiName);
@@ -1728,55 +1778,26 @@ exports.handler = async function (event) {
     } catch (err) {
       console.warn('[' + jobId + '] Deliverables failed:', err.message);
     }
-    // ── STAGE 3b: AI SIMULATION ──────────────────────────────────────────────
-    // Runs the before/after query simulation server-side and saves it with the
-    // result, so the paid report always has real word-for-word queries and the
-    // free result page shows the exact same data. Failure here never breaks
-    // the diagnostic — the report has a graceful fallback.
+    // ── STAGE 3b: MEASURED AI ANSWERS ────────────────────────────────────────
+    // Persist the real answers already collected earlier. Do not spend three
+    // additional Claude calls creating hypothetical "after optimisation"
+    // transcripts. Progress is verified by a later diagnostic rerun.
     try {
-      var pDiff  = (finalResult.pillars && finalResult.pillars.difference) || {};
-      var pTrust = (finalResult.pillars && finalResult.pillars.trust)      || {};
-      var simData = null;
       var preBefore = evidence['aiSimulationBefore'];
       if (preBefore && preBefore.before) {
-        try {
-          var afterHalf = await runAfterSimulation({
-            language:         (preBefore.before && preBefore.before.language) || undefined,
-            name:             name,
-            category:         category,
-            city:             city,
-            inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
-            differentiator:   String(pDiff.evidence  || '').slice(0, 200),
-            trustSignal:      String(pTrust.evidence || '').slice(0, 200)
-          });
-          if (afterHalf && afterHalf.after) {
-            simData = {
-              name:     preBefore.name,
-              category: preBefore.category,
-              before:   preBefore.before,
-              after:    afterHalf.after
-            };
-          }
-        } catch (err) {
-          console.warn('[' + jobId + '] After-simulation failed, falling back to full run:', err.message);
-        }
-      }
-      if (!simData) {
-        simData = await runSimulation({
-          name:             name,
-          category:         category,
-          city:             city,
-          inferredCategory: finalResult['inferredCategory'] || evidence['inferredCategory'] || category,
-          differentiator:   String(pDiff.evidence  || '').slice(0, 200),
-          trustSignal:      String(pTrust.evidence || '').slice(0, 200)
-        });
-      }
-      if (simData && simData.before && simData.after) {
-        finalResult['aiSimulation'] = simData;
-        console.log('[' + jobId + '] AI simulation: before ' + simData.before.appearedCount + '/3, after ' + simData.after.appearedCount + '/3');
+        finalResult['aiSimulation'] = {
+          name: preBefore.name,
+          category: preBefore.category,
+          before: preBefore.before,
+          after: null,
+          projectionPolicy: 'No hypothetical AI answers generated. Implement changes and rerun to verify progress.'
+        };
+        console.log('[' + jobId + '] AI measurement saved: current visibility '
+          + preBefore.before.appearedCount + '/' + preBefore.before.totalQueries
+          + ' (projected after-state disabled)');
       }
     } catch (err) {
-      console.warn('[' + jobId + '] AI simulation failed:', err.message);
+      console.warn('[' + jobId + '] AI measurement persistence failed:', err.message);
     }
     // ── VERIFICATION: compare against the previous completed run ───────────
     try {
