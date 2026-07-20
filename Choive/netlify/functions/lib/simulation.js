@@ -11,6 +11,7 @@
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS = 25000;
 const SEARCH_TIMEOUT_MS = 45000; // web search round-trips take longer
 
@@ -58,6 +59,7 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
       return null;
     }
     var data = await res.json();
+    logAnthropicUsage(useSearch ? 'claude-buyer-answer-search' : 'claude-buyer-answer', data);
     if (useSearch) {
       var usedSearch = (data.content || []).some(function(b) { return b.type === 'server_tool_use' || b.type === 'web_search_tool_result'; });
       console.log('[ai-simulation] web search ' + (usedSearch ? 'USED \u2014 ground truth is live-grounded' : 'GRANTED but model answered from memory without searching'));
@@ -252,6 +254,7 @@ async function generateBuyerQueries(n, templates) {
     clearTimeout(timer);
     if (!res.ok) return templates;
     var data = await res.json();
+    logAnthropicUsage('simulation-query-translation', data);
     var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
     var arr = JSON.parse(text);
     if (!Array.isArray(arr) || arr.length !== 3) return templates;
@@ -663,6 +666,7 @@ async function localizeQueries(queries, lang) {
     clearTimeout(timer);
     if (!res.ok) return null;
     var data = await res.json();
+    logAnthropicUsage('market-language-translation', data);
     var text = (data.content || []).filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text || ''; }).join('').replace(/```json|```/g, '').trim();
     var arr = JSON.parse(text);
     if (!Array.isArray(arr) || arr.length !== queryCount) return null;
@@ -876,6 +880,7 @@ async function generateQueryPlan(n) {
     clearTimeout(timer);
     if (res.ok) {
       var data = await res.json();
+      logAnthropicUsage('buyer-query-plan', data);
       var text = (data.content || [])
         .filter(function(b) { return b.type === 'text'; })
         .map(function(b) { return b.text; }).join('').trim();
@@ -933,7 +938,8 @@ async function runBeforeSimulation(input, useWebSearch) {
   // for the specific niche. Falls back to static templates if plan fails.
   var rawQueries;
   var queryPlan = await generateQueryPlan(n);
-  if (queryPlan && Array.isArray(queryPlan.queries) && queryPlan.queries.length >= 3) {
+  var queryPlanUsed = Boolean(queryPlan && Array.isArray(queryPlan.queries) && queryPlan.queries.length >= 3);
+  if (queryPlanUsed) {
     console.log('[simulation] Query plan: buyerType=' + queryPlan.buyerType + ' — ' + (queryPlan.reasoning || ''));
     // System prompt omits "with live web search" when search is disabled,
     // so the model answers from training rather than spinning up a search round-trip.
@@ -986,7 +992,11 @@ async function runBeforeSimulation(input, useWebSearch) {
     });
   }
 
-  var buyerQueries = await generateBuyerQueries(n, rawQueries);
+  // generateQueryPlan already produced tailored buyer questions. Running the
+  // older refinement model immediately afterwards paid for a second model to
+  // rewrite the same three questions. Use refinement only for static fallback
+  // templates when the primary plan was unavailable.
+  var buyerQueries = queryPlanUsed ? rawQueries : await generateBuyerQueries(n, rawQueries);
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, useWebSearch);
   var count = results.filter(function(r) { return r.appeared; }).length;
