@@ -3493,17 +3493,28 @@ function showResults(r, jobId) {
   // Paid: shows full competitor analysis (names + why they win + evidence).
   function buildFreeCompetitorBlock() {
     var list = [];
-    if (Array.isArray(r.competitors) && r.competitors.length > 0) {
-      list = r.competitors.filter(function(cp) { return cp && cp.name; });
-    } else if (r.competitor && r.competitor.name) {
-      list = [r.competitor];
-    }
-    if (marketComp) {
-      var marketIdx = list.findIndex(function(cp) {
-        return cp && String(cp.name || '').toLowerCase() === String(marketComp).toLowerCase();
+    var storedCompetitors = Array.isArray(r.competitors) ? r.competitors : [];
+    if (topComp) {
+      var storedHeadToHead = storedCompetitors.find(function(cp) {
+        return cp && cp.name && String(cp.name).toLowerCase() === String(topComp).toLowerCase();
       });
-      if (marketIdx > 0) list.unshift(list.splice(marketIdx, 1)[0]);
-      if (marketIdx < 0) list.unshift({ name: marketComp, queryContext: 'head-to-head' });
+      list.push(storedHeadToHead || {
+        name: topComp,
+        queryContext: 'head-to-head',
+        evidence: topCompReason
+      });
+    }
+    if (widerMarketDecision && widerMarketDecision.name
+        && String(widerMarketDecision.name).toLowerCase() !== String(topComp).toLowerCase()) {
+      var storedMarket = storedCompetitors.find(function(cp) {
+        return cp && cp.name
+          && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
+      });
+      list.push(storedMarket || {
+        name: widerMarketDecision.name,
+        queryContext: 'market-competitor',
+        evidence: widerMarketDecision.reason || ''
+      });
     }
     if (list.length === 0) return '';
     // FIX N — removed dead isPaid branch; this function is only called in the free path
@@ -3514,7 +3525,7 @@ function showResults(r, jobId) {
             + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
             + (String(cp.queryContext || '').toLowerCase() === 'head-to-head'
               ? 'Head-to-head competitor'
-              : (cp.queryContext === 'ai-ground-truth' ? 'Supporting AI mention' : 'Market competitor')) + '</div>'
+              : 'Market competitor') + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
@@ -3611,20 +3622,28 @@ function showResults(r, jobId) {
   }
 
   var compList = [];
-  if (Array.isArray(r.competitors) && r.competitors.length > 0) {
-    compList = r.competitors.filter(function(cp) { return cp && cp.name; });
-  } else if (r.competitor && r.competitor.name) {
-    compList = [r.competitor];
-  }
-  if (compList.length === 0 && r.displacement && r.displacement.competitorName) {
-    compList = [{ name: r.displacement.competitorName, analysis: r.displacement.competitorWhy, queryContext: r.displacement.competitorQuery }];
-  }
-  if (marketComp) {
-    var paidMarketIdx = compList.findIndex(function(cp) {
-      return cp && String(cp.name || '').toLowerCase() === String(marketComp).toLowerCase();
+  var paidStoredCompetitors = Array.isArray(r.competitors) ? r.competitors : [];
+  if (topComp) {
+    var paidHeadToHead = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name && String(cp.name).toLowerCase() === String(topComp).toLowerCase();
     });
-    if (paidMarketIdx > 0) compList.unshift(compList.splice(paidMarketIdx, 1)[0]);
-    if (paidMarketIdx < 0) compList.unshift({ name: marketComp, queryContext: 'head-to-head' });
+    compList.push(paidHeadToHead || {
+      name: topComp,
+      queryContext: 'head-to-head',
+      analysis: topCompReason
+    });
+  }
+  if (widerMarketDecision && widerMarketDecision.name
+      && String(widerMarketDecision.name).toLowerCase() !== String(topComp).toLowerCase()) {
+    var paidWiderMarket = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name
+        && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
+    });
+    compList.push(paidWiderMarket || {
+      name: widerMarketDecision.name,
+      queryContext: 'market-competitor',
+      analysis: widerMarketDecision.reason || ''
+    });
   }
   var compName     = compList.length > 0 ? compList[0].name : '';
   var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
@@ -3649,11 +3668,7 @@ function showResults(r, jobId) {
     if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
       an = r.arenaScores.online.priorityAction || '';
     }
-    // FIX M — dynamic label by queryContext
-    var _extraLabel = cp.queryContext === 'ai-ground-truth' ? 'Also named by Claude'
-      : cp.queryContext === 'ai-query-alternative' ? 'Named by Claude for a buyer question'
-      : cp.queryContext === 'online-arena' ? 'Also competing online'
-      : 'Also in this category';
+    var _extraLabel = 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
