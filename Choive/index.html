@@ -2199,6 +2199,19 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
   .selection-status-grid, .platform-row { grid-template-columns:1fr; }
   .lead-capture-form, .cta-buttons { flex-direction:column; }
   .lead-submit-btn, .lead-email-input, .cta-primary, .cta-secondary, .pay-btn-primary, .pay-btn-secondary { width:100%; }
+  .share-block { align-items:stretch; padding:18px 0; }
+  .share-block > div { width:100%; min-width:0; }
+  .share-block > div:last-child {
+    display:grid !important;
+    grid-template-columns:1fr;
+    gap:8px !important;
+  }
+  .share-btn { width:100%; white-space:normal; }
+  .number-platforms { flex-wrap:wrap; row-gap:8px; }
+}
+
+@media (max-width:480px) {
+  html, body { max-width:100%; overflow-x:clip; }
 }
 
 </style>
@@ -3323,14 +3336,14 @@ function showResults(r, jobId) {
   var competitorBanner;
   if (topComp) {
     var named = null;
+    var norm = function(s) {
+      s = String(s || '').toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+      return s.replace(/[^a-z0-9]+/g, ' ').trim();
+    };
     try {
       var res = (r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results) || [];
       if (res.length) {
-        var norm = function(s) {
-          s = String(s || '').toLowerCase();
-          try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-          return s.replace(/[^a-z0-9]+/g, ' ').trim();
-        };
         var target = norm(topComp).replace(/\b(gmbh|ag|kg|ug|inc|llc|ltd|co|company)\b/g, ' ').replace(/\s+/g, ' ').trim();
         // FIX K — word-boundary check only; space-stripped fallback removed (caused domain substring false positives)
         named = res.some(function(q) {
