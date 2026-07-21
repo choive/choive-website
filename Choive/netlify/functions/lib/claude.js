@@ -920,7 +920,7 @@ async function selectDominantCompetitor(evidence) {
               aiRecommends: { type: 'string' },
               secondAiCompetitor: { type: 'string' },
               globalBenchmark: { type: 'string' },
-              sourceUrls: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+              sourceUrls: { type: 'array', items: { type: 'string' } },
               source: { type: 'string' },
               categoryUnowned: { type: 'boolean' },
               contested: { type: 'boolean' },
