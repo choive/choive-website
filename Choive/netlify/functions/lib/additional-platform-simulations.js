@@ -158,6 +158,10 @@ async function runProvider(provider, input, requestFn, configured) {
   // Unbranded discovery answers remain visibility evidence.
   var chosen = replacement && replacement.topRecommendation ? replacement : null;
   var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
+  var failureReasons = results.map(function(result) { return result.error; }).filter(Boolean);
+  if (failureReasons.length) {
+    console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
+  }
   return {
     available: completed > 0,
     configured: true,
@@ -176,6 +180,7 @@ async function runProvider(provider, input, requestFn, configured) {
     recommendationResponse: replacement ? replacement.response : null,
     recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1),
     recommendationError: replacement && replacement.error || null,
+    reason: completed === 0 ? (failureReasons[0] || 'No platform response was returned') : null,
     results: results
   };
 }
