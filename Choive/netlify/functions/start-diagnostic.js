@@ -108,6 +108,7 @@ exports.handler = async function (event) {
     website: String(body['website'] || '').trim(),
     description: String(body['description'] || '').trim(),
     knownCompetitors: String(body['knownCompetitors'] || '').trim(),
+    customerQuestion: String(body['customerQuestion'] || '').trim(),
     // Customer-market language override; '' = auto-detect from location
     language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
       ? String(body['language']).trim().toLowerCase() : ''
