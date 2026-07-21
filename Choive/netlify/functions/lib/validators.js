@@ -8,6 +8,30 @@
 // claude.js (applySignalConstraints) before this function runs.
 // Everything else is identical.
 
+function validPublicWebsite(value) {
+  if (!value) return true;
+  try {
+    var raw = String(value).trim();
+    var parsed = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
+    if (!/^https?:$/.test(parsed.protocol) || parsed.username || parsed.password) return false;
+    var host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return false;
+    if (host === '::1' || host === '0:0:0:0:0:0:0:1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return false;
+    var match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (match) {
+      var octets = match.slice(1).map(Number);
+      if (octets.some(function(octet) { return octet > 255; })) return false;
+      if (octets[0] === 10 || octets[0] === 127 || octets[0] === 0
+        || (octets[0] === 169 && octets[1] === 254)
+        || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+        || (octets[0] === 192 && octets[1] === 168)) return false;
+    }
+    return host.indexOf('.') !== -1 || match !== null;
+  } catch (_) {
+    return false;
+  }
+}
+
 function validateInput(body) {
   const { name, category, city } = body || {};
   const missing = [];
@@ -16,6 +40,15 @@ function validateInput(body) {
   if (!city || !String(city).trim()) missing.push('city');
   if (missing.length > 0) {
     return { valid: false, error: 'Missing required fields: ' + missing.join(', ') };
+  }
+  var limits = { name: 160, category: 240, city: 160, website: 500, description: 1000, knownCompetitors: 500, customerQuestion: 500 };
+  for (var field in limits) {
+    if (String((body || {})[field] || '').length > limits[field]) {
+      return { valid: false, error: field + ' is too long' };
+    }
+  }
+  if (!validPublicWebsite((body || {}).website)) {
+    return { valid: false, error: 'Website must be a public http(s) address' };
   }
   return { valid: true };
 }
