@@ -914,7 +914,7 @@ async function selectDominantCompetitor(evidence) {
       model: ANTHROPIC_MODEL,
       max_tokens: 1400,
       temperature: 0,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
       messages: [{ role: 'user', content: prompt }],
       output_config: {
         format: {
@@ -1443,7 +1443,7 @@ async function selectBestFitCompetitors(evidence, candidates) {
         model: ANTHROPIC_MODEL,
         max_tokens: 1200,
         temperature: 0,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages: [{ role: 'user', content: prompt }],
         output_config: {
           format: {
