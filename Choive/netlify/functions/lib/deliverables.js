@@ -254,7 +254,7 @@ function generateReviewAction(evidence, result) {
   // whether that platform actually matters to their buyers.
   var modelPlatform = result.recommendedPlatform;
   if (enterpriseProcurement) {
-    platform = 'Enterprise buyer proof';
+    platform = 'Named customer results';
     targetCount = 3;
     platformUrl = '';
     isReviewPlatform = false;
@@ -381,7 +381,7 @@ function generateActionPlan(evidence, result) {
     var ra = delivs.reviewAction || {};
     if (ra.isReviewPlatform === false) {
       week2.tasks.push({
-        task:   'Publish enterprise buyer proof',
+        task:   'Publish named customer results',
         how:    ra.instruction || 'Publish named customer case studies with measurable outcomes and independent industry corroboration.',
         impact: 'Gives procurement teams and AI systems evidence tied to real deployments',
         owner:  'you'
