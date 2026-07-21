@@ -1049,6 +1049,7 @@ var CSS = [
   var simAfter  = safeObj(safeObj(r.aiSimulation).after);
   var simBeforeResults = safeArr(simBefore.results);
   var simAfterResults  = safeArr(simAfter.results);
+  var platformSimulations = safeObj(r.platformSimulations);
   // Fallback for any older diagnostics that only ever stored a flat array —
   // treat the whole thing as "before" so nothing breaks for existing records.
   var isFlat = false;
@@ -1399,8 +1400,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
   H.push('<div class="proj-grid">');
   [{cls:'pc0',label:'Today',   s:score,  note:'Baseline'},
-   {cls:'pc1',label:'30 days', s:proj30, note:'G2 reviews + named client result'},
-   {cls:'pc2',label:'60 days', s:proj60, note:'Press mention + Product Hunt indexed'},
+   {cls:'pc1',label:'30 days', s:proj30, note:'Highest-priority evidence actions implemented'},
+   {cls:'pc2',label:'60 days', s:proj60, note:'Independent proof and customer evidence published'},
    {cls:'pc3',label:'90 days', s:proj90, note:'Full implementation complete'}
   ].forEach(function(p) {
     H.push('<div class="proj-cell ' + p.cls + '"><div class="proj-label">' + p.label + '</div><div class="proj-score">' + p.s + '</div><div class="proj-note">' + esc(p.note) + '</div></div>');
@@ -1558,7 +1559,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Platform Measurements</div><div class="sdp-sub">Buyer-style questions and the provider responses recorded during this diagnostic run. Consumer-app answers may differ because models, search context, settings, and personalization can vary.</div></div>');
   H.push('<div class="section">');
-  H.push('<div class="eyebrow">Real queries · Real AI responses · Unedited</div>');
+  H.push('<div class="eyebrow">Recorded queries · Unedited platform responses</div>');
+  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These responses are primary measurement records, not verified factual sources. Company, ownership, product, and market claims inside them may be incorrect and are not used as verified CHOIVE evidence unless corroborated elsewhere in this report.</div>');
   function renderSimSet(label, results) {
     var appeared = 0;
     results.forEach(function(sim, i) {
@@ -1568,11 +1570,46 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="sim-head"><div class="sim-qlabel">' + esc(label) + ' \u2014 Query ' + (i+1) + ' of ' + results.length + '</div>');
       H.push('<div class="' + (didAppear ? 'sim-yes' : 'sim-no') + '">' + (didAppear ? 'Mentioned' : 'Not mentioned') + '</div></div>');
       H.push('<div class="sim-query">"' + esc(safeStr(sim.query, '')) + '"</div>');
-      H.push('<div class="sim-resp-label">What AI said</div>');
+      H.push('<div class="sim-resp-label">Measured platform response · preserved unedited</div>');
       H.push('<div class="sim-resp' + (didAppear ? ' yes' : '') + '">' + esc(safeStr(sim.response || sim.aiResponse, '')) + '</div>');
       H.push('</div></div>');
     });
     return appeared;
+  }
+
+  // The business may supply one exact customer question. It replaces an
+  // existing discovery query, so the four-platform comparison adds no extra
+  // provider call. Preserve each recorded response in the complete report.
+  var customerQuestion = '';
+  var customerMeasurements = [
+    { key:'claude', label:'Claude' },
+    { key:'openai', label:'ChatGPT' },
+    { key:'perplexity', label:'Perplexity' },
+    { key:'gemini', label:'Gemini' }
+  ].map(function(provider) {
+    var run = safeObj(platformSimulations[provider.key]);
+    var result = safeArr(run.results).filter(function(item) {
+      return safeStr(safeObj(item).label, '').toLowerCase() === 'customer-provided question';
+    })[0] || null;
+    if (result && !customerQuestion) customerQuestion = safeStr(result.query, '');
+    return { provider:provider.label, result:result };
+  });
+
+  if (customerQuestion) {
+    H.push('<div class="eyebrow">Customer-provided question · four-platform record</div>');
+    H.push('<div style="font-size:12px;color:#48484F;line-height:1.7;margin-bottom:14px;">Each answer is preserved as returned by the platform. Factual claims inside the answer are not independently verified.</div>');
+    H.push('<div style="font-family:Georgia,serif;font-size:19px;line-height:1.55;color:#0C0C0E;padding:20px 22px;background:#EDEAE5;margin-bottom:2px;">“' + esc(customerQuestion) + '”</div>');
+    customerMeasurements.forEach(function(measurement) {
+      var item = measurement.result;
+      var response = item ? safeStr(item.response, '') : '';
+      var appeared = Boolean(item && item.appeared);
+      H.push('<div class="sim-q"><div class="sim-inner">');
+      H.push('<div class="sim-head"><div class="sim-qlabel">' + measurement.provider + '</div>');
+      H.push('<div class="' + (appeared ? 'sim-yes' : 'sim-no') + '">' + (item ? (appeared ? 'Mentioned' : 'Not mentioned') : 'Not measured') + '</div></div>');
+      H.push('<div class="sim-resp-label">Recorded response</div>');
+      H.push('<div class="sim-resp' + (appeared ? ' yes' : '') + '">' + esc(response || 'No recorded response is available for this platform.') + '</div>');
+      H.push('</div></div>');
+    });
   }
 
   if (simBeforeResults.length > 0) {
