@@ -3,9 +3,12 @@
 
 'use strict';
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
-const GEMINI_FALLBACK_MODEL = 'gemini-3.1-flash-lite';
-const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar';
+// Gemini 3.1 Flash-Lite is retired. Use a current grounded model and retain a
+// stable fallback. Perplexity Pro is the closer research-quality analogue to
+// its consumer recommendation experience than the base low-cost Sonar model.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash';
+const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
 const REQUEST_TIMEOUT_MS = 60000;
 
 function normalize(value) {
