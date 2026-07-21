@@ -1099,6 +1099,7 @@ nav {
 .sim-appeared.yes { color:var(--green); background:var(--grn-bg); border:1px solid rgba(42,122,72,0.2); }
 .sim-appeared.no  { color:var(--red); background:var(--red-bg); border:1px solid rgba(184,50,50,0.15); }
 .sim-query-text { font-size:13px; font-weight:400; color:var(--ink); margin-bottom:12px; font-style:italic; }
+.sim-evidence-note { font-size:11px; color:var(--muted); line-height:1.6; margin:0 0 8px; }
 .sim-response { font-size:13px; font-weight:400; color:var(--body); line-height:1.8; background:var(--paper-3); padding:14px 16px; border-left:2px solid var(--rule); }
 .sim-response.mentioned { border-left-color:var(--green); }
 .sim-summary { padding:16px 0; font-size:14px; font-weight:600; color:var(--ink); border-top:1px solid var(--rule); margin-top:14px; }
@@ -3653,7 +3654,6 @@ function showResults(r, jobId) {
     + buildScoreLabels(r)
     + buildProgressDelta(r)
     + [].concat(buildDisplacementBlock(r)).join('')
-    + [].concat(buildGapBlock(r)).join('')
     + (isPaid ? '' : buildFreeCompetitorBlock())
     + [].concat(buildPillarCards(r, isPaid)).join('')
     + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
@@ -3803,6 +3803,17 @@ function showResults(r, jobId) {
       + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
       + '</section>';
+  }
+
+  function buildEvidenceLegend() {
+    return '<section class="pay-section" aria-label="Evidence status key">'
+      + '<div class="pay-eyebrow">How To Read This Analysis</div>'
+      + '<div class="integrity-summary">'
+      + '<div class="integrity-cell"><div class="integrity-label">Measured</div><div class="integrity-copy">A response recorded directly from an AI platform during this diagnostic run.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Verified</div><div class="integrity-copy">A conclusion supported by the public business and market evidence collected for this run.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Modeled</div><div class="integrity-copy">A clearly labeled comparison or projection, not a measured fact about another company.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Recommended action</div><div class="integrity-copy">A prioritized improvement derived from the evidence. It is guidance, not a platform transcript.</div></div>'
+      + '</div></section>';
   }
 
   var compList = [];
@@ -4189,16 +4200,17 @@ function showResults(r, jobId) {
     if (!question) return '';
     return '<section class="pay-section" id="report-customer-question">'
       + '<div class="pay-eyebrow">Your Customer’s Question</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">The exact question supplied with this diagnostic, measured separately across all four AI platforms. Responses are preserved as recorded.</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">The exact question supplied with this diagnostic, measured separately across all four AI platforms. Responses are preserved unedited; factual claims inside them are not treated as verified CHOIVE evidence.</div>'
       + '<div class="customer-question-prompt">“' + esc(question) + '”</div>'
       + '<div class="customer-question-grid">' + cards + '</div>'
       + '</section>';
   }
 
   var paidSections = isPaid ? (function() {
-    return '<section class="pay-section sim-section" id="simSection">'
+    return buildEvidenceLegend()
+      + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three real AI queries. Below is exactly what the AI said, and whether your business was mentioned.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three AI queries. The responses below are preserved unedited. Statements inside a platform response may be incorrect and are not treated as verified CHOIVE evidence unless corroborated elsewhere in this analysis.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + '<section class="pay-section" id="report-intelligence"><div class="pay-eyebrow">Business Intelligence</div>'
@@ -4222,11 +4234,11 @@ function showResults(r, jobId) {
       + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
       + '<div id="delivContent"></div></section>'
-      + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Your Report</div>'
-      + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your results</div>'
-      + '<div class="pay-cta-body">Download a PDF copy of this diagnostic for your records.</div>'
+      + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
+      + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your analysis</div>'
+      + '<div class="pay-cta-body">Download a concise PDF summary of this online analysis. The separate CHOIVE Report is the complete board-ready deliverable.</div>'
       + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">'
-      + '<button class="pay-btn-primary" onclick="exportPDF()">Download PDF Report</button>'
+      + '<button class="pay-btn-primary" onclick="exportPDF()">Download Analysis Summary</button>'
       + '</div></div></section>';
   })() : '';
 
@@ -4255,7 +4267,7 @@ function showResults(r, jobId) {
   if (isPaid) {
     var paidNavCta = document.querySelector('.nav-cta');
     if (paidNavCta) {
-      paidNavCta.textContent = 'Download report';
+      paidNavCta.textContent = 'Download analysis';
       paidNavCta.setAttribute('href', '#report-download');
     }
     runAISimulation(r);
@@ -4500,6 +4512,7 @@ async function runAISimulation(r) {
           + (qr.appeared ? 'Mentioned' : 'Not mentioned') + '</span>'
           + '</div>'
           + '<div class="sim-query-text">\u201c' + esc(qr.query) + '\u201d</div>'
+          + '<div class="sim-evidence-note">Measured platform response \u00b7 preserved unedited \u00b7 factual claims not independently verified</div>'
           + '<div class="sim-response' + (qr.appeared ? ' mentioned' : '') + '">'
           + esc(stripMd(qr.response)) + '</div>'
           + '</div>';
