@@ -16,7 +16,10 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = process.env.CLAUDE_MEASUREMENT_MODEL || 'claude-sonnet-4-6';
 const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS = 25000;
-const SEARCH_TIMEOUT_MS = 45000; // web search round-trips take longer
+// Sonnet search turns can legitimately exceed 45 seconds while gathering and
+// synthesizing sources. The background function has a much larger budget, so
+// do not convert slow valid answers into false "not mentioned" measurements.
+const SEARCH_TIMEOUT_MS = 90000;
 
 // useSearch=true grants the model real web search \u2014 matching what a real
 // user gets from ChatGPT/Perplexity/Claude.ai, all of which browse by default.
@@ -1096,6 +1099,7 @@ async function runBeforeSimulation(input, useWebSearch) {
   }
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, useWebSearch);
+  var completedCount = results.filter(function(r) { return Number(r.sampleCount || 0) > 0; }).length;
   var count = results.filter(function(r) { return r.appeared; }).length;
   return {
     name:     n.name,
@@ -1105,7 +1109,11 @@ async function runBeforeSimulation(input, useWebSearch) {
       results:       results,
       appearedCount: count,
       totalQueries:  3,
-      summary:       beforeSummary(n.name, count)
+      completedQueries: completedCount,
+      measurementStatus: completedCount === 3 ? 'complete' : (completedCount > 0 ? 'partial' : 'failed'),
+      summary:       completedCount === 0
+        ? 'The Claude measurement failed before any buyer answer completed. No visibility conclusion was established.'
+        : beforeSummary(n.name, count) + (completedCount < 3 ? ' Only ' + completedCount + ' of 3 buyer questions completed, so this result is partial.' : '')
     }
   };
 }
