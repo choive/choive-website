@@ -96,7 +96,19 @@ async function requestGemini(source) {
   try {
     return await requestGeminiWithModel(source, GEMINI_MODEL);
   } catch (error) {
-    if ((error.status === 400 || error.status === 404) && GEMINI_MODEL !== GEMINI_FALLBACK_MODEL) {
+    // A 429/5xx response is a temporary capacity condition, not a failed
+    // measurement. Pause once, retry the primary model, then use the current
+    // fallback model if capacity is still unavailable.
+    if (error.status === 429 || error.status >= 500) {
+      await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+      try {
+        return await requestGeminiWithModel(source, GEMINI_MODEL);
+      } catch (retryError) {
+        error = retryError;
+      }
+    }
+    if ((error.status === 400 || error.status === 404 || error.status === 429 || error.status >= 500)
+      && GEMINI_MODEL !== GEMINI_FALLBACK_MODEL) {
       return requestGeminiWithModel(source, GEMINI_FALLBACK_MODEL);
     }
     throw error;
@@ -138,7 +150,19 @@ async function runProvider(provider, input, requestFn, configured) {
   if (!configured) return { available: false, configured: false, provider: provider, status: 'not_configured', results: [] };
   if (!sources.length) return { available: false, configured: true, provider: provider, status: 'no_queries', results: [] };
 
-  var settled = await Promise.allSettled(sources.map(requestFn));
+  var settled;
+  if (provider === 'gemini') {
+    // Avoid sending four simultaneous grounded searches to a model that may
+    // temporarily throttle burst traffic. Two-at-a-time preserves reasonable
+    // latency without turning capacity spikes into partial diagnostics.
+    settled = [];
+    for (var batchStart = 0; batchStart < sources.length; batchStart += 2) {
+      var batch = await Promise.allSettled(sources.slice(batchStart, batchStart + 2).map(requestFn));
+      settled = settled.concat(batch);
+    }
+  } else {
+    settled = await Promise.allSettled(sources.map(requestFn));
+  }
   var results = sources.map(function(source, index) {
     var raw = settled[index].status === 'fulfilled' ? settled[index].value : '';
     var response = cleanResponse(raw);
