@@ -207,7 +207,7 @@ function buildPrompt(evidence) {
     + (evidence.competitorDecision ? '\n\nCOMPETITOR DECISION \u2014 MADE BY THE DEDICATED SELECTION STAGE (do not override):\n'
         + (evidence.competitorDecision.realCompetitor
             ? 'competitors[0].name MUST be exactly: ' + evidence.competitorDecision.realCompetitor + ' \u2014 the subject\u2019s true head-to-head market rival (source: ' + evidence.competitorDecision.source + '). Reason: ' + evidence.competitorDecision.reason + ' Its evidence text MUST state honestly whether the AI SELECTION GROUND TRUTH currently names this rival, quoting what AI answered instead if it does not.'
-            : 'No true head-to-head rival could be named with confidence \u2014 apply the normal fallback rules for competitors[0].')
+            : 'No true head-to-head rival could be named with confidence. competitors[0] MUST be null; do not substitute an AI-mentioned or familiar company.')
         + (evidence.competitorDecision.aiRecommends && evidence.competitorDecision.aiRecommends !== evidence.competitorDecision.realCompetitor
             ? ' competitors[1] MUST be: ' + evidence.competitorDecision.aiRecommends + ' \u2014 the business AI actually recommends for these queries today; label its queryContext accordingly and ground its entry in the AI SELECTION GROUND TRUTH.'
             : '')
@@ -311,8 +311,7 @@ function buildPrompt(evidence) {
     + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
     + '- Score 8-14: differentiator exists but vague or easy to copy\n'
     + '- Score 0-7: completely generic — no niche, no unique clients, no distinct use case\n'
-    + '- CRITICAL: a business with named automotive partnerships (Škoda, Zeekr, Geely)\n'
-    + '  AND named telco clients (TELUS, Proximus) AND 15+ years in a niche CANNOT score below 14\n'
+    + '- CRITICAL: when confirmed evidence shows multiple named major clients or partners across the business\'s buyer groups plus a long operating history in a defined niche, the Difference score cannot be below 14\n'
     + '- Required: quote the actual differentiator, or state precisely why none exists\n'
     + '- DIFFERENCE FINDING FORMAT: complete this sentence — "[Business] is the [specific thing] for [specific buyer]"\n'
     + '  If no differentiator exists, complete: "[Business] looks like every other [category] to a buyer"\n'
@@ -330,28 +329,23 @@ function buildPrompt(evidence) {
     + '- HARD CONSTRAINT: if the AI CRAWLER CHECK shows FAILED (empty-shell detected) → score MAXIMUM 6, regardless of schema/llms.txt \u2014 metadata files mean nothing if the actual crawlers you\u2019re being diagnosed for cannot read the page.\n'
     + '- Required: state exactly which signals were confirmed and which were absent\n\n'
     + 'COMPETITOR RULE — SOURCE PRIORITY:\n'
-    + 'PRIORITY 1 — AI SELECTION GROUND TRUTH: if the evidence contains an AI SELECTION GROUND TRUTH section, the dominant competitor (competitors[0], the business shown as \u201cAI is recommending instead of you\u201d) MUST be a business named in those AI responses THAT ALSO PASSES EVERY exclusion criterion below — same category, same buyer type, same deal size, not a directory, not the subject business, not a measured platform. Among qualifying names, choose the most prominently recommended — a top pick outranks a list mention; more mentions outrank fewer. The qualifying ground truth OUTRANKS the previously verified competitor: if they disagree, follow the ground truth — this is how past mis-identifications are corrected. Additional competitors (competitors[1..2]) MAY come from search evidence as structural benchmarks.\n'+ 'COMPETITOR ACCURACY: competitors[0] is decided by the dedicated selection stage above (frequency-verified across real AI samples) and must not be second-guessed or overridden here — no name is protected by a previous run; the highest observed, qualifying frequency wins fresh every time.\n'
-    + 'GROUND TRUTH DISQUALIFICATION: if NO business named in the ground truth passes the criteria — common when the category is new and AI answers with adjacent giants from other categories — do NOT force one in. Treat the ground truth as empty for competitor selection, select under PRIORITY 2 instead, and set the competitor queryContext to note that AI currently names no true same-category player for these queries — the category is unowned, which is an opportunity.\n'
-    + 'PRIORITY 2 — SEARCH EVIDENCE: if no AI SELECTION GROUND TRUTH section exists, or no ground-truth name qualifies, select from search evidence under the rule below.\n'
-    + 'FINAL ROLE OVERRIDE: competitors[0] is the head-to-head market rival selected by the dedicated research stage. aiRecommends is a separate transcript-verified Claude recommendation leader. Never claim the market rival was recommended by Claude unless the recorded ground-truth answers name it. Label every competitor by its actual source.\n'
-    + 'In BOTH cases every exclusion criterion below still applies.\n'
+    + 'HEAD-TO-HEAD ROLE: competitors[0] is exclusively the independently verified head-to-head market rival supplied by the dedicated research stage. Never replace it with the most frequent AI recommendation. If the dedicated stage supplied no verified rival, competitors[0] must be null.\n'
+    + 'AI RECOMMENDATION ROLE: AI recommendation names come exclusively from recorded platform response transcripts. They remain separate from competitors[0], even when the same company appears in both roles. Never say a market rival was recommended by an AI platform unless that platform\'s recorded answer names it.\n'
+    + 'GROUND-TRUTH DISQUALIFICATION: if an AI response names the subject itself, a directory, an adjacent company, or a company serving a different buyer, preserve the transcript but do not relabel that name as a qualified competitor.\n'
     + 'Only name a competitor if ALL of these are true:\n'
-    + '1. The competitor name appears in the AI SELECTION GROUND TRUTH responses or in the search evidence above\n'
+    + '1. The head-to-head competitor name appears in current market evidence from the dedicated research stage\n'
     + '2. It is in the exact same category as this business\n'
     + '3. It competes for the same buyer type at the same deal size\n'
     + '4. It is not a directory, review platform, aggregator, or listing site\n'
     + '5. It would realistically appear in the same sales conversation\n'
     + '6. CRITICAL: It is NOT the same business being diagnosed — never name the subject business or any variation of its name as a competitor\n'
     + '7. CRITICAL: It is NOT a platform, tool, or service that this business measures, diagnoses, audits, or helps businesses appear on — for example, if this business helps clients appear on ChatGPT, then ChatGPT is not a competitor; it is the platform being measured\n'
-    + 'If no competitor meets all 6 criteria from search evidence, do this fallback:\n'
-    + '  Use your knowledge of the INFERRED CATEGORY to name the most well-known player in that space.\n'
-    + '  Set queryContext to "category-based analysis" and evidence to "Named based on category knowledge — not found in search evidence."\n'
-    + '  Only return null if the business is in a completely unique category with no comparable players anywhere.\n\n'
+    + 'If no competitor meets every criterion, return null. Never name a familiar company from model memory merely to fill the field.\n\n'
     + (knownCompetitors ? ('IF THE USER PROVIDED KNOWN COMPETITORS:\n'
-    + 'It is verified ground truth from the business owner. For each name in that list:\n'
+    + 'Treat each name as an owner-supplied claim that must be checked, not as verified ground truth. For each name in that list:\n'
     + '1. Search the evidence above for any mention of that name, even a brief one.\n'
     + '2. If found anywhere in the evidence, include it as a competitor.\n'
-    + '3. A user-provided name found in evidence takes priority over unnamed competitors.\n'
+    + '3. Include it only when current evidence also confirms the same product, buyer, commercial model, and serviceable market.\n'
     + '4. If none of the user-provided names appear in evidence, do not invent evidence for them.\n\n') : '')
     + 'SCAN ALL EVIDENCE — DO NOT STOP AT THE FIRST MATCH:\n'
     + 'If TWO OR MORE distinct competitor names meeting all 6 criteria appear ANYWHERE in the evidence,\n'
@@ -374,10 +368,10 @@ function buildPrompt(evidence) {
     + 'IF A COMPETITOR HAS REBRANDED:\n'
     + 'Use the CURRENT name only. You may mention the former name once in the evidence field.\n\n'
     + 'COMPETITOR ANALYSIS DEPTH:\n'
-    + 'whyAIRecommendsThem: one sentence — what specific signal or content factor causes AI to name this competitor in recommendation responses? If they appear in the AI SELECTION GROUND TRUTH, quote or paraphrase what AI actually said about them. If from search evidence only, state what trust or visibility signal likely drives the recommendation.\n'
+    + 'whyAIRecommendsThem: if recorded AI responses name this competitor, state what those responses actually said. If the competitor comes only from market evidence, say "Not established as an AI recommendation in this run" and do not infer a reason.\n'
     + 'advantage: one sentence — what structural competitive advantage does this competitor hold over the subject business specifically? Focus on what they have that the subject lacks — review volume, category positioning, brand recognition, trust signals — NOT on why AI names them (that is already covered above).\n'
-    + 'gapLocation: one sentence — at exactly what moment in a buyer\'s AI search does this competitor get named instead of [Business]? Name the specific query pattern or buying moment where the displacement happens.\n'
-    + 'closeGap: one sentence — what single specific change to [Business]\'s signals would cause AI to include them alongside or instead of this competitor in that same query?\n'
+    + 'gapLocation: identify a buying moment only when a recorded query demonstrates it. Otherwise say that no AI displacement moment was measured.\n'
+    + 'closeGap: name one evidence improvement supported by the subject\'s missing signals. Do not promise that it will change an AI answer.\n'
     + 'Format: "[Business] should [exact action] so that [buyer outcome]."\n\n'
     + 'PLATFORM COVERAGE RULE:\n'
     + '- present: clearly findable OR marketPosition.tier is dominant\n'
@@ -850,7 +844,7 @@ async function selectDominantCompetitor(evidence) {
     + (groundTruth ? 'What AI currently recommends when buyers search for this category:\n' + groundTruth + '\n' : '')
     + '\n'
     + 'YOUR TASK:\n'
-    + 'Using the supplied website, search, and simulation evidence plus your category knowledge, identify this business\'s REAL competitors through this structured strategy:\n\n'
+    + 'Using only the supplied website, search, simulation evidence, and live searches performed in this call, identify this business\'s real competitors. Never fill a missing answer from model memory:\n\n'
     + 'STEP 1 — SEARCH WITH TIER MATCHING:\n'
     + '  Search using the BUYER TIER, not just the product category. If the subject has named enterprise clients, search for who serves those same clients.\n'
     + '  Build search terms from the subject evidence. Do not begin with a list of candidate companies.\n'
@@ -864,7 +858,7 @@ async function selectDominantCompetitor(evidence) {
     + '  SaaS with Fortune 500 clients: search "enterprise [category] software competitor Fortune 500". SaaS for startups: search "[category] startup tool competitor".\n'
     + '  The tier anchor is always the named clients or evidence signals, never the generic category name.\n\n'
     + 'STEP 2 — SEARCH FOR COMPARISONS: search "[subject name] vs" or "[subject name] alternative" or "[subject name] competitor" — comparison pages explicitly name who buyers evaluate side by side.\n\n'
-    + 'STEP 3 — CHECK REVIEW PLATFORMS: search "site:g2.com [category keyword]" or "site:capterra.com [category keyword]" — these show who else occupies the same software category as defined by real buyers.\n\n'
+    + 'STEP 3 — CHECK INDEPENDENT CATEGORY SOURCES: use trade publications, analyst sources, professional directories, review platforms, or buyer guides that are demonstrably relevant to this exact category. Do not default to a software-review site, consumer-review site, or directory without evidence that buyers in this category use it.\n\n'
     + 'STEP 4 — EVALUATE ALL CANDIDATES against the three strict tests below. Only accept companies that pass all three.\n\n'
     + 'THREE STRICT TESTS — a candidate must pass ALL THREE:\n'
     + '1. SAME PRODUCT TYPE: sells the same type of product or service (not just adjacent or complementary)\n'
@@ -872,19 +866,19 @@ async function selectDominantCompetitor(evidence) {
     + '3. SAME COMMERCIAL MODEL: both license software, or both sell direct-to-consumer, or both offer managed services — not mixed models\n\n'
     + 'CRITICAL BUSINESS MODEL RULE — apply before anything else:\n'
     + 'If the inferred category says the business OWNS its production (farm brand, own herd, own factory, vertically-integrated, direct from farm): its competitors MUST ALSO own their own production and sell direct. A retailer that sources from multiple farms is NOT a true competitor to a farm brand — the buying decision is fundamentally different.\n'
-    + 'For an own-production subject, accept a candidate only when the supplied evidence or reliable category knowledge explicitly supports that the candidate owns the relevant farm, herd, factory, or production operation. If ownership is unclear, reject the candidate rather than inferring it from premium positioning, product quality, review volume, or search visibility.\n'
+    + 'For an own-production subject, accept a candidate only when supplied evidence or a current source found in this call explicitly confirms that the candidate owns the relevant farm, factory, workshop, or production operation. If ownership is unclear, reject the candidate.\n'
     + 'A farm brand\'s real competitor is another farm-direct brand, not a premium retailer. Look for competitors that own their animals/production and sell under their own brand.\n'
     + '\n'
     + 'WHAT TO EXCLUDE:\n'
     + '- Companies that BUY or USE this product (they are customers, not competitors)\n'
-    + '- Consumer streaming services selling directly to end users (Zattoo, Netflix, Sky, DAZN, Disney+) — these are never competitors to a B2B middleware vendor\n'
-    + '- OTT SaaS platforms for content owners, sports leagues, or small creators (ViewLift, Brightcove, Kaltura, Muvi, Dacast, Uscreen, Vimeo OTT) — these serve a fundamentally different buyer from enterprise pay-TV operators and automotive OEMs. A telco or carmaker would never put Muvi on the same RFP as 3SS.\n'
-    + '- Content distributors or platform operators (CANAL+ Germany, Sky, Vodafone) — they BUY the type of product being sold\n'
-    + '- Multi-brand retailers sourcing from multiple farms/suppliers (Gourmetfleisch.de, Otto Gourmet) — not competitors to a vertically-integrated farm brand\n'
-    + '- Local SEO tools, traditional SEO platforms, or citation management tools (BrightLocal, BrightEdge, Moz, SEMrush, Yext) — these optimise for Google search rankings, not AI recommendation visibility. They are a different product for a different buyer journey.\n'
+    + '- Consumer products when the subject sells business infrastructure or enterprise software\n'
+    + '- Business software when the subject sells a consumer product or local consumer service\n'
+    + '- Companies serving a different buyer size, use case, or procurement process\n'
+    + '- Operators, retailers, or distributors that buy or resell the subject\'s product but do not sell the same offer under the same commercial model\n'
+    + '- Multi-brand retailers when the subject owns its production, and producers when the subject is purely a multi-brand retailer\n'
     + '- Companies in a different part of the value chain (distributors, infrastructure providers, content owners)\n'
     + '- Review platforms, directories, aggregators\n'
-    + '- The subject business itself — including its website domain, abbreviation, or any name variant (e.g. for a business with domain 3ss.tv: exclude 3ss, 3SS, 3ss.tv, Three Screen Solutions)\n'
+    + '- The subject business itself, including its website domain, abbreviation, translated name, legal name, or any name variant\n'
     + '- Companies that merely appear in search results but serve a different buyer or different use case\n\n'
     + 'GEOGRAPHIC SCOPE: match where the BUYERS are, not where the business is headquartered.\n'
     + 'If the business serves global or regional enterprise clients (e.g. telcos in multiple countries), competitors from any country serving the same buyer type qualify.\n'
@@ -898,9 +892,9 @@ async function selectDominantCompetitor(evidence) {
     + 'C — secondAiCompetitor: the SECOND company AI names in buyer queries for this category — different from both realCompetitor and aiRecommends. Apply the SAME TIEBREAKER RULE. Use an empty string if no clear second name exists.\n'
     + 'D — globalBenchmark: if applicable, the dominant global market leader in this category (may not serve the exact same geographic market but sets the standard buyers compare against). Use an empty string if it is the same as realCompetitor or aiRecommends.\n\n'
     + 'TIEBREAKER FOR ALL ANSWERS: when multiple candidates qualify, prefer (1) more third-party review volume, (2) longer market presence, (3) stronger search/analyst presence.\n\n'
-    + 'IMPORTANT: Only return a company when the supplied evidence or reliable category knowledge supports that it currently operates. Use its current name when a rebrand is established.\n\n'
+    + 'IMPORTANT: Only return a company when supplied evidence or a current source found in this call confirms that it operates now and passes every required test. Otherwise return an empty string. Use its current public name only when that identity is confirmed. For realCompetitor, sourceUrls must contain 1-3 current URLs that directly support the same-product, same-buyer, and same-commercial-model match. If no supporting URL is available, realCompetitor must be empty.\n\n'
     + 'Respond with exactly this JSON — no markdown, no preamble:\n'
-    + '{"realCompetitor":"<name or empty string>","aiRecommends":"<name or empty string>","secondAiCompetitor":"<name or empty string>","globalBenchmark":"<name or empty string>","source":"evidence_analysis","categoryUnowned":<true|false>,"contested":<true|false>,"reason":"<one sentence explaining why realCompetitor is the true rival>"}';
+    + '{"realCompetitor":"<name or empty string>","aiRecommends":"<name or empty string>","secondAiCompetitor":"<name or empty string>","globalBenchmark":"<name or empty string>","sourceUrls":["https://current-supporting-source.example"],"source":"evidence_analysis","categoryUnowned":<true|false>,"contested":<true|false>,"reason":"<one sentence explaining why realCompetitor is the true rival>"}';
 
   var controller = new AbortController();
   // Grounded competitor research commonly needs more than 30 seconds,
@@ -926,6 +920,7 @@ async function selectDominantCompetitor(evidence) {
               aiRecommends: { type: 'string' },
               secondAiCompetitor: { type: 'string' },
               globalBenchmark: { type: 'string' },
+              sourceUrls: { type: 'array', items: { type: 'string' }, maxItems: 3 },
               source: { type: 'string' },
               categoryUnowned: { type: 'boolean' },
               contested: { type: 'boolean' },
@@ -936,6 +931,7 @@ async function selectDominantCompetitor(evidence) {
               'aiRecommends',
               'secondAiCompetitor',
               'globalBenchmark',
+              'sourceUrls',
               'source',
               'categoryUnowned',
               'contested',
@@ -1010,6 +1006,10 @@ async function selectDominantCompetitor(evidence) {
     var jsonText = (fi !== -1 && li > fi) ? text.slice(fi, li + 1) : text;
     var parsed = JSON.parse(jsonText);
     if (!parsed || typeof parsed !== 'object') return null;
+    var sourceUrls = Array.isArray(parsed.sourceUrls)
+      ? parsed.sourceUrls.map(function(v) { return String(v || '').trim(); })
+          .filter(function(v) { return /^https?:\/\/[^\s]+$/i.test(v); }).slice(0, 3)
+      : [];
     function cleanName(v) {
       var s = v ? String(v).trim() : '';
       if (!s || s === 'null') return null;
@@ -1038,13 +1038,19 @@ async function selectDominantCompetitor(evidence) {
       }
       return s;
     }
+    var verifiedRealCompetitor = cleanName(parsed.realCompetitor);
+    if (verifiedRealCompetitor && sourceUrls.length === 0) {
+      console.warn('[competitor-selection] rejected head-to-head name without a supporting source URL:', verifiedRealCompetitor);
+      verifiedRealCompetitor = null;
+    }
     var result = {
       selectionVersion:   5, // v5: direct web search competitor identification
-      realCompetitor:     cleanName(parsed.realCompetitor),
+      realCompetitor:     verifiedRealCompetitor,
       aiRecommends:       cleanName(parsed.aiRecommends),
       secondAiCompetitor: cleanName(parsed.secondAiCompetitor),
       globalBenchmark:    cleanName(parsed.globalBenchmark),
       source:             'evidence_analysis',
+      sourceUrls:         sourceUrls,
       categoryUnowned:    parsed.categoryUnowned === true,
       contested:          parsed.contested === true,
       frequencyTable:     [], // not used in v5
@@ -1211,8 +1217,8 @@ async function selectChannelCompetitor(evidence, channelResults) {
     + '\nIdentify the ONE business that most clearly owns the online/e-commerce buying experience for this product in this market — the company a buyer would land on when searching "buy [product] online". '
     + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the same market/country as ' + name + ', '
     + '(3) is NOT ' + name + ' itself, (4) is NOT a marketplace or aggregator (Amazon, eBay, Etsy, Google Shopping etc), '
-    + '(5) PREFER businesses appearing in the evidence, but if evidence is sparse you MAY use verified general knowledge for well-known markets. '
-    + 'Return null if genuinely uncertain. '
+    + '(5) the company must appear in the supplied search evidence. Never fill a missing answer from memory or general model knowledge. '
+    + 'Return null when the evidence does not prove every requirement. '
     + 'This is the CHANNEL competitor, not the brand peer — ordering experience and delivery dominate this arena, not product quality or heritage.\n\n'
     + 'Respond with exactly: {"name": <string or null>, "domain": <string or null>, "reason": "<one sentence>"}';
 
