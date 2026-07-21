@@ -1400,8 +1400,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
   H.push('<div class="proj-grid">');
   [{cls:'pc0',label:'Today',   s:score,  note:'Baseline'},
-   {cls:'pc1',label:'30 days', s:proj30, note:'Highest-priority evidence actions implemented'},
-   {cls:'pc2',label:'60 days', s:proj60, note:'Independent proof and customer evidence published'},
+   {cls:'pc1',label:'30 days', s:proj30, note:'Most important website and proof improvements completed'},
+   {cls:'pc2',label:'60 days', s:proj60, note:'Named customer results and independent coverage published'},
    {cls:'pc3',label:'90 days', s:proj90, note:'Full implementation complete'}
   ].forEach(function(p) {
     H.push('<div class="proj-cell ' + p.cls + '"><div class="proj-label">' + p.label + '</div><div class="proj-score">' + p.s + '</div><div class="proj-note">' + esc(p.note) + '</div></div>');
@@ -1452,7 +1452,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   }
   H.push('<div style="margin-top:20px;padding:18px 22px;background:#F5F2EE;border-left:3px solid #B83232;">');
   H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">Why this matters</div>');
-  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">This is how AI describes your business when a customer asks for your category. Words like “unverified” and “absent from the broader conversation” are exactly why you are not being selected. This paragraph will change after you implement the Trust actions in Section 8.</div>');
+  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">This is one AI-generated description recorded during the diagnostic. It may contain mistakes. CHOIVE uses the confirmed website and public evidence in this report when deciding what the business should improve.</div>');
   H.push('</div>');
   H.push('<div style="margin-top:28px;"><div class="eyebrow">What AI’s perception will look like after 30 days</div>');
   H.push('<div style="background:#EDEAE5;padding:28px 32px;position:relative;border:1px solid rgba(12,12,14,0.06);">');
@@ -1560,7 +1560,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Platform Measurements</div><div class="sdp-sub">Buyer-style questions and the provider responses recorded during this diagnostic run. Consumer-app answers may differ because models, search context, settings, and personalization can vary.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Recorded queries · Unedited platform responses</div>');
-  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These responses are primary measurement records, not verified factual sources. Company, ownership, product, and market claims inside them may be incorrect and are not used as verified CHOIVE evidence unless corroborated elsewhere in this report.</div>');
+  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These are the answers returned by the AI platforms. They are shown without editing. AI platforms can make factual mistakes, so CHOIVE does not present claims inside these answers as confirmed facts unless other public evidence supports them.</div>');
   function renderSimSet(label, results) {
     var appeared = 0;
     results.forEach(function(sim, i) {
@@ -1570,7 +1570,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="sim-head"><div class="sim-qlabel">' + esc(label) + ' \u2014 Query ' + (i+1) + ' of ' + results.length + '</div>');
       H.push('<div class="' + (didAppear ? 'sim-yes' : 'sim-no') + '">' + (didAppear ? 'Mentioned' : 'Not mentioned') + '</div></div>');
       H.push('<div class="sim-query">"' + esc(safeStr(sim.query, '')) + '"</div>');
-      H.push('<div class="sim-resp-label">Measured platform response · preserved unedited</div>');
+      H.push('<div class="sim-resp-label">AI answer · shown without editing</div>');
       H.push('<div class="sim-resp' + (didAppear ? ' yes' : '') + '">' + esc(safeStr(sim.response || sim.aiResponse, '')) + '</div>');
       H.push('</div></div>');
     });
@@ -1597,7 +1597,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
 
   if (customerQuestion) {
     H.push('<div class="eyebrow">Customer-provided question · four-platform record</div>');
-    H.push('<div style="font-size:12px;color:#48484F;line-height:1.7;margin-bottom:14px;">Each answer is preserved as returned by the platform. Factual claims inside the answer are not independently verified.</div>');
+    H.push('<div style="font-size:12px;color:#48484F;line-height:1.7;margin-bottom:14px;">Each answer is shown exactly as the platform returned it. A factual claim inside an answer may be wrong unless public evidence supports it.</div>');
     H.push('<div style="font-family:Georgia,serif;font-size:19px;line-height:1.55;color:#0C0C0E;padding:20px 22px;background:#EDEAE5;margin-bottom:2px;">“' + esc(customerQuestion) + '”</div>');
     customerMeasurements.forEach(function(measurement) {
       var item = measurement.result;
@@ -1620,7 +1620,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
         ? 'None of these queries returned ' + esc(bizName) + ' in the Claude response. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
         : appearedFlat === simBeforeResults.length
         ? esc(bizName) + ' appeared in all ' + simBeforeResults.length + ' queries. The priority actions in Section 8 will consolidate this position.'
-        : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' queries. Priority actions in Section 8 will close the remaining gaps.';
+        : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' queries. Section 8 lists improvements intended to strengthen the missing evidence. A new diagnostic is required to measure whether the answers change.';
       H.push('<div class="sim-verdict"><div class="sv-num">' + appearedFlat + '/' + simBeforeResults.length + '</div>');
       H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + '.</span>');
       H.push('<p class="sv-text-p">' + flatVerdict + '</p></div></div>');
@@ -1629,7 +1629,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       var appearedBefore = renderSimSet('Current state', simBeforeResults);
       var beforeVerdict = appearedBefore === 0
         ? 'Every recorded query was answered without mentioning you. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
-        : 'Partial visibility. Priority actions will close remaining gaps.';
+        : 'The business appeared in some, but not all, recorded answers. Section 8 lists improvements based on the missing evidence. A new diagnostic is required to measure whether the answers change.';
       H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
       H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
       H.push('<p class="sv-text-p">' + beforeVerdict + '</p></div></div>');
@@ -1640,8 +1640,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="eyebrow" style="margin-top:36px;">After implementing top fixes</div>');
     var appearedAfter = renderSimSet('After optimisation', simAfterResults);
     var afterVerdict = appearedAfter === simAfterResults.length
-      ? 'Implementing the priority actions in Section 8 closes the gap completely \u2014 every query your customers ask would surface ' + esc(bizName) + ' by name.'
-      : 'Implementing the priority actions in Section 8 closes most of the gap.';
+      ? 'This estimate shows how the answers could change after the priority actions are completed. It is not a real platform result. Run a new diagnostic after implementation to measure the actual answers.'
+      : 'This estimate shows a possible improvement after the priority actions are completed. It is not a real platform result. Run a new diagnostic to measure the actual answers.';
     H.push('<div class="sim-verdict"><div class="sv-num">' + appearedAfter + '/' + simAfterResults.length + '</div>');
     H.push('<div><span class="sv-text-h">queries would mention ' + esc(bizName) + ' after the fixes in Section 8.</span>');
     H.push('<p class="sv-text-p">' + afterVerdict + '</p></div></div>');
@@ -1734,12 +1734,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">The bottom line</div>');
     var btmDriver = pillarDrivers[0];
     var btmText = compName
-      ? esc(bizName) + ' is not being outperformed — it is being out-verified. '
-        + esc(compName) + ' holds the position because they have closed the <strong>' + btmDriver.name + '</strong> gap (' + btmDriver.score + '/25). '
-        + 'Close it here and the selection position reverses. This is winnable.'
-      : esc(bizName) + ' is not invisible — it is under-verified. '
-        + 'The primary gap is <strong>' + btmDriver.name + '</strong> (' + btmDriver.score + '/25). '
-        + 'Closing it changes how AI positions this business. This is actionable.';
+      ? 'The largest improvement area for ' + esc(bizName) + ' is <strong>' + btmDriver.name + '</strong> (' + btmDriver.score + '/25). '
+        + esc(compName) + ' has stronger public evidence in this comparison. Improving the actions listed in this report can strengthen ' + esc(bizName) + '\'s position, but only a new diagnostic can confirm whether AI answers change.'
+      : 'The largest improvement area for ' + esc(bizName) + ' is <strong>' + btmDriver.name + '</strong> (' + btmDriver.score + '/25). '
+        + 'The report lists the missing evidence and the action required to improve it. Only a new diagnostic can confirm whether AI answers change.';
     H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">' + btmText + '</div>');
     H.push('</div>');
     // Additional competitors — the engine returns up to 3 (local + international target shape)
