@@ -688,6 +688,7 @@ exports.handler = async function (event) {
                 available: claudeCompletedSamples > 0,
                 configured: Boolean(process.env.ANTHROPIC_API_KEY),
                 provider: 'anthropic',
+                model: process.env.CLAUDE_MEASUREMENT_MODEL || 'claude-sonnet-4-6',
                 status: claudeCompletedSamples === claudeExpectedSamples
                   ? 'complete'
                   : (claudeCompletedSamples > 0 ? 'partial' : 'failed'),
