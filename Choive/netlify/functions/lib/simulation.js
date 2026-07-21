@@ -310,6 +310,31 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) 
   var locationStr = effectiveLocation ? ' in ' + effectiveLocation : '';
   var forStr = effectiveLocation ? ' for ' + effectiveLocation : '';
 
+  if (businessModel === 'mixed') {
+    var mixedCat = catClean.replace(/\b(b2b|b2c|business.to.business|business.to.consumer|direct.to.consumer|dtc)\b/gi, ' ')
+      .replace(/\s+/g, ' ').trim() || catClean;
+    return [
+      {
+        label: 'Business buyer discovery',
+        intent: 'A business buyer looking for a supplier or provider',
+        system: 'You are advising a business buyer. Search current public sources. Name only companies that sell this offer to businesses. Do not include a company unless public evidence confirms its business-customer offer.' + hint,
+        query: 'Which companies provide ' + mixedCat + ' to business customers' + locationStr + '? Name 3-5 confirmed providers and briefly explain the business offer from each.'
+      },
+      {
+        label: 'Consumer buyer discovery',
+        intent: 'An individual customer looking for a product or service',
+        system: 'You are advising an individual customer. Search current public sources. Name only companies that sell this offer directly to individuals. Do not include a company unless public evidence confirms its consumer offer.' + hint,
+        query: 'Which companies offer ' + mixedCat + ' directly to individual customers' + locationStr + '? Name 3-5 confirmed options and briefly explain the consumer offer from each.'
+      },
+      {
+        label: 'Combined business recommendation',
+        intent: 'A buyer looking for one company that genuinely serves both customer groups',
+        system: 'Search current public sources. Recommend one company only if evidence confirms that it serves both business customers and individual consumers with this type of offer. If no company is confirmed to serve both, say that no single recommendation can be established.' + hint,
+        query: 'Which ' + mixedCat + ' company would you recommend if I need one provider that serves both business customers and individual consumers' + locationStr + '? Name one only if both offers are confirmed.'
+      }
+    ];
+  }
+
   // Farm/DTC brands compete in THREE overlapping contexts simultaneously:
   // (1) the specific niche — buyers searching for their exact product/breed/origin
   // (2) the online/DTC channel — buyers searching where to buy this category online
@@ -430,7 +455,30 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) 
     ];
   }
 
-  // Standard buyer queries — correct for retailers, marketplaces, services
+  if (businessModel === 'unknown') {
+    return [
+      {
+        label: 'Category discovery',
+        intent: 'A buyer identifying current providers without assuming the buyer type',
+        system: 'Search current public sources. Identify the buyer type for each named company from evidence. Do not assume this category is B2B or B2C, and do not include a company whose offer cannot be confirmed.' + hint,
+        query: 'Which companies currently provide ' + catClean + locationStr + '? Name 3-5 confirmed providers and state whether each serves businesses, individual consumers, or both.'
+      },
+      {
+        label: 'Evidence-based comparison',
+        intent: 'A buyer comparing confirmed providers in the category',
+        system: 'Search current public sources. Compare only companies whose current offer, buyer type, and market coverage can be confirmed. Say when the evidence is insufficient.' + hint,
+        query: 'What confirmed providers should a buyer compare for ' + catClean + locationStr + ', and what type of customer does each one serve?'
+      },
+      {
+        label: 'Direct recommendation',
+        intent: 'A buyer asking for one recommendation without an assumed customer segment',
+        system: 'Search current public sources. Recommend one company only when its current offer and customer fit are confirmed. If the buyer type is necessary to decide, say that no single recommendation can be established without it.' + hint,
+        query: 'Which company would you recommend for ' + catClean + locationStr + '? Name one only if the available evidence establishes the customer fit.'
+      }
+    ];
+  }
+
+  // Confirmed consumer buyer queries — retailers, marketplaces and services
   return [
     {
       label: 'Discovery query',
@@ -731,22 +779,25 @@ function normalizeSimInput(input) {
   // Business model detection — used as FALLBACK if Claude query plan fails.
   // The Claude query plan reads all evidence and is always preferred.
   // This regex detection only fires when that plan is unavailable.
-  var businessModel = 'standard';
+  var businessModel = 'unknown';
   var catLower = catClean.toLowerCase();
   var descLower = description.toLowerCase();
   var webLower  = websiteContext.toLowerCase();
   var combined = catLower + ' ' + descLower + ' ' + webLower;
-  if (
-    /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|direct.to.consumer|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined) ||
-    (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined))
-  ) {
+  var hasB2BSignal = /\b(b2b|wholesale|wholesaler|trade customers?|business customers?|business clients?|corporate clients?|enterprise customers?|distributor|supplier.*business|business.*supplier|for businesses|for operators?|for enterprises?|for broadcasters?|for carriers?|for telecoms?|for oems?|for manufacturers?|middleware|white.label|api platform|sdk|enterprise software)\b/i.test(combined);
+  var hasB2CSignal = /\b(b2c|direct.to.consumer|direct to consumer|dtc|individual customers?|individual buyers?|individual clients?|private clients?|for individuals|consumers?|retail customers?|consumer brand)\b/i.test(combined);
+  var isLocalConsumerService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|bakery/i.test(catClean);
+  var isFarmDirect = /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined)
+    || (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined));
+  if (hasB2BSignal && hasB2CSignal) {
+    businessModel = 'mixed';
+  } else if (isFarmDirect) {
     businessModel = 'farm_brand_dtc';
-  } else if (
-    /b2b|wholesale|distributor|supplier.*business|business.*supplier/i.test(combined) ||
-    /\bfor\s+(operators?|enterprises?|broadcasters?|carriers?|telecoms?|pay.tv|msso?|mvpd|isp|oems?|manufacturers?|developers?|agencies|corporations?)\b/i.test(combined) ||
-    /\b(middleware|saas|white.label|white\s+label|api\s+platform|sdk|enterprise\s+software|b2b\s+software|operator\s+platform|headend|backend\s+platform)\b/i.test(combined)
-  ) {
+  } else if (hasB2BSignal || /\bfor\s+(pay.tv|msso?|mvpd|isp|developers?|agencies|corporations?)\b/i.test(combined)
+    || /\b(operator\s+platform|headend|backend\s+platform)\b/i.test(combined)) {
     businessModel = 'b2b';
+  } else if (hasB2CSignal || isLocalConsumerService) {
+    businessModel = 'b2c';
   } else if (/marketplace|platform|aggregator|multi.brand|curates|resell/i.test(combined)) {
     businessModel = 'marketplace';
   }
@@ -757,8 +808,8 @@ function normalizeSimInput(input) {
   // The test is WHERE THE BUYERS ARE, not where the business is headquartered.
   var geoScope = 'national'; // default
   var scopeCombined = (catClean + ' ' + description + ' ' + websiteContext + ' ' + kgText).toLowerCase();
-  var isLocalService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|shop|store|bakery|retail|local service|freelancer/i.test(catClean);
-  var isGlobalB2B = (businessModel === 'b2b') && (
+  var isLocalService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|bakery|local service|freelancer/i.test(catClean);
+  var isGlobalB2B = (businessModel === 'b2b' || businessModel === 'mixed') && (
     /telco|telecom|operator|broadcaster|carmaker|automotive oem|global|international|worldwide|multinational|europe|nordic|dach|mena|apac|north america/i.test(scopeCombined) ||
     /enterprise|middleware|white.label|saas platform/i.test(catClean)
   );
@@ -780,9 +831,12 @@ function normalizeSimInput(input) {
     'us': 'North America', 'usa': 'North America', 'canada': 'North America',
   };
   var cityKey = city.toLowerCase();
+  var countryOrMarket = city.indexOf(',') !== -1
+    ? city.split(',').map(function(part) { return part.trim(); }).filter(Boolean).slice(-1)[0]
+    : city;
   var marketStr = '';
   if (geoScope === 'local') marketStr = city;
-  else if (geoScope === 'national') marketStr = city; // city = country at national scope
+  else if (geoScope === 'national') marketStr = countryOrMarket;
   else if (geoScope === 'regional') marketStr = regionMap[cityKey] || 'Europe';
   else if (geoScope === 'global') marketStr = ''; // no location anchor for global B2B
 
@@ -792,7 +846,13 @@ function normalizeSimInput(input) {
     geoScope: geoScope, marketStr: marketStr,
     websiteContext: websiteContext, kgText: kgText,
     competitorDomains: competitorDomains, knownCompetitors: knownCompetitors,
-    customerQuestion: customerQuestion
+    customerQuestion: customerQuestion,
+    classificationBasis: businessModel === 'mixed' ? 'explicit_b2b_and_b2c_evidence'
+      : businessModel === 'b2b' ? 'explicit_b2b_evidence'
+      : businessModel === 'b2c' ? (hasB2CSignal ? 'explicit_b2c_evidence' : 'local_consumer_category')
+      : businessModel === 'farm_brand_dtc' ? 'confirmed_direct_production_signal'
+      : businessModel === 'marketplace' ? 'marketplace_signal'
+      : 'buyer_type_not_confirmed'
   };
 }
 
@@ -839,7 +899,7 @@ async function generateQueryPlan(n) {
     + '  ✗ Cannot be answered ONLY by naming specific real companies\n'
     + 'REPLACE any banned query with: "Which [vendor type] should [buyer type] choose in [market]?"\n\n'
     + 'YOUR TASK:\n'
-    + '1. Determine whether this business is B2B (sells to other businesses) or B2C (sells to individual consumers). Use ALL context — website, knowledge graph, competitor domains, description — not just the category label.\n\n'
+    + '1. Determine whether this business is B2B (sells to other businesses), B2C (sells to individual consumers), or BOTH. Use ALL context — website, knowledge graph, competitor domains, description — not just the category label. Use "both" only when the evidence explicitly confirms separate business-customer and consumer offers. If one side is uncertain, choose only the confirmed side.\n\n'
     + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
     + 'FOR B2B — MANDATORY QUERY FORMAT:\n'
     + 'Every query must ask WHICH COMPANY/VENDOR/PROVIDER sells this type of product — NOT what software/platform does or enables. The query subject must be a SELLER TYPE, not a product function.\n'
@@ -863,12 +923,13 @@ async function generateQueryPlan(n) {
     + '  BAD: "Which TV platform is best for pay-TV operators in Germany?" — attracts content distributors and operators who BUY platform software, not vendors who SELL it\n'
     + '  BAD: "What entertainment platform should we use?" — attracts Netflix, Disney+, not B2B software vendors\n\n'
     + 'FOR B2C — query format: consumer shopping language ("best brand", "where to buy", "which one should I get for [situation]").\n\n'
+    + 'FOR BOTH — use Query 1 for the business buyer, Query 2 for the individual consumer, and Query 3 to ask for one company that is confirmed to serve both. Query 3 must allow "no single company established" rather than forcing a false match.\n\n'
     + 'RULES FOR BOTH:\n'
     + '- DO NOT mention ' + n.name + ' in any query.\n'
     + '- Use the SPECIFIC vendor-type vocabulary of the inferred category — not generic terms.\n'
     + '- If any query could be answered with general advice instead of named companies, rewrite it.\n\n'
     + 'Return ONLY this JSON (no markdown, no explanation):\n'
-    + '{"buyerType":"b2b","reasoning":"one sentence why B2B or B2C","queries":["query 1","query 2","query 3"]}';
+    + '{"buyerType":"b2b|b2c|both","reasoning":"one sentence citing the evidence for this buyer type","queries":["query 1","query 2","query 3"]}';
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
@@ -949,6 +1010,14 @@ async function runBeforeSimulation(input, useWebSearch) {
   // for the specific niche. Falls back to static templates if plan fails.
   var rawQueries;
   var queryPlan = await generateQueryPlan(n);
+  if (queryPlan && n.businessModel === 'mixed' && String(queryPlan.buyerType || '').toLowerCase() !== 'both') {
+    console.warn('[simulation] query plan rejected: confirmed mixed B2B/B2C business was reduced to one buyer group');
+    queryPlan = null;
+  }
+  if (queryPlan && n.businessModel !== 'mixed' && String(queryPlan.buyerType || '').toLowerCase() === 'both') {
+    console.warn('[simulation] query plan rejected: BOTH was not supported by explicit B2B and B2C evidence');
+    queryPlan = null;
+  }
   var queryPlanUsed = Boolean(queryPlan && Array.isArray(queryPlan.queries) && queryPlan.queries.length >= 3);
   if (queryPlanUsed) {
     console.log('[simulation] Query plan: buyerType=' + queryPlan.buyerType + ' — ' + (queryPlan.reasoning || ''));
@@ -958,7 +1027,11 @@ async function runBeforeSimulation(input, useWebSearch) {
       ? (useWebSearch
           ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.'
           : 'You are a helpful AI assistant. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.')
-      : (useWebSearch
+      : queryPlan.buyerType === 'both'
+        ? (useWebSearch
+            ? 'You are a helpful AI assistant with live web search. Follow the buyer type stated in each question. Distinguish business-customer offers from consumer offers. Claim that a company serves both only when current public evidence confirms both.'
+            : 'You are a helpful AI assistant. Follow the buyer type stated in each question. Distinguish business-customer offers from consumer offers. Claim that a company serves both only when the supplied evidence confirms both.')
+        : (useWebSearch
           ? 'You are a helpful AI assistant with live web search. Search before answering. Name specific brands, shops, or businesses. Be concrete and name real options.'
           : 'You are a helpful AI assistant. Name specific brands, shops, or businesses. Be concrete and name real options.');
     rawQueries = queryPlan.queries.map(function(q, i) {
@@ -992,7 +1065,8 @@ async function runBeforeSimulation(input, useWebSearch) {
       var queryText = typeof q === 'string' ? q : (q.query || '');
       var rejectsBuildVsBuy = bvbPattern.test(queryText);
       var queryPlanIsB2B = queryPlan && String(queryPlan.buyerType || '').toLowerCase() === 'b2b';
-      var rejectsB2BEndUser = (n.businessModel === 'b2b' || queryPlanIsB2B) && b2bEndUserPattern.test(queryText);
+      var queryPlanIsMixed = queryPlan && String(queryPlan.buyerType || '').toLowerCase() === 'both';
+      var rejectsB2BEndUser = (n.businessModel === 'b2b' || queryPlanIsB2B) && !queryPlanIsMixed && b2bEndUserPattern.test(queryText);
       if (rejectsBuildVsBuy || rejectsB2BEndUser) {
         console.warn('[simulation] unsafe buyer query REJECTED at code level: ' + queryText.slice(0, 100));
         var safe = staticFallback[i] || staticFallback[fbIdx % staticFallback.length];
@@ -1061,6 +1135,62 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   };
 }
 
+// Builds the same four buyer questions without calling Claude for answers.
+// This keeps ChatGPT, Perplexity, and Gemini independent: if Claude cannot
+// answer, the other providers still receive valid, localized questions.
+async function buildFallbackMeasurementQueries(input) {
+  var n = normalizeSimInput(input);
+  var queries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+  if (n.customerQuestion) {
+    queries[0] = {
+      label: 'Customer-provided question',
+      intent: 'The exact buyer question supplied by the business',
+      system: 'Answer as a buyer-facing AI assistant. Search current public sources before answering. Answer the exact question asked, name real companies only, and do not assume the subject business must be included.',
+      query: n.customerQuestion,
+      preserveLanguage: true
+    };
+  }
+  var officialWebsite = String(input && input.website || '').trim();
+  var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
+    + (n.catClean ? ' is a ' + n.catClean : '')
+    + (n.marketStr ? ' serving ' + n.marketStr : '') + '. ';
+  queries.push({
+    label: 'Branded replacement recommendation',
+    intent: 'A buyer asking which one company to choose instead of the subject',
+    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly. Name one real company you would recommend instead of the subject. If you cannot identify a credible alternative, say so rather than guessing.',
+    query: identityContext + 'Which one company would you recommend instead of ' + n.name + '? Briefly explain why.'
+  });
+  var localized = await applyMarketLanguage(queries, n.city, input.language);
+  return {
+    language: localized.language,
+    results: localized.queries.map(function(query) {
+      return {
+        label: query.label,
+        intent: query.intent,
+        system: query.system,
+        query: query.query,
+        response: '',
+        appeared: false,
+        sampleCount: 0,
+        expectedSamples: 1,
+        appearedCount: 0,
+        allResponses: []
+      };
+    })
+  };
+}
+
+function classifyBusinessInput(input) {
+  var n = normalizeSimInput(input);
+  return {
+    businessModel: n.businessModel,
+    classificationBasis: n.classificationBasis,
+    geographicScope: n.geoScope,
+    queryMarket: n.marketStr,
+    category: n.catClean
+  };
+}
+
 // AFTER half — consumes the scored differentiator and trust signal, so it
 // runs after scoring, exactly as before.
 async function runAfterSimulation(input) {
@@ -1119,5 +1249,7 @@ module.exports = {
   runSimulation: runSimulation,
   runBeforeSimulation: runBeforeSimulation,
   runAfterSimulation: runAfterSimulation,
-  runDirectCompetitorQuestion: runDirectCompetitorQuestion
+  runDirectCompetitorQuestion: runDirectCompetitorQuestion,
+  buildFallbackMeasurementQueries: buildFallbackMeasurementQueries,
+  classifyBusinessInput: classifyBusinessInput
 };
