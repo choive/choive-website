@@ -13,13 +13,47 @@ const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
-const { runBeforeSimulation, runDirectCompetitorQuestion } = require('./lib/simulation');
+const simulationLib = require('./lib/simulation');
+const runBeforeSimulation = typeof simulationLib.runBeforeSimulation === 'function'
+  ? simulationLib.runBeforeSimulation
+  : async function(input) {
+      if (typeof simulationLib.runSimulation !== 'function') throw new Error('No compatible simulation runner is available');
+      return simulationLib.runSimulation(input);
+    };
+const runDirectCompetitorQuestion = typeof simulationLib.runDirectCompetitorQuestion === 'function'
+  ? simulationLib.runDirectCompetitorQuestion
+  : null;
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+function buildSubjectRecommendationMatcher(name, website) {
+  var keys = {};
+  function add(value) {
+    var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key) keys[key] = true;
+  }
+  add(name);
+  var domain = normalizeUrl(website || '');
+  add(domain);
+  add(String(domain || '').split('.')[0]);
+  var tokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  var acronym = '';
+  if (tokens.length >= 3 && tokens.some(function(token) { return /\d/.test(token); })) {
+    acronym = tokens.map(function(token) { return /^\d+$/.test(token) ? token : token.charAt(0); }).join('');
+    add(acronym);
+  }
+  return function(value) {
+    var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key || keys[key]) return Boolean(key);
+    var full = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (full.length >= 5 && key.indexOf(full) !== -1) return true;
+    return acronym.length >= 3 && /\d/.test(acronym)
+      && (key.indexOf(acronym) === 0 || key.lastIndexOf(acronym) === key.length - acronym.length);
+  };
+}
 // ── VERIFICATION ENGINE ─────────────────────────────────────────────
 // Compares this run against the previous completed run for the same business
 // and produces a provable delta: score movement, per-pillar movement, and —
@@ -307,6 +341,7 @@ exports.handler = async function (event) {
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
     const customerQuestion = safeStr(input.customerQuestion).slice(0, 500);
+    var isSubjectRecommendation = buildSubjectRecommendationMatcher(name, website);
     const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
@@ -603,7 +638,7 @@ exports.handler = async function (event) {
             console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount + '/3');
             var directCompetitorCheck = null;
             try {
-              directCompetitorCheck = await runDirectCompetitorQuestion({
+              directCompetitorCheck = runDirectCompetitorQuestion ? await runDirectCompetitorQuestion({
                 language: simBefore.before.language,
                 name: name,
                 website: website,
@@ -611,7 +646,7 @@ exports.handler = async function (event) {
                 city: city,
                 description: description,
                 inferredCategory: evidence['inferredCategory'] || category
-              }, true);
+              }, true) : null;
               evidence['directCompetitorCheck'] = directCompetitorCheck;
             } catch (directErr) {
               console.warn('[' + jobId + '] Direct competitor question failed:', directErr.message);
@@ -989,6 +1024,58 @@ exports.handler = async function (event) {
           }
         } catch (err) {
           console.warn('[' + jobId + '] Before-simulation failed:', err.message);
+          // Claude must not be a gatekeeper for the other providers. Build
+          // deterministic buyer questions and run ChatGPT, Perplexity, and
+          // Gemini even when Claude's measurement or query planning fails.
+          try {
+            if (typeof simulationLib.buildFallbackMeasurementQueries !== 'function') {
+              throw new Error('Fallback query builder is unavailable');
+            }
+            var fallbackQuestions = await simulationLib.buildFallbackMeasurementQueries({
+              language: languagePref || undefined,
+              name: name,
+              website: website,
+              category: category,
+              city: city,
+              description: description,
+              inferredCategory: evidence['inferredCategory'] || category,
+              customerQuestion: customerQuestion || ''
+            });
+            var fallbackPlatformInput = {
+              name: name,
+              category: evidence['inferredCategory'] || category,
+              city: city,
+              language: fallbackQuestions.language,
+              sourceResults: fallbackQuestions.results
+            };
+            var fallbackRuns = await Promise.allSettled([
+              runOpenAISimulation(fallbackPlatformInput),
+              runGeminiSimulation(fallbackPlatformInput),
+              runPerplexitySimulation(fallbackPlatformInput)
+            ]);
+            function fallbackRun(index, provider) {
+              return fallbackRuns[index].status === 'fulfilled'
+                ? fallbackRuns[index].value
+                : { available:false, configured:true, provider:provider, status:'failed', reason:String(fallbackRuns[index].reason && fallbackRuns[index].reason.message || 'Request failed'), results:[] };
+            }
+            evidence['platformSimulations'] = evidence['platformSimulations'] || {};
+            evidence['platformSimulations']['claude'] = {
+              available: false,
+              configured: Boolean(process.env.ANTHROPIC_API_KEY),
+              provider: 'anthropic',
+              status: 'failed',
+              reason: err.message || 'Claude measurement failed',
+              results: fallbackQuestions.results
+            };
+            evidence['platformSimulations']['openai'] = fallbackRun(0, 'openai');
+            evidence['platformSimulations']['gemini'] = fallbackRun(1, 'gemini');
+            evidence['platformSimulations']['perplexity'] = fallbackRun(2, 'perplexity');
+            console.log('[' + jobId + '] Independent fallback simulations: ChatGPT=' + (evidence['platformSimulations']['openai'].status || 'unknown')
+              + ', Perplexity=' + (evidence['platformSimulations']['perplexity'].status || 'unknown')
+              + ', Gemini=' + (evidence['platformSimulations']['gemini'].status || 'unknown'));
+          } catch (fallbackErr) {
+            console.warn('[' + jobId + '] Independent platform fallback failed:', fallbackErr.message);
+          }
         }
       }
 
@@ -1362,6 +1449,7 @@ exports.handler = async function (event) {
           totalResponses: cdX.totalResponses || 0,
           totalQueries: cdX.totalQueries || 0,
           globalBenchmark: cdX.globalBenchmark || null,
+          sourceUrls: Array.isArray(cdX.sourceUrls) ? cdX.sourceUrls.slice(0, 3) : [],
           categoryUnowned: cdX.categoryUnowned === true
         };
       }
@@ -1441,7 +1529,7 @@ exports.handler = async function (event) {
         }).join('');
         addSubjectKey(subjectAcronymKey);
       }
-      var isSubjectRecommendation = function(value) {
+      isSubjectRecommendation = function(value) {
         var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (!key || subjectRecommendationKeys[key]) return Boolean(key);
         // Providers often return a compact brand plus its expanded legal or
