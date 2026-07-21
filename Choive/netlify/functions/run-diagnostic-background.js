@@ -306,6 +306,7 @@ exports.handler = async function (event) {
     const website          = safeStr(input.website);
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
+    const customerQuestion = safeStr(input.customerQuestion).slice(0, 500);
     const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
     if (!name || !category || !city) throw new Error('Missing required input fields');
@@ -396,7 +397,7 @@ exports.handler = async function (event) {
         );
       }
         evidence = {
-        name, category, city, website, description, knownCompetitors,
+        name, category, city, website, description, knownCompetitors, customerQuestion,
         inferredOfficialSite: inferredSite   || '',
         websiteText:          websiteText    || '',
         websiteSignals:       websiteSignals,   // ← structured signals attached here
@@ -594,7 +595,8 @@ exports.handler = async function (event) {
             competitorDomains: (evidence['competitors'] || [])
               .map(function(c) { return c.domain || c.name || ''; })
               .filter(Boolean),
-            knownCompetitors:  knownCompetitors || ''
+            knownCompetitors:  knownCompetitors || '',
+            customerQuestion:  customerQuestion || ''
           });
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
