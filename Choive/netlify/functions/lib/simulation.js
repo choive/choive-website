@@ -10,7 +10,10 @@
 // ENV: ANTHROPIC_API_KEY
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+// Use the current Sonnet family for the measured Claude answers. Haiku remains
+// useful for low-cost internal transformations, but it is not an appropriate
+// stand-in for the recommendation quality users expect from the Claude app.
+const ANTHROPIC_MODEL = process.env.CLAUDE_MEASUREMENT_MODEL || 'claude-sonnet-4-6';
 const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS = 25000;
 const SEARCH_TIMEOUT_MS = 45000; // web search round-trips take longer
