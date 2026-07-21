@@ -681,12 +681,20 @@ async function localizeQueries(queries, lang) {
 async function applyMarketLanguage(queries, city, forcedLang) {
   var lang = forcedLang || detectMarketLanguage(city);
   if (lang === 'en') return { queries: queries, language: 'en' };
-  var localized = await localizeQueries(queries, lang);
-  if (!localized) return { queries: queries, language: 'en' };
-  var out = queries.map(function(q, i) {
+  var translatable = queries.filter(function(q) { return !q.preserveLanguage; });
+  var localized = translatable.length ? await localizeQueries(translatable, lang) : [];
+  if (translatable.length && !localized) {
+    // A customer-provided question remains valid in the language they wrote,
+    // even when localization of the engine-generated questions fails.
+    return { queries: queries, language: queries.some(function(q) { return q.preserveLanguage; }) ? lang : 'en' };
+  }
+  var translatedIndex = 0;
+  var out = queries.map(function(q) {
+    var queryText = q.preserveLanguage ? q.query : localized[translatedIndex++];
     return { label: q.label, intent: q.intent,
       system: q.system + ' Answer in the same language as the question.',
-      query: localized[i] };
+      query: queryText,
+      preserveLanguage: Boolean(q.preserveLanguage) };
   });
   return { queries: out, language: lang };
 }
@@ -705,6 +713,7 @@ function normalizeSimInput(input) {
   var competitorDomains = Array.isArray(input.competitorDomains)
     ? input.competitorDomains.filter(Boolean).slice(0, 10) : [];
   var knownCompetitors  = String(input.knownCompetitors || '').trim();
+  var customerQuestion  = String(input.customerQuestion || '').trim().slice(0, 500);
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -782,7 +791,8 @@ function normalizeSimInput(input) {
     description: description, businessModel: businessModel,
     geoScope: geoScope, marketStr: marketStr,
     websiteContext: websiteContext, kgText: kgText,
-    competitorDomains: competitorDomains, knownCompetitors: knownCompetitors
+    competitorDomains: competitorDomains, knownCompetitors: knownCompetitors,
+    customerQuestion: customerQuestion
   };
 }
 
@@ -807,6 +817,7 @@ async function generateQueryPlan(n) {
   if (n.kgText)                     contextParts.push('KNOWLEDGE GRAPH: ' + n.kgText);
   if (n.competitorDomains.length)   contextParts.push('RELATED DOMAINS FROM SEARCH: ' + n.competitorDomains.join(', '));
   if (n.knownCompetitors)           contextParts.push('KNOWN COMPETITORS: ' + n.knownCompetitors);
+  if (n.customerQuestion)           contextParts.push('CUSTOMER-PROVIDED QUESTION: ' + n.customerQuestion);
 
   // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
   var geoHint = n.geoScope === 'global'
@@ -997,6 +1008,15 @@ async function runBeforeSimulation(input, useWebSearch) {
   // rewrite the same three questions. Use refinement only for static fallback
   // templates when the primary plan was unavailable.
   var buyerQueries = queryPlanUsed ? rawQueries : await generateBuyerQueries(n, rawQueries);
+  if (n.customerQuestion) {
+    buyerQueries[0] = {
+      label: 'Customer-provided question',
+      intent: 'The exact buyer question supplied by the business',
+      system: 'Answer as a buyer-facing AI assistant. Search current public sources before answering. Answer the exact question asked, name real companies only, and do not assume the subject business must be included.',
+      query: n.customerQuestion,
+      preserveLanguage: true
+    };
+  }
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, useWebSearch);
   var count = results.filter(function(r) { return r.appeared; }).length;
