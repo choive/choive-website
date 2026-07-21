@@ -218,11 +218,11 @@ async function extractRecommendations(name, category, city, results, mode) {
 
 async function runOpenAISimulation(input) {
   if (!process.env.OPENAI_API_KEY) {
-    return { available: false, provider: 'openai', reason: 'OPENAI_API_KEY is not configured' };
+    return { available: false, configured: false, complete: false, provider: 'openai', status: 'not_configured', reason: 'OPENAI_API_KEY is not configured', results: [] };
   }
   var sourceResults = input && input.sourceResults;
   if (!Array.isArray(sourceResults) || !sourceResults.length) {
-    return { available: false, provider: 'openai', reason: 'No shared buyer queries were supplied' };
+    return { available: false, configured: true, complete: false, provider: 'openai', status: 'no_queries', reason: 'No shared buyer questions were supplied', results: [] };
   }
 
   var samples = sampleCount();
