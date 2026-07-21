@@ -2633,7 +2633,7 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
       </div>
       <div class="diff-comp diff-comp--choive">
         <div class="diff-comp-name">CHOIVE</div>
-        <div class="diff-comp-desc highlight">CHOIVE diagnoses exactly why your business isn't being recommended by AI — and shows you what to fix. For any business, in any category, anywhere in the world. Not a report. A decision.</div>
+        <div class="diff-comp-desc highlight">CHOIVE records what each AI platform recommends, checks the public evidence behind your business, and shows the specific improvements supported by that evidence.</div>
       </div>
     </div>
   </div>
@@ -3270,15 +3270,15 @@ function showResults(r, jobId) {
   const googleSignal = hasKg ? 'STRONG' : (score >= 50 ? 'PARTIAL' : 'WEAK');
   const googleIcon   = hasKg ? '\u2714' : '\u26a0';
 
-  // The score describes structural readiness only. Platform recommendations
+  // The score describes the business evidence only. Platform recommendations
   // are reported separately from the measured platform responses.
   const scoreLabel = score >= 76
-    ? 'Strong structural readiness for AI discovery and recommendation.'
+    ? 'AI can clearly understand this business and find strong public proof for it.'
     : score >= 56
-      ? 'Moderate structural readiness. Important recommendation signals are inconsistent.'
+      ? 'AI can understand this business, but some important public proof is missing or unclear.'
       : score >= 31
-        ? 'Weak structural readiness. AI can identify the business, but the evidence is not strong enough for reliable recommendation.'
-        : 'Very weak structural readiness. The business lacks the clear, trusted, differentiated, and accessible evidence AI needs.';
+        ? 'AI can identify this business, but it cannot find enough clear and trusted proof to recommend it reliably.'
+        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this business.';
 
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
@@ -3308,9 +3308,9 @@ function showResults(r, jobId) {
     || '';
   var topCompReason = (explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage))
     || cd.reason
-    || (topComp ? topComp + ' is the closest verified purchasing substitute identified in this diagnostic.' : '');
+    || (topComp ? topComp + ' sells a similar product to the same type of customer.' : '');
   var topCompReasonSummary = topComp
-    ? topComp + ' is the closest verified purchasing substitute found for this business. The match is based on overlapping buyers, offer, commercial model, and market reach.'
+    ? topComp + ' sells a similar product to the same type of customer, at a similar business level and in a similar market.'
     : '';
   var widerMarketDecision = r.marketCompetitorDecision && r.marketCompetitorDecision.name
     ? r.marketCompetitorDecision : null;
@@ -3474,8 +3474,8 @@ function showResults(r, jobId) {
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? esc(marketComp) + ' is the closest head-to-head market competitor identified in this run, but no company appeared across enough different buyer questions to qualify as the consistent AI recommendation leader.'
-        : 'No company appeared consistently enough to qualify as the recommendation leader, and the evidence did not support a reliable head-to-head market competitor in this run.')
+        ? esc(marketComp) + ' is the closest direct competitor found in this run. However, the AI platforms did not consistently recommend one company across the buyer questions.'
+        : 'The AI platforms did not consistently recommend one company, and the available evidence was not strong enough to name a direct competitor.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3486,8 +3486,8 @@ function showResults(r, jobId) {
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? 'This is the closest verified market competitor found in the diagnostic. It was not established as a consistent AI recommendation leader.'
-        : 'This diagnostic did not establish a competitor strongly enough to present one as the current recommendation leader.')
+        ? 'This company sells a similar offer in the same market. The AI platforms did not consistently recommend it in this run.'
+        : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3502,7 +3502,7 @@ function showResults(r, jobId) {
     + '<div class="mono-score-num" id="scoreNum">0</div>'
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
-    + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">Structural readiness score: ' + score + ' / 100</div>'
+    + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">Business evidence score: ' + score + ' / 100</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. The recorded platform recommendations are reported separately and are not changed by the CHOIVE score.'
@@ -3573,15 +3573,35 @@ function showResults(r, jobId) {
     var comp = topComp ? topComp : marketComp;
     var name = bName  ? bName  : 'your business';
     var cat  = bCat   ? bCat   : 'your category';
+    var measuredLanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+    var subjectKey = String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    var subjectTokens = String(name).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+    var subjectAcronym = subjectTokens.length >= 3
+      ? subjectTokens.map(function(token) { return /^\d+$/.test(token) ? token : token.charAt(0); }).join('')
+      : '';
+    function laneNamesSubject(value) {
+      var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return !!key && (key === subjectKey
+        || (subjectKey.length >= 5 && key.indexOf(subjectKey) !== -1)
+        || (subjectAcronym.length >= 3 && /\d/.test(subjectAcronym) && key.indexOf(subjectAcronym) !== -1));
+    }
+    var namedAlternatives = measuredLanes.filter(function(lane) {
+      return lane && lane.recommendation && !laneNamesSubject(lane.recommendation);
+    });
     if (!topComp) {
       return '<div class="urgency-bridge">'
         + '<div class="urgency-sentence">No company owns the AI recommendation across different buyer questions yet.</div>'
-        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor, but it is not a verified recommendation leader in this diagnostic.' : 'The category remains open, with no reliably verified market leader.') + '</div>'
+        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor found, but the AI platforms did not consistently recommend it.' : 'The AI platforms did not consistently recommend any company in this category.') + '</div>'
+        + '</div>';
+    }
+    if (!namedAlternatives.length) {
+      return '<div class="urgency-bridge">'
+        + '<div class="urgency-sentence">' + esc(comp) + ' sells the most similar offer to the same type of customer.</div>'
+        + '<div class="urgency-sub">No AI platform named one company as its clear recommendation in this run. The Analysis compares ' + esc(name) + ' with ' + esc(comp) + ' without claiming that an AI platform recommended the competitor.</div>'
         + '</div>';
     }
     return '<div class="urgency-bridge">'
-      + '<div class="urgency-sentence">Every day this stays unfixed, someone searching for '
-      + esc(cat) + ' finds ' + esc(comp) + ' instead of ' + esc(name) + '.</div>'
+      + '<div class="urgency-sentence">In this run, ' + namedAlternatives.length + ' measured AI platform' + (namedAlternatives.length === 1 ? '' : 's') + ' named another business.</div>'
       + '<div class="urgency-sub">The Analysis shows exactly what to change — and in what order.</div>'
       + '</div>';
   }
@@ -3626,7 +3646,7 @@ function showResults(r, jobId) {
               : 'Market competitor') + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
-            + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this competitor is being chosen over you — what signals AI is reading, where your positioning falls short, and what specific gap makes them the easier recommendation in this category.</div>'
+            + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this company is the closest direct competitor, how the two businesses differ, and what proof would make your business easier for buyers and AI systems to understand and trust.</div>'
             + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
             + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink);background:var(--paper-2);padding:6px 14px;border:1px solid var(--rule);">Unlock to read analysis →</div>'
             + '</div>'
@@ -3673,7 +3693,7 @@ function showResults(r, jobId) {
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-headline">' + (topComp ? esc(topComp) + ' has something you don\'t.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
+        + '<div class="paywall-headline">' + (topComp ? 'See exactly how ' + esc(topComp) + ' compares.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
         + '<div class="paywall-body">' + (topComp ? 'Your scores show the gap. The Analysis shows exactly how to close it — ranked steps for each pillar, specific actions, and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.' : 'The Analysis contains ranked actions for each pillar — specific, sequenced steps and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.') + '</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
@@ -3772,13 +3792,13 @@ function showResults(r, jobId) {
       : 'The verdict combines the four CHOIVE pillars with the competitor and recommendation evidence collected in this diagnostic.';
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     var competitorCopy = topComp
-      ? 'Closest verified purchasing substitute'
-      : 'No head-to-head competitor was verified strongly enough to name';
+      ? 'Sells a similar offer to the same type of customer'
+      : 'The available evidence was not strong enough to name a direct competitor';
     var marketCopy = marketName
       ? (String(marketName).toLowerCase() === String(topComp || '').toLowerCase()
         ? 'Also holds the wider-market role in this run'
         : 'Wider category competitor identified in this run')
-      : 'No separate wider-market competitor was verified';
+      : 'The available evidence did not support naming a separate market competitor';
     var pillarKeys = [
       { key:'clarity', label:'Clarity' },
       { key:'trust', label:'Trust' },
@@ -3807,12 +3827,12 @@ function showResults(r, jobId) {
 
   function buildEvidenceLegend() {
     return '<section class="pay-section" aria-label="Evidence status key">'
-      + '<div class="pay-eyebrow">How To Read This Analysis</div>'
+      + '<div class="pay-eyebrow">What Each Label Means</div>'
       + '<div class="integrity-summary">'
-      + '<div class="integrity-cell"><div class="integrity-label">Measured</div><div class="integrity-copy">A response recorded directly from an AI platform during this diagnostic run.</div></div>'
-      + '<div class="integrity-cell"><div class="integrity-label">Verified</div><div class="integrity-copy">A conclusion supported by the public business and market evidence collected for this run.</div></div>'
-      + '<div class="integrity-cell"><div class="integrity-label">Modeled</div><div class="integrity-copy">A clearly labeled comparison or projection, not a measured fact about another company.</div></div>'
-      + '<div class="integrity-cell"><div class="integrity-label">Recommended action</div><div class="integrity-copy">A prioritized improvement derived from the evidence. It is guidance, not a platform transcript.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">AI answer</div><div class="integrity-copy">The exact answer returned by Claude, ChatGPT, Perplexity, or Gemini during this run.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Confirmed fact</div><div class="integrity-copy">CHOIVE found public evidence that supports this statement.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Estimate</div><div class="integrity-copy">A calculated comparison or future projection. It is not a fact measured from a competitor.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">What to do</div><div class="integrity-copy">A specific improvement based on the evidence collected in this diagnostic.</div></div>'
       + '</div></section>';
   }
 
@@ -3913,13 +3933,13 @@ function showResults(r, jobId) {
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
           + rows
           + (largestDeficit.value > 0
-            ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest modeled deficit: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
-              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">Use the evidence-backed Priority Actions below for implementation. No capability claim is inferred from this modeled comparison.</div>'
+            ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest estimated score difference: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
+              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">This difference is an estimate based on public evidence. It is not a measured fact about the competitor. Use the Priority Actions below to improve your own evidence.</div>'
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
       }
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">AI Recommendation Arena</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, ChatGPT, Perplexity, and Gemini. Matching company names remain in separate platform lanes. Recommendation names are measured answers; pillar comparisons are modeled estimates based on collected public evidence.</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Each row shows the answer returned by one AI platform. If two platforms name the same company, both answers remain visible. Competitor pillar scores are estimates based on public information, not scores supplied by those companies.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
     }
@@ -4125,13 +4145,13 @@ function showResults(r, jobId) {
         : 'Limited coverage';
     var limitations = [];
     if (completed < 4) limitations.push((4 - completed) + ' platform measurement' + (4 - completed === 1 ? ' was' : 's were') + ' unavailable or did not establish a named recommendation.');
-    if (!topComp) limitations.push('The evidence did not support naming a verified head-to-head purchasing substitute.');
-    if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('A separate wider-market competitor was not verified in this run.');
+    if (!topComp) limitations.push('The available evidence was not strong enough to name a direct competitor.');
+    if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('The available evidence did not support naming a separate market competitor.');
     limitations.push('Platform answers are point-in-time API measurements. Consumer-app answers can vary with model version, location, account context, wording, and search availability.');
     limitations.push('A named AI recommendation records what the platform answered; it does not certify that the recommended company is objectively the best supplier.');
     var limitationsHtml = limitations.map(function(item) { return '<li>' + esc(item) + '</li>'; }).join('');
     return '<section class="pay-section" id="report-method">'
-      + '<div class="pay-eyebrow">Measurement Integrity</div>'
+      + '<div class="pay-eyebrow">What This Result Is Based On</div>'
       + '<div class="integrity-summary">'
       + '<div class="integrity-cell"><div class="integrity-label">Platform coverage</div><div class="integrity-value">' + completed + ' / 4</div><div class="integrity-copy">Platforms with a completed result or an explicit no-recommendation outcome.</div></div>'
       + '<div class="integrity-cell"><div class="integrity-label">Pillar evidence</div><div class="integrity-value">' + evidenceCount + ' / 4</div><div class="integrity-copy">Pillars supported by a written evidence record in this diagnostic.</div></div>'
@@ -4200,7 +4220,7 @@ function showResults(r, jobId) {
     if (!question) return '';
     return '<section class="pay-section" id="report-customer-question">'
       + '<div class="pay-eyebrow">Your Customer’s Question</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">The exact question supplied with this diagnostic, measured separately across all four AI platforms. Responses are preserved unedited; factual claims inside them are not treated as verified CHOIVE evidence.</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">CHOIVE asked this exact question separately on all four AI platforms. Their answers are shown without editing. CHOIVE does not treat a factual claim inside an AI answer as true unless other public evidence supports it.</div>'
       + '<div class="customer-question-prompt">“' + esc(question) + '”</div>'
       + '<div class="customer-question-grid">' + cards + '</div>'
       + '</section>';
@@ -4210,7 +4230,7 @@ function showResults(r, jobId) {
     return buildEvidenceLegend()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">We ran three AI queries. The responses below are preserved unedited. Statements inside a platform response may be incorrect and are not treated as verified CHOIVE evidence unless corroborated elsewhere in this analysis.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Queries asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">CHOIVE asked three buyer questions. The answers below are shown without editing. AI platforms can make factual mistakes, so CHOIVE does not present claims inside their answers as confirmed facts unless public evidence supports them.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Questions asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + '<section class="pay-section" id="report-intelligence"><div class="pay-eyebrow">Business Intelligence</div>'
@@ -4512,7 +4532,7 @@ async function runAISimulation(r) {
           + (qr.appeared ? 'Mentioned' : 'Not mentioned') + '</span>'
           + '</div>'
           + '<div class="sim-query-text">\u201c' + esc(qr.query) + '\u201d</div>'
-          + '<div class="sim-evidence-note">Measured platform response \u00b7 preserved unedited \u00b7 factual claims not independently verified</div>'
+          + '<div class="sim-evidence-note">AI answer \u00b7 shown without editing \u00b7 factual claims may not be correct</div>'
           + '<div class="sim-response' + (qr.appeared ? ' mentioned' : '') + '">'
           + esc(stripMd(qr.response)) + '</div>'
           + '</div>';
@@ -4635,12 +4655,12 @@ function exportPDF() {
     : '';
   var pdfScore = Number(r.overallScore) || 0;
   var pdfScoreMeaning = pdfScore >= 76
-    ? 'Strong structural readiness for AI discovery and recommendation.'
+    ? 'AI can clearly understand this business and find strong public proof for it.'
     : pdfScore >= 56
-      ? 'Moderate structural readiness. Important recommendation signals are inconsistent.'
+      ? 'AI can understand this business, but some important public proof is missing or unclear.'
       : pdfScore >= 31
-        ? 'Weak structural readiness. AI can identify the business, but the evidence is not strong enough for reliable recommendation.'
-        : 'Very weak structural readiness. The business lacks the evidence AI needs.';
+        ? 'AI can identify this business, but it cannot find enough clear and trusted proof to recommend it reliably.'
+        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this business.';
 
   function pdfSection(title, html) {
     if (!html) return '';
@@ -4665,7 +4685,7 @@ function exportPDF() {
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4A9965;margin-bottom:4px;">CHOIVE INDEX\u2122</div>'
     + '<div style="font-size:48px;font-weight:700;line-height:1;">' + pdfScore + '</div>'
     + '<div style="font-size:13px;color:#666;margin-bottom:12px;">/ 100</div>'
-    + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">Structural readiness score: ' + pdfScore + ' / 100</div>'
+    + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">Business evidence score: ' + pdfScore + ' / 100</div>'
     + '<div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:8px;">' + pdfScoreMeaning + '</div>'
     + '<div style="font-size:14px;color:#444;line-height:1.65;">This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. Platform recommendations are reported separately and are not changed by this score.</div>'
     + '</div>'
