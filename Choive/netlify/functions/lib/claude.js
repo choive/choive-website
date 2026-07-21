@@ -1137,6 +1137,13 @@ async function scoreWithClaudeOnce(evidence) {
         compDecision.aiRecommends = null;
         compDecision.secondAiCompetitor = null;
       }
+      // "Category unowned" describes the measured AI recommendation space,
+      // not whether market rivals exist. It cannot coexist with a
+      // transcript-verified qualifying AI recommendation, but it may coexist
+      // with a market rival that the measured AI answers did not name.
+      if (compDecision.aiRecommends) {
+        compDecision.categoryUnowned = false;
+      }
       evidence.competitorDecision = compDecision;
       console.log('[competitor-selection] real: ' + (compDecision.realCompetitor || 'none')
         + ' | AI names: ' + (compDecision.aiRecommends || 'none')
