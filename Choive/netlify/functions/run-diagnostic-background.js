@@ -1354,11 +1354,13 @@ exports.handler = async function (event) {
     try {
       var cdV = evidence['competitorDecision'];
       if (cdV) {
-        // An unowned category can never simultaneously carry a displacer name.
+        // A transcript-verified recommendation is direct evidence that this
+        // measured AI answer is not unowned. Resolve a stale contradictory
+        // boolean in favor of the recorded answer; never erase the answer.
         if (cdV.categoryUnowned === true && cdV.aiRecommends) {
-          console.warn('[' + jobId + '] [competitor-validation] categoryUnowned yet aiRecommends "' + cdV.aiRecommends + '" — contradiction; clearing the banner name');
-          cdV.aiRecommends = null;
-          if (finalResult['competitorDecision']) finalResult['competitorDecision'].aiRecommends = null;
+          console.warn('[' + jobId + '] [competitor-validation] categoryUnowned contradicted transcript-verified aiRecommends "' + cdV.aiRecommends + '" — correcting categoryUnowned=false');
+          cdV.categoryUnowned = false;
+          if (finalResult['competitorDecision']) finalResult['competitorDecision'].categoryUnowned = false;
         }
         // A platform in the AI-answer slot means AI named a venue, not a rival:
         // the truthful reading is that the category answer is UNOWNED.
@@ -1452,6 +1454,8 @@ exports.handler = async function (event) {
           totalResponses: cdX.totalResponses || 0,
           totalQueries: cdX.totalQueries || 0,
           globalBenchmark: cdX.globalBenchmark || null,
+          source: cdX.source || null,
+          reason: cdX.reason || null,
           sourceUrls: Array.isArray(cdX.sourceUrls) ? cdX.sourceUrls.slice(0, 3) : [],
           categoryUnowned: cdX.categoryUnowned === true
         };
