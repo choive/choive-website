@@ -635,7 +635,9 @@ exports.handler = async function (event) {
           });
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
-            console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount + '/3');
+            console.log('[' + jobId + '] Before-simulation: appeared ' + simBefore.before.appearedCount
+              + '/' + Number(simBefore.before.completedQueries || 0)
+              + ' completed (' + (simBefore.before.measurementStatus || 'unknown') + ')');
             var directCompetitorCheck = null;
             try {
               directCompetitorCheck = runDirectCompetitorQuestion ? await runDirectCompetitorQuestion({
@@ -1884,7 +1886,7 @@ exports.handler = async function (event) {
           projectionPolicy: 'No hypothetical AI answers generated. Implement changes and rerun to verify progress.'
         };
         console.log('[' + jobId + '] AI measurement saved: current visibility '
-          + preBefore.before.appearedCount + '/' + preBefore.before.totalQueries
+          + preBefore.before.appearedCount + '/' + Number(preBefore.before.completedQueries || 0) + ' completed'
           + ' (projected after-state disabled)');
       }
     } catch (err) {
@@ -1931,7 +1933,9 @@ exports.handler = async function (event) {
         groundTruth: {
           language:      simB && simB.language || 'en',
           multiSampled:  searchUsed, // renamed from dualSampled: the redesign samples 4x per query, not 2x \u2014 old field name/value were stale after the frequency-architecture rewrite
-          appearedRate:  simB && simB.results ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.length) : null
+          appearedRate:  simB && simB.results && simB.results.some(function(r){return Number(r.sampleCount || 0) > 0;})
+            ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.filter(function(r){return Number(r.sampleCount || 0) > 0;}).length)
+            : null
         },
         cacheBusted:     cacheBustedThisRun,
         progressTracked: !!finalResult['progressDelta']
