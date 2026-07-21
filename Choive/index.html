@@ -1042,6 +1042,14 @@ nav {
 .roadmap-title { color:var(--ink); font-size:16px; font-weight:700; line-height:1.35; margin-bottom:10px; }
 .roadmap-copy { color:var(--body); font-size:13px; line-height:1.7; }
 .roadmap-check { margin-top:14px; padding-top:12px; border-top:1px solid var(--rule); color:var(--muted); font-size:11px; line-height:1.55; }
+.customer-question-prompt { font-family:'Libre Baskerville',serif; font-size:20px; line-height:1.55; color:var(--ink); padding:22px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); margin-bottom:2px; }
+.customer-question-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px; }
+.customer-answer { min-width:0; padding:22px; background:var(--paper-2); }
+.customer-answer-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:13px; }
+.customer-answer-platform { color:var(--ink); font-size:12px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; }
+.customer-answer-status { flex:0 0 auto; font-size:9px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:4px 7px; border:1px solid var(--rule); color:var(--muted); }
+.customer-answer-status.mentioned { color:#347A5A; border-color:#347A5A; }
+.customer-answer-response { color:var(--body); font-size:13px; line-height:1.75; white-space:pre-line; overflow-wrap:anywhere; }
 
 @media (max-width:640px) {
   .selection-status-grid { grid-template-columns:1fr; }
@@ -1055,6 +1063,7 @@ nav {
   .executive-pillars { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .integrity-summary, .roadmap { grid-template-columns:1fr; }
   .integrity-row { grid-template-columns:1fr; gap:5px; }
+  .customer-question-grid { grid-template-columns:1fr; }
 }
 
 /* Deliverables */
@@ -2493,6 +2502,10 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
           <input id="bComp" type="text" class="diag-input" placeholder="e.g. their name or website" autocomplete="off"/>
         </div>
         <div class="diag-field diag-field--full">
+          <label class="diag-label" for="bQuestion">A real question your customer asks</label>
+          <input id="bQuestion" type="text" class="diag-input" placeholder="e.g. Which multiscreen platform should a pay-TV operator choose?" autocomplete="off" maxlength="500"/>
+        </div>
+        <div class="diag-field diag-field--full">
           <label class="diag-label" for="bLang">Customer search language</label>
           <select id="bLang" class="diag-input" aria-label="Language your customers search in">
             <option value="" selected>Auto-detect (recommended)</option>
@@ -2745,6 +2758,7 @@ function runDiagnostic() {
   let website        = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
   const description      = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
   const knownCompetitors = document.getElementById('bComp') ? document.getElementById('bComp').value.trim() : '';
+  const customerQuestion = document.getElementById('bQuestion') ? document.getElementById('bQuestion').value.trim() : '';
 
   if (!name || !category || !city) {
     alert('Please fill in your business name, category, and city.');
@@ -2760,7 +2774,7 @@ function runDiagnostic() {
   }
 
   const language = document.getElementById('bLang') ? document.getElementById('bLang').value : '';
-  bizData = { name, category, city, website, knownCompetitors, description, language };
+  bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language };
 
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').classList.add('active');
@@ -2792,6 +2806,7 @@ async function startDiagnostic(biz) {
         website:          biz.website          || '',
         description:      biz.description      || '',
         knownCompetitors: biz.knownCompetitors || '',
+        customerQuestion: biz.customerQuestion || '',
         language:         biz.language         || ''
       })
     });
@@ -3488,7 +3503,9 @@ function showResults(r, jobId) {
     + '</div>'
     + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">Structural readiness score: ' + score + ' / 100</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
-    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(r.summaryParagraph || r.signatureLine || '') + '</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
+      ? 'This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. The recorded platform recommendations are reported separately and are not changed by the CHOIVE score.'
+      : (r.summaryParagraph || r.signatureLine || '')) + '</div>'
     + '</div>';
 
   // ── VERIFICATION BLOCK — provable progress since the last run ───────────
@@ -3627,6 +3644,7 @@ function showResults(r, jobId) {
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
       + '<a href="#report-verdict">Verdict</a><a href="#report-score">Score</a><a href="#report-competitors">Competitors</a>'
       + '<a href="#report-arena">AI Arena</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
+      + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Roadmap</a><a href="#report-assets">Assets</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
     + (isPaid ? buildExecutiveVerdict() : '')
@@ -3884,13 +3902,13 @@ function showResults(r, jobId) {
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
           + rows
           + (largestDeficit.value > 0
-            ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest verified deficit: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
-              + (scoreData.priorityAction ? '<div style="font-size:12px;line-height:1.7;color:var(--body);margin-top:8px;">' + esc(scoreData.priorityAction) + '</div>' : '')
+            ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest modeled deficit: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
+              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">Use the evidence-backed Priority Actions below for implementation. No capability claim is inferred from this modeled comparison.</div>'
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
       }
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">AI Recommendation Arena</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, ChatGPT, Perplexity, and Gemini. Matching company names remain in separate platform lanes.</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">One independently measured recommendation from Claude, ChatGPT, Perplexity, and Gemini. Matching company names remain in separate platform lanes. Recommendation names are measured answers; pillar comparisons are modeled estimates based on collected public evidence.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
     }
@@ -4131,6 +4149,52 @@ function showResults(r, jobId) {
       + '</div></section>';
   }
 
+  function hasCustomerQuestionResult() {
+    var runs = r.platformSimulations || {};
+    return ['claude','openai','perplexity','gemini'].some(function(key) {
+      return Array.isArray(runs[key] && runs[key].results) && runs[key].results.some(function(item) {
+        return item && String(item.label || '').toLowerCase() === 'customer-provided question';
+      });
+    });
+  }
+
+  function buildCustomerQuestionReport() {
+    var runs = r.platformSimulations || {};
+    var providers = [
+      { key:'claude', label:'Claude' },
+      { key:'openai', label:'ChatGPT' },
+      { key:'perplexity', label:'Perplexity' },
+      { key:'gemini', label:'Gemini' }
+    ];
+    var question = '';
+    var cards = providers.map(function(provider) {
+      var run = runs[provider.key] || {};
+      var items = Array.isArray(run.results) ? run.results : [];
+      var measured = items.find(function(item) {
+        return item && String(item.label || '').toLowerCase() === 'customer-provided question';
+      });
+      if (measured && measured.query && !question) question = measured.query;
+      var response = measured && measured.response ? stripMd(measured.response) : '';
+      var status = !measured
+        ? 'Not measured'
+        : response
+          ? (measured.appeared ? 'Business mentioned' : 'Not mentioned')
+          : 'Measurement failed';
+      return '<div class="customer-answer">'
+        + '<div class="customer-answer-head"><div class="customer-answer-platform">' + provider.label + '</div>'
+        + '<div class="customer-answer-status' + (measured && measured.appeared ? ' mentioned' : '') + '">' + esc(status) + '</div></div>'
+        + '<div class="customer-answer-response">' + esc(response || 'No recorded response is available for this platform.') + '</div>'
+        + '</div>';
+    }).join('');
+    if (!question) return '';
+    return '<section class="pay-section" id="report-customer-question">'
+      + '<div class="pay-eyebrow">Your Customer’s Question</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">The exact question supplied with this diagnostic, measured separately across all four AI platforms. Responses are preserved as recorded.</div>'
+      + '<div class="customer-question-prompt">“' + esc(question) + '”</div>'
+      + '<div class="customer-question-grid">' + cards + '</div>'
+      + '</section>';
+  }
+
   var paidSections = isPaid ? (function() {
     return '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
@@ -4141,6 +4205,7 @@ function showResults(r, jobId) {
       + '<div class="paid-narrative">' + esc(String(r.businessUnderstanding || r.summaryParagraph || '').split(/\n\s*\n/)[0].trim()) + '</div></section>'
       + '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">Evidence Narrative</div>'
       + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></section>'
+      + buildCustomerQuestionReport()
       + buildMeasurementIntegrity()
       + '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
       + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
@@ -4535,6 +4600,26 @@ function exportPDF() {
 
   var actionsHtml = Array.isArray(r.actions) ? r.actions.map(pdfAction).join('') : '';
   var pillarsHtml  = pdfPillar('clarity','Clarity') + pdfPillar('trust','Trust') + pdfPillar('difference','Difference') + pdfPillar('ease','Ease');
+  var pdfQuestion = '';
+  var pdfQuestionAnswers = '';
+  var pdfRuns = r.platformSimulations || {};
+  [
+    { key:'claude', label:'Claude' },
+    { key:'openai', label:'ChatGPT' },
+    { key:'perplexity', label:'Perplexity' },
+    { key:'gemini', label:'Gemini' }
+  ].forEach(function(provider) {
+    var items = Array.isArray(pdfRuns[provider.key] && pdfRuns[provider.key].results) ? pdfRuns[provider.key].results : [];
+    var measured = items.find(function(item) { return item && String(item.label || '').toLowerCase() === 'customer-provided question'; });
+    if (!measured) return;
+    if (!pdfQuestion && measured.query) pdfQuestion = measured.query;
+    pdfQuestionAnswers += '<div style="margin-bottom:12px;padding:14px 16px;background:#F4F2EE;">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:6px;">' + provider.label + ' · ' + (measured.appeared ? 'Business mentioned' : 'Not mentioned') + '</div>'
+      + '<div style="font-size:13px;color:#333;line-height:1.7;white-space:pre-line;">' + esc(stripMd(measured.response || 'No recorded response.')) + '</div></div>';
+  });
+  var pdfCustomerQuestionHtml = pdfQuestion
+    ? '<div style="font-size:16px;font-weight:600;line-height:1.55;margin-bottom:16px;">“' + esc(pdfQuestion) + '”</div>' + pdfQuestionAnswers
+    : '';
   var pdfScore = Number(r.overallScore) || 0;
   var pdfScoreMeaning = pdfScore >= 76
     ? 'Strong structural readiness for AI discovery and recommendation.'
@@ -4569,8 +4654,9 @@ function exportPDF() {
     + '<div style="font-size:13px;color:#666;margin-bottom:12px;">/ 100</div>'
     + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">Structural readiness score: ' + pdfScore + ' / 100</div>'
     + '<div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:8px;">' + pdfScoreMeaning + '</div>'
-    + '<div style="font-size:14px;color:#444;line-height:1.65;">' + (r.summaryParagraph || '') + '</div>'
+    + '<div style="font-size:14px;color:#444;line-height:1.65;">This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. Platform recommendations are reported separately and are not changed by this score.</div>'
     + '</div>'
+    + pdfSection('Your Customer’s Question', pdfCustomerQuestionHtml)
     + pdfSection('Business Intelligence', r.businessUnderstanding ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.businessUnderstanding + '</div>' : '')
     + pdfSection('Evidence Narrative', r.evidenceNarrative ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.evidenceNarrative + '</div>' : '')
     + pdfSection('Why You Score This Way', pillarsHtml)
