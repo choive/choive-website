@@ -1493,12 +1493,8 @@ exports.handler = async function (event) {
         return { status: state, detail: 'Measured with ' + label + (run.model ? ' ' + run.model : '') + '. ' + Number(run.completedSamples || run.totalQueries || 0) + ' of ' + Number(run.expectedSamples || run.totalQueries || 0) + ' samples completed.' };
       };
       finalResult['platformCoverage'] = {
-        chatgpt: measuredOpenAI && measuredOpenAI.available
-          ? { status: measuredOpenAI.complete === false ? 'partial' : (measuredOpenAI.appearedCount > 0 ? 'present' : 'absent'), detail: 'Measured with OpenAI ' + (measuredOpenAI.model || 'API') + ' and web search. ' + Number(measuredOpenAI.completedSamples || 0) + ' of ' + Number(measuredOpenAI.expectedSamples || 0) + ' samples completed.' }
-          : { status: 'unmeasured', detail: 'OpenAI API was not configured for this run.' },
-        claude: measuredClaude && measuredClaude.available
-          ? { status: measuredClaude.appearedCount > 0 ? 'present' : 'absent', detail: 'Measured with Claude and web search.' }
-          : { status: 'unmeasured', detail: 'Claude was not measured in this run.' },
+        chatgpt: coverageForRun(measuredOpenAI, 'ChatGPT'),
+        claude: coverageForRun(measuredClaude, 'Claude'),
         perplexity: coverageForRun(measuredPerplexity, 'Perplexity'),
         gemini: coverageForRun(measuredGemini, 'Gemini')
       };
@@ -1626,14 +1622,12 @@ exports.handler = async function (event) {
       var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
         return Number(run.appearedCount || 0) > 0;
       });
-      if (platformsWithVisibility.length > 0) {
-        var visibleInEveryQueryOnEveryPlatform = completedPlatformRuns.length > 0 && completedPlatformRuns.every(function(run) {
-          return Number(run.totalQueries || 0) > 0
-            && Number(run.appearedCount || 0) === Number(run.totalQueries || 0);
-        });
-        finalResult['verdictHeadline'] = visibleInEveryQueryOnEveryPlatform
-          ? 'Visible across measured AI platforms'
-          : 'Considered. Not consistently recommended.';
+      if (completedPlatformRuns.length > 0) {
+        finalResult['verdictHeadline'] = platformsWithVisibility.length === 0
+          ? 'Not mentioned by any measured AI platform'
+          : platformsWithVisibility.length === completedPlatformRuns.length
+            ? 'Mentioned by all ' + completedPlatformRuns.length + ' measured AI platforms'
+            : 'Mentioned by ' + platformsWithVisibility.length + ' of ' + completedPlatformRuns.length + ' measured AI platforms';
       }
     }
     // The dedicated category pass is authoritative for business-model fidelity.
