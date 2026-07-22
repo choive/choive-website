@@ -341,6 +341,8 @@ exports.handler = async function (event) {
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
     const customerQuestion = safeStr(input.customerQuestion).slice(0, 500);
+    const subjectType      = ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(safeStr(input.subjectType)) !== -1
+      ? safeStr(input.subjectType) : 'business';
     var isSubjectRecommendation = buildSubjectRecommendationMatcher(name, website);
     const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
@@ -632,6 +634,7 @@ exports.handler = async function (event) {
               .filter(Boolean),
             knownCompetitors:  knownCompetitors || '',
             customerQuestion:  customerQuestion || ''
+            ,subjectType:      subjectType
           });
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
@@ -648,6 +651,7 @@ exports.handler = async function (event) {
                 city: city,
                 description: description,
                 inferredCategory: evidence['inferredCategory'] || category
+                ,subjectType: subjectType
               }, true) : null;
               evidence['directCompetitorCheck'] = directCompetitorCheck;
             } catch (directErr) {
@@ -1043,6 +1047,7 @@ exports.handler = async function (event) {
               description: description,
               inferredCategory: evidence['inferredCategory'] || category,
               customerQuestion: customerQuestion || ''
+              ,subjectType: subjectType
             });
             var fallbackPlatformInput = {
               name: name,
