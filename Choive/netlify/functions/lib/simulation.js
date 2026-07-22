@@ -194,12 +194,6 @@ function queryOnCategory(query, catClean) {
   // language ("how do I get recommended by ChatGPT") legitimately shares no
   // word with a coined category label like "AI selection diagnostic", and
   // must not be penalized for using the buyer's words instead of the vendor's.
-  var stop = { the:1, and:1, for:1, with:1, from:1, that:1, this:1, what:1, which:1, who:1, best:1, are:1, can:1, help:1, use:1, need:1, actually:1, specific:1, business:1, needs:1, solution:1, vendor:1, tool:1, tools:1, platform:1, options:1, choose:1, choosing:1, right:1, good:1, way:1, want:1, looking:1, find:1, get:1, should:1, could:1, would:1 };
-  var toks = function(s) {
-    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
-      .filter(function(w) { return w.length > 2 && !stop[w]; });
-  };
-  var catToks = toks(catClean);
   var qToks = {};
   toks(q).forEach(function(w) { qToks[w] = 1; });
   var overlaps = catToks.some(function(w) {
@@ -537,9 +531,9 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
         // trust signals, press coverage, and structured evidence wins here.
         label: 'B2B direct recommendation',
         intent: 'A business decision-maker ready to select a vendor',
-        system: 'You are a helpful AI assistant. Answer from the perspective of advising a senior technology decision-maker at a ' + (buyerType || 'business') + '. Be specific and name one real licensed software vendor or platform company.' + hint,
+        system: 'You are a helpful AI assistant. Answer from the perspective of advising a buyer at a ' + (buyerType || 'business') + '. Be specific and name one real company that sells this type of offering to that buyer.' + hint,
         query: buyerType
-          ? 'Which company would you recommend to provide ' + coreB2B + ' to ' + buyerType + (city ? ' in ' + city : '') + '? Give one recommendation and explain why.'
+          ? 'Which company would you recommend to provide ' + coreB2B + ' to ' + buyerType + locationStr + '? Give one recommendation and explain why.'
           : 'Which company would you recommend in the category of ' + coreB2B + forStr + '? Give one recommendation and explain why.'
       }
     ];
@@ -1060,6 +1054,11 @@ async function generateQueryPlan(n) {
       var clean = text.replace(/```json|```/g, '').trim();
       var parsed = JSON.parse(clean);
       if (parsed && Array.isArray(parsed.queries) && parsed.queries.length >= 3) {
+        // The cross-platform contract is exactly three unbranded questions.
+        // A model occasionally returns an extra query despite the requested
+        // schema; allowing it through would push the branded replacement into
+        // slot five, where four-query provider runners would drop it.
+        parsed.queries = parsed.queries.slice(0, 3);
         return parsed;
       }
     } else {
