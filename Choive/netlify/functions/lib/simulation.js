@@ -347,7 +347,11 @@ function recommendationKind(subjectType) {
 
 function brandedReplacementPrompt(n, officialWebsite, useWebSearch) {
   var kind = recommendationKind(n.subjectType);
-  var category = n.businessModel === 'b2b' ? coreOfferFromCategory(n.catClean) : n.catClean;
+  // Keep the full evidenced category here, including buyer groups and distinct
+  // operating arenas. Removing "for pay-TV operators and automotive OEMs"
+  // turns a dual-market business into a generic platform and permits a vendor
+  // that replaces only one half of the actual offering.
+  var category = n.catClean;
   var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
     + (category ? ' operates in the category of ' + category : '') + '. ';
   var searchInstruction = useWebSearch
@@ -360,6 +364,7 @@ function brandedReplacementPrompt(n, officialWebsite, useWebSearch) {
     system: 'Answer as a buyer-facing AI assistant. ' + searchInstruction
       + 'Use the supplied official website to identify the subject correctly. '
       + 'Name one real ' + kind + ' that is a direct purchasing substitute: it must provide the same core type of offering to the same kind of buyer. '
+      + 'If the category names two distinct buyer groups or operating arenas, the substitute must credibly cover both. If no single option covers both, say that no complete one-company replacement was established. '
       + 'Do not choose an option merely because it serves an adjacent industry, supplies one component, or integrates with the subject. '
       + 'If current evidence does not establish a credible direct alternative, say so rather than guessing.',
     query: identityContext + 'Which one ' + kind + ' would you recommend instead of ' + n.name
@@ -1013,6 +1018,11 @@ async function generateQueryPlan(n) {
     + '  BAD: "What entertainment platform should we use?" — attracts Netflix, Disney+, not B2B software vendors\n\n'
     + 'FOR B2C — query format: consumer shopping language ("best brand", "where to buy", "which one should I get for [situation]").\n\n'
     + 'FOR BOTH — use Query 1 for the business buyer, Query 2 for the individual consumer, and Query 3 to ask for one company that is confirmed to serve both. Query 3 must allow "no single company established" rather than forcing a false match.\n\n'
+    + 'FOR ONE B2B BUSINESS WITH TWO DISTINCT BUYER ARENAS — for example pay-TV operators plus automotive OEMs, healthcare providers plus insurers, or retailers plus manufacturers:\n'
+    + '- Query 1 measures the first buyer arena by itself.\n'
+    + '- Query 2 measures the second buyer arena by itself.\n'
+    + '- Query 3 asks for one vendor confirmed to serve both arenas and must allow "no single vendor established."\n'
+    + '- Never describe one buyer group as purchasing on behalf of the other. Never merge their buying journeys into one artificial use case.\n\n'
     + 'RULES FOR BOTH:\n'
     + '- DO NOT mention ' + n.name + ' in any query.\n'
     + '- Use the SPECIFIC vendor-type vocabulary of the inferred category — not generic terms.\n'
