@@ -507,7 +507,14 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
     var coreB2B = coreOfferFromCategory(b2bCat);
 
     return [
-      pureCategoryQuery(coreB2B, true),
+      {
+        label: 'B2B vendor discovery',
+        intent: 'An unbranded business buyer discovering current vendors',
+        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real companies that sell this type of product or service to the stated business buyer. Do not name companies that merely use, buy, integrate, or distribute it.' + hint,
+        query: buyerType
+          ? 'Which companies sell ' + coreB2B + ' to ' + buyerType + locationStr + '? Name 3-5 current vendors and explain what each sells.'
+          : 'Which companies sell ' + coreB2B + ' to business customers' + locationStr + '? Name 3-5 current vendors and explain what each sells.'
+      },
       {
         // Query 2 — HEAD-TO-HEAD COMPARISON: who are the main players buyers compare?
         // This surfaces the competitive landscape as buyers actually see it —
@@ -1163,14 +1170,13 @@ async function runBeforeSimulation(input, useWebSearch) {
   // older refinement model immediately afterwards paid for a second model to
   // rewrite the same three questions. Use refinement only for static fallback
   // templates when the primary plan was unavailable.
+  // The tailored plan already produces an unbranded discovery question in
+  // real buyer language. Do not overwrite it with the inferred category label:
+  // coined labels can mean something different to an answering model (for
+  // example, "AI selection diagnostic" can be read as medical diagnosis or
+  // enterprise AI readiness). Organic means the business name is absent; it
+  // does not mean removing the buyer's problem and purchasing context.
   var buyerQueries = queryPlanUsed ? rawQueries : await generateBuyerQueries(n, rawQueries);
-  var planBuyerType = queryPlan && String(queryPlan.buyerType || '').toLowerCase();
-  if (!n.customerQuestion && (n.businessModel === 'b2b' || planBuyerType === 'b2b')) {
-    // Keep the first measurement genuinely organic even when the tailored
-    // planner succeeds. This tests who surfaces for the core offering without
-    // naming the subject, a buyer group, a location, or an adjacent vertical.
-    buyerQueries[0] = pureCategoryQuery(n.catClean, useWebSearch);
-  }
   if (n.customerQuestion) {
     buyerQueries[0] = {
       label: 'Customer-provided question',
