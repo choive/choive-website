@@ -310,6 +310,63 @@ function collisionHint(catClean) {
   return '';
 }
 
+// Separates the product/service being sold from trailing buyer descriptions.
+// This is deliberately based on seller-language boundaries, not on "and":
+// compound audiences such as "telcos and cable operators" remain intact,
+// while the core offering can be used without pulling an adjacent vertical
+// (for example automotive OEMs) into a replacement recommendation.
+function coreOfferFromCategory(catClean) {
+  return String(catClean || '')
+    .replace(/^b2b\s+/i, '')
+    .replace(/\s+(?:sold to|serving|used by|targeting|for)\s+.*/i, '')
+    .replace(/\s+(?:provider|vendor|company|business)$/i, '')
+    .trim() || String(catClean || '').trim();
+}
+
+function pureCategoryQuery(catClean, useWebSearch) {
+  var coreOffer = coreOfferFromCategory(catClean);
+  return {
+    label: 'Organic category presence',
+    intent: 'Unbranded category discovery without a named buyer or location',
+    system: (useWebSearch
+      ? 'You are a helpful AI assistant with live web search. Search before answering. '
+      : 'You are a helpful AI assistant. ')
+      + 'Name only real current providers whose primary offering directly matches this category. '
+      + 'Do not include companies merely because they buy, use, distribute, integrate, or serve one adjacent vertical. '
+      + 'Briefly state what each named provider sells.',
+    query: 'Which companies are leading providers in the category of ' + coreOffer + '? Name 3-5 specific companies and briefly explain what each one offers.'
+  };
+}
+
+function recommendationKind(subjectType) {
+  return subjectType === 'product' ? 'product or service'
+    : subjectType === 'creator' ? 'creator or influencer'
+    : subjectType === 'personal_brand' ? 'person or personal brand'
+    : subjectType === 'organization' ? 'organization' : 'company';
+}
+
+function brandedReplacementPrompt(n, officialWebsite, useWebSearch) {
+  var kind = recommendationKind(n.subjectType);
+  var category = n.businessModel === 'b2b' ? coreOfferFromCategory(n.catClean) : n.catClean;
+  var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
+    + (category ? ' operates in the category of ' + category : '') + '. ';
+  var searchInstruction = useWebSearch
+    ? 'Search current public sources before answering. '
+    : '';
+
+  return {
+    label: 'Branded replacement recommendation',
+    intent: 'A buyer asking which one direct alternative to choose instead of the subject',
+    system: 'Answer as a buyer-facing AI assistant. ' + searchInstruction
+      + 'Use the supplied official website to identify the subject correctly. '
+      + 'Name one real ' + kind + ' that is a direct purchasing substitute: it must provide the same core type of offering to the same kind of buyer. '
+      + 'Do not choose an option merely because it serves an adjacent industry, supplies one component, or integrates with the subject. '
+      + 'If current evidence does not establish a credible direct alternative, say so rather than guessing.',
+    query: identityContext + 'Which one ' + kind + ' would you recommend instead of ' + n.name
+      + ' for this same type of offering? Briefly explain why.'
+  };
+}
+
 function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, subjectType) {
   var hint = collisionHint(catClean);
   // Use marketStr (scope-aware) instead of raw city for query anchoring.
@@ -447,23 +504,10 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
     var buyerType = buyerMatch ? buyerMatch[1].trim() : '';
 
     // Build the core product term — strip the buyer description for cleaner queries
-    var coreB2B = b2bCat.replace(/\s+(?:sold to|serving|for|used by|targeting)\s+.*/i, '').trim();
+    var coreB2B = coreOfferFromCategory(b2bCat);
 
     return [
-      {
-        // Query 1 — MARKET DISCOVERY: who does this type of buyer actually use?
-        // Asking "which vendors do [specific buyer type] use" surfaces the real
-        // competitive set — not whoever ranks in generic software searches.
-        // For 3SS this becomes: "which multiscreen platform software do pay-TV operators
-        // and telcos in Europe use for their TV services?" — surfaces Accedo, Zappware,
-        // Netgem, and 3SS itself — the real evaluation shortlist.
-        label: 'B2B vendor discovery',
-        intent: 'A procurement decision-maker searching for what vendors exist in this space',
-        system: 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors and software companies that sell licensed platform or software solutions to businesses — not managed services, consumer products, or retail brands. Be specific and name real companies.' + hint,
-        query: buyerType
-          ? 'Which ' + coreB2B + ' vendors and platforms do ' + buyerType + ' use' + locationStr + '? Name 3-5 specific software companies with a brief reason for each.'
-          : 'What are the best ' + coreB2B + ' vendors' + locationStr + '? Name 3-5 specific companies with a brief reason for each.'
-      },
+      pureCategoryQuery(coreB2B, true),
       {
         // Query 2 — HEAD-TO-HEAD COMPARISON: who are the main players buyers compare?
         // This surfaces the competitive landscape as buyers actually see it —
@@ -472,8 +516,8 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
         intent: 'A business evaluating the main competing platforms or solutions',
         system: 'You are a helpful AI assistant with live web search. Search for analyst reports, industry comparisons, and RFP shortlists before answering. Name the specific companies that appear most consistently on evaluation shortlists for this type of solution. Be specific and name real companies.' + hint,
         query: buyerType
-          ? 'What are the main ' + coreB2B + ' vendors that ' + buyerType + ' evaluate when choosing a platform' + locationStr + '? Which companies compete head-to-head in this space?'
-          : 'Which ' + coreB2B + ' solutions are most recommended for businesses' + locationStr + '? Which providers do companies in this space choose and why?'
+          ? 'Which companies compete head-to-head to provide ' + coreB2B + ' to ' + buyerType + locationStr + '? Name the main options buyers compare.'
+          : 'Which companies compete head-to-head in the category of ' + coreB2B + locationStr + '? Name the main options business buyers compare.'
       },
       {
         // Query 3 — DIRECT RECOMMENDATION: which single vendor wins the deal?
@@ -483,8 +527,8 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
         intent: 'A business decision-maker ready to select a vendor',
         system: 'You are a helpful AI assistant. Answer from the perspective of advising a senior technology decision-maker at a ' + (buyerType || 'business') + '. Be specific and name one real licensed software vendor or platform company.' + hint,
         query: buyerType
-          ? 'Which ' + coreB2B + ' vendor would you recommend for ' + buyerType + (city ? ' in ' + city : '') + '? Give me your single best recommendation and why.'
-          : 'Which ' + coreB2B + ' provider would you recommend to a company' + forStr + '? Give me your single best recommendation and explain why.'
+          ? 'Which company would you recommend to provide ' + coreB2B + ' to ' + buyerType + (city ? ' in ' + city : '') + '? Give one recommendation and explain why.'
+          : 'Which company would you recommend in the category of ' + coreB2B + forStr + '? Give one recommendation and explain why.'
       }
     ];
   }
@@ -1120,6 +1164,13 @@ async function runBeforeSimulation(input, useWebSearch) {
   // rewrite the same three questions. Use refinement only for static fallback
   // templates when the primary plan was unavailable.
   var buyerQueries = queryPlanUsed ? rawQueries : await generateBuyerQueries(n, rawQueries);
+  var planBuyerType = queryPlan && String(queryPlan.buyerType || '').toLowerCase();
+  if (!n.customerQuestion && (n.businessModel === 'b2b' || planBuyerType === 'b2b')) {
+    // Keep the first measurement genuinely organic even when the tailored
+    // planner succeeds. This tests who surfaces for the core offering without
+    // naming the subject, a buyer group, a location, or an adjacent vertical.
+    buyerQueries[0] = pureCategoryQuery(n.catClean, useWebSearch);
+  }
   if (n.customerQuestion) {
     buyerQueries[0] = {
       label: 'Customer-provided question',
@@ -1157,23 +1208,10 @@ async function runBeforeSimulation(input, useWebSearch) {
 async function runDirectCompetitorQuestion(input, useWebSearch) {
   if (useWebSearch === undefined) useWebSearch = true;
   var n = normalizeSimInput(input);
-  var market = n.marketStr || n.city || '';
   var officialWebsite = String(input && input.website || '').trim();
-  var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
-    + (n.catClean ? ' is a ' + n.catClean : '')
-    + (market ? ' serving ' + market : '') + '. ';
-  var recommendationKind = n.subjectType === 'product' ? 'product or service'
-    : n.subjectType === 'creator' ? 'creator or influencer'
-    : n.subjectType === 'personal_brand' ? 'person or personal brand'
-    : n.subjectType === 'organization' ? 'organization' : 'company';
-  var englishQuery = identityContext
-    + 'Which one ' + recommendationKind + ' would you recommend instead of ' + n.name + '? Briefly explain why.';
-  var localized = await applyMarketLanguage([{
-    label: 'Branded replacement recommendation',
-    intent: 'A buyer asking which one alternative to choose instead of the subject',
-    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly, then answer the buyer question naturally. Name one real ' + recommendationKind + ' you would recommend instead of the subject and briefly explain why. If you cannot identify a credible alternative, say so rather than guessing.',
-    query: englishQuery
-  }], n.city, input.language);
+  var localized = await applyMarketLanguage([
+    brandedReplacementPrompt(n, officialWebsite, useWebSearch)
+  ], n.city, input.language);
   var results = await runQuerySet(localized.queries, n.name, useWebSearch);
   return {
     language: localized.language,
@@ -1198,19 +1236,7 @@ async function buildFallbackMeasurementQueries(input) {
     };
   }
   var officialWebsite = String(input && input.website || '').trim();
-  var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
-    + (n.catClean ? ' is a ' + n.catClean : '')
-    + (n.marketStr ? ' serving ' + n.marketStr : '') + '. ';
-  var recommendationKind = n.subjectType === 'product' ? 'product or service'
-    : n.subjectType === 'creator' ? 'creator or influencer'
-    : n.subjectType === 'personal_brand' ? 'person or personal brand'
-    : n.subjectType === 'organization' ? 'organization' : 'company';
-  queries.push({
-    label: 'Branded replacement recommendation',
-    intent: 'A buyer asking which one company to choose instead of the subject',
-    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly. Name one real company you would recommend instead of the subject. If you cannot identify a credible alternative, say so rather than guessing.',
-    query: identityContext + 'Which one ' + recommendationKind + ' would you recommend instead of ' + n.name + '? Briefly explain why.'
-  });
+  queries.push(brandedReplacementPrompt(n, officialWebsite, true));
   var localized = await applyMarketLanguage(queries, n.city, input.language);
   return {
     language: localized.language,
