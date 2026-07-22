@@ -3591,7 +3591,8 @@ function showResults(r, jobId) {
   }
   function buildMarketCompetitorRow() {
     if (!widerMarketDecision || !widerMarketDecision.name) return '';
-    if (String(widerMarketDecision.name).toLowerCase() === String(topComp || '').toLowerCase()) return '';
+    if (String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
+        === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) return '';
     return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market benchmark</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
@@ -3813,7 +3814,8 @@ function showResults(r, jobId) {
       }));
     }
     if (widerMarketDecision && widerMarketDecision.name
-        && String(widerMarketDecision.name).toLowerCase() !== String(topComp).toLowerCase()) {
+        && String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
+          !== String(topComp).toLowerCase().replace(/[^a-z0-9]/g, '')) {
       var storedMarket = storedCompetitors.find(function(cp) {
         return cp && cp.name
           && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
@@ -4189,7 +4191,8 @@ function showResults(r, jobId) {
             : 'No platform established a named top recommendation in this run.')
       : 'The verdict combines the four CHOIVE pillars with the competitor and recommendation evidence collected in this diagnostic.';
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
-    if (marketName && String(marketName).toLowerCase() === String(topComp || '').toLowerCase()) marketName = '';
+    if (marketName && String(marketName).toLowerCase().replace(/[^a-z0-9]/g, '')
+        === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
     var competitorCopy = topComp
       ? 'Sells the same type of offer to the same buyer and could appear in the same purchasing decision'
       : 'The available evidence was insufficient to verify a direct replacement';
@@ -4247,7 +4250,8 @@ function showResults(r, jobId) {
     });
   }
   if (widerMarketDecision && widerMarketDecision.name
-      && String(widerMarketDecision.name).toLowerCase() !== String(topComp).toLowerCase()) {
+      && String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
+        !== String(topComp).toLowerCase().replace(/[^a-z0-9]/g, '')) {
     var paidWiderMarket = paidStoredCompetitors.find(function(cp) {
       return cp && cp.name
         && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
