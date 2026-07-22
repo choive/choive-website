@@ -3042,12 +3042,23 @@ function buildScoreLabels(r) {
 
   const strength = strengthMap[tier] || { label: 'LOW', cls: 'low' };
 
-  // Gap assessment
-  const tierScores = { dominant:100, strong:80, upper_mid:60, mid:45, weak:25, absent:5, unknown:30 };
-  const likelihoodScore = tierScores[tier] || 30;
-  const gap = Math.max(0, likelihoodScore - score);
-  const gapLabel = gap >= 30 ? 'CRITICAL' : gap >= 15 ? 'MODERATE' : gap > 0 ? 'SMALL' : 'NONE';
-  const gapCls   = gap >= 30 ? 'critical' : gap >= 15 ? 'moderate' : gap > 0 ? 'low-gap' : 'low-gap';
+  // Recommendation gap comes from recorded platform answers, never the CHOIVE score.
+  const lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+  const cleanName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const subjectName = cleanName(r.businessName || r.name);
+  const measured = lanes.filter(lane => lane && (lane.recommendation || lane.status === 'complete' || lane.status === 'no_recommendation'));
+  const otherRecommendations = measured.filter(lane => {
+    const candidate = cleanName(lane.recommendation);
+    return candidate && !(candidate === subjectName || (subjectName.length >= 5 && candidate.includes(subjectName)));
+  }).length;
+  const gapLabel = !measured.length ? 'NOT MEASURED'
+    : otherRecommendations === measured.length ? 'CRITICAL'
+    : otherRecommendations >= Math.ceil(measured.length / 2) ? 'HIGH'
+    : otherRecommendations > 0 ? 'MODERATE'
+    : 'NONE';
+  const gapCls = gapLabel === 'CRITICAL' ? 'critical'
+    : gapLabel === 'HIGH' || gapLabel === 'MODERATE' ? 'moderate'
+    : 'low-gap';
 
   return `<div class="score-labels">
     <div class="score-label-row">
@@ -4178,13 +4189,12 @@ function showResults(r, jobId) {
             : 'No platform established a named top recommendation in this run.')
       : 'The verdict combines the four CHOIVE pillars with the competitor and recommendation evidence collected in this diagnostic.';
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
+    if (marketName && String(marketName).toLowerCase() === String(topComp || '').toLowerCase()) marketName = '';
     var competitorCopy = topComp
       ? 'Sells the same type of offer to the same buyer and could appear in the same purchasing decision'
       : 'The available evidence was insufficient to verify a direct replacement';
     var marketCopy = marketName
-      ? (String(marketName).toLowerCase() === String(topComp || '').toLowerCase()
-        ? 'Also competes for the same buyer attention or budget in this run'
-        : 'Competes for the same buyer attention or budget but is not an exact replacement')
+      ? 'Competes for the same buyer attention or budget but is not an exact replacement'
       : 'The available evidence did not support naming a separate market benchmark';
     var pillarKeys = [
       { key:'clarity', label:'Clarity' },
@@ -4253,6 +4263,24 @@ function showResults(r, jobId) {
   var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
   var compContext  = compList.length > 0 ? (compList[0].queryContext || '') : '';
   var isCatBased   = compContext === 'category-based analysis';
+
+  // Keep this explanation aligned with the recorded platform ledger. Older
+  // generated prose may predate the four platform answers and contradict them.
+  if (compName) {
+    var normalizedCompName = String(compName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    var recordedLanes = (Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : []).filter(function(lane) {
+      return lane && (lane.recommendation || lane.status === 'complete' || lane.status === 'no_recommendation');
+    });
+    var matchingRecommendations = recordedLanes.filter(function(lane) {
+      return String(lane.recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedCompName;
+    }).length;
+    var staleContradiction = /not established as an ai recommendation|no direct displacement .* recorded/i.test(compAnalysis || '');
+    if (matchingRecommendations > 0 && staleContradiction) {
+      compAnalysis = matchingRecommendations + ' of ' + recordedLanes.length
+        + ' measured AI platforms named ' + compName
+        + ' as the top answer to the branded replacement question. This is a recorded API measurement from this diagnostic run.';
+    }
+  }
 
   var compBlock = compName
     ? '<div class="paid-comp-found">'
