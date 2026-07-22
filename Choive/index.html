@@ -2277,6 +2277,86 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
 .selection-status-copy { font-size:14px; }
 .platform-name, .platform-verdict, .platform-detail { letter-spacing:0; }
 
+/* Full analysis readability standard */
+#dR {
+  --body:#38383F;
+  --muted:#56565E;
+  color:var(--ink);
+}
+#dR .pay-section { padding:56px 0; }
+#dR .pay-eyebrow,
+#dR .paid-section-header { font-size:14px; line-height:1.4; letter-spacing:0; }
+#dR .executive-verdict-title { max-width:760px; font-size:32px; line-height:1.3; }
+#dR .executive-verdict-lead,
+#dR .paid-narrative { max-width:720px; font-size:17px; line-height:1.75; }
+#dR .paid-narrative p,
+#dR .paid-pillar-analysis p { max-width:720px !important; }
+#dR .executive-fact-label,
+#dR .executive-pillar-name,
+#dR .integrity-label,
+#dR .integrity-row-label,
+#dR .roadmap-day,
+#dR .selection-status-label,
+#dR .sim-provider-name,
+#dR .sim-question-number { font-size:12px; line-height:1.45; letter-spacing:0; }
+#dR .executive-fact-value { font-size:17px; line-height:1.5; }
+#dR .executive-fact-copy,
+#dR .executive-pillar-finding,
+#dR .integrity-copy,
+#dR .roadmap-check { font-size:14px; line-height:1.65; }
+#dR .paid-pillar-analysis,
+#dR .paid-comp-analysis,
+#dR .paid-action-body,
+#dR .paid-action-explanation,
+#dR .paid-action-if,
+#dR .customer-answer-response,
+#dR .integrity-row-value,
+#dR .limitation-list li,
+#dR .roadmap-copy,
+#dR .selection-status-copy,
+#dR .sim-question-text,
+#dR .sim-answer-body,
+#dR .sim-method-note { font-size:15px; line-height:1.7; }
+#dR .paid-pillar-evidence { font-size:14px; line-height:1.7; font-style:normal; }
+#dR .paid-action-title,
+#dR .roadmap-title { font-size:18px; line-height:1.4; }
+#dR .signal-row { grid-template-columns:12px minmax(170px,.8fr) minmax(0,1.4fr); font-size:14px; line-height:1.6; }
+#dR .signal-status-dot { width:9px; height:9px; margin-top:7px; }
+#dR .report-details summary,
+#dR .sim-answer-details summary { min-height:44px; display:block; font-size:14px; line-height:1.5; text-transform:none; letter-spacing:0; }
+#dR .sim-answer-body { max-height:420px; overflow:auto; }
+#dR .customer-answer-platform { font-size:14px; letter-spacing:0; }
+#dR .customer-answer-status { font-size:12px; letter-spacing:0; padding:5px 8px; }
+#dR .result-nav a { min-height:42px; display:flex; align-items:center; font-size:12px; letter-spacing:0; }
+#dR .verdict-headline-label,
+#dR .mono-eyebrow,
+#dR .score-label-val,
+#dR .pillar-num,
+#dR .paid-action-priority,
+#dR .deliv-tab,
+#dR .share-label { font-size:13px; line-height:1.45; letter-spacing:0; }
+#dR .executive-pillar-score span,
+#dR .paid-pillar-score span,
+#dR .sim-provider-count span,
+#dR .arena-comparison-label,
+#dR .arena-comparison-label strong,
+#dR .arena-comparison-label .arena-status-ahead,
+#dR .arena-comparison-label .arena-status-behind,
+#dR .arena-comparison-label .arena-status-equal { font-size:12px; line-height:1.55; }
+#dR .deliv-tab { min-height:44px; padding:10px 15px; }
+#dR [style*="font-size:9px"] { font-size:12px !important; }
+#dR [style*="font-size:10px"] { font-size:12px !important; letter-spacing:0 !important; }
+#dR [style*="font-size:11px"] { font-size:13px !important; letter-spacing:0 !important; }
+#dR [style*="font-size:12px"] { font-size:14px !important; }
+#dR [style*="font-size:13px"] { font-size:15px !important; }
+#dR [style*="rgba(245,242,238,0.42)"],
+#dR [style*="rgba(245,242,238,0.45)"],
+#dR [style*="rgba(245,242,238,0.48)"],
+#dR [style*="rgba(245,242,238,0.52)"],
+#dR [style*="rgba(245,242,238,0.55)"],
+#dR [style*="rgba(245,242,238,0.58)"],
+#dR [style*="rgba(245,242,238,0.62)"] { color:#CEC9C2 !important; }
+
 .nav-cta, .hero-cta, .diag-btn, .bottom-cta-btn, .paywall-btn, .cta-primary,
 .pay-btn-primary, .lead-submit-btn, .whn-cta-btn {
   min-height:var(--control-h); border-radius:var(--radius); font-size:14px; letter-spacing:0;
@@ -2319,6 +2399,12 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
   }
   .share-btn { width:100%; white-space:normal; }
   .number-platforms { flex-wrap:wrap; row-gap:8px; }
+  #dR .pay-section { padding:44px 0; }
+  #dR .executive-verdict-title { font-size:27px; }
+  #dR .executive-verdict-lead,
+  #dR .paid-narrative { font-size:16px; }
+  #dR .signal-row { grid-template-columns:12px minmax(0,1fr); }
+  #dR .signal-detail { grid-column:2; }
 }
 
 @media (max-width:480px) {
@@ -2618,7 +2704,7 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
         <div class="process-step-num">03</div>
         <div class="process-step-body">
           <div class="process-step-title">You get the verdict</div>
-          <p class="process-step-desc">You see each platform's recorded recommendation, a verified head-to-head competitor, and four scores: Clarity, Trust, Difference, and Ease. Your score does not change what any AI platform says.</p>
+          <p class="process-step-desc">You see each platform's recorded recommendation, a verified direct replacement, and four scores: Clarity, Trust, Difference, and Ease. Your score does not change what any AI platform says.</p>
         </div>
       </div>
     </div>
@@ -3496,7 +3582,7 @@ function showResults(r, jobId) {
     if (!widerMarketDecision || !widerMarketDecision.name) return '';
     if (String(widerMarketDecision.name).toLowerCase() === String(topComp || '').toLowerCase()) return '';
     return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market benchmark</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
       + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
       + '</div>';
@@ -3543,7 +3629,7 @@ function showResults(r, jobId) {
     if (isConfirmedRecommendationLeader) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
         + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
         + buildMarketCompetitorRow()
@@ -3554,7 +3640,7 @@ function showResults(r, jobId) {
       // contest, not a false alarm. Urgency comes from the stakes being live
       // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
         + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
         + buildMarketCompetitorRow()
@@ -3563,7 +3649,7 @@ function showResults(r, jobId) {
     }
   } else if (cd.categoryUnowned) {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
@@ -3575,7 +3661,7 @@ function showResults(r, jobId) {
       + '</div>';
   } else {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
@@ -3684,7 +3770,7 @@ function showResults(r, jobId) {
     if (!topComp) {
       return '<div class="urgency-bridge">'
         + '<div class="urgency-sentence">No company owns the AI recommendation across different buyer questions yet.</div>'
-        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor found. It was not the top recommendation across all measured platform answers.' : 'No company was the top recommendation across all measured platform answers.') + '</div>'
+        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest direct replacement found. It was not the top recommendation across all measured platform answers.' : 'No company was the top recommendation across all measured platform answers.') + '</div>'
         + '</div>';
     }
     if (!namedAlternatives.length) {
@@ -3735,8 +3821,8 @@ function showResults(r, jobId) {
           return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
             + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
             + (String(cp.queryContext || '').toLowerCase() === 'head-to-head'
-              ? 'Head-to-head competitor'
-              : 'Market competitor') + '</div>'
+              ? 'Direct replacement'
+              : 'Market benchmark') + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this company is the closest direct competitor, how the two businesses differ, and what proof would make your business easier for buyers and AI systems to understand and trust.</div>'
@@ -4093,13 +4179,13 @@ function showResults(r, jobId) {
       : 'The verdict combines the four CHOIVE pillars with the competitor and recommendation evidence collected in this diagnostic.';
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     var competitorCopy = topComp
-      ? 'Sells a similar offer to the same type of customer'
-      : 'The available evidence was not strong enough to name a direct competitor';
+      ? 'Sells the same type of offer to the same buyer and could appear in the same purchasing decision'
+      : 'The available evidence was insufficient to verify a direct replacement';
     var marketCopy = marketName
       ? (String(marketName).toLowerCase() === String(topComp || '').toLowerCase()
-        ? 'Also holds the wider-market role in this run'
-        : 'Wider category competitor identified in this run')
-      : 'The available evidence did not support naming a separate market competitor';
+        ? 'Also competes for the same buyer attention or budget in this run'
+        : 'Competes for the same buyer attention or budget but is not an exact replacement')
+      : 'The available evidence did not support naming a separate market benchmark';
     var pillarKeys = [
       { key:'clarity', label:'Clarity' },
       { key:'trust', label:'Trust' },
@@ -4121,8 +4207,8 @@ function showResults(r, jobId) {
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
       + '<div class="executive-fact"><div class="executive-fact-label">Measured outcome</div><div class="executive-fact-value">' + (measuredCount ? recommendedOther + ' of ' + measuredCount + ' AI platforms recommended another company' : 'Platform recommendations were not fully available') + '</div><div class="executive-fact-copy">This states only what this run measured. It is not influenced by the CHOIVE score.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Direct replacement</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Market benchmark</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
       + '</section>';
   }
@@ -4185,7 +4271,7 @@ function showResults(r, jobId) {
     if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
       an = r.arenaScores.online.priorityAction || '';
     }
-    var _extraLabel = 'Market competitor';
+    var _extraLabel = 'Market benchmark';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
@@ -4448,7 +4534,7 @@ function showResults(r, jobId) {
     var limitations = [];
     if (completed < 4) limitations.push((4 - completed) + ' platform measurement' + (4 - completed === 1 ? ' was' : 's were') + ' unavailable or did not establish a named recommendation.');
     if (!topComp) limitations.push('The available evidence was not strong enough to name a direct competitor.');
-    if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('The available evidence did not support naming a separate market competitor.');
+    if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('The available evidence did not support naming a separate market benchmark.');
     limitations.push('Platform answers are point-in-time API measurements. Consumer-app answers can vary with model version, location, account context, wording, and search availability.');
     limitations.push('A named AI recommendation records what the platform answered; it does not certify that the recommended company is objectively the best supplier.');
     var limitationsHtml = limitations.map(function(item) { return '<li>' + esc(item) + '</li>'; }).join('');
@@ -4516,7 +4602,7 @@ function showResults(r, jobId) {
       return '<div class="customer-answer">'
         + '<div class="customer-answer-head"><div class="customer-answer-platform">' + provider.label + '</div>'
         + '<div class="customer-answer-status' + (measured && measured.appeared ? ' mentioned' : '') + '">' + esc(status) + '</div></div>'
-        + '<div class="customer-answer-response">' + esc(response || 'No recorded response is available for this platform.') + '</div>'
+        + '<details class="report-details"><summary>View recorded answer</summary><div class="report-details-body customer-answer-response">' + esc(response || 'No recorded response is available for this platform.') + '</div></details>'
         + '</div>';
     }).join('');
     if (!question) return '';
