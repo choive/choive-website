@@ -133,7 +133,7 @@ function buildSafeOutput(output) {
     inferredCategory:      output?.inferredCategory      || '',
     verdictHeadline:       output?.verdictHeadline        || 'Diagnostic incomplete',
     verdictLevel:          VALID_VERDICT_LEVELS.includes(output?.verdictLevel) ? output.verdictLevel : 'absent',
-    signatureLine:         output?.signatureLine           || 'The measurement did not establish a consistent recommendation.',
+    signatureLine:         output?.signatureLine           || 'The diagnostic did not return enough completed platform answers to state a recommendation result.',
     decisionState:         VALID_DECISION_STATES.includes(output?.decisionState) ? output.decisionState : 'considered_not_chosen',
     decisionEnvironment:   VALID_DECISION_ENVS.includes(output?.decisionEnvironment) ? output.decisionEnvironment : '',
     summaryParagraph:      output?.summaryParagraph        || 'The diagnostic could not fully assess this business.',
@@ -204,26 +204,17 @@ function buildSafeOutput(output) {
   // ── Overall score ─────────────────────────────────────────────────────────
   safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
 
-  // ── Platform override: dominant brands always PRESENT ────────────────────
-  if (isDominant) {
-    for (const platform of ['chatgpt', 'perplexity', 'gemini', 'claude']) {
-      safe.platformCoverage[platform].status = 'present';
-      if (!safe.platformCoverage[platform].detail || safe.platformCoverage[platform].detail === 'No data available.') {
-        safe.platformCoverage[platform].detail = 'Established brand with confirmed market presence.';
-      }
-    }
-  }
-
-  // ── VERDICT OVERRIDE ─────────────────────────────────────────────────────
+  // Structural evidence fallback only. Actual platform measurements are
+  // attached later by the background diagnostic.
   if (isDominant) {
     safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'Chosen by default — but infrastructure is exposed';
+    safe.verdictHeadline = 'Strong public evidence across all four pillars';
   } else if (isStrong && safe.overallScore >= 40) {
     safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'Strong market position — but harder to select digitally';
+    safe.verdictHeadline = 'Strong public evidence with specific gaps';
   } else if (safe.overallScore <= 30) {
     safe.verdictLevel    = 'absent';
-    safe.verdictHeadline = 'Not the obvious choice — losing decisions';
+    safe.verdictHeadline = 'Public evidence is incomplete';
   } else if (
     safe.overallScore <= 55 ||
     es < 12 ||
@@ -237,21 +228,10 @@ function buildSafeOutput(output) {
     // completely bypassing that fix for every result landing in this score
     // range. "Not consistently X" reads as "usually X, sometimes not" \u2014
     // backwards for a weak-tier business that is not the default choice.
-    safe.verdictHeadline = 'Overlooked when it matters most';
+    safe.verdictHeadline = 'Public evidence needs improvement';
   } else {
     safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'The obvious choice — winning decisions';
-  }
-
-  // Fix summary paragraph framing for dominant brands
-  if (isDominant && safe.summaryParagraph && safe.summaryParagraph.startsWith('This business is not the obvious choice')) {
-    safe.summaryParagraph = safe.summaryParagraph.replace(
-      'This business is not the obvious choice because it',
-      'This business is currently chosen because it'
-    ).replace(
-      'This business is not the obvious choice because',
-      'This business is currently chosen despite the fact that'
-    );
+    safe.verdictHeadline = 'Public evidence is largely established';
   }
 
   return safe;
