@@ -109,10 +109,18 @@ exports.handler = async function (event) {
     description: String(body['description'] || '').trim(),
     knownCompetitors: String(body['knownCompetitors'] || '').trim(),
     customerQuestion: String(body['customerQuestion'] || '').trim(),
+    subjectType: ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(String(body['subjectType'] || 'business')) !== -1
+      ? String(body['subjectType'] || 'business') : 'business',
     // Customer-market language override; '' = auto-detect from location
     language: (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(String(body['language'] || '').trim().toLowerCase()) !== -1)
       ? String(body['language']).trim().toLowerCase() : ''
   };
+
+  var verificationToken = crypto.randomBytes(32).toString('hex');
+  input._consumerVerificationTokenHash = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
 
   // ── DURABLE RATE CAPS (Supabase-backed; the in-memory limiter above only
   // guards a single warm instance). Per-IP daily cap + global daily ceiling.
@@ -199,6 +207,6 @@ exports.handler = async function (event) {
   return {
     statusCode: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobId: jobId, status: 'queued' })
+    body: JSON.stringify({ jobId: jobId, status: 'queued', verificationToken: verificationToken })
   };
 };
