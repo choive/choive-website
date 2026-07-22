@@ -960,6 +960,19 @@ nav {
 .paid-pillar-score span { font-size:11px; font-family:'Inter', sans-serif; color:var(--muted); }
 .paid-pillar-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
 .paid-pillar-evidence { font-size:12px; color:var(--muted); line-height:1.65; font-style:italic; background:var(--paper-3); padding:10px 14px; border-left:2px solid var(--rule); }
+.signal-audit { margin-top:16px; padding-top:14px; border-top:1px solid var(--rule); display:flex; flex-direction:column; gap:10px; }
+.signal-row { display:grid; grid-template-columns:10px minmax(150px,0.8fr) minmax(0,1.4fr); gap:10px; align-items:start; font-size:13px; line-height:1.55; }
+.signal-status-dot { width:7px; height:7px; border-radius:50%; margin-top:6px; background:var(--muted); }
+.signal-pass .signal-status-dot { background:#4A7C59; }
+.signal-fail .signal-status-dot { background:#B85C38; }
+.signal-partial .signal-status-dot { background:var(--ac); }
+.signal-name { font-weight:650; color:var(--ink); }
+.signal-detail { color:var(--body); overflow-wrap:anywhere; }
+.verdict-headline-label { display:inline-block; margin-bottom:10px; color:var(--ac); font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
+@media (max-width:640px) {
+  .signal-row { grid-template-columns:10px minmax(0,1fr); }
+  .signal-detail { grid-column:2; }
+}
 .paid-comp-found { padding:24px; background:var(--paper-2); border-bottom:1px solid var(--rule); }
 .paid-comp-name { font-family:'Libre Baskerville', serif; font-size:20px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:10px; }
 .paid-comp-analysis { font-size:14px; font-weight:400; color:var(--body); line-height:1.8; margin-bottom:12px; }
@@ -3775,7 +3788,7 @@ function showResults(r, jobId) {
     competitorBanner
     + buildConsumerVerificationBlock()
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-verdict">Verdict</a><a href="#report-score">Score</a><a href="#report-competitors">Competitors</a>'
+      + '<a href="#report-diagnosis">Diagnosis</a><a href="#report-organic-gap">Discovery</a><a href="#report-score">Score</a><a href="#report-competitors">Competitors</a>'
       + '<a href="#report-arena">AI Arena</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Roadmap</a><a href="#report-assets">Assets</a><a href="#report-download">Download</a>'
@@ -3832,6 +3845,18 @@ function showResults(r, jobId) {
     if (!p) return '';
     var score = p.score || 0;
     var pct   = Math.round(score / 25 * 100);
+    var audit = r.signalAudit && Array.isArray(r.signalAudit[key]) ? r.signalAudit[key] : [];
+    var auditHtml = audit.length ? '<div class="signal-audit" aria-label="' + esc(label) + ' evidence checks">'
+      + audit.map(function(signal) {
+        var status = ['pass','fail','partial'].indexOf(String(signal && signal.status || '').toLowerCase()) !== -1
+          ? String(signal.status).toLowerCase() : 'partial';
+        var statusLabel = status === 'pass' ? 'Confirmed' : status === 'fail' ? 'Missing' : 'Partially confirmed';
+        return '<div class="signal-row signal-' + status + '">'
+          + '<span class="signal-status-dot" aria-hidden="true"></span>'
+          + '<span class="signal-name">' + esc(signal && signal.name || 'Evidence check') + '</span>'
+          + '<span class="signal-detail"><strong>' + statusLabel + ':</strong> ' + esc(signal && signal.detail || 'No detail was returned.') + '</span>'
+          + '</div>';
+      }).join('') + '</div>' : '';
     return '<div class="paid-pillar">'
       + '<div class="paid-pillar-head"><span class="paid-pillar-name">' + label + '</span>'
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
@@ -3839,10 +3864,25 @@ function showResults(r, jobId) {
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
       + (p.finding  ? '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
       + ((p.analysis || p.evidence) ? '<details class="report-details"><summary>Read analysis and evidence</summary><div class="report-details-body">'
-        + (p.analysis ? '<div class="paid-pillar-analysis">' + esc(p.analysis) + '</div>' : '')
+        + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
         + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
         + '</div></details>' : '')
+      + auditHtml
       + '</div>';
+  }
+
+  function readableText(value, sentencesPerBlock) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return '';
+    var perBlock = Math.max(1, Number(sentencesPerBlock) || 2);
+    var sentences = text.replace(/([.!?])\s+(?=[A-Z0-9“"'])/g, '$1\n').split('\n').filter(Boolean);
+    var blocks = [];
+    for (var i = 0; i < sentences.length; i += perBlock) {
+      blocks.push(sentences.slice(i, i + perBlock).join(' '));
+    }
+    return blocks.map(function(block, index) {
+      return '<p style="margin:' + (index ? '12px' : '0') + ' 0 0;max-width:760px;">' + esc(block) + '</p>';
+    }).join('');
   }
 
   function actionItem(a) {
@@ -3853,12 +3893,130 @@ function showResults(r, jobId) {
     return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
       + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + '</div>'
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
-      + '<div class="paid-action-body">' + esc(a.body || '') + '</div>'
+      + '<div class="paid-action-body">' + readableText(a.body, 1) + '</div>'
       + ((a.explanation || a.if_nothing) ? '<details class="report-details"><summary>Why this matters</summary><div class="report-details-body">'
-        + (a.explanation ? '<div class="paid-action-explanation">' + esc(a.explanation) + '</div>' : '')
-        + (a.if_nothing ? '<div class="paid-action-if">' + esc(a.if_nothing) + '</div>' : '')
+        + (a.explanation ? '<div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div>' : '')
+        + (a.if_nothing ? '<div class="paid-action-if">' + readableText(a.if_nothing, 2) + '</div>' : '')
         + '</div></details>' : '')
       + '</div>';
+  }
+
+  function measuredPlatformRuns() {
+    var stored = r.platformSimulations || {};
+    return [
+      { key:'claude', label:'Claude', run:stored.claude || { results:r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.results } },
+      { key:'openai', label:'ChatGPT', run:stored.openai || {} },
+      { key:'perplexity', label:'Perplexity', run:stored.perplexity || {} },
+      { key:'gemini', label:'Gemini', run:stored.gemini || {} }
+    ];
+  }
+
+  function completedUnbrandedResults(run) {
+    return (Array.isArray(run && run.results) ? run.results : []).filter(function(item) {
+      return item && Number(item.sampleCount || 0) > 0
+        && String(item.label || '').toLowerCase().indexOf('branded replacement') === -1;
+    });
+  }
+
+  function buildMeasuredDiagnosis() {
+    var runs = measuredPlatformRuns();
+    var appeared = 0;
+    var completed = 0;
+    var completedPlatforms = 0;
+    runs.forEach(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      if (results.length) completedPlatforms++;
+      completed += results.length;
+      appeared += results.filter(function(result) { return result.appeared; }).length;
+    });
+    var diagnosis = completed
+      ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
+        + ' completed unbranded buyer answers across ' + completedPlatforms + ' AI platform'
+        + (completedPlatforms === 1 ? '' : 's') + '. '
+        + (appeared === completed
+          ? 'Every completed buyer answer named the business.'
+          : appeared === 0
+            ? 'None of the completed buyer answers named the business.'
+            : 'The business appeared in some buying contexts but was absent from others.')
+      : 'No unbranded buyer answer completed, so this run did not establish an AI visibility result.';
+    var implication = completed
+      ? (appeared === completed
+        ? 'The immediate task is to preserve this coverage and verify it again after model or website changes.'
+        : 'The sections below identify the exact questions where the business disappeared, the companies named instead, and the public evidence that must be improved.')
+      : 'Run the diagnostic again before making a visibility claim.';
+    return '<section class="pay-section" id="report-diagnosis">'
+      + '<div class="pay-eyebrow">Executive Diagnosis</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.45;color:var(--ink);max-width:850px;margin-bottom:16px;">' + diagnosis + '</div>'
+      + '<div class="paid-narrative">' + implication + '</div>'
+      + '</section>';
+  }
+
+  function buildOrganicDiscoveryGap() {
+    var rows = measuredPlatformRuns().map(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      var organic = results.find(function(result) {
+        return String(result.label || '').toLowerCase().indexOf('organic category') !== -1;
+      }) || results[0];
+      var status = !organic ? 'Not completed' : (organic.appeared ? 'Business mentioned' : 'Business absent');
+      var named = organic && organic.topRecommendation ? ' Top recommendation: ' + organic.topRecommendation + '.' : '';
+      return '<div class="integrity-row"><div class="integrity-row-label">' + item.label + '</div>'
+        + '<div class="integrity-row-value"><strong>' + status + '</strong>' + esc(named)
+        + (organic && organic.query ? '<br>Question: “' + esc(organic.query) + '”' : '')
+        + '</div></div>';
+    }).join('');
+    var completedOrganic = 0;
+    var appearedOrganic = 0;
+    measuredPlatformRuns().forEach(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      var organic = results.find(function(result) {
+        return String(result.label || '').toLowerCase().indexOf('organic category') !== -1;
+      }) || results[0];
+      if (organic) {
+        completedOrganic++;
+        if (organic.appeared) appearedOrganic++;
+      }
+    });
+    var summary = completedOrganic
+      ? esc(name || 'This business') + ' appeared in ' + appearedOrganic + ' of ' + completedOrganic + ' completed broad category answers.'
+      : 'No broad category answer completed in this run.';
+    return '<section class="pay-section" id="report-organic-gap">'
+      + '<div class="pay-eyebrow">Broad Category Discovery</div>'
+      + '<div class="paid-narrative" style="margin-bottom:18px;">' + summary
+      + ' This measures whether the business appears before a buyer supplies the business name or detailed purchasing requirements.</div>'
+      + '<div class="integrity-ledger">' + rows + '</div>'
+      + '</section>';
+  }
+
+  function buildClosingConclusion() {
+    var appeared = 0;
+    var completed = 0;
+    measuredPlatformRuns().forEach(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      completed += results.length;
+      appeared += results.filter(function(result) { return result.appeared; }).length;
+    });
+    var statement = completed
+      ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
+        + ' completed unbranded buyer answers. The priority actions above target the specific missing evidence and category signals identified in this run.'
+      : 'This run did not complete enough unbranded buyer answers to support a visibility conclusion. Rerun the diagnostic before implementing recommendation-specific changes.';
+    return '<section class="pay-section" id="report-conclusion">'
+      + '<div class="pay-eyebrow">What This Business Now Knows</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.5;color:var(--ink);max-width:880px;">' + statement + '</div>'
+      + '</section>';
+  }
+
+  function buildBusinessIntelligence() {
+    var paragraphs = String(r.businessUnderstanding || apiMeasurementSummary)
+      .split(/\n\s*\n/).map(function(value) { return value.trim(); }).filter(Boolean);
+    var current = paragraphs[0] || apiMeasurementSummary;
+    var after = paragraphs[1] || '';
+    return '<section class="pay-section" id="report-intelligence">'
+      + '<div class="pay-eyebrow">Business Intelligence</div>'
+      + '<div class="paid-section-header">What the evidence supports today</div>'
+      + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
+      + (after ? '<div class="paid-section-header" style="margin-top:26px;">What can be stated after the listed changes are verified</div>'
+        + '<div class="paid-narrative">' + readableText(after, 2) + '</div>' : '')
+      + '</section>';
   }
 
   function buildExecutiveVerdict() {
@@ -3927,6 +4085,7 @@ function showResults(r, jobId) {
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
       + '<div class="pay-eyebrow">Executive Verdict</div>'
+      + (r.verdictHeadline ? '<div class="verdict-headline-label">' + esc(r.verdictHeadline) + '</div>' : '')
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
@@ -3982,7 +4141,7 @@ function showResults(r, jobId) {
     ? '<div class="paid-comp-found">'
       + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
-      + (compAnalysis ? '<div class="paid-comp-analysis">' + esc(compAnalysis) + '</div>' : '')
+      + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
       + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
       + '</div>'
     : '<div class="paid-comp-none">No established competitor dominates this category in AI — a significant opportunity to be the first business AI consistently recommends.</div>';
@@ -3999,7 +4158,7 @@ function showResults(r, jobId) {
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
-      + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + esc(an) + '</div>' : '')
+      + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + readableText(an, 2) + '</div>' : '')
       + '</div>';
   }).join('');
 
@@ -4339,16 +4498,17 @@ function showResults(r, jobId) {
   }
 
   var paidSections = isPaid ? (function() {
-    return buildEvidenceLegend()
+    return buildMeasuredDiagnosis()
+      + buildOrganicDiscoveryGap()
+      + buildEvidenceLegend()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">CHOIVE asked three buyer questions. The answers below are shown without editing. AI platforms can make factual mistakes, so CHOIVE does not present claims inside their answers as confirmed facts unless public evidence supports them.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Questions asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
-      + '<section class="pay-section" id="report-intelligence"><div class="pay-eyebrow">Business Intelligence</div>'
-      + '<div class="paid-narrative">' + esc(String(r.businessUnderstanding || apiMeasurementSummary).split(/\n\s*\n/)[0].trim()) + '</div></section>'
+      + buildBusinessIntelligence()
       + '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">Evidence Narrative</div>'
-      + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></section>'
+      + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>'
       + buildCustomerQuestionReport()
       + buildMeasurementIntegrity()
       + '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
@@ -4366,6 +4526,7 @@ function showResults(r, jobId) {
       + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
       + '<div id="delivContent"></div></section>'
+      + buildClosingConclusion()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
       + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your analysis</div>'
       + '<div class="pay-cta-body">Download a concise PDF summary of this online analysis. The separate CHOIVE Report is the complete board-ready deliverable.</div>'
