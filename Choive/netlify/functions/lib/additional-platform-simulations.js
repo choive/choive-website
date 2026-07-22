@@ -56,9 +56,18 @@ function cleanResponse(value) {
 function extractTopRecommendation(response, subjectName) {
   var text = String(response || '');
   var matches = text.match(/(?:^|\n)TOP_RECOMMENDATION\s*:\s*([^\n]+)/i);
+  // Gemini can occasionally reach its response-token limit after giving an
+  // explicit recommendation but before printing the requested marker. Accept
+  // only clear recommendation wording in that case; never infer from a list.
+  if (!matches) {
+    matches = text.match(/\b(?:I|we)\s+(?:would\s+)?(?:highly\s+|strongly\s+)?recommend\s+(?:the\s+)?(?:company\s+)?(?:\*\*)?([A-Z0-9][A-Za-z0-9&.'’+\- ]{1,80})/);
+  }
   if (!matches) return null;
-  var candidate = matches[1].replace(/\[[^\]]*\]/g, '').replace(/[.;]+$/, '').trim().slice(0, 100);
+  var candidate = matches[1]
+    .split(/\s+(?:as|because|for|instead|over|which|whose|that)\b/i)[0]
+    .replace(/\[[^\]]*\]/g, '').replace(/\*+/g, '').replace(/[,:;.!?]+$/, '').trim().slice(0, 100);
   if (!candidate || /^(none|no named recommendation|not established)$/i.test(candidate)) return null;
+  if (subjectName && normalize(candidate) === normalize(subjectName)) return null;
   return candidate;
 }
 
@@ -81,7 +90,10 @@ async function requestGeminiWithModel(source, model) {
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: providerPrompt(source) }] }],
         tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0, maxOutputTokens: 900 }
+        generationConfig: {
+          maxOutputTokens: 1400,
+          thinkingConfig: { thinkingLevel: 'minimal' }
+        }
       }),
       signal: controller.signal
     });
@@ -95,7 +107,8 @@ async function requestGeminiWithModel(source, model) {
     var data = await response.json();
     return {
       text: (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
-        .map(function(part) { return part && part.text || ''; }).join('\n').trim(),
+        .filter(function(part) { return part && !part.thought; })
+        .map(function(part) { return part.text || ''; }).join('\n').trim(),
       model: model
     };
   } finally {
