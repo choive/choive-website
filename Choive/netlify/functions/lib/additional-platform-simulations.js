@@ -3,11 +3,14 @@
 
 'use strict';
 
-// Gemini 3.1 Flash-Lite is retired. Use a current grounded model and retain a
-// stable fallback. Perplexity Pro is the closer research-quality analogue to
+// Use the current grounded Gemini model with a stable lower-latency fallback.
+// Perplexity Pro is the closer research-quality analogue to
 // its consumer recommendation experience than the base low-cost Sonar model.
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-const GEMINI_FALLBACK_MODEL = 'gemini-3-flash-preview';
+// Use a separate stable, lower-latency model when the primary model is under
+// capacity pressure. A preview from the same high-demand family is not a
+// reliable fallback during a regional availability spike.
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite';
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
 const REQUEST_TIMEOUT_MS = 75000;
 
@@ -100,7 +103,7 @@ async function requestGeminiWithModel(source, model) {
     clearTimeout(timer);
     if (!response.ok) {
       var errorText = await response.text().catch(function() { return ''; });
-      var error = new Error('Gemini HTTP ' + response.status + (errorText ? ': ' + errorText.slice(0, 240) : ''));
+      var error = new Error('Gemini ' + model + ' HTTP ' + response.status + (errorText ? ': ' + errorText.slice(0, 240) : ''));
       error.status = response.status;
       throw error;
     }
