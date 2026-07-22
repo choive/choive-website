@@ -13,6 +13,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
+function sameHash(a, b) {
+  var left = Buffer.from(String(a || ''), 'utf8');
+  var right = Buffer.from(String(b || ''), 'utf8');
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -32,11 +38,12 @@ exports.handler = async function(event) {
   }
 
   var parentJobId = String(body.parentJobId || '').trim();
-  if (!parentJobId) {
+  var verificationToken = String(body.verificationToken || '').trim().slice(0, 128);
+  if (!/^[0-9a-f-]{36}$/i.test(parentJobId) || !verificationToken) {
     return {
       statusCode: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing parentJobId' })
+      body: JSON.stringify({ error: 'Missing re-run verification details' })
     };
   }
 
@@ -70,6 +77,16 @@ exports.handler = async function(event) {
   }
 
   var input = original.input || {};
+  var expectedTokenHash = input._consumerVerificationTokenHash;
+  var suppliedTokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+  if (!expectedTokenHash || !sameHash(expectedTokenHash, suppliedTokenHash)) {
+    return {
+      statusCode: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'This browser cannot re-run that diagnostic' })
+    };
+  }
+
   var newJobId = crypto.randomUUID();
 
   // Create new diagnostic linked to parent
