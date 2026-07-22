@@ -353,7 +353,6 @@ exports.handler = async function (event) {
     // and competitor decisions are never used as the input to this run.
     const fingerprint = buildFingerprint({ name, category, city, website });
     let evidence = null;
-    let cacheBustedThisRun = false;
     if (!evidence) {
       await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
       // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
@@ -811,7 +810,11 @@ exports.handler = async function (event) {
                   : [];
                 var directMarkerRecommendation = null;
                 brandedResponses.some(function(response) {
-                  var marker = String(response || '').match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
+                  var markerText = String(response || '')
+                    .replace(/\*\*([^*]+)\*\*/g, '$1')
+                    .replace(/\*([^*]+)\*/g, '$1')
+                    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+                  var marker = markerText.match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
                   if (!marker) return false;
                   var value = String(marker[1] || '').replace(/[*_`]/g, '').trim();
                   if (!value || /^none\b/i.test(value) || isExtractedSubject(value)) return false;
@@ -1513,7 +1516,11 @@ exports.handler = async function (event) {
         var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
           ? direct.allResponses : [direct.response];
         for (var i = 0; i < responses.length; i++) {
-          var matches = String(responses[i] || '').match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
+          var responseText = String(responses[i] || '')
+            .replace(/\*\*([^*]+)\*\*/g, '$1')
+            .replace(/\*([^*]+)\*/g, '$1')
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+          var matches = responseText.match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
           if (!matches) continue;
           var value = String(matches[1] || '').replace(/[*_`]/g, '').trim();
           if (value && !/^none\b/i.test(value)) return value;
@@ -1526,9 +1533,9 @@ exports.handler = async function (event) {
         if (key) subjectRecommendationKeys[key] = true;
       };
       addSubjectKey(name);
-      var subjectDomain = normalizeUrl((evidence && (evidence.website || evidence.inferredOfficialSite)) || '');
-      addSubjectKey(subjectDomain);
-      addSubjectKey(String(subjectDomain || '').split('.')[0]);
+      var laneSubjectDomain = normalizeUrl((evidence && (evidence.website || evidence.inferredOfficialSite)) || '');
+      addSubjectKey(laneSubjectDomain);
+      addSubjectKey(String(laneSubjectDomain || '').split('.')[0]);
       var subjectTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
       var subjectAcronymKey = '';
       if (subjectTokens.length >= 3 && subjectTokens.some(function(token) { return /\d/.test(token); })) {
@@ -1589,6 +1596,21 @@ exports.handler = async function (event) {
       var geminiTop = firstLaneRecommendation([measuredGemini && measuredGemini.topRecommendation]);
       var perplexityTop = firstLaneRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
       var claudeDirectResult = findDirectRecommendationResult(measuredClaude);
+      if (measuredClaude && claudeDirectResult && Number(claudeDirectResult.sampleCount || 0) > 0 && !claudeTop) {
+        var claudeDirectResponses = Array.isArray(claudeDirectResult.allResponses) && claudeDirectResult.allResponses.length
+          ? claudeDirectResult.allResponses : [claudeDirectResult.response];
+        var claudeExplicitNone = claudeDirectResponses.some(function(response) {
+          var responseText = String(response || '')
+            .replace(/\*\*([^*]+)\*\*/g, '$1')
+            .replace(/\*([^*]+)\*/g, '$1');
+          return /(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*(?:NONE|NO NAMED RECOMMENDATION|NOT ESTABLISHED)\s*(?:$|\n)/i.test(responseText);
+        });
+        measuredClaude.recommendationCompleted = claudeExplicitNone;
+        measuredClaude.explicitNoRecommendation = claudeExplicitNone;
+        if (!claudeExplicitNone) {
+          measuredClaude.recommendationError = 'Claude answered, but no recommendation name could be verified in the response.';
+        }
+      }
       var platformLanes = [
         { key: 'claude', label: 'Claude', run: measuredClaude, recommendation: claudeTop, query: claudeDirectResult && claudeDirectResult.query || null },
         { key: 'openai', label: 'ChatGPT', run: measuredOpenAI, recommendation: openaiTop, query: measuredOpenAI && measuredOpenAI.recommendationQuery || null },
@@ -1761,8 +1783,8 @@ exports.handler = async function (event) {
         : evidence['onlineCompetitor'];
       // Guard: if both arenas resolved to the same competitor name, scoring the
       // same entity twice produces meaningless numbers. Collapse to brand-only.
-      var normName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
-      if (onlineComp && onlineComp.name && brandCompName && normName(onlineComp.name) === normName(brandCompName)) {
+      var normalizeArenaName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      if (onlineComp && onlineComp.name && brandCompName && normalizeArenaName(onlineComp.name) === normalizeArenaName(brandCompName)) {
         console.log('[' + jobId + '] Dual-arena skipped — both arenas resolved to same competitor (' + brandCompName + '). Running brand-only.');
         onlineComp = null;
       }
@@ -1943,7 +1965,6 @@ exports.handler = async function (event) {
             ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.filter(function(r){return Number(r.sampleCount || 0) > 0;}).length)
             : null
         },
-        cacheBusted:     cacheBustedThisRun,
         progressTracked: !!finalResult['progressDelta']
       }));
     } catch (e) {
