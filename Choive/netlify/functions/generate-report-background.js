@@ -1623,7 +1623,12 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       var recommendation = safeStr(l.recommendation, '');
       var completed = safeNum(l.completedSamples, 0);
       var expected = safeNum(l.expectedSamples, 0);
-      var resultText = recommendation || (laneStatus === 'no_recommendation' ? 'No named recommendation' : laneStatus === 'partial' ? 'Incomplete measurement' : 'Not measured');
+      var resultText = recommendation
+        || (laneStatus === 'no_recommendation' ? 'Explicitly returned no named recommendation'
+          : laneStatus === 'failed' ? 'Measurement failed'
+          : laneStatus === 'partial' ? 'Incomplete measurement'
+          : laneStatus === 'not_configured' ? 'API not configured'
+          : 'Not measured');
       var resultColour = recommendation ? '#0C0C0E' : laneStatus === 'no_recommendation' ? '#67676E' : '#B83232';
       var sampleText = expected > 0 ? completed + ' of ' + expected + ' queries completed' : 'Provider result recorded';
       H.push('<div class="plat-cell"><div class="plat-name">' + esc(safeStr(l.platform, l.key)) + '</div>'
@@ -1733,7 +1738,9 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('</div>');
     }
     H.push('</div>');
-    if (marketCompName && marketCompName.toLowerCase() !== compName.toLowerCase()) {
+    if (marketCompName
+        && marketCompName.toLowerCase().replace(/[^a-z0-9]/g, '')
+          !== compName.toLowerCase().replace(/[^a-z0-9]/g, '')) {
       H.push('<div style="padding:20px 24px;background:#0C0C0E;margin-bottom:28px;border-left:4px solid #67676E;">'
         + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.72);margin-bottom:6px;">Market benchmark</div>'
         + '<div style="font-family:Georgia,serif;font-size:27px;color:#F5F2EE;margin-bottom:6px;">' + esc(marketCompName) + '</div>'
