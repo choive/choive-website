@@ -84,6 +84,10 @@ function extractTopRecommendation(response) {
   return candidate && !/^(none|no named recommendation|not established)$/i.test(candidate) ? candidate : null;
 }
 
+function hasExplicitNoRecommendation(response) {
+  return /(?:^|\n)TOP_RECOMMENDATION\s*:\s*(?:NONE|NO NAMED RECOMMENDATION|NOT ESTABLISHED)\s*(?:$|\n)/i.test(cleanResponse(response));
+}
+
 async function requestOpenAIWithModel(systemPrompt, query, useSearch, model) {
   if (!process.env.OPENAI_API_KEY) return null;
   var controller = new AbortController();
@@ -292,7 +296,9 @@ async function runOpenAISimulation(input) {
   var directTopRecommendation = directResult && Array.isArray(directResult.allResponses)
     ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean)[0] || null
     : null;
-  var recommendationCompleted = Boolean(directResult && directResult.sampleCount > 0);
+  var explicitNoRecommendation = Boolean(directResult && (directResult.allResponses || []).some(hasExplicitNoRecommendation));
+  var recommendationCompleted = Boolean(directResult && directResult.sampleCount > 0
+    && (directTopRecommendation || explicitNoRecommendation));
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
     complete: results.every(function(result) { return result.sampleCount === samples; }),
@@ -313,7 +319,10 @@ async function runOpenAISimulation(input) {
     recommendationQuery: directResult ? directResult.query : null,
     recommendationResponse: directResult ? directResult.response : null,
     recommendationCompleted: recommendationCompleted,
-    recommendationError: directResult && directResult.error || null,
+    explicitNoRecommendation: explicitNoRecommendation,
+    recommendationError: directResult && directResult.error
+      || (directResult && directResult.sampleCount > 0 && !directTopRecommendation && !explicitNoRecommendation
+        ? 'ChatGPT answered, but no recommendation name could be verified in the response.' : null),
     competitorShortlist: competitorShortlist,
     results: results
   };
