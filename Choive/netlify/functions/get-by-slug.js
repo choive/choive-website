@@ -7,6 +7,12 @@
 const { getDiagnosticBySlug } = require('./lib/supabase');
 
 exports.handler = async function(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Methods': 'GET, OPTIONS' }, body: '' };
+  }
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers: { Allow: 'GET' }, body: 'Method Not Allowed' };
+  }
   var slug = (event.queryStringParameters && event.queryStringParameters.slug) || '';
 
   // Basic slug safety — only allow letters, digits, hyphens
@@ -14,6 +20,16 @@ exports.handler = async function(event) {
     return {
       statusCode: 302,
       headers: { Location: 'https://choive.com/' },
+      body: ''
+    };
+  }
+
+  // Payment-email fallback when an older diagnostic has no generated slug.
+  // UUIDs are opaque public result identifiers already used by the main page.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug)) {
+    return {
+      statusCode: 302,
+      headers: { Location: 'https://choive.com/?jobId=' + encodeURIComponent(slug) },
       body: ''
     };
   }
