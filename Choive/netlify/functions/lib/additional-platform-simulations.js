@@ -75,8 +75,12 @@ function extractTopRecommendation(response, subjectName) {
     .split(/\s+(?:as|because|for|instead|over|which|whose|that)\b/i)[0]
     .replace(/\[[^\]]*\]/g, '').replace(/\*+/g, '').replace(/[,:;.!?]+$/, '').trim().slice(0, 100);
   if (!candidate || /^(none|no named recommendation|not established)$/i.test(candidate)) return null;
-  if (subjectName && normalize(candidate) === normalize(subjectName)) return null;
   return candidate;
+}
+
+function hasExplicitNoRecommendation(response) {
+  var text = cleanResponse(response);
+  return /(?:^|\n)TOP_RECOMMENDATION\s*:\s*(?:NONE|NO NAMED RECOMMENDATION|NOT ESTABLISHED)\s*(?:$|\n)/i.test(text);
 }
 
 function providerPrompt(source) {
@@ -172,9 +176,15 @@ async function requestPerplexity(source) {
 }
 
 async function runProvider(provider, input, requestFn, configured) {
-  var sources = Array.isArray(input && input.sourceResults)
-    ? input.sourceResults.filter(function(source) { return source && source.query; }).slice(0, 4)
-    : [];
+  var suppliedSources = Array.isArray(input && input.sourceResults)
+    ? input.sourceResults.filter(function(source) { return source && source.query; }) : [];
+  var replacementSource = suppliedSources.find(function(source) {
+    return /branded replacement/i.test(String(source.label || ''));
+  });
+  var sources = suppliedSources.filter(function(source) {
+    return !/branded replacement/i.test(String(source.label || ''));
+  }).slice(0, 3);
+  if (replacementSource) sources.push(replacementSource);
   if (!configured) return { available: false, configured: false, provider: provider, status: 'not_configured', results: [] };
   if (!sources.length) return { available: false, configured: true, provider: provider, status: 'no_queries', results: [] };
 
@@ -211,6 +221,7 @@ async function runProvider(provider, input, requestFn, configured) {
     };
   });
   var replacement = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') !== -1; })[0];
+  var explicitNoRecommendation = Boolean(replacement && hasExplicitNoRecommendation(replacement.response));
   var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') === -1; });
   // Only the explicit branded "who instead?" question populates this lane.
   // Unbranded discovery answers remain visibility evidence.
@@ -222,7 +233,7 @@ async function runProvider(provider, input, requestFn, configured) {
   if (failureReasons.length) {
     console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
   }
-  if (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation) {
+  if (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation && !explicitNoRecommendation) {
     console.warn('[' + provider + '-simulation] Branded replacement answer completed but no recommendation name could be extracted.');
   }
   return {
@@ -241,9 +252,11 @@ async function runProvider(provider, input, requestFn, configured) {
     competitorRecommendationQuery: replacement ? replacement.query : null,
     recommendationQuery: replacement ? replacement.query : null,
     recommendationResponse: replacement ? replacement.response : null,
-    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1 && replacement.topRecommendation),
+    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1
+      && (replacement.topRecommendation || explicitNoRecommendation)),
+    explicitNoRecommendation: explicitNoRecommendation,
     recommendationError: replacement && replacement.error
-      || (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation
+      || (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation && !explicitNoRecommendation
         ? 'The provider answered, but no recommendation name could be verified in the response.' : null),
     reason: completed === 0 ? (failureReasons[0] || 'No platform response was returned') : null,
     results: results
