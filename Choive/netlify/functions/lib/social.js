@@ -175,9 +175,9 @@ async function fetchSocialEvidence(serperResults, businessName) {
     var link = (serperResults[i].link || '').toLowerCase();
     var keys = Object.keys(PLATFORM_PATTERNS);
     for (var k = 0; k < keys.length; k++) {
-      var platform = keys[k];
-      if (!found[platform] && PLATFORM_PATTERNS[platform].test(link)) {
-        found[platform] = serperResults[i].link;
+      var detectedPlatform = keys[k];
+      if (!found[detectedPlatform] && PLATFORM_PATTERNS[detectedPlatform].test(link)) {
+        found[detectedPlatform] = serperResults[i].link;
       }
     }
   }
@@ -189,14 +189,14 @@ async function fetchSocialEvidence(serperResults, businessName) {
   var platforms  = Object.keys(found);
 
   for (var p = 0; p < platforms.length; p++) {
-    var platform = platforms[p];
-    var url      = found[platform];
-    if (platform === 'youtube') {
+    var fetchPlatform = platforms[p];
+    var url      = found[fetchPlatform];
+    if (fetchPlatform === 'youtube') {
       fetchTasks.push(fetchYouTubeChannel(url));
-    } else if (platform === 'reddit') {
+    } else if (fetchPlatform === 'reddit') {
       fetchTasks.push(fetchRedditPage(url));
     } else {
-      fetchTasks.push(fetchPageFallback(url, platform));
+      fetchTasks.push(fetchPageFallback(url, fetchPlatform));
     }
   }
 
@@ -205,8 +205,8 @@ async function fetchSocialEvidence(serperResults, businessName) {
 
   for (var s = 0; s < settled.length; s++) {
     if (settled[s].status === 'fulfilled' && settled[s].value) {
-      var platform = platforms[s];
-      evidence[platform] = settled[s].value;
+      var completedPlatform = platforms[s];
+      evidence[completedPlatform] = settled[s].value;
     }
   }
 
