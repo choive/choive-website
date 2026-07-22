@@ -9,7 +9,15 @@
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 const GEMINI_FALLBACK_MODEL = 'gemini-3-flash-preview';
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
-const REQUEST_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 75000;
+
+function isTransientProviderError(error) {
+  var status = Number(error && error.status || 0);
+  var message = String(error && error.message || '').toLowerCase();
+  return status === 429 || status >= 500
+    || (error && error.name === 'AbortError')
+    || /abort|timed?\s*out|timeout|temporar|high demand|fetch failed/.test(message);
+}
 
 function normalize(value) {
   var text = String(value || '').toLowerCase();
@@ -85,8 +93,11 @@ async function requestGeminiWithModel(source, model) {
       throw error;
     }
     var data = await response.json();
-    return (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
-      .map(function(part) { return part && part.text || ''; }).join('\n').trim();
+    return {
+      text: (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
+        .map(function(part) { return part && part.text || ''; }).join('\n').trim(),
+      model: model
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -96,18 +107,14 @@ async function requestGemini(source) {
   try {
     return await requestGeminiWithModel(source, GEMINI_MODEL);
   } catch (error) {
-    // A 429/5xx response is a temporary capacity condition, not a failed
-    // measurement. Pause once, retry the primary model, then use the current
-    // fallback model if capacity is still unavailable.
-    if (error.status === 429 || error.status >= 500) {
+    // Capacity errors and request timeouts are not negative measurements.
+    // Move directly to the independent fallback model after a short pause;
+    // retrying the same overloaded model wastes time and can exceed the
+    // background function budget.
+    if (isTransientProviderError(error)) {
       await new Promise(function(resolve) { setTimeout(resolve, 2000); });
-      try {
-        return await requestGeminiWithModel(source, GEMINI_MODEL);
-      } catch (retryError) {
-        error = retryError;
-      }
     }
-    if ((error.status === 400 || error.status === 404 || error.status === 429 || error.status >= 500)
+    if ((error.status === 400 || error.status === 404 || isTransientProviderError(error))
       && GEMINI_MODEL !== GEMINI_FALLBACK_MODEL) {
       return requestGeminiWithModel(source, GEMINI_FALLBACK_MODEL);
     }
@@ -164,7 +171,9 @@ async function runProvider(provider, input, requestFn, configured) {
     settled = await Promise.allSettled(sources.map(requestFn));
   }
   var results = sources.map(function(source, index) {
-    var raw = settled[index].status === 'fulfilled' ? settled[index].value : '';
+    var fulfilledValue = settled[index].status === 'fulfilled' ? settled[index].value : '';
+    var raw = fulfilledValue && typeof fulfilledValue === 'object'
+      ? String(fulfilledValue.text || '') : String(fulfilledValue || '');
     var response = cleanResponse(raw);
     return {
       label: source.label,
@@ -175,6 +184,7 @@ async function runProvider(provider, input, requestFn, configured) {
       appearedCount: businessMentioned(response, input.name) ? 1 : 0,
       sampleCount: response ? 1 : 0,
       allResponses: response ? [response] : [],
+      model: fulfilledValue && typeof fulfilledValue === 'object' ? fulfilledValue.model || null : null,
       topRecommendation: extractTopRecommendation(raw, input.name),
       error: settled[index].status === 'rejected' ? String(settled[index].reason && settled[index].reason.message || 'Request failed') : null
     };
@@ -186,6 +196,8 @@ async function runProvider(provider, input, requestFn, configured) {
   var chosen = replacement && replacement.topRecommendation ? replacement : null;
   var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
   var failureReasons = results.map(function(result) { return result.error; }).filter(Boolean);
+  var actualModels = results.map(function(result) { return result.model; }).filter(Boolean)
+    .filter(function(value, index, values) { return values.indexOf(value) === index; });
   if (failureReasons.length) {
     console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
   }
@@ -194,7 +206,7 @@ async function runProvider(provider, input, requestFn, configured) {
     configured: true,
     complete: completed === sources.length,
     provider: provider,
-    model: provider === 'gemini' ? GEMINI_MODEL : PERPLEXITY_MODEL,
+    model: provider === 'gemini' ? (actualModels.join(', ') || GEMINI_MODEL) : PERPLEXITY_MODEL,
     status: completed === sources.length ? 'complete' : (completed > 0 ? 'partial' : 'failed'),
     completedSamples: completed,
     expectedSamples: sources.length,
