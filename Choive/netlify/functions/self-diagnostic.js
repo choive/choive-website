@@ -30,8 +30,8 @@ exports.handler = async function(event) {
   // GET — return the latest self-diagnostic result for display on homepage
   if (event.httpMethod === 'GET') {
     try {
-      var supabase = getSupabase();
-      var { data, error } = await supabase
+      var readClient = getSupabase();
+      var { data, error } = await readClient
         .from('self_diagnostic')
         .select('*')
         .order('created_at', { ascending: false })
@@ -85,8 +85,8 @@ exports.handler = async function(event) {
 
   try {
     // Create the diagnostic record
-    var supabase = getSupabase();
-    var insertResult = await supabase.from('diagnostics').insert({
+    var writeClient = getSupabase();
+    var insertResult = await writeClient.from('diagnostics').insert({
       job_id:               jobId,
       status:               'queued',
       stage:                null,
