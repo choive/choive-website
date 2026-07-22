@@ -4,6 +4,8 @@
 // This is the ONLY reliable way to redirect back after payment
 // ENV: STRIPE_SECRET_KEY, URL
 
+const { getDiagnostic } = require('./lib/supabase');
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -38,11 +40,28 @@ exports.handler = async function(event) {
   }
 
   var jobId = String(body.jobId || '').trim();
-  if (!jobId) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
     return {
       statusCode: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing jobId' })
+      body: JSON.stringify({ error: 'Missing or invalid jobId' })
+    };
+  }
+  try {
+    var diagnostic = await getDiagnostic(jobId);
+    if (!diagnostic || diagnostic.status !== 'complete') {
+      return {
+        statusCode: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'The diagnostic must be complete before checkout.' })
+      };
+    }
+  } catch (lookupError) {
+    console.error('create-checkout: diagnostic lookup failed:', lookupError.message);
+    return {
+      statusCode: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Could not verify diagnostic before checkout' })
     };
   }
 
