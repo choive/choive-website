@@ -200,7 +200,10 @@ function buildPrompt(evidence) {
     + '\n\nWEBSITE CONTENT:\n' + websiteText
     + '\n\nSEARCH EVIDENCE (grouped by signal type):\n' + searchText
     + '\n\nCOMPETITORS APPEARING IN SEARCH:\n' + competitorText
-    + (competitorPageText ? '\n\nCOMPETITOR PAGE FETCHED (' + competitorDomain + '):\n' + competitorPageText : '')
+    // Do not inject the first broad-search page here. It is fetched before the
+    // evidence-based category is inferred and may be unrelated (as seen with
+    // alueducation.com for a pay-TV platform). The dedicated grounded
+    // competitor stage below supplies the verified market rival instead.
     // previousCompetitor deliberately NOT injected — v5 web search finds the
     // real competitor fresh each run. Injecting a prior name biases scoring
     // toward repeating old (potentially wrong) answers.
@@ -417,6 +420,10 @@ function buildPrompt(evidence) {
     + '- Body/explanation use: structured presence, machine-readable definition, comparison signals\n'
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
+    + '- ACTION TRACEABILITY: Sentence 1 of every action body must name the exact observation that triggered it: a measured query and platform answer, a confirmed page element, a named source, or a missing public signal. Sentence 2 must state the exact deliverable to create or change. Sentence 3 must state how completion will be verified. Never tell the reader only to "improve visibility", "strengthen trust", "optimize presence", "build authority", or "close the gap".\n'
+    + '- ACTION LENGTH: Use exactly 3 short sentences in each action body and no more than 75 words total. Keep explanation and if_nothing to no more than 45 words each.\n'
+    + '- ACTION OWNERSHIP: When the evidence supports it, name the practical owner such as website team, communications lead, product marketing lead, or founder. Do not invent a person or job title that the evidence does not establish.\n'
+    + '- PLAIN LANGUAGE: Reader-facing text must explain the concrete event, evidence, consequence, and action. Avoid abstract labels unless the following words define them. Never use "chosen by AI", "known by AI", "AI-ready", "selection infrastructure", "trust signals", or "visibility gap" without immediately stating the measured answer or missing evidence in plain language.\n'
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
     + '- NUMERIC TARGETS: review counts, publication counts, timelines, and similar numbers may be proposed as practical goals, but never call them an AI-system minimum, required threshold, guaranteed trigger, or industry standard unless the supplied evidence contains a credible source establishing that exact threshold.\n'
     + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'
@@ -429,10 +436,14 @@ function buildPrompt(evidence) {
     + 'PILLAR ANALYSIS — exactly 2 sentences each:\n'
     + 'Sentence 1: Quote or directly reference the specific evidence. Name exact numbers, platforms, signals found or missing.\n'
     + 'Sentence 2: State the exact selection consequence — what a buyer experiences because of this score.\n'
+    + 'Each sentence must contain no more than 24 words.\n'
     + 'NEVER write generic analysis. Every sentence must be impossible to apply to a different business.\n\n'
     + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone. '
     + 'AVOID AMBIGUOUS NEGATION: never write "not consistently [positive thing]" or "not always [positive thing]" \u2014 a reader can misparse this as mostly-positive-with-exceptions when the true meaning is the opposite. BANNED EXAMPLE: "Not consistently the obvious choice" (reads as usually chosen, sometimes not \u2014 backwards for a weak/absent tier). Instead state the gap plainly and unambiguously: "Overlooked when it matters most", "Not the default choice yet", "Invisible at the moment of comparison".\n\n'
-    + 'SUMMARY PARAGRAPH — exactly 3 sentences:\n'
+    + 'SIGNATURE LINE \u2014 one short factual sentence grounded in the recorded measurement. State what happened using "mentioned" or "recommended". Never use "chosen", "choice", "present", or an unexplained metaphor.\n'
+    + 'MARKET POSITION \u2014 return tier, a plain-language label, and one evidence-based explanation. The label must state the position directly; never return "Unknown position" when a tier was established.\n\n'
+    + 'Use only these values: verdictLevel = absent, weak, or present; decisionState = not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, or chosen_by_default; decisionEnvironment = discovery_driven, comparison_driven, authority_driven, or default_driven. These are internal codes only and must not appear in reader-facing prose.\n\n'
+    + 'SUMMARY PARAGRAPH — exactly 3 sentences, no more than 65 words total:\n'
     + 'DISPLACEMENT SUMMARY RULE — choose exactly one opening based on this priority order:\n'
     + '  1. If the AI SELECTION GROUND TRUTH section names a specific competitor (displacement detected): Sentence 1 MUST be: "When buyers ask AI which [category] to choose in [location/market], [Competitor] is recommended — not [Business Name]."\n'
     + '  2. If tier is dominant or strong AND no displacement competitor was named: Sentence 1 starts with "This business is currently chosen because..."\n'
@@ -442,6 +453,7 @@ function buildPrompt(evidence) {
     + '- Sentence 3: the concrete moment in the buyer journey where this business is lost or won. Name the exact moment.\n\n'
     + 'BUSINESS UNDERSTANDING — what AI currently thinks this business is:\n'
     + 'Write exactly two paragraphs separated by a blank line.\n'
+    + 'Each paragraph must contain no more than 55 words. Use sentences of no more than 22 words.\n'
     + 'Paragraph 1 — BEFORE: Write EXACTLY what a language model would output TODAY if someone asked "What is [business name]?" or "Which [category] should I buy in [location]?" — this is a simulation of current AI output, NOT a business description. Use ONLY signals from the evidence. CRITICAL: if the AI SELECTION GROUND TRUTH shows this business was NOT named when buyers asked about its category, the paragraph MUST start with that fact: "[Business] is not a business AI currently names when asked about [category] in [location]." If the knowledge graph is empty, write what AI would say when it has minimal data — it will be vague, hedged, or possibly confused with similar businesses. Do not write a flattering summary. Write what AI actually outputs.\n'
     + 'Paragraph 2 — AFTER: Write what that same AI paragraph would say after the top fixes are implemented.\n'
     + '  Start with the business name. Reference ONLY the concrete fixes from your own actions list\n'
@@ -452,6 +464,7 @@ function buildPrompt(evidence) {
     + '  Phrase it as what AI would say once those specific fixes are verifiably in place. Nothing beyond them.\n'
     + '  The contrast between the two paragraphs is the core value of this field.\n\n'
     + 'EVIDENCE NARRATIVE RULES:\n'
+    + 'Write 4 to 6 short sentences and no more than 110 words total. Each sentence must communicate one finding only.\n'
     + 'LEAD WITH THE AI FINDING: If the AI SELECTION GROUND TRUTH section names a specific competitor, the evidence narrative MUST open with that fact: "Real AI recommendation queries for [category] in [location] returned [Competitor] as the named answer — [Business] was not mentioned." This is the most important finding in the entire report and must never be buried.\n'
     + 'Write exactly what was found and what was not found. Name specific search queries that returned zero results.\n'
     + 'Name specific signals that were confirmed. Name the exact gap between what exists and what is needed.\n'
@@ -484,11 +497,15 @@ function buildPrompt(evidence) {
   var jsonSchema = '{\n'
     + '  "overallScore": 0,\n'
     + '  "verdictHeadline": "",\n'
+    + '  "verdictLevel": "",\n'
+    + '  "signatureLine": "",\n'
+    + '  "decisionState": "",\n'
+    + '  "decisionEnvironment": "",\n'
     + '  "summaryParagraph": "",\n'
     + '  "businessUnderstanding": "",\n'
     + '  "evidenceNarrative": "",\n'
     + '  "inferredCategory": "",\n'
-    + '  "marketPosition": { "tier": "", "reasoning": "" },\n'
+    + '  "marketPosition": { "tier": "", "label": "", "explanation": "" },\n'
     + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
     + '  "recommendedPlatform": { "name": "", "url": "", "reason": "" },\n'
     + '  "pillars": {\n'
@@ -1441,8 +1458,8 @@ async function selectBestFitCompetitors(evidence, candidates) {
     + '2. Same buyer and deal tier.\n'
     + '3. Same commercial model.\n'
     + '4. Same serviceable geography.\n'
-    + '5. Same market breadth. If the subject spans multiple buyer markets, a candidate spanning those same markets outranks a specialist overlapping in only one.\n'
-    + 'Tests 1 and 3 are always hard fit gates. Test 5 is also a hard gate when the subject serves multiple distinct buyer markets: a candidate covering every subject market must outrank a specialist that overlaps in only one, unless official evidence disproves the broader fit. Treat a one-time diagnostic, audit, or report purchase as a different commercial model from a recurring monitoring SaaS subscription. Treat self-service software as different from an agency or managed service. Do not claim two commercial models match unless official product or pricing evidence supports that claim.\n'
+    + '5. Same market breadth. If the subject spans multiple buyer markets, a candidate with officially confirmed coverage of those same markets outranks a specialist overlapping in only one.\n'
+    + 'Tests 1 and 3 are always hard fit gates. Never claim a candidate covers a buyer market, vertical, geography, product capability, or commercial model unless an official current source explicitly supports that claim. A trend article, event appearance, device discussion, integration, OEM certification, or general cross-device statement does not prove that the candidate sells a product to that buyer market. When no candidate has confirmed coverage of every subject market, select the closest purchasing substitute and explicitly label the unmatched market as a limitation; do not upgrade partial overlap into a full match. Treat a one-time diagnostic, audit, or report purchase as a different commercial model from a recurring monitoring SaaS subscription. Treat self-service software as different from an agency or managed service.\n'
     + 'Mention frequency is only a tie-breaker after business fit. Exclude customers, suppliers, infrastructure providers, directories, and the subject itself. Choose only from the supplied candidates. In each reason, explicitly state whether product scope and commercial model are full matches or partial matches.\n\n'
     + 'Return exactly: {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}';
 
