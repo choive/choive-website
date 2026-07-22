@@ -22,6 +22,17 @@ exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
+  var internalSecret = process.env.INTERNAL_AI_SECRET
+    || process.env.INTERNAL_DIAGNOSTIC_SECRET
+    || process.env.INTERNAL_REPORT_SECRET;
+  var suppliedSecret = event.headers && (event.headers['x-internal-token'] || event.headers['X-Internal-Token']);
+  if (!internalSecret || suppliedSecret !== internalSecret) {
+    return {
+      statusCode: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
+  }
 
   var body;
   try { body = JSON.parse(event.body || '{}'); }
