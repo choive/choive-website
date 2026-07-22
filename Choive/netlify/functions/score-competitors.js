@@ -25,8 +25,10 @@ async function scoreCompetitor(name, domain, category, city) {
 
   var searchText = serperData.status === 'fulfilled'
     ? (serperData.value.searchText || '') : '';
-  var webText = websiteText.status === 'fulfilled'
-    ? (websiteText.value || '').slice(0, 2000) : '';
+  var websiteValue = websiteText.status === 'fulfilled' ? websiteText.value : null;
+  var webText = typeof websiteValue === 'string'
+    ? websiteValue.slice(0, 2000)
+    : String(websiteValue && websiteValue.text || '').slice(0, 2000);
 
   var prompt = 'You are CHOIVE™ — a business selection diagnostic engine.\n\n'
     + 'Score this competitor for AI recommendation visibility.\n\n'
@@ -105,6 +107,17 @@ exports.handler = async function(event) {
   }
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
+  }
+  var internalSecret = process.env.INTERNAL_AI_SECRET
+    || process.env.INTERNAL_DIAGNOSTIC_SECRET
+    || process.env.INTERNAL_REPORT_SECRET;
+  var suppliedSecret = event.headers && (event.headers['x-internal-token'] || event.headers['X-Internal-Token']);
+  if (!internalSecret || suppliedSecret !== internalSecret) {
+    return {
+      statusCode: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   var body;
