@@ -17,7 +17,7 @@
         "name": "Blessing Ashionye Ebogu",
         "jobTitle": "Founder & CEO"
       },
-      "logo": "https://choive.com/logo.png"
+      "logo": "https://choive.com/choive-logo.png"
     },
     {
       "@type": "WebSite",
