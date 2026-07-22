@@ -5,6 +5,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 const { getDiagnostic } = require('./lib/supabase');
+const { buildPublicResult } = require('./lib/public-result');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +16,9 @@ const corsHeaders = {
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
   }
 
   const jobId = event.queryStringParameters?.jobId;
@@ -54,7 +58,9 @@ exports.handler = async function (event) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: 'complete',
-        result: diagnostic.result,
+        result: diagnostic.paid === true
+          ? diagnostic.result
+          : buildPublicResult(diagnostic.result),
         // Real, server-verified payment status — read directly from Supabase,
         // not trusted from anything client-side. Without this, reopening a
         // shared link (?jobId=...) after payment would re-show the paywall,
@@ -65,7 +71,8 @@ exports.handler = async function (event) {
           name: diagnostic.input?.name || '',
           category: diagnostic.input?.category || '',
           city: diagnostic.input?.city || '',
-          website: diagnostic.input?.website || ''
+          website: diagnostic.input?.website || '',
+          subjectType: diagnostic.input?.subjectType || 'business'
         },
         createdAt: diagnostic.created_at
       })
