@@ -3567,8 +3567,8 @@ function showResults(r, jobId) {
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? esc(marketComp) + ' is the closest direct competitor found in this run. However, the AI platforms did not consistently recommend one company across the buyer questions.'
-        : 'The AI platforms did not consistently recommend one company, and the available evidence was not strong enough to name a direct competitor.')
+        ? esc(marketComp) + ' is the closest direct competitor found in this run. No single company was the top recommendation across all measured platform answers.'
+        : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3579,7 +3579,7 @@ function showResults(r, jobId) {
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? 'This company sells a similar offer in the same market. The AI platforms did not consistently recommend it in this run.'
+        ? 'This company sells a similar offer in the same market. It was not the top recommendation across all measured platform answers.'
         : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
       + '</div>'
       + buildMarketCompetitorRow()
@@ -3684,7 +3684,7 @@ function showResults(r, jobId) {
     if (!topComp) {
       return '<div class="urgency-bridge">'
         + '<div class="urgency-sentence">No company owns the AI recommendation across different buyer questions yet.</div>'
-        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor found, but the AI platforms did not consistently recommend it.' : 'The AI platforms did not consistently recommend any company in this category.') + '</div>'
+        + '<div class="urgency-sub">' + (comp ? esc(comp) + ' is the closest market competitor found. It was not the top recommendation across all measured platform answers.' : 'No company was the top recommendation across all measured platform answers.') + '</div>'
         + '</div>';
     }
     if (!namedAlternatives.length) {
