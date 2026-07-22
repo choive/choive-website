@@ -663,9 +663,12 @@ function applySignalConstraints(rawOutput, websiteSignals) {
 
     // EASE — schema, llms.txt, bot crawlability
     if (s.hasSchema) {
-      var schemaDetail = (s.schemaCount && s.schemaCount > 0)
-        ? (s.schemaCount + ' schema type' + (s.schemaCount > 1 ? 's' : '') + (s.schemaTypes && s.schemaTypes.length ? ': ' + s.schemaTypes.slice(0, 2).join(', ') : ''))
-        : 'Schema markup detected';
+      var schemaTypes = Array.isArray(s.schemaTypes) ? s.schemaTypes.filter(Boolean) : [];
+      var schemaDetail = schemaTypes.length
+        ? (schemaTypes.length + ' schema type' + (schemaTypes.length > 1 ? 's' : '') + ': ' + schemaTypes.join(', '))
+        : ((s.schemaCount && s.schemaCount > 0)
+          ? (s.schemaCount + ' JSON-LD block' + (s.schemaCount > 1 ? 's' : '') + ' detected')
+          : 'Schema markup detected');
       overrideSignal('ease', 'Schema markup', 'pass', schemaDetail);
     } else {
       overrideSignal('ease', 'Schema markup', 'fail', 'No JSON-LD or schema detected');
@@ -711,6 +714,14 @@ function safeOutput(raw) {
       evidence: p.evidence || ''
     };
   }
+  var supportedPlatform = (r.recommendedPlatform && r.recommendedPlatform.name) ? r.recommendedPlatform : null;
+  var actions = Array.isArray(r.actions) ? r.actions : [];
+  if (!supportedPlatform) {
+    actions = actions.filter(function(action) {
+      var text = [action && action.title, action && action.body, action && action.explanation].join(' ');
+      return !/\b(create|claim|join|list(?:ing)?)\b[^.]{0,80}\b(g2|capterra|trustpilot|trustradius|clutch)\b/i.test(text);
+    });
+  }
   return {
     overallScore:          Number(r.overallScore) || 0,
     verdictHeadline:       r.verdictHeadline      || '',
@@ -722,7 +733,7 @@ function safeOutput(raw) {
     marketPosition:        r.marketPosition       || { tier: 'unknown', reasoning: '' },
     platformCoverage:      r.platformCoverage     || { chatgpt: 'weak', perplexity: 'weak', gemini: 'weak', claude: 'weak' },
     selectionGap:          r.selectionGap         || 0,
-    recommendedPlatform:   (r.recommendedPlatform && r.recommendedPlatform.name) ? r.recommendedPlatform : null,
+    recommendedPlatform:   supportedPlatform,
     pillars: {
       clarity:    safePillar(pillars.clarity),
       trust:      safePillar(pillars.trust),
@@ -732,7 +743,7 @@ function safeOutput(raw) {
     signalAudit: (r.signalAudit && typeof r.signalAudit === 'object') ? r.signalAudit : { clarity: [], trust: [], difference: [], ease: [] },
     competitors:  Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
     competitor:   r.competitor  || null,
-    actions:      Array.isArray(r.actions) ? r.actions : [],
+    actions:      actions,
     deliverables: r.deliverables || null
   };
 }
