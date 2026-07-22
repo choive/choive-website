@@ -45,9 +45,9 @@ async function runActor(actorId, input) {
   });
 
   if (!startRes || !startRes.ok) {
-    var status = startRes ? startRes.status : 'no response';
-    console.warn('Apify start returned', status, 'for actor', actorId);
-    if (startRes && status === 400) {
+    var startStatus = startRes ? startRes.status : 'no response';
+    console.warn('Apify start returned', startStatus, 'for actor', actorId);
+    if (startRes && startStatus === 400) {
       // 400 = the actor address is correct but the INPUT fields are wrong \u2014
       // a different, more specific problem than 404's wrong-address. Surface
       // Apify's own error text so the actual bad field is visible in logs.
@@ -250,7 +250,11 @@ function buildApifyText(trustpilot, googleReviews) {
     }
   }
 
-  return parts.length > 0 ? parts.join('\n') : 'No review platform data retrieved.';
+  // No returned data is not proof that reviews do not exist. The actor may be
+  // unavailable, forbidden for this Apify account, timed out, or may simply
+  // have found no identity-safe match. Keep the scoring prompt neutral instead
+  // of turning an unmeasured source into negative trust evidence.
+  return parts.length > 0 ? parts.join('\n') : '';
 }
 
 // ── Main: fetch all Apify evidence in parallel ────────────────────────────────
@@ -273,8 +277,8 @@ async function fetchApifyEvidence(name, city, website) {
 
   var apifyText = buildApifyText(trustpilot, googleReviews);
 
-  console.log('[apify] trustpilot:', trustpilot ? trustpilot.reviewCount + ' reviews' : 'not found');
-  console.log('[apify] googleReviews:', googleReviews ? googleReviews.reviewCount + ' reviews' : 'not found');
+  console.log('[apify] trustpilot:', trustpilot ? trustpilot.reviewCount + ' reviews' : 'unavailable or no verified match');
+  console.log('[apify] googleReviews:', googleReviews ? googleReviews.reviewCount + ' reviews' : 'unavailable or no verified match');
 
   return { trustpilot, googleReviews, apifyText };
 }
