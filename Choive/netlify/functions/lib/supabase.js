@@ -169,6 +169,15 @@ async function saveResult(jobId, result) {
     .eq('job_id', jobId);
   if (error) throw new Error('Supabase result save failed: ' + error.message);
 }
+
+async function updateDiagnosticResult(jobId, result) {
+  const supabase = getClient();
+  const { error } = await supabase
+    .from('diagnostics')
+    .update({ result })
+    .eq('job_id', jobId);
+  if (error) throw new Error('Supabase result update failed: ' + error.message);
+}
 async function saveError(jobId, errorMessage) {
   const supabase = getClient();
   const { error } = await supabase
@@ -308,6 +317,7 @@ module.exports = {
   updateStatus,
   saveEvidence,
   saveResult,
+  updateDiagnosticResult,
   saveError,
   getDiagnostic,
   getDiagnosticBySlug,
