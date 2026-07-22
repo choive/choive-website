@@ -57,13 +57,18 @@ function cleanResponse(value) {
 }
 
 function extractTopRecommendation(response, subjectName) {
-  var text = String(response || '');
+  // Providers frequently bold the required marker or return the company as a
+  // Markdown link. Parse the same cleaned text that is stored and displayed.
+  var text = cleanResponse(response);
   var matches = text.match(/(?:^|\n)TOP_RECOMMENDATION\s*:\s*([^\n]+)/i);
   // Gemini can occasionally reach its response-token limit after giving an
   // explicit recommendation but before printing the requested marker. Accept
   // only clear recommendation wording in that case; never infer from a list.
   if (!matches) {
     matches = text.match(/\b(?:I|we)\s+(?:would\s+)?(?:highly\s+|strongly\s+)?recommend\s+(?:the\s+)?(?:company\s+)?(?:\*\*)?([A-Z0-9][A-Za-z0-9&.'’+\- ]{1,80})/);
+  }
+  if (!matches) {
+    matches = text.match(/\b(?:top|first|strongest|best)\s+(?:single\s+)?(?:recommendation|alternative|choice|option)\s*(?:is|would be|:)\s*([A-Z0-9][A-Za-z0-9&.'’+\- ]{1,80})/i);
   }
   if (!matches) return null;
   var candidate = matches[1]
@@ -201,7 +206,7 @@ async function runProvider(provider, input, requestFn, configured) {
       sampleCount: response ? 1 : 0,
       allResponses: response ? [response] : [],
       model: fulfilledValue && typeof fulfilledValue === 'object' ? fulfilledValue.model || null : null,
-      topRecommendation: extractTopRecommendation(raw, input.name),
+      topRecommendation: extractTopRecommendation(response, input.name),
       error: settled[index].status === 'rejected' ? String(settled[index].reason && settled[index].reason.message || 'Request failed') : null
     };
   });
@@ -216,6 +221,9 @@ async function runProvider(provider, input, requestFn, configured) {
     .filter(function(value, index, values) { return values.indexOf(value) === index; });
   if (failureReasons.length) {
     console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
+  }
+  if (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation) {
+    console.warn('[' + provider + '-simulation] Branded replacement answer completed but no recommendation name could be extracted.');
   }
   return {
     available: completed > 0,
@@ -233,8 +241,10 @@ async function runProvider(provider, input, requestFn, configured) {
     competitorRecommendationQuery: replacement ? replacement.query : null,
     recommendationQuery: replacement ? replacement.query : null,
     recommendationResponse: replacement ? replacement.response : null,
-    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1),
-    recommendationError: replacement && replacement.error || null,
+    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1 && replacement.topRecommendation),
+    recommendationError: replacement && replacement.error
+      || (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation
+        ? 'The provider answered, but no recommendation name could be verified in the response.' : null),
     reason: completed === 0 ? (failureReasons[0] || 'No platform response was returned') : null,
     results: results
   };
