@@ -116,21 +116,33 @@ function resolveDisplacement(output) {
 
 function buildSafeOutput(output) {
   const fpl = { status: 'absent', detail: 'No data available.' };
+  const tierLabels = {
+    dominant: 'Category leader',
+    strong: 'Strong market position',
+    upper_mid: 'Established but not dominant',
+    mid: 'Recognized in part of the market',
+    weak: 'Limited market recognition',
+    absent: 'Not established in the measured market',
+    unknown: 'Market position was not established'
+  };
+  const normalizedTier = VALID_TIERS.includes(output?.marketPosition?.tier)
+    ? output.marketPosition.tier : 'unknown';
 
   const safe = {
     overallScore:          typeof output?.overallScore === 'number' ? output.overallScore : 0,
     inferredCategory:      output?.inferredCategory      || '',
     verdictHeadline:       output?.verdictHeadline        || 'Diagnostic incomplete',
     verdictLevel:          VALID_VERDICT_LEVELS.includes(output?.verdictLevel) ? output.verdictLevel : 'absent',
-    signatureLine:         output?.signatureLine           || 'Present — but not chosen.',
+    signatureLine:         output?.signatureLine           || 'The measurement did not establish a consistent recommendation.',
     decisionState:         VALID_DECISION_STATES.includes(output?.decisionState) ? output.decisionState : 'considered_not_chosen',
     decisionEnvironment:   VALID_DECISION_ENVS.includes(output?.decisionEnvironment) ? output.decisionEnvironment : '',
     summaryParagraph:      output?.summaryParagraph        || 'The diagnostic could not fully assess this business.',
     businessUnderstanding: output?.businessUnderstanding   || '',
     marketPosition: {
-      tier:        VALID_TIERS.includes(output?.marketPosition?.tier) ? output.marketPosition.tier : 'unknown',
-      label:       output?.marketPosition?.label        || 'Unknown position',
-      explanation: output?.marketPosition?.explanation  || ''
+      tier:        normalizedTier,
+      label:       output?.marketPosition?.label || tierLabels[normalizedTier],
+      explanation: output?.marketPosition?.explanation || output?.marketPosition?.reasoning
+        || 'The available evidence did not establish a more specific market position.'
     },
     evidenceNarrative: output?.evidenceNarrative || 'No evidence narrative available.',
     pillars: {
