@@ -253,6 +253,31 @@ function extractSchema(html) {
 function extractMeta(html) {
   if (!html) return {};
 
+  // Headings must be extracted from page markup, never from JavaScript strings
+  // that happen to contain "<h1>" or "<h2>". Allow nested spans and other
+  // inline markup inside real headings, then reduce the result to visible text.
+  var headingHtml = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<template[\s\S]*?<\/template>/gi, ' ');
+
+  function decodeBasicEntities(value) {
+    return String(value || '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&#(\d+);/g, function(_, code) { return String.fromCharCode(Number(code)); })
+      .replace(/&#x([0-9a-f]+);/gi, function(_, code) { return String.fromCharCode(parseInt(code, 16)); });
+  }
+
+  function visibleHeadingText(innerHtml) {
+    return decodeBasicEntities(String(innerHtml || '').replace(/<[^>]+>/g, ' '))
+      .replace(/\s+/g, ' ').trim();
+  }
+
   function getMeta(name) {
     var patterns = [
       new RegExp('<meta[^>]+name=["\']' + name + '["\'][^>]+content=["\']([^"\']+)["\']', 'i'),
@@ -277,14 +302,15 @@ function extractMeta(html) {
     return '';
   }
 
-  var h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-  var h1 = h1Match ? h1Match[1].trim() : '';
+  var h1Match = headingHtml.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  var h1 = h1Match ? visibleHeadingText(h1Match[1]) : '';
 
   var h2s = [];
-  var h2Regex = /<h2[^>]*>([^<]+)<\/h2>/gi;
+  var h2Regex = /<h2\b[^>]*>([\s\S]*?)<\/h2>/gi;
   var h2Match;
-  while ((h2Match = h2Regex.exec(html)) !== null && h2s.length < 5) {
-    h2s.push(h2Match[1].trim());
+  while ((h2Match = h2Regex.exec(headingHtml)) !== null && h2s.length < 5) {
+    var h2Text = visibleHeadingText(h2Match[1]);
+    if (h2Text) h2s.push(h2Text);
   }
 
   var mentionsLlmsTxt = html.toLowerCase().includes('llms.txt');
