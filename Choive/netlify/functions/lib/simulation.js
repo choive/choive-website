@@ -40,7 +40,10 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
       messages: [{ role: 'user', content: userQuery }]
     };
     if (useSearch) {
-      body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+      // Three searches are sufficient to ground a buyer recommendation while
+      // preventing a single question from expanding into 8-10 searches and
+      // hundreds of thousands of billed input tokens.
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
     }
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -307,7 +310,7 @@ function collisionHint(catClean) {
   return '';
 }
 
-function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) {
+function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, subjectType) {
   var hint = collisionHint(catClean);
   // Use marketStr (scope-aware) instead of raw city for query anchoring.
   // A global B2B software company headquartered in Germany should NOT have
@@ -315,6 +318,31 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr) 
   var effectiveLocation = (marketStr !== undefined ? marketStr : city) || '';
   var locationStr = effectiveLocation ? ' in ' + effectiveLocation : '';
   var forStr = effectiveLocation ? ' for ' + effectiveLocation : '';
+
+  if (subjectType === 'creator' || subjectType === 'personal_brand') {
+    var creatorKind = subjectType === 'creator' ? 'creators or influencers' : 'people or personal brands';
+    return [
+      { label:'Creator discovery', intent:'A buyer discovering relevant public voices', system:'Search current public sources. Name real, active people whose work clearly matches the requested topic and audience.', query:'Which ' + creatorKind + ' are best known for ' + catClean + locationStr + '? Name 3-5 and explain the fit.' },
+      { label:'Creator comparison', intent:'A buyer comparing relevant creators', system:'Search current public sources. Compare only real, active people with confirmed work in this field.', query:'Who are the leading ' + creatorKind + ' to compare for ' + catClean + locationStr + ', and how do they differ?' },
+      { label:'Creator recommendation', intent:'A buyer choosing one creator', system:'Search current public sources. Recommend one real, active person only when the audience and subject fit are confirmed.', query:'Which ' + (subjectType === 'creator' ? 'creator or influencer' : 'person or personal brand') + ' would you recommend for ' + catClean + locationStr + '? Give one name and explain why.' }
+    ];
+  }
+
+  if (subjectType === 'product') {
+    return [
+      { label:'Product discovery', intent:'A buyer discovering products or services', system:'Search current public sources. Name specific current products or services, not only parent companies.', query:'What are the best ' + catClean + locationStr + '? Name 3-5 specific products or services and explain the fit.' },
+      { label:'Product comparison', intent:'A buyer comparing products or services', system:'Search current public sources. Compare specific current products or services using confirmed features and customer fit.', query:'Which ' + catClean + ' products or services should a buyer compare' + locationStr + ', and how do they differ?' },
+      { label:'Product recommendation', intent:'A buyer choosing one product or service', system:'Search current public sources. Recommend one specific current product or service only when its fit is confirmed.', query:'Which ' + catClean + ' product or service would you recommend' + locationStr + '? Give one name and explain why.' }
+    ];
+  }
+
+  if (subjectType === 'organization') {
+    return [
+      { label:'Organization discovery', intent:'A person discovering relevant organizations', system:'Search current public sources. Name real, active organizations whose work clearly matches the request.', query:'Which organizations are best known for ' + catClean + locationStr + '? Name 3-5 and explain their role.' },
+      { label:'Organization comparison', intent:'A person comparing organizations', system:'Search current public sources. Compare only active organizations with confirmed work in this field.', query:'What organizations should someone compare for ' + catClean + locationStr + ', and how do they differ?' },
+      { label:'Organization recommendation', intent:'A person choosing one organization', system:'Search current public sources. Recommend one organization only when its current work and fit are confirmed.', query:'Which organization would you recommend for ' + catClean + locationStr + '? Give one name and explain why.' }
+    ];
+  }
 
   if (businessModel === 'mixed') {
     var mixedCat = catClean.replace(/\b(b2b|b2c|business.to.business|business.to.consumer|direct.to.consumer|dtc)\b/gi, ' ')
@@ -768,6 +796,8 @@ function normalizeSimInput(input) {
     ? input.competitorDomains.filter(Boolean).slice(0, 10) : [];
   var knownCompetitors  = String(input.knownCompetitors || '').trim();
   var customerQuestion  = String(input.customerQuestion || '').trim().slice(0, 500);
+  var subjectType       = ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(String(input.subjectType || 'business')) !== -1
+    ? String(input.subjectType || 'business') : 'business';
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -853,6 +883,7 @@ function normalizeSimInput(input) {
     websiteContext: websiteContext, kgText: kgText,
     competitorDomains: competitorDomains, knownCompetitors: knownCompetitors,
     customerQuestion: customerQuestion,
+    subjectType: subjectType,
     classificationBasis: businessModel === 'mixed' ? 'explicit_b2b_and_b2c_evidence'
       : businessModel === 'b2b' ? 'explicit_b2b_evidence'
       : businessModel === 'b2c' ? (hasB2CSignal ? 'explicit_b2c_evidence' : 'local_consumer_category')
@@ -874,6 +905,7 @@ function normalizeSimInput(input) {
 // Falls back to static buildQueries() if the API call fails.
 async function generateQueryPlan(n) {
   var contextParts = [
+    'SUBJECT TYPE: ' + n.subjectType,
     'BUSINESS NAME: ' + n.name,
     'CATEGORY (user typed): ' + n.category,
     'CATEGORY (engine inferred from evidence): ' + n.catClean
@@ -1051,7 +1083,7 @@ async function runBeforeSimulation(input, useWebSearch) {
   } else {
     // Fallback: static templates keyed by businessModel
     console.log('[simulation] Query plan unavailable — using static templates (businessModel=' + n.businessModel + ')');
-    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+    rawQueries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr, n.subjectType);
   }
 
   // ── CODE-LEVEL BUILD-VS-BUY VALIDATION ─────────────────────────────────
@@ -1064,7 +1096,7 @@ async function runBeforeSimulation(input, useWebSearch) {
     // framed around end users invite consumer streaming brands such as
     // YouTube TV into an enterprise software comparison.
     var b2bEndUserPattern = /\b(subscribers?|viewers?|car owners?|drivers?|passengers?|people watching|watch across)\b/i;
-    var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+    var staticFallback = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr, n.subjectType);
     var fbIdx = 0;
     rawQueries = rawQueries.map(function(q, i) {
       if (!q) return q;
@@ -1130,12 +1162,16 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
   var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
     + (n.catClean ? ' is a ' + n.catClean : '')
     + (market ? ' serving ' + market : '') + '. ';
+  var recommendationKind = n.subjectType === 'product' ? 'product or service'
+    : n.subjectType === 'creator' ? 'creator or influencer'
+    : n.subjectType === 'personal_brand' ? 'person or personal brand'
+    : n.subjectType === 'organization' ? 'organization' : 'company';
   var englishQuery = identityContext
-    + 'Which one company would you recommend instead of ' + n.name + '? Briefly explain why.';
+    + 'Which one ' + recommendationKind + ' would you recommend instead of ' + n.name + '? Briefly explain why.';
   var localized = await applyMarketLanguage([{
     label: 'Branded replacement recommendation',
-    intent: 'A buyer asking which one company to choose instead of the subject',
-    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly, then answer the buyer question naturally. Name one real company you would recommend instead of the subject and briefly explain why. If you cannot identify a credible alternative, say so rather than guessing.',
+    intent: 'A buyer asking which one alternative to choose instead of the subject',
+    system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly, then answer the buyer question naturally. Name one real ' + recommendationKind + ' you would recommend instead of the subject and briefly explain why. If you cannot identify a credible alternative, say so rather than guessing.',
     query: englishQuery
   }], n.city, input.language);
   var results = await runQuerySet(localized.queries, n.name, useWebSearch);
@@ -1151,7 +1187,7 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
 // answer, the other providers still receive valid, localized questions.
 async function buildFallbackMeasurementQueries(input) {
   var n = normalizeSimInput(input);
-  var queries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr);
+  var queries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr, n.subjectType);
   if (n.customerQuestion) {
     queries[0] = {
       label: 'Customer-provided question',
@@ -1165,11 +1201,15 @@ async function buildFallbackMeasurementQueries(input) {
   var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
     + (n.catClean ? ' is a ' + n.catClean : '')
     + (n.marketStr ? ' serving ' + n.marketStr : '') + '. ';
+  var recommendationKind = n.subjectType === 'product' ? 'product or service'
+    : n.subjectType === 'creator' ? 'creator or influencer'
+    : n.subjectType === 'personal_brand' ? 'person or personal brand'
+    : n.subjectType === 'organization' ? 'organization' : 'company';
   queries.push({
     label: 'Branded replacement recommendation',
     intent: 'A buyer asking which one company to choose instead of the subject',
     system: 'Answer as a buyer-facing AI assistant with live web search. Use the supplied official website to identify the subject correctly. Name one real company you would recommend instead of the subject. If you cannot identify a credible alternative, say so rather than guessing.',
-    query: identityContext + 'Which one company would you recommend instead of ' + n.name + '? Briefly explain why.'
+    query: identityContext + 'Which one ' + recommendationKind + ' would you recommend instead of ' + n.name + '? Briefly explain why.'
   });
   var localized = await applyMarketLanguage(queries, n.city, input.language);
   return {
