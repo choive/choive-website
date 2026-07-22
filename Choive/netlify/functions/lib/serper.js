@@ -134,10 +134,26 @@ function deduplicate(results) {
 }
  
 // ── Detect social platforms from all results ──────────────────────────────────
-function detectSocialSignals(allResults) {
+function detectSocialSignals(allResults, businessName) {
   var signals = { instagram: false, tiktok: false, facebook: false, linkedin: false, youtube: false, twitter: false, reddit: false };
+  var identity = String(businessName || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  var compactIdentity = identity.replace(/\s+/g, '');
   for (var i = 0; i < allResults.length; i++) {
-    var domain = normalizeUrl(allResults[i].link || '');
+    var item = allResults[i] || {};
+    var domain = normalizeUrl(item.link || '');
+    var searchable = [item.title, item.snippet, item.link]
+      .join(' ')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ');
+    var compactSearchable = searchable.replace(/\s+/g, '');
+    // A social-domain result is not proof of the business's account. Search
+    // engines commonly return similarly named brands (for example CHOIVE vs
+    // Choice), so require an exact normalized identity match.
+    var identityMatches = identity && (
+      (' ' + searchable + ' ').indexOf(' ' + identity + ' ') !== -1 ||
+      compactSearchable.indexOf(compactIdentity) !== -1
+    );
+    if (!identityMatches) continue;
     var keys = Object.keys(SOCIAL_DOMAINS);
     for (var k = 0; k < keys.length; k++) {
       if (domain.includes(SOCIAL_DOMAINS[keys[k]])) signals[keys[k]] = true;
@@ -404,7 +420,7 @@ async function searchSerper(name, category, city) {
     return a.position - b.position;
   });
   var competitors  = extractCompetitors(queryResults, name);
-  var socialSignals = detectSocialSignals(allResults);
+  var socialSignals = detectSocialSignals(allResults, name);
   var summaries    = buildSummaries(queryResults, competitors, socialSignals);
   var searchText   = buildSearchText(queryResults);
   var kgText       = buildKgText(knowledgeGraph);
