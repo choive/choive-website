@@ -1119,6 +1119,37 @@ nav {
 .sim-summary.zero { color:var(--red); }
 .sim-summary.some { color:var(--amber); }
 .sim-summary.all  { color:var(--green); }
+.sim-provider { border:1px solid var(--rule); margin-bottom:18px; background:var(--paper-2); }
+.sim-provider-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:start; padding:20px 22px; border-bottom:1px solid var(--rule); }
+.sim-provider-name { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--muted); }
+.sim-provider-outcome { font-family:'Libre Baskerville',serif; font-size:20px; font-weight:700; line-height:1.35; color:var(--ink); margin-top:6px; }
+.sim-provider-meaning { font-size:13px; line-height:1.65; color:var(--body); margin-top:7px; max-width:680px; }
+.sim-provider-count { min-width:76px; text-align:center; padding:10px 12px; border:1px solid var(--rule); }
+.sim-provider-count strong { display:block; font-size:24px; line-height:1; color:var(--ink); }
+.sim-provider-count span { display:block; margin-top:5px; font-size:10px; color:var(--muted); text-transform:uppercase; }
+.sim-question-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.sim-question-card { min-width:0; padding:18px; border-right:1px solid var(--rule); }
+.sim-question-card:last-child { border-right:0; }
+.sim-question-number { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--muted); }
+.sim-question-purpose { font-size:14px; font-weight:700; color:var(--ink); margin:5px 0 9px; }
+.sim-question-result { font-size:12px; font-weight:700; margin-bottom:10px; }
+.sim-question-result.yes { color:var(--green); }
+.sim-question-result.no { color:var(--red); }
+.sim-question-text { font-size:12px; line-height:1.6; color:var(--body); }
+.sim-answer-details { border-top:1px solid var(--rule); }
+.sim-answer-details summary { cursor:pointer; padding:13px 18px; font-size:12px; font-weight:700; color:var(--ink); list-style:none; }
+.sim-answer-details summary::-webkit-details-marker { display:none; }
+.sim-answer-details summary::after { content:'+'; float:right; color:var(--muted); }
+.sim-answer-details[open] summary::after { content:'−'; }
+.sim-answer-body { padding:0 18px 18px; font-size:13px; line-height:1.7; color:var(--body); white-space:pre-line; }
+.sim-method-note { font-size:12px; line-height:1.65; color:var(--muted); padding:14px 16px; border-left:2px solid var(--rule); background:var(--paper-3); }
+@media (max-width:760px) {
+  .sim-provider-head { grid-template-columns:1fr; }
+  .sim-provider-count { width:76px; }
+  .sim-question-list { grid-template-columns:1fr; }
+  .sim-question-card { border-right:0; border-bottom:1px solid var(--rule); }
+  .sim-question-card:last-child { border-bottom:0; }
+}
 
 /* Error */
 .error-frame { background:var(--red-bg); border:1px solid rgba(184,50,50,0.15); padding:40px; }
@@ -4502,8 +4533,8 @@ function showResults(r, jobId) {
       + buildOrganicDiscoveryGap()
       + buildEvidenceLegend()
       + '<section class="pay-section sim-section" id="simSection">'
-      + '<div class="pay-eyebrow">AI Visibility Simulation</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">CHOIVE asked three buyer questions. The answers below are shown without editing. AI platforms can make factual mistakes, so CHOIVE does not present claims inside their answers as confirmed facts unless public evidence supports them.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;\">Questions asked in ' + L[lg] + ' \u2014 the language of your market</span>' : ''; })() + '</div>'
+      + '<div class="pay-eyebrow">AI Discovery Evidence</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section answers one question: when an AI platform receives an unbranded buyer question, does it mention ' + esc(bizData.name || 'this business') + '? The result appears first. Open the recorded answers only when you want to inspect the evidence.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;text-transform:uppercase;\">Questions asked in ' + L[lg] + '</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + buildBusinessIntelligence()
@@ -4787,66 +4818,61 @@ async function runAISimulation(r) {
       return;
     }
 
-    var hasBefore = data.before && data.before.results;
-    var bc = hasBefore ? (data.before.appearedCount || 0) : 0;
-    var ac = hasBefore && data.after ? (data.after.appearedCount || 0) : 0;
+    var hasBefore = data.before && Array.isArray(data.before.results);
     var flatResults = data.results || (hasBefore ? data.before.results : []);
-    var summaryText = hasBefore ? data.before.summary : (data.summary || '');
-    var summaryClass = bc === 0 ? 'zero' : bc === 3 ? 'all' : 'some';
 
-    function renderQSet(qResults, label) {
-      if (!qResults || !qResults.length) return '';
-      var html = label ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--rule-d);">' + label + '</div>' : '';
-      return html + qResults.map(function(qr) {
-        return '<div class="sim-query">'
-          + '<div class="sim-query-header">'
-          + '<span class="sim-query-label">' + esc(qr.label) + '</span>'
-          + '<span class="sim-appeared ' + (qr.appeared ? 'yes' : 'no') + '">'
-          + (qr.appeared ? 'Mentioned' : 'Not mentioned') + '</span>'
-          + '</div>'
-          + '<div class="sim-query-text">\u201c' + esc(qr.query) + '\u201d</div>'
-          + '<div class="sim-evidence-note">AI answer \u00b7 shown without editing \u00b7 factual claims may not be correct</div>'
-          + '<div class="sim-response' + (qr.appeared ? ' mentioned' : '') + '">'
-          + esc(stripMd(qr.response)) + '</div>'
+    function isDiscoveryQuestion(qr) {
+      var label = String(qr && qr.label || '').toLowerCase();
+      return label.indexOf('branded replacement') === -1 && label.indexOf('customer-provided') === -1;
+    }
+    function questionPurpose(qr) {
+      var label = String(qr && qr.label || '').toLowerCase();
+      if (label.indexOf('organic') !== -1) return 'Broad category search';
+      if (label.indexOf('comparison') !== -1) return 'Buyer comparison';
+      if (label.indexOf('recommendation') !== -1) return 'Purchase recommendation';
+      return qr.label || 'Buyer question';
+    }
+    function renderProvider(label, qResults, providerNote) {
+      var measured = (qResults || []).filter(isDiscoveryQuestion);
+      if (!measured.length) return '';
+      var appeared = measured.filter(function(qr) { return qr && qr.appeared; }).length;
+      var total = measured.length;
+      var business = bizData.name || 'This business';
+      var outcome = appeared === 0
+        ? business + ' was not mentioned in any measured question.'
+        : business + ' was mentioned in ' + appeared + ' of ' + total + ' measured questions.';
+      var meaning = appeared === 0
+        ? 'A buyer could complete these searches without discovering the business.'
+        : appeared === total
+          ? 'The platform surfaced the business across every measured discovery route.'
+          : 'The platform can find the business, but only for some buyer questions.';
+      var cards = measured.map(function(qr, index) {
+        return '<div class="sim-question-card">'
+          + '<div class="sim-question-number">Question ' + (index + 1) + '</div>'
+          + '<div class="sim-question-purpose">' + esc(questionPurpose(qr)) + '</div>'
+          + '<div class="sim-question-result ' + (qr.appeared ? 'yes' : 'no') + '">' + (qr.appeared ? esc(business) + ' was mentioned' : esc(business) + ' was not mentioned') + '</div>'
+          + '<div class="sim-question-text">“' + esc(qr.query || '') + '”</div>'
           + '</div>';
       }).join('');
+      var answers = measured.map(function(qr, index) {
+        return '<details class="sim-answer-details"><summary>View recorded answer for question ' + (index + 1) + '</summary>'
+          + '<div class="sim-answer-body">' + esc(stripMd(qr.response || 'No recorded answer is available.')) + '</div></details>';
+      }).join('');
+      return '<div class="sim-provider">'
+        + '<div class="sim-provider-head"><div><div class="sim-provider-name">' + esc(label) + ' discovery result</div>'
+        + '<div class="sim-provider-outcome">' + esc(outcome) + '</div><div class="sim-provider-meaning">' + esc(meaning) + '</div></div>'
+        + '<div class="sim-provider-count"><strong>' + appeared + '/' + total + '</strong><span>mentioned</span></div></div>'
+        + '<div class="sim-question-list">' + cards + '</div>' + answers
+        + (providerNote ? '<div class="sim-method-note">' + esc(providerNote) + '</div>' : '') + '</div>';
     }
 
-    if (hasBefore && data.after) {
-      results.innerHTML = renderQSet(data.before.results, 'Current state')
-        + '<div style="margin:20px 0;padding:16px;background:var(--dk-3);border:1px solid var(--rule-d);">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">After implementing top fixes — projected</div>'
-        + '<div style="font-size:13px;color:var(--tb);line-height:1.65;">'
-        + (ac >= 0
-          ? 'With improved positioning: mentioned in <strong style="color:var(--ac);">' + ac + ' of 3</strong> queries'
-          + (ac > bc ? ' \u2014 up from ' + bc + '.' : (ac === bc ? ' \u2014 same as before.' : '.')) : '')
-        + '</div>'
-        + '<div style="font-size:11px;color:var(--ac);margin-top:10px;line-height:1.6;letter-spacing:0.03em;"><strong>PROJECTED</strong> — modeled responses showing how AI would answer once these fixes are live. Not real transcripts yet: implement the fixes, re-run the diagnostic, and the Verified Progress block confirms what changed.</div></div>'
-        + renderQSet(data.after.results, 'After optimisation — projected')
-        
-    } else {
-      results.innerHTML = renderQSet(flatResults, '')
-        + '<div class="sim-summary ' + summaryClass + '">' + esc(summaryText) + '</div>';
-    }
-
-    // A real second-platform measurement, using the same questions. Keep it
-    // visually and semantically separate from Claude's projected "after" state.
+    var rendered = renderProvider('Claude', flatResults, 'Measured through the Anthropic API with live web search. This records the API answer, which can differ from the Claude consumer app.');
     var openaiRun = r.platformSimulations && r.platformSimulations.openai;
     if (openaiRun && openaiRun.available && Array.isArray(openaiRun.results)) {
-      var rec = openaiRun.recommendations || {};
-      var recNames = [rec.primary, rec.second, rec.third].filter(Boolean);
-      results.innerHTML += '<div style="margin-top:26px;padding-top:22px;border-top:2px solid var(--rule-d);">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">'
-        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tp);">ChatGPT measurement</div>'
-        + '<div style="font-size:10px;color:var(--tm);">' + esc(openaiRun.model || 'OpenAI API') + ' · live web search'
-        + (openaiRun.complete === false ? ' · partial run (' + Number(openaiRun.completedSamples || 0) + '/' + Number(openaiRun.expectedSamples || 0) + ' samples)' : '') + '</div></div>'
-        + (recNames.length
-          ? '<div style="font-size:13px;line-height:1.65;color:var(--tb);margin-bottom:14px;">Companies named across the unbranded buyer questions: <strong style="color:var(--tp);">' + recNames.map(esc).join(', ') + '</strong></div>'
-          : '')
-        + renderQSet(openaiRun.results, 'Same buyer questions measured for ChatGPT')
-        + '<div style="font-size:11px;color:var(--tm);line-height:1.6;margin-top:10px;">Measured through the OpenAI API. The consumer ChatGPT app may answer differently because its model, search context, and product settings can vary.</div>'
-        + '</div>';
+      rendered += renderProvider('ChatGPT', openaiRun.results, 'Measured through the OpenAI API with live web search. This records the API answer, which can differ from the ChatGPT consumer app.');
     }
+    results.innerHTML = rendered
+      + '<div class="sim-method-note">These discovery results do not change the CHOIVE score. The score is calculated separately from Clarity, Trust, Difference, and Ease. Perplexity and Gemini recommendations are shown in the four-platform recommendation section above.</div>';
 
   } catch (err) {
     if (loading) loading.style.display = 'none';
