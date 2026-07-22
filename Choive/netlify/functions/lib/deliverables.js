@@ -245,13 +245,9 @@ function generateReviewAction(evidence, result) {
   var isReviewPlatform = true;
   var enterpriseProcurement = /enterprise|pay[ -]?tv|telco|telecom|operator|middleware|automotive oem|carmaker|broadcast platform/i.test(catLower);
 
-  // Model-reasoned platform takes priority \u2014 it can reason about ANY
-  // category, not just the ~4 hardcoded below. The regex table becomes a
-  // fallback for older cached results that predate this field, not the
-  // primary path. This closes the real gap: most real businesses (fitness,
-  // construction, real estate, manufacturing, consulting...) previously fell
-  // through every regex and got a generic "go to Trustpilot" regardless of
-  // whether that platform actually matters to their buyers.
+  // Use a named platform only when this diagnostic established that buyers or
+  // close competitors in the category use it. Category words alone are not
+  // evidence that a particular directory matters.
   var modelPlatform = result.recommendedPlatform;
   if (enterpriseProcurement) {
     platform = 'Named customer results';
@@ -264,31 +260,12 @@ function generateReviewAction(evidence, result) {
     platformUrl = modelPlatform.url || '';
     instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
     targetCount = 25;
-  } else if (/software|saas|platform|crm/i.test(catLower)) {
-    platform    = 'G2';
-    targetCount = 25;
-    platformUrl = 'g2.com/products/';
-    instruction = 'B2B software buyers check G2 before deciding. Email your 10 most satisfied customers this week and ask for a G2 review. A 5-minute ask that builds permanent credibility.';
-  } else if (/law firm|legal|consulting/i.test(catLower)) {
-    platform    = 'Chambers / Legal 500';
-    targetCount = 10;
-    platformUrl = 'chambers.com';
-    instruction = 'Enterprise legal buyers check Chambers and Legal 500. Submit client nominations for the next ranking cycle. Each client endorsement counts as a strong trust signal.';
-  } else if (/restaurant|cafe|dining/i.test(catLower)) {
-    platform    = 'Google Reviews';
-    targetCount = 100;
-    platformUrl = 'business.google.com';
-    instruction = 'Restaurant buyers check Google Reviews first. Set up your Google Business Profile if you have not. Add a QR code to your menu linking to your review page. Ask every satisfied table.';
-  } else if (/hotel|accommodation/i.test(catLower)) {
-    platform    = 'TripAdvisor + Google';
-    targetCount = 50;
-    platformUrl = 'tripadvisor.com';
-    instruction = 'Add a review request card to every room. Link to both TripAdvisor and Google in your post-stay email.';
   } else {
-    platform    = 'Trustpilot';
-    targetCount = 50;
-    platformUrl = 'trustpilot.com/businesses';
-    instruction = 'Go to ' + platformUrl + ' and create a free business account today. Add your Trustpilot review link to your order confirmation email. This one change alone will build your review count within weeks.';
+    platform = 'Verifiable customer proof';
+    targetCount = 3;
+    platformUrl = '';
+    isReviewPlatform = false;
+    instruction = 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
   }
 
   // Counts are platform-specific. Never reuse an employee-review count from
