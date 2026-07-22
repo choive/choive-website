@@ -45,7 +45,11 @@ function esc(s) {
 
 // ── SAFE ACCESSORS ────────────────────────────────────────────────────────────
 function safeStr(v, fallback) { return (v && typeof v === 'string' && v.trim()) ? v.trim() : (fallback || ''); }
-function safeNum(v, fallback) { var n = Number(v); return isNaN(n) ? (fallback || 0) : n; }
+function safeNum(v, fallback) {
+  if (v === null || v === undefined || v === '') return Number(fallback) || 0;
+  var n = Number(v);
+  return isNaN(n) ? (Number(fallback) || 0) : n;
+}
 function safeArr(v) { return Array.isArray(v) ? v : []; }
 function safeObj(v) { return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
 
@@ -469,6 +473,41 @@ function buildPillarRing(score, label) {
     + '</svg>';
 }
 
+// Build conservative JSON-LD from fields the diagnostic can identify safely.
+// It is intentionally a developer draft: inferred categories and missing
+// business details must be verified before publication.
+function buildSchemaDraft(schemaBrief, bizName, website, input) {
+  var brief = safeObj(schemaBrief);
+  var types = safeArr(brief.schemaTypes).map(function(t) { return safeStr(t, ''); }).filter(Boolean);
+  var specificType = types.filter(function(t) { return t !== 'Organization'; })[0] || 'Organization';
+  var siteUrl = safeStr(website, '');
+  if (siteUrl && !/^https?:\/\//i.test(siteUrl)) siteUrl = 'https://' + siteUrl;
+  var city = safeStr(safeObj(input).city, '');
+
+  function addCommon(obj, idSuffix) {
+    obj['@id'] = siteUrl ? siteUrl.replace(/\/$/, '') + '/#' + idSuffix : '#' + idSuffix;
+    obj.name = bizName;
+    if (siteUrl) obj.url = siteUrl;
+    if (city) obj.address = { '@type': 'PostalAddress', addressLocality: city };
+    return obj;
+  }
+
+  if (specificType === 'SoftwareApplication') {
+    var org = addCommon({ '@type': 'Organization' }, 'organization');
+    var app = {
+      '@type': 'SoftwareApplication',
+      '@id': siteUrl ? siteUrl.replace(/\/$/, '') + '/#software' : '#software',
+      name: bizName,
+      provider: { '@id': org['@id'] }
+    };
+    if (siteUrl) app.url = siteUrl;
+    return JSON.stringify({ '@context': 'https://schema.org', '@graph': [org, app] }, null, 2);
+  }
+
+  var entity = addCommon({ '@context': 'https://schema.org', '@type': specificType }, 'business');
+  return JSON.stringify(entity, null, 2);
+}
+
 // ── PERSONALISED LETTER ───────────────────────────────────────────────────────
 function buildLetter(bizName, score, weakest, compName, input, centralFinding) {
 
@@ -508,7 +547,7 @@ function buildLetter(bizName, score, weakest, compName, input, centralFinding) {
 
   return '<div class="letter">'
     + '<div class="letter-eyebrow">A note from the founder</div>'
-    + '<div class="letter-salutation">Dear ' + esc(bizName) + ',</div>'
+    + '<div class="letter-salutation">To the team at ' + esc(bizName) + ',</div>'
     + '<p class="letter-p">' + opening + '</p>'
     + (centralFinding ? '<div class="letter-finding"><span>Central finding</span><strong>' + esc(centralFinding) + '</strong></div>' : '')
     + '<p class="letter-p">' + middle + '</p>'
@@ -740,25 +779,6 @@ var CSS = [
   /* FINAL PAGE */
   '.final{background:#0C0C0E;padding:60px 56px 46px;position:relative;}',
   /* EXECUTIVE TEAROUT */
-  '.tearout{background:#0C0C0E;padding:52px 56px;position:relative;height:297mm;box-sizing:border-box;display:flex;flex-direction:column;}',
-  '.tearout-accent{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9A86A 10%,#C9A86A 90%,transparent);}',
-  '.tearout-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:#C9A86A;margin-bottom:28px;}',
-  '.tearout-score-row{display:flex;align-items:flex-end;gap:20px;margin-bottom:6px;}',
-  '.tearout-score{font-family:Georgia,serif;font-size:110px;font-weight:700;color:#C9A86A;line-height:0.9;letter-spacing:-0.04em;}',
-  '.tearout-score-meta{padding-bottom:14px;}',
-  '.tearout-score-den{font-size:18px;color:rgba(201,168,106,0.35);font-family:Georgia,serif;}',
-  '.tearout-tier{font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-top:6px;}',
-  '.tearout-biz{font-family:Georgia,serif;font-size:28px;font-weight:400;color:#F5F2EE;line-height:1.15;letter-spacing:-0.01em;margin-bottom:5px;margin-top:16px;}',
-  '.tearout-meta{font-size:12px;color:rgba(245,242,238,0.72);line-height:1.7;margin-bottom:36px;}',
-  '.tearout-divider{height:1px;background:rgba(245,242,238,0.08);margin-bottom:32px;}',
-  '.tearout-actions-label{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:rgba(245,242,238,0.72);margin-bottom:18px;}',
-  '.tearout-action{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px;}',
-  '.tearout-action-num{font-family:Georgia,serif;font-size:32px;font-weight:700;color:rgba(201,168,106,0.2);line-height:1;flex-shrink:0;width:36px;}',
-  '.tearout-action-body{}',
-  '.tearout-action-title{font-size:14px;font-weight:700;color:#F5F2EE;margin-bottom:3px;}',
-  '.tearout-action-exp{font-size:12px;color:rgba(245,242,238,0.72);line-height:1.6;}',
-  '.tearout-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;padding-top:28px;border-top:1px solid rgba(245,242,238,0.06);}',
-  '.tearout-footer-note{font-size:10px;color:rgba(245,242,238,0.72);line-height:1.7;}',
   '.final::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#C9A86A 10%,#C9A86A 90%,transparent);}',
   '.final-eyebrow{font-size:9px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#C9A86A;margin-bottom:14px;}',
   '.final-score{font-family:Georgia,serif;font-size:140px;font-weight:700;color:#C9A86A;line-height:0.88;letter-spacing:-0.04em;margin-bottom:12px;}',
@@ -777,7 +797,7 @@ var CSS = [
   '.toc .pf{margin:40px -56px -60px;}',
   '.section .pf{margin:40px -56px -56px;}',
   '@page{size:A4;margin:0;}',
-  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;min-height:297mm;box-sizing:border-box;padding:36px 56px 36px 64px;} .letter .pf{margin:30px -56px -36px -64px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;height:297mm;min-height:0;overflow:hidden;box-sizing:border-box;} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;min-height:180px;box-sizing:border-box;} .final{page-break-before:always;break-before:page;} .tearout{page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;min-height:297mm;height:auto;box-sizing:border-box;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd,.sim-q,.action-row,.plan-task,.plat-grid,.comp-dark,.proj-grid,.rings-row,.score-layout,.aip,.sim-verdict,.meta-compare{page-break-inside:avoid;break-inside:avoid;} .section{box-sizing:border-box;} .section .pf{margin:40px -56px -52px;} .toc{min-height:297mm;display:flex;flex-direction:column;box-sizing:border-box;page-break-after:always;break-after:page;} .toc .pf{margin:auto -56px -60px;} thead{display:table-header-group;} tr{page-break-inside:avoid;break-inside:avoid;}}'
+  '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;max-width:none;} .print-btn{display:none;} .cover{page-break-after:always;break-after:page;height:297mm;box-sizing:border-box;overflow:hidden;page-break-inside:avoid;break-inside:avoid;} .cover-footer{page-break-inside:avoid;break-inside:avoid;} .letter{page-break-after:always;break-after:page;min-height:297mm;box-sizing:border-box;padding:36px 56px 36px 64px;} .letter .pf{margin:30px -56px -36px -64px;} .letter-eyebrow{margin-bottom:10px;} .letter-salutation{font-size:18px;margin-bottom:12px;} .letter-p{font-size:12.5px;line-height:1.5;margin-bottom:10px;} .letter-sign{margin-top:16px;padding-top:12px;} .letter-sign img{height:52px;} .eb{page-break-after:always;break-after:page;height:297mm;min-height:0;overflow:hidden;box-sizing:border-box;} .sdp{page-break-before:always;break-before:page;page-break-inside:avoid;break-inside:avoid;min-height:180px;box-sizing:border-box;} .final{page-break-before:always;break-before:page;} .pf{page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;break-before:avoid;} .pd,.sim-q,.action-row,.plan-task,.plat-grid,.comp-dark,.proj-grid,.rings-row,.score-layout,.aip,.sim-verdict,.meta-compare{page-break-inside:avoid;break-inside:avoid;} .section{box-sizing:border-box;} .section .pf{margin:40px -56px -52px;} .toc{min-height:297mm;display:flex;flex-direction:column;box-sizing:border-box;page-break-after:always;break-after:page;} .toc .pf{margin:auto -56px -60px;} thead{display:table-header-group;} tr{page-break-inside:avoid;break-inside:avoid;}}'
   +'.eb{background:#F5F2EE;padding:28px 56px 24px;position:relative;display:flex;flex-direction:column;min-height:297mm;box-sizing:border-box;border:1px solid rgba(12,12,14,0.06);}'
   +'.eb::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#C9A86A 12%,#C9A86A 88%,transparent);}'
   +'.eb-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid rgba(12,12,14,0.08);margin-bottom:14px;}'
@@ -995,11 +1015,11 @@ var CSS = [
   var ea     = pillarScore(r, 'ease');
 
   // Score tier
-  var tier = score >= 76 ? 'Recommended' : score >= 56 ? 'Considered' : score >= 31 ? 'Mentioned' : 'Not mentioned';
-  var scoreLabel = score >= 76 ? 'Consistently recommended by AI.'
-    : score >= 56 ? 'Considered. Not consistently recommended.'
-    : score >= 31 ? 'Mentioned by AI. Not recommended.'
-    : 'Not mentioned or recommended by AI.';
+  var tier = score >= 76 ? 'Strong evidence' : score >= 56 ? 'Developing evidence' : score >= 31 ? 'Limited evidence' : 'Insufficient evidence';
+  var scoreLabel = score >= 76 ? 'Strong public evidence across the four CHOIVE pillars.'
+    : score >= 56 ? 'Public evidence is present, but uneven across the four CHOIVE pillars.'
+    : score >= 31 ? 'Important public evidence is incomplete across the four CHOIVE pillars.'
+    : 'The diagnostic found insufficient public evidence across the four CHOIVE pillars.';
 
   // Projection — weighted by actual pillar headroom so each business gets
   // numbers that reflect their specific starting position, not a flat formula.
@@ -1075,6 +1095,11 @@ var CSS = [
   var metaDesc  = safeObj(deliverables.metaDesc || r.metaDesc || {});
   var metaCurrent  = safeStr(metaDesc.current,  '');
   var metaImproved = safeStr(metaDesc.improved, '');
+  var schemaBrief = safeObj(deliverables.schemaBrief || r.schemaBrief || {});
+  var reviewAction = safeObj(deliverables.reviewAction || r.reviewAction || {});
+  var schemaDraft = safeArr(schemaBrief.schemaTypes).length
+    ? buildSchemaDraft(schemaBrief, bizName, website, input)
+    : '';
 
   // 30-day plan
   var actionPlan = safeArr(
@@ -1139,6 +1164,7 @@ var CSS = [
 function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl) {
   var category  = safeStr(input.category, '');
   var city      = safeStr(input.city, '');
+  var briefMeta = [category, city, date].filter(Boolean).map(esc).join(' \u00b7 ');
   var verdict   = safeStr(r.verdictHeadline, '');
   var cl        = pillarScore(r, 'clarity');
   var tr        = pillarScore(r, 'trust');
@@ -1149,7 +1175,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   var actTitle  = safeStr(act0.title, '');
   var actBody   = safeStr(act0.body,  '');
   var tierCol   = score >= 76 ? '#2A7A48' : score >= 56 ? '#9A6A14' : '#B83232';
-  var tier      = score >= 76 ? 'Recommended' : score >= 56 ? 'Considered' : score >= 31 ? 'Mentioned' : 'Not mentioned';
+  var tier      = score >= 76 ? 'Strong evidence' : score >= 56 ? 'Developing evidence' : score >= 31 ? 'Limited evidence' : 'Insufficient evidence';
   var barCol    = score >= 76 ? '#2A7A48' : score >= 56 ? '#C9A86A' : score >= 31 ? '#9A6A14' : '#B83232';
 
   function pillarRow(label, val) {
@@ -1165,7 +1191,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '<div class="eb-top">'
     + '<div><div class="eb-eyebrow">Executive Brief \u00b7 AI Selection Diagnostic</div>'
     + '<div class="eb-biz">' + esc(bizName) + '</div>'
-    + '<div class="eb-meta">' + esc(category) + (city ? ' \u00b7 ' + esc(city) : '') + ' \u00b7 ' + date + '</div>'
+    + '<div class="eb-meta">' + briefMeta + '</div>'
     + '</div>'
     + '<img src="' + LOGO_URL + '" style="height:26px;width:auto;opacity:0.65;" alt="CHOIVE"/>'
     + '</div>'
@@ -1193,10 +1219,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '</div>'
     + '<div class="eb-body">'
     + '<div class="eb-panel">'
-    + '<div class="eb-panel-label">Claude consistently recommended instead</div>'
+    + '<div class="eb-panel-label">Recorded Claude replacement result</div>'
     + (compName
         ? '<div class="eb-comp-name">' + esc(compName) + '</div>'
-        : '<div class="eb-comp-none">No dominant competitor established yet. A significant opportunity to be first.</div>')
+        : '<div class="eb-comp-none">No replacement was established in the recorded Claude result.</div>')
     + '</div>'
     + '<div class="eb-panel">'
     + '<div class="eb-panel-label">The single most important action</div>'
@@ -1280,7 +1306,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   // Tier badge + meta
   H.push('<div style="display:flex;align-items:center;gap:14px;margin-bottom:22px;">');
   H.push('<span style="font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border:1px solid ' + coverTierCol + ';color:' + coverTierCol + ';flex-shrink:0;">' + esc(tier) + '</span>');
-  if (category || city) H.push('<span style="font-size:12px;color:rgba(245,242,238,0.72);">' + esc(category) + (city ? ' · ' + esc(city) : '') + '</span>');
+  if (category || city) H.push('<span style="font-size:12px;color:rgba(245,242,238,0.72);">' + [category, city].filter(Boolean).map(esc).join(' \u00b7 ') + '</span>');
   H.push('</div>');
   // Brief description
   H.push('<p style="font-size:12px;color:rgba(245,242,238,0.72);line-height:1.8;max-width:480px;margin:0;">Ten sections. Recorded queries. Evidence-labelled findings. A practical plan for strengthening the signals measured in this report.</p>');
@@ -1301,68 +1327,6 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
 
   // ── LETTER ──────────────────────────────────────────────────────────────────
   H.push(letter.replace(/<\/div>$/, pageFt('2') + '</div>'));
-
-  // ── EXECUTIVE TEAR-OUT ───────────────────────────────────────────────────────
-  // One-page standalone summary — CEO can print or forward without the full report.
-  (function() {
-    var topActions = actions.slice(0, 3);
-    var tearoutTierCol = score >= 76 ? '#4ADE80' : score >= 56 ? '#C9A86A' : score >= 31 ? '#E09A30' : '#E05252';
-    H.push('<div class="tearout">');
-    H.push('<div class="tearout-accent"></div>');
-    H.push('<div class="tearout-eyebrow">Decision Intelligence Report · Executive Summary</div>');
-
-    // Score + tier
-    H.push('<div class="tearout-score-row">');
-    H.push('<div class="tearout-score">' + score + '</div>');
-    H.push('<div class="tearout-score-meta">');
-    H.push('<div class="tearout-score-den">/100</div>');
-    H.push('<div class="tearout-tier" style="color:' + tearoutTierCol + '">' + esc(tier) + '</div>');
-    H.push('</div>');
-    H.push('</div>');
-
-    // Business identity
-    H.push('<div class="tearout-biz">' + esc(bizName) + '</div>');
-    var metaParts = [];
-    if (category) metaParts.push(esc(category));
-    if (city)     metaParts.push(esc(city));
-    metaParts.push(date);
-    H.push('<div class="tearout-meta">' + metaParts.join(' · ') + '</div>');
-
-    H.push('<div class="tearout-divider"></div>');
-
-    // Top 3 priority actions
-    H.push('<div class="tearout-actions-label">Three actions that change this score</div>');
-    if (topActions.length > 0) {
-      topActions.forEach(function(act, idx) {
-        var t = safeStr(safeObj(act).title,       '');
-        var e = safeStr(safeObj(act).explanation || safeObj(act).body, '');
-        if (!t) return;
-        H.push('<div class="tearout-action">');
-        H.push('<div class="tearout-action-num">' + (idx + 1) + '</div>');
-        H.push('<div class="tearout-action-body">');
-        H.push('<div class="tearout-action-title">' + esc(t) + '</div>');
-        if (e) H.push('<div class="tearout-action-exp">' + esc(e.slice(0, 120)) + (e.length > 120 ? '…' : '') + '</div>');
-        H.push('</div>');
-        H.push('</div>');
-      });
-    } else {
-      H.push('<div style="font-size:13px;color:rgba(245,242,238,0.72);font-style:italic;">See Section 8 for the full priority action plan.</div>');
-    }
-
-    // Footer
-    H.push('<div class="tearout-footer">');
-    H.push('<div class="tearout-footer-note">');
-    H.push('<div style="margin-bottom:4px;">Full analysis on the following pages.</div>');
-    if (compName) H.push('<div>Primary competitor identified: <strong style="color:rgba(245,242,238,0.82);">' + esc(compName) + '</strong></div>');
-    H.push('<div style="margin-top:4px;">90-day projection: <strong style="color:' + tearoutTierCol + ';">' + proj90 + '/100</strong></div>');
-    H.push('</div>');
-    H.push('<div>');
-    H.push('<img src="' + qrDataUrl + '" style="width:56px;height:56px;display:block;filter:invert(1);opacity:0.4;" alt="Live result"/>');
-    H.push('<div style="font-size:8px;color:rgba(245,242,238,0.72);text-align:center;margin-top:4px;letter-spacing:0.08em;">LIVE RESULT</div>');
-    H.push('</div>');
-    H.push('</div>');
-    H.push('</div>');
-  })();
 
   H.push(buildExecutiveBrief(r, input, bizName, score, aiCompName, date, qrDataUrl).replace(/<\/div>$/, pageFt('3') + '</div>'));
 
@@ -1444,7 +1408,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div style="padding:20px 24px;background:#F5F2EE;border-left:2px solid rgba(12,12,14,0.12);margin-bottom:36px;">');
   H.push('<div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#67676E;margin-bottom:8px;">What drives the improvement</div>');
   var driverGrowth = Math.min(25, mainDriver.score + Math.round(mainDriver.hr * 0.70));
-  H.push('<div style="font-size:14px;color:#48484F;line-height:1.8;"><strong style="color:#0C0C0E;">' + mainDriver.name + '</strong> is the primary lever for ' + esc(bizName) + '. Moving it from ' + mainDriver.score + ' to ' + driverGrowth + ' over 90 days accounts for the majority of the trajectory above. This is achievable through: ' + mainDriver.action + '. Section 8 sequences these in the order that unlocks the fastest score movement.</div>');
+  H.push('<div style="font-size:14px;color:#48484F;line-height:1.8;"><strong style="color:#0C0C0E;">' + mainDriver.name + '</strong> has the largest estimated effect for ' + esc(bizName) + '. The scenario models this pillar moving from ' + mainDriver.score + ' to ' + driverGrowth + ' over 90 days. That estimate assumes completion of: ' + mainDriver.action + '. Section 8 lists the work in the order used by this estimate.</div>');
   H.push('</div>');
   // Pillar projection table
   H.push('<div class="eyebrow">Pillar-by-pillar targets</div>');
@@ -1902,7 +1866,37 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     if (metaImproved) H.push('<div class="mc mc-imp"><div class="mc-label">Improved</div><div class="mc-text">' + esc(metaImproved) + '</div></div>');
     H.push('</div></div>');
   }
-  if (!llmsTxt && !h1Options.length && !metaCurrent) {
+  if (schemaDraft) {
+    var schemaTypes = safeArr(schemaBrief.schemaTypes).map(function(t) { return safeStr(t, ''); }).filter(Boolean);
+    H.push('<div class="asset-block">');
+    H.push('<div class="asset-label">Schema implementation draft ' + devTag + '</div>');
+    H.push('<div class="asset-desc"><strong>Types identified:</strong> ' + esc(schemaTypes.join(' + ')) + '. This is valid minimal JSON-LD built from the business name, website, location, and identified type available to this diagnostic. Your developer must verify the type and add any required business-specific fields before publishing it.</div>');
+    H.push('<div class="asset-code">&lt;script type="application/ld+json"&gt;\n' + esc(schemaDraft) + '\n&lt;/script&gt;</div>');
+    if (schemaBrief.alreadyHasSchema === true) {
+      H.push('<div class="asset-desc" style="margin-top:10px;"><strong>Recorded status:</strong> Schema was detected. Compare this draft with the existing markup; do not add a duplicate entity.</div>');
+    } else {
+      H.push('<div class="asset-desc" style="margin-top:10px;"><strong>Recorded status:</strong> Schema was not confirmed in the collected evidence.</div>');
+    }
+    H.push('</div>');
+  }
+  if (safeStr(reviewAction.platform, '')) {
+    var reviewPlatform = safeStr(reviewAction.platform, '');
+    var reviewInstruction = safeStr(reviewAction.instruction, '');
+    var reviewUrgency = safeStr(reviewAction.urgency, 'medium').toLowerCase();
+    var reviewTarget = safeNum(reviewAction.targetCount, 0);
+    var reviewCurrent = safeNum(reviewAction.currentCount, 0);
+    H.push('<div class="asset-block">');
+    H.push('<div class="asset-label">Independent trust evidence ' + ownerTag + '</div>');
+    H.push('<div class="asset-desc"><strong>Recommended evidence channel:</strong> ' + esc(reviewPlatform) + '. <strong>Priority:</strong> ' + esc(reviewUrgency) + '.</div>');
+    if (reviewInstruction) H.push('<div class="asset-opt"><div class="asset-opt-text">' + esc(reviewInstruction) + '</div></div>');
+    if (reviewAction.isReviewPlatform === false) {
+      H.push('<div class="asset-desc" style="margin-top:10px;">Suggested target: ' + reviewTarget + ' approved, named customer results. This is an implementation target, not a verified market requirement.</div>');
+    } else {
+      H.push('<div class="asset-desc" style="margin-top:10px;">Verified review count retrieved for this channel: ' + (reviewCurrent > 0 ? reviewCurrent : 'not established') + '. Suggested target: ' + reviewTarget + '. The target is planning guidance, not a guarantee of improved AI recommendations.</div>');
+    }
+    H.push('</div>');
+  }
+  if (!llmsTxt && !h1Options.length && !metaCurrent && !schemaDraft && !safeStr(reviewAction.platform, '')) {
     H.push('<div style="padding:24px;background:#F5F2EE;font-size:13px;color:#67676E;font-style:italic;">Ready-to-use assets are available in your online result at: ' + esc(resultUrl) + '</div>');
   }
   H.push(pageFt('13'));
@@ -1955,7 +1949,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="final-verdict">' + esc(verdict || scoreLabel) + '</div>');
   H.push('<div class="final-one-label">The single most important action right now</div>');
   H.push('<div class="final-one-action">' + esc(firstAction) + '</div>');
-  H.push('<div class="final-one-sub">Start here. This single action creates the foundation everything else builds on. When it is done, move to action two. Do not skip the sequence — it is ordered by what unlocks what.</div>');
+  H.push('<div class="final-one-sub">Start here because this action addresses the highest-priority finding in this report. Keep evidence that it was completed, then move to action two. Run a new diagnostic after implementation to measure any change.</div>');
   H.push('<div class="final-footer">');
   H.push('<div class="final-logo"><img src="' + LOGO_URL + '" style="height:32px;width:auto;filter:brightness(0) invert(1);opacity:0.55;" alt="CHOIVE"></div>');
   H.push('<div class="final-qr-box"><img src="' + qrDataUrl + '" style="width:64px;height:64px;display:block;filter:invert(1);opacity:0.45;" alt="Scan for live result"/><div class="final-qr-label">Scan for<br>live result</div></div>');
@@ -2004,7 +1998,7 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
   try { slug = await getSlugForJob(jobId); } catch (e) {}
   var safeJobId = String(jobId || '').replace(/[^a-zA-Z0-9\-]/g, '');
   var resultUrl = slug
-    ? siteUrl + '/results/' + slug
+    ? siteUrl + '/results/' + encodeURIComponent(String(slug))
     : siteUrl + '/results/' + safeJobId;
   var safeFileName = (bizName || 'Report').replace(/[^a-zA-Z0-9\-_]/g, '-').replace(/-+/g, '-').slice(0, 60);
 
@@ -2014,14 +2008,14 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
     '<h1 style="font-family:Georgia,serif;font-size:26px;font-weight:400;font-style:italic;margin:0 0 14px;line-height:1.2;color:#0C0C0E;">Your AI Selection Report is ready.</h1>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">Your complete CHOIVE Report for <strong>' + esc(bizName) + '</strong> is attached to this email.</p>',
     '<p style="font-size:13px;line-height:1.7;color:#67676E;margin:0 0 8px;padding:10px 14px;background:#F5F2EE;border-left:3px solid #C9A86A;"><strong style="color:#0C0C0E;">Your report is attached as a PDF.</strong> Open it in any PDF viewer. Every page is formatted and ready to read, share, or print.</p>',
-    '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">This is your confidential analysis. Do not share it publicly — it contains your exact competitive gaps.</p>',
+    '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 8px;">This is your confidential analysis. Do not share it publicly — it contains the competitive findings recorded for your business.</p>',
     '<p style="font-size:14px;line-height:1.85;color:#48484F;margin:0 0 28px;">Your score: <strong style="font-size:18px;font-family:Georgia,serif;color:#0C0C0E;">' + score + '/100</strong></p>',
     '<div style="background:#F5F2EE;padding:22px 26px;margin-bottom:28px;border-left:3px solid #C9A86A;">',
     '<div style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#67676E;margin-bottom:8px;">What\'s inside</div>',
     '<div style="font-size:13px;color:#48484F;line-height:1.85;">',
     '→ Personalised founder letter<br>',
     '→ Score projection — 30, 60, and 90 days<br>',
-    '→ What AI currently thinks you are<br>',
+    '→ Recorded AI description and supporting evidence<br>',
     '→ Four pillar breakdown with evidence<br>',
     '→ Platform coverage across ChatGPT, Perplexity, Gemini, Claude<br>',
     '→ Separately attributed AI provider responses from this diagnostic run<br>',
