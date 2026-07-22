@@ -2475,6 +2475,16 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
     </div>
     <div id="dI" class="diag-form-panel">
       <div class="diag-form-grid">
+        <div class="diag-field diag-field--full">
+          <label class="diag-label" for="bType">What are we diagnosing?</label>
+          <select id="bType" class="diag-input" aria-label="Type of subject being diagnosed">
+            <option value="business" selected>Business or company</option>
+            <option value="product">Product or service</option>
+            <option value="creator">Creator or influencer</option>
+            <option value="personal_brand">Person or personal brand</option>
+            <option value="organization">Organization</option>
+          </select>
+        </div>
         <div class="diag-field">
           <label class="diag-label" for="bN">Business name</label>
           <input id="bN" type="text" class="diag-input" placeholder="e.g. The Corner Table" autocomplete="off"/>
@@ -2753,6 +2763,7 @@ function updateEngineStage(status) {
 
 // ── RUN DIAGNOSTIC ────────────────────────────────────────────────────────────
 function runDiagnostic() {
+  const subjectType = document.getElementById('bType') ? document.getElementById('bType').value : 'business';
   const name        = document.getElementById('bN').value.trim();
   const category    = document.getElementById('bC').value.trim();
   const city        = document.getElementById('bL').value.trim();
@@ -2775,7 +2786,7 @@ function runDiagnostic() {
   }
 
   const language = document.getElementById('bLang') ? document.getElementById('bLang').value : '';
-  bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language };
+  bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language, subjectType };
 
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').classList.add('active');
@@ -2808,7 +2819,8 @@ async function startDiagnostic(biz) {
         description:      biz.description      || '',
         knownCompetitors: biz.knownCompetitors || '',
         customerQuestion: biz.customerQuestion || '',
-        language:         biz.language         || ''
+        language:         biz.language         || '',
+        subjectType:      biz.subjectType      || 'business'
       })
     });
 
@@ -2816,6 +2828,10 @@ async function startDiagnostic(biz) {
 
     const data = await res.json();
     if (!data.jobId) throw new Error('No job ID returned. Please try again.');
+
+    if (data.verificationToken) {
+      try { localStorage.setItem('choive-verification-' + data.jobId, data.verificationToken); } catch (e) {}
+    }
 
     pollDiagnostic(data.jobId);
   } catch (err) {
@@ -3356,9 +3372,12 @@ function showResults(r, jobId) {
       });
     }
     var legacy = r.multiPlatformRecommendations || {};
+    var consumerRecords = r.consumerAppVerification && typeof r.consumerAppVerification === 'object'
+      ? r.consumerAppVerification : {};
     var statusText = {
       not_configured: 'API not configured',
       failed: 'Measurement failed',
+      unmeasured: 'Not measured in this run',
       no_recommendation: 'No named recommendation established'
     };
     var subjectLaneKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -3377,8 +3396,12 @@ function showResults(r, jobId) {
     var cards = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var legacyNames = Array.isArray(legacy[base.key]) ? legacy[base.key].filter(Boolean) : [];
-      var recommendation = lane.recommendation || legacyNames[0] || '';
-      var state = recommendation ? 'recommended' : (lane.status || 'no_recommendation');
+      var consumerKey = base.key === 'openai' ? 'chatgpt' : base.key;
+      var consumerRecord = consumerRecords[consumerKey] || null;
+      var apiRecommendation = lane.recommendation || legacyNames[0] || '';
+      var recommendation = consumerRecord && consumerRecord.recommendation
+        ? consumerRecord.recommendation : apiRecommendation;
+      var state = recommendation ? 'recommended' : (lane.status || 'unmeasured');
       var recommendationKey = String(recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       var recommendsSubject = laneNamesSubject(recommendation);
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
@@ -3386,6 +3409,11 @@ function showResults(r, jobId) {
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(recommendation || statusText[state] || 'No named recommendation established') + '</div>'
         + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
+        + (consumerRecord
+          ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#72C99A;margin-top:7px;">Consumer-app record · user supplied</div>'
+            + (apiRecommendation && String(apiRecommendation).toLowerCase() !== String(recommendation).toLowerCase()
+              ? '<div style="font-size:10px;color:rgba(245,242,238,0.48);margin-top:5px;">API measurement: ' + esc(apiRecommendation) + '</div>' : '')
+          : '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">API measurement</div>')
         + '</div>';
     }).join('');
     var measuredQuestion = supplied.map(function(lane) {
@@ -3660,8 +3688,71 @@ function showResults(r, jobId) {
     return '';
   }
 
+  function buildConsumerVerificationBlock() {
+    var laneQuestion = (Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [])
+      .map(function(lane) { return lane && lane.query ? String(lane.query).trim() : ''; })
+      .filter(Boolean)[0];
+    var subjectType = bizData.subjectType || 'business';
+    var subjectWord = subjectType === 'product' ? 'product or service'
+      : subjectType === 'creator' ? 'creator or influencer'
+      : subjectType === 'personal_brand' ? 'person or personal brand'
+      : subjectType === 'organization' ? 'organization' : 'company';
+    var question = laneQuestion || ('Which one ' + subjectWord + ' would you recommend instead of ' + (bizData.name || 'this option')
+      + '? Briefly explain why.');
+    var records = r.consumerAppVerification && typeof r.consumerAppVerification === 'object'
+      ? r.consumerAppVerification : {};
+    var token = '';
+    try { token = localStorage.getItem('choive-verification-' + (jobId || '')) || ''; } catch (e) {}
+    var platforms = [
+      { key:'claude', label:'Claude', url:'https://claude.ai/new' },
+      { key:'chatgpt', label:'ChatGPT', url:'https://chatgpt.com/' },
+      { key:'perplexity', label:'Perplexity', url:'https://www.perplexity.ai/' },
+      { key:'gemini', label:'Gemini', url:'https://gemini.google.com/app' }
+    ];
+    var cards = platforms.map(function(platform) {
+      var record = records[platform.key];
+      if (record && record.recommendation) {
+        var date = '';
+        try { date = new Date(record.verifiedAt).toLocaleString(); } catch (e) {}
+        return '<div style="border:1px solid var(--rule);padding:18px;background:var(--paper-2);min-width:0;">'
+          + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;">'
+          + '<strong style="font-size:13px;color:var(--ink);">' + platform.label + '</strong>'
+          + '<span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#26734d;">Consumer-app record · user supplied</span></div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;">' + esc(record.recommendation) + '</div>'
+          + (date ? '<div style="font-size:10px;color:var(--muted);margin-top:7px;">Saved ' + esc(date) + '</div>' : '')
+          + '<details style="margin-top:12px;"><summary style="font-size:11px;font-weight:700;color:var(--body);cursor:pointer;">View pasted answer</summary>'
+          + '<div style="white-space:pre-wrap;font-size:12px;line-height:1.65;color:var(--body);margin-top:10px;max-height:280px;overflow:auto;">' + esc(record.transcript || '') + '</div></details>'
+          + '</div>';
+      }
+      if (!token) {
+        return '<div style="border:1px solid var(--rule);padding:18px;background:var(--paper-2);">'
+          + '<strong style="font-size:13px;color:var(--ink);">' + platform.label + '</strong>'
+          + '<div style="font-size:12px;line-height:1.6;color:var(--muted);margin-top:9px;">No consumer-app answer has been saved.</div></div>';
+      }
+      return '<div style="border:1px solid var(--rule);padding:18px;background:var(--paper-2);min-width:0;">'
+        + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;">'
+        + '<strong style="font-size:13px;color:var(--ink);">' + platform.label + '</strong>'
+        + '<a href="' + platform.url + '" target="_blank" rel="noopener" style="font-size:10px;font-weight:800;color:var(--ac);">Open app ↗</a></div>'
+        + '<textarea id="consumerTranscript-' + platform.key + '" rows="6" placeholder="Paste the complete answer from ' + platform.label + '" style="box-sizing:border-box;width:100%;resize:vertical;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:12px;font:12px/1.6 Inter,sans-serif;margin-bottom:10px;"></textarea>'
+        + '<label for="consumerName-' + platform.key + '" style="display:block;font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Recommended name shown in the answer</label>'
+        + '<input id="consumerName-' + platform.key + '" type="text" maxlength="180" placeholder="Confirm the exact name" style="box-sizing:border-box;width:100%;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:11px;font:13px Inter,sans-serif;margin-bottom:10px;" />'
+        + '<button type="button" onclick="saveConsumerVerification(\'' + platform.key + '\')" style="width:100%;border:0;background:var(--ink);color:var(--paper);padding:11px;font-size:11px;font-weight:800;cursor:pointer;">Save consumer-app record</button>'
+        + '<div id="consumerMsg-' + platform.key + '" style="font-size:11px;line-height:1.5;color:var(--muted);margin-top:8px;"></div></div>';
+    }).join('');
+    return '<section id="consumer-verification" style="padding:30px 28px;background:var(--paper);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Consumer-app verification</div>'
+      + '<h2 style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.3;letter-spacing:0;margin:0 0 9px;color:var(--ink);">Record what each public AI app actually answers.</h2>'
+      + '<p style="font-size:13px;line-height:1.7;color:var(--body);max-width:760px;margin:0 0 16px;">Use the same question in each app. Paste the complete answer and confirm the exact recommended name. CHOIVE stores each answer separately as a user-supplied consumer-app record, with its time. The saved answer is visible on the shared result page and does not change the CHOIVE score.</p>'
+      + '<div style="background:var(--paper-2);border-left:3px solid var(--ac);padding:14px 16px;margin-bottom:18px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Ask this exact question</div>'
+      + '<div id="consumerVerificationQuestion" style="font-size:13px;line-height:1.65;color:var(--ink);">' + esc(question) + '</div>'
+      + '<button type="button" onclick="copyConsumerQuestion()" style="border:1px solid var(--rule-d);background:transparent;color:var(--ink);padding:8px 12px;font-size:10px;font-weight:800;cursor:pointer;margin-top:10px;">Copy question</button></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;">' + cards + '</div></section>';
+  }
+
   zone.innerHTML =
     competitorBanner
+    + buildConsumerVerificationBlock()
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
       + '<a href="#report-verdict">Verdict</a><a href="#report-score">Score</a><a href="#report-competitors">Competitors</a>'
       + '<a href="#report-arena">AI Arena</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
@@ -4843,6 +4934,68 @@ function openForm(product) {
   window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
 }
 
+function copyConsumerQuestion() {
+  var element = document.getElementById('consumerVerificationQuestion');
+  var value = element ? element.textContent.trim() : '';
+  if (!value) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(value).then(function() {
+      var button = element.parentElement.querySelector('button');
+      if (button) {
+        var previous = button.textContent;
+        button.textContent = 'Copied';
+        setTimeout(function() { button.textContent = previous; }, 1400);
+      }
+    }).catch(function() {});
+  }
+}
+
+async function saveConsumerVerification(platform) {
+  var jobId = window.__choiveShareJobId || '';
+  var transcriptEl = document.getElementById('consumerTranscript-' + platform);
+  var nameEl = document.getElementById('consumerName-' + platform);
+  var messageEl = document.getElementById('consumerMsg-' + platform);
+  var questionEl = document.getElementById('consumerVerificationQuestion');
+  var transcript = transcriptEl ? transcriptEl.value.trim() : '';
+  var recommendation = nameEl ? nameEl.value.trim() : '';
+  var token = '';
+  try { token = localStorage.getItem('choive-verification-' + jobId) || ''; } catch (e) {}
+  if (transcript.length < 20 || !recommendation) {
+    if (messageEl) messageEl.textContent = 'Paste the complete answer and confirm the exact recommended name.';
+    return;
+  }
+  if (!token) {
+    if (messageEl) messageEl.textContent = 'Only the browser that started this diagnostic can save verification.';
+    return;
+  }
+  if (messageEl) messageEl.textContent = 'Saving...';
+  try {
+    var response = await fetch('/.netlify/functions/save-consumer-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId: jobId,
+        verificationToken: token,
+        platform: platform,
+        transcript: transcript,
+        recommendation: recommendation,
+        question: questionEl ? questionEl.textContent.trim() : ''
+      })
+    });
+    var data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'Could not save the answer');
+    window.__choiveLastResult.consumerAppVerification = window.__choiveLastResult.consumerAppVerification || {};
+    window.__choiveLastResult.consumerAppVerification[platform] = data.record;
+    showResults(window.__choiveLastResult, jobId);
+    setTimeout(function() {
+      var block = document.getElementById('consumer-verification');
+      if (block) block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  } catch (error) {
+    if (messageEl) messageEl.textContent = error.message || 'Could not save the answer.';
+  }
+}
+
 // getShareUrl is defined earlier — this duplicate removed
 
 async function fetchSharedResult(jobId) {
@@ -4860,6 +5013,7 @@ async function fetchSharedResult(jobId) {
         bizData.category = data.input.category || '';
         bizData.city     = data.input.city     || '';
         bizData.website  = data.input.website  || '';
+        bizData.subjectType = data.input.subjectType || 'business';
       }
       // Hide homepage sections so paid result shows cleanly
       var dI = document.getElementById('dI');
