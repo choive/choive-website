@@ -975,7 +975,7 @@ async function generateQueryPlan(n) {
 
   // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
   var geoHint = n.geoScope === 'global'
-    ? 'GEOGRAPHIC SCOPE: GLOBAL — this business sells to enterprise buyers worldwide. Do NOT anchor queries to the HQ city or country. Ask where buyers would search globally or in the regions their clients are concentrated (e.g. Europe, North America).'
+    ? 'GEOGRAPHIC SCOPE: GLOBAL — this business serves buyers worldwide. Do NOT anchor queries to the HQ city or country. Do not call the buyers enterprises unless the evidence explicitly says enterprise, large organization, procurement team, or tier-one customer.'
     : n.geoScope === 'regional'
     ? 'GEOGRAPHIC SCOPE: REGIONAL (' + (n.marketStr || 'Europe') + ') — this business serves buyers across a region, not just one country. Use the region name in queries, not the HQ city.'
     : n.geoScope === 'local'
@@ -994,6 +994,7 @@ async function generateQueryPlan(n) {
     + 'REPLACE any banned query with: "Which [vendor type] should [buyer type] choose in [market]?"\n\n'
     + 'YOUR TASK:\n'
     + '1. Determine whether this business is B2B (sells to other businesses), B2C (sells to individual consumers), or BOTH. Use ALL context — website, knowledge graph, competitor domains, description — not just the category label. Use "both" only when the evidence explicitly confirms separate business-customer and consumer offers. If one side is uncertain, choose only the confirmed side.\n\n'
+    + 'BUYER-SIZE ACCURACY: B2B describes who pays, not how large the buyer is. Never replace "businesses", "business owners", "teams", or a broad buyer description with "enterprises". Use enterprise language only when the supplied evidence explicitly establishes enterprise, large-organization, procurement, or tier-one buyers. Preserve a broad business audience when that is what the evidence says.\n\n'
     + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
     + 'FOR B2B — MANDATORY QUERY FORMAT:\n'
     + 'Every query must ask WHICH COMPANY/VENDOR/PROVIDER sells this type of product — NOT what software/platform does or enables. The query subject must be a SELLER TYPE, not a product function.\n'
