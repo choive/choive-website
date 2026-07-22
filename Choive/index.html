@@ -3296,6 +3296,27 @@ function showResults(r, jobId) {
         ? 'AI can identify this business, but it cannot find enough clear and trusted proof to recommend it reliably.'
         : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this business.';
 
+  function buildApiMeasurementSummary() {
+    var labels = { claude:'Claude', openai:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini' };
+    var lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+    if (!lanes.length) {
+      return 'No complete API recommendation measurement was available in this run. The CHOIVE score measures the business evidence separately.';
+    }
+    var named = [];
+    var unnamed = [];
+    lanes.forEach(function(lane) {
+      if (!lane || !labels[lane.key]) return;
+      if (lane.recommendation) named.push(labels[lane.key] + ' recommended ' + String(lane.recommendation));
+      else unnamed.push(labels[lane.key]);
+    });
+    var parts = [];
+    if (named.length) parts.push('API measurement: ' + named.join('; ') + '.');
+    if (unnamed.length) parts.push(unnamed.join(', ') + ' did not establish a named recommendation.');
+    parts.push('These API answers do not change the CHOIVE score, which measures Clarity, Trust, Difference, and Ease separately.');
+    return parts.join(' ');
+  }
+  var apiMeasurementSummary = buildApiMeasurementSummary();
+
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
   // 1. In your Stripe Payment Link settings, set the success URL to:
@@ -3534,7 +3555,7 @@ function showResults(r, jobId) {
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. The recorded platform recommendations are reported separately and are not changed by the CHOIVE score.'
-      : (r.summaryParagraph || r.signatureLine || '')) + '</div>'
+      : apiMeasurementSummary) + '</div>'
     + '</div>';
 
   // ── VERIFICATION BLOCK — provable progress since the last run ───────────
@@ -3644,11 +3665,11 @@ function showResults(r, jobId) {
       var storedHeadToHead = storedCompetitors.find(function(cp) {
         return cp && cp.name && String(cp.name).toLowerCase() === String(topComp).toLowerCase();
       });
-      list.push(storedHeadToHead || {
+      list.push(Object.assign({}, storedHeadToHead || {}, {
         name: topComp,
         queryContext: 'head-to-head',
-        evidence: topCompReason
-      });
+        evidence: (storedHeadToHead && storedHeadToHead.evidence) || topCompReason
+      }));
     }
     if (widerMarketDecision && widerMarketDecision.name
         && String(widerMarketDecision.name).toLowerCase() !== String(topComp).toLowerCase()) {
@@ -3656,11 +3677,11 @@ function showResults(r, jobId) {
         return cp && cp.name
           && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
       });
-      list.push(storedMarket || {
+      list.push(Object.assign({}, storedMarket || {}, {
         name: widerMarketDecision.name,
         queryContext: 'market-competitor',
-        evidence: widerMarketDecision.reason || ''
-      });
+        evidence: (storedMarket && storedMarket.evidence) || widerMarketDecision.reason || ''
+      }));
     }
     if (list.length === 0) return '';
     // FIX N — removed dead isPaid branch; this function is only called in the free path
@@ -4325,7 +4346,7 @@ function showResults(r, jobId) {
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + '<section class="pay-section" id="report-intelligence"><div class="pay-eyebrow">Business Intelligence</div>'
-      + '<div class="paid-narrative">' + esc(String(r.businessUnderstanding || r.summaryParagraph || '').split(/\n\s*\n/)[0].trim()) + '</div></section>'
+      + '<div class="paid-narrative">' + esc(String(r.businessUnderstanding || apiMeasurementSummary).split(/\n\s*\n/)[0].trim()) + '</div></section>'
       + '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">Evidence Narrative</div>'
       + '<div class="paid-narrative">' + esc(r.evidenceNarrative || '') + '</div></section>'
       + buildCustomerQuestionReport()
