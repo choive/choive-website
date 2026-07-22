@@ -2715,9 +2715,9 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
 <!-- THE NUMBER — full bleed urgency -->
 <section class="number-section reveal">
   <div class="number-inner">
-    <div class="number-big">37<span class="number-pct">%</span></div>
-    <div class="number-label">of purchase decisions now begin with an AI query.<br>Already past 50% for service and local business searches.</div>
-    <div class="number-sub">Every business that doesn't know whether AI recommends them is already losing customers they will never see, never count, and never recover. The loss is invisible. The damage is real.</div>
+    <div class="number-big">One<span class="number-pct"> answer</span></div>
+    <div class="number-label">An AI buyer question can place one business first while leaving another business unmentioned.</div>
+    <div class="number-sub">CHOIVE records that answer separately on Claude, ChatGPT, Perplexity, and Gemini, then checks the public evidence behind the result.</div>
     <div class="number-platforms">
       <span>Measured across</span>
       <strong>ChatGPT</strong>
@@ -2963,6 +2963,10 @@ async function startDiagnostic(biz) {
       try { localStorage.setItem('choive-verification-' + data.jobId, data.verificationToken); } catch (e) {}
     }
 
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', '/?jobId=' + encodeURIComponent(data.jobId));
+    }
+
     pollDiagnostic(data.jobId);
   } catch (err) {
     showError(err.message);
@@ -2972,7 +2976,8 @@ async function startDiagnostic(biz) {
 // ── POLL ──────────────────────────────────────────────────────────────────────
 function pollDiagnostic(jobId) {
   let attempts = 0;
-  const maxAttempts = 120;
+  let consecutiveFailures = 0;
+  const maxAttempts = 300;
   async function checkStatus() {
     attempts++;
     if (attempts > maxAttempts) {
@@ -2984,6 +2989,7 @@ function pollDiagnostic(jobId) {
       const res = await fetch(GET_API + '?jobId=' + encodeURIComponent(jobId));
       if (!res.ok) throw new Error('Poll failed: HTTP ' + res.status);
       const data = await res.json();
+      consecutiveFailures = 0;
       console.log('[CHOIVE poll response]', data);
       updateEngineStage(data.status);
       if (data.status === 'complete') {
@@ -3007,8 +3013,11 @@ function pollDiagnostic(jobId) {
       }
     } catch (err) {
       console.error('[CHOIVE poll error]', err);
-      if (pollTimer) clearInterval(pollTimer);
-      showError('Connection error. Please try again.');
+      consecutiveFailures++;
+      if (consecutiveFailures >= 5) {
+        if (pollTimer) clearInterval(pollTimer);
+        showError('The result could not be checked after five attempts. The diagnostic may still be running. Reopen this result link in a few minutes.');
+      }
     }
   }
   checkStatus();
@@ -3045,7 +3054,7 @@ function buildScoreLabels(r) {
   // Recommendation gap comes from recorded platform answers, never the CHOIVE score.
   const lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
   const cleanName = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const subjectName = cleanName(r.businessName || r.name);
+  const subjectName = cleanName((typeof bizData !== 'undefined' && bizData.name) || r.businessName || r.name);
   const measured = lanes.filter(lane => lane && (lane.recommendation || lane.status === 'complete' || lane.status === 'no_recommendation'));
   const otherRecommendations = measured.filter(lane => {
     const candidate = cleanName(lane.recommendation);
@@ -3444,15 +3453,21 @@ function showResults(r, jobId) {
       return 'No complete API recommendation measurement was available in this run. The CHOIVE score measures the business evidence separately.';
     }
     var named = [];
-    var unnamed = [];
+    var explicitNone = [];
+    var failed = [];
+    var unmeasured = [];
     lanes.forEach(function(lane) {
       if (!lane || !labels[lane.key]) return;
       if (lane.recommendation) named.push(labels[lane.key] + ' recommended ' + String(lane.recommendation));
-      else unnamed.push(labels[lane.key]);
+      else if (lane.status === 'no_recommendation') explicitNone.push(labels[lane.key]);
+      else if (lane.status === 'failed') failed.push(labels[lane.key]);
+      else unmeasured.push(labels[lane.key]);
     });
     var parts = [];
     if (named.length) parts.push('API measurement: ' + named.join('; ') + '.');
-    if (unnamed.length) parts.push(unnamed.join(', ') + ' did not establish a named recommendation.');
+    if (explicitNone.length) parts.push(explicitNone.join(', ') + ' explicitly returned no named recommendation.');
+    if (failed.length) parts.push(failed.join(', ') + ' could not complete a verifiable recommendation measurement.');
+    if (unmeasured.length) parts.push(unmeasured.join(', ') + ' was not measured in this run.');
     parts.push('These API answers do not change the CHOIVE score, which measures Clarity, Trust, Difference, and Ease separately.');
     return parts.join(' ');
   }
@@ -3569,7 +3584,7 @@ function showResults(r, jobId) {
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
-        + esc(recommendation || statusText[state] || 'No named recommendation established') + '</div>'
+        + esc(recommendation || statusText[state] || 'Measurement status unavailable') + '</div>'
         + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
         + (consumerRecord
           ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#72C99A;margin-top:7px;">Consumer-app record · user supplied</div>'
@@ -4541,11 +4556,11 @@ function showResults(r, jobId) {
     var laneRows = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var recommendation = lane.recommendation || '';
-      var status = recommendation ? 'Completed' : (lane.status === 'failed'
-        ? 'Failed'
-        : lane.status === 'not_configured'
-          ? 'Not configured'
-          : 'No named recommendation');
+      var status = recommendation ? 'Completed'
+        : lane.status === 'no_recommendation' ? 'Explicitly returned no named recommendation'
+        : lane.status === 'failed' ? 'Measurement failed'
+        : lane.status === 'not_configured' ? 'API not configured'
+        : 'Not measured in this run';
       if (recommendation || lane.status === 'complete' || lane.status === 'no_recommendation') completed++;
       var query = String(lane.query || '').trim();
       return '<div class="integrity-row"><div class="integrity-row-label">' + base.label + '</div>'
@@ -4557,7 +4572,9 @@ function showResults(r, jobId) {
     var evidenceCount = ['clarity','trust','difference','ease'].filter(function(key) {
       return !!(r.pillars && r.pillars[key] && String(r.pillars[key].evidence || '').trim());
     }).length;
-    var verifiedRoles = (topComp ? 1 : 0) + (widerMarketDecision && widerMarketDecision.name ? 1 : 0);
+    var roleDirectKey = String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var roleMarketKey = String(widerMarketDecision && widerMarketDecision.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var verifiedRoles = (roleDirectKey ? 1 : 0) + (roleMarketKey && roleMarketKey !== roleDirectKey ? 1 : 0);
     var confidence = completed === 4 && evidenceCount === 4 && verifiedRoles > 0
       ? 'High coverage'
       : completed >= 3 && evidenceCount >= 3
@@ -5326,8 +5343,21 @@ async function saveConsumerVerification(platform) {
 
 async function fetchSharedResult(jobId) {
   try {
-    var res  = await fetch('/.netlify/functions/get-result?jobId=' + jobId);
+    var res  = await fetch('/.netlify/functions/get-result?jobId=' + encodeURIComponent(jobId));
     var data = await res.json();
+    if (data && ['queued', 'collecting_evidence', 'scoring'].indexOf(data.status) !== -1) {
+      var inputPanel = document.getElementById('dI');
+      var stagePanel = document.getElementById('dS');
+      if (inputPanel) inputPanel.style.display = 'none';
+      if (stagePanel) stagePanel.classList.add('active');
+      updateEngineStage(data.status);
+      pollDiagnostic(jobId);
+      return;
+    }
+    if (data && data.status === 'failed') {
+      showError((data.error && data.error.message) || data.error || 'Diagnostic failed. Please try again.');
+      return;
+    }
     if (data && data.result) {
       // Honour paid status returned from backend
       if (data.paid === true || data.result.paid === true) {
