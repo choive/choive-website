@@ -50,6 +50,10 @@ function validateInput(body) {
   if (!validPublicWebsite((body || {}).website)) {
     return { valid: false, error: 'Website must be a public http(s) address' };
   }
+  var subjectType = String((body || {}).subjectType || 'business');
+  if (['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(subjectType) === -1) {
+    return { valid: false, error: 'Invalid subject type' };
+  }
   return { valid: true };
 }
 
