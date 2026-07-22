@@ -16,7 +16,7 @@ const corsHeaders = {
 // Simple in-memory store. Resets on each cold start (acceptable for Netlify
 // functions — the goal is preventing obvious abuse, not perfect enforcement).
 // Limit: 3 free diagnostics per IP per hour.
-const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_MAX = Math.max(1, parseInt(process.env.RATE_HOURLY_CAP || '3', 10) || 3);
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const ipTracker = new Map();
 
