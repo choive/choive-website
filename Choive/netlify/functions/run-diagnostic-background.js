@@ -1654,6 +1654,7 @@ exports.handler = async function (event) {
       var geminiResearchRecs = measuredGemini && measuredGemini.competitorRecommendation
         ? [measuredGemini.competitorRecommendation] : [];
       var researchedRecs = (finalResult['competitors'] || []).map(function(comp) { return comp && comp.name; }).filter(Boolean);
+      var verifiedGlobalBenchmark = finalResult['competitorDecision'] && finalResult['competitorDecision'].globalBenchmark;
       var orderedComparisonCandidates = [];
       claudeRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Claude' }); });
       openaiRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'ChatGPT measurement (OpenAI API)' }); });
@@ -1663,11 +1664,13 @@ exports.handler = async function (event) {
       perplexityResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Perplexity competitor research' }); });
       geminiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Gemini competitor research' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
+      if (verifiedGlobalBenchmark) orderedComparisonCandidates.push({ name: verifiedGlobalBenchmark, source: 'Verified global benchmark research' });
       var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      var verifiedHeadToHeadKey = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       var candidateMap = {};
       orderedComparisonCandidates.forEach(function(candidate) {
         var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!key || key === subjectComparisonKey || isSubjectRecommendation(candidate.name) || isPlatformName(candidate.name)) return;
+        if (!key || key === subjectComparisonKey || key === verifiedHeadToHeadKey || isSubjectRecommendation(candidate.name) || isPlatformName(candidate.name)) return;
         if (!candidateMap[key]) candidateMap[key] = { name: candidate.name, sources: [] };
         if (candidateMap[key].sources.indexOf(candidate.source) === -1) candidateMap[key].sources.push(candidate.source);
       });
