@@ -14,6 +14,9 @@ exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
   }
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
+  }
 
   const sessionId = event.queryStringParameters?.session_id;
 
