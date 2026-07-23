@@ -59,12 +59,8 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
     if (!res.ok) {
       var errText = await res.text().catch(function() { return ''; });
       console.warn('[ai-simulation] API returned', res.status, errText.slice(0, 200));
-      // Search tool unavailable/rejected \u2014 fail soft to a plain completion
-      // rather than losing the query entirely.
-      if (useSearch) {
-        console.warn('[ai-simulation] retrying without web_search');
-        return runQuery(systemPrompt, userQuery, false);
-      }
+      // A grounded measurement must remain grounded. Retrying without search
+      // would silently turn a provider failure into a different measurement.
       return null;
     }
     var data = await res.json();
@@ -161,6 +157,16 @@ function businessMentioned(response, name) {
     if (cand.indexOf(' ') !== -1 && respNoSpace.indexOf(cand.replace(/ /g, '')) !== -1) return true;
     // 3. Stemmed phrase match — singular/plural tolerance
     if (respStemmed.indexOf(' ' + candStemmed + ' ') !== -1) return true;
+  }
+  // Established compact forms such as "3SS" must count for names such as
+  // "3 Screen Solutions". Restrict this to digit-bearing multi-word names so
+  // ordinary initials do not create broad false positives.
+  var nameTokens = normalizeForMatch(name).split(' ').filter(Boolean);
+  if (nameTokens.length >= 3 && nameTokens.some(function(token) { return /\d/.test(token); })) {
+    var acronym = nameTokens.map(function(token) {
+      return /^\d+$/.test(token) ? token : token.charAt(0);
+    }).join('');
+    if (acronym.length >= 3 && respNoSpace.indexOf(acronym) !== -1) return true;
   }
   return false;
 }
@@ -347,7 +353,8 @@ function brandedReplacementPrompt(n, officialWebsite, useWebSearch) {
   // that replaces only one half of the actual offering.
   var category = n.catClean;
   var identityContext = n.name + (officialWebsite ? ' (' + officialWebsite + ')' : '')
-    + (category ? ' operates in the category of ' + category : '') + '. ';
+    + (category ? ' operates in the category of ' + category : '')
+    + (n.marketDescription ? ' and serves ' + n.marketDescription : '') + '. ';
   var searchInstruction = useWebSearch
     ? 'Search current public sources before answering. '
     : '';
@@ -358,11 +365,12 @@ function brandedReplacementPrompt(n, officialWebsite, useWebSearch) {
     system: 'Answer as a buyer-facing AI assistant. ' + searchInstruction
       + 'Use the supplied official website to identify the subject correctly. '
       + 'Name one real ' + kind + ' that is a direct purchasing substitute: it must provide the same core type of offering to the same kind of buyer. '
+      + 'The recommendation must be genuinely available to buyers in the stated geographic market. A company outside that serviceable market is not a valid replacement. '
       + 'If the category names two distinct buyer groups or operating arenas, the substitute must credibly cover both. If no single option covers both, say that no complete one-company replacement was established. '
       + 'Do not choose an option merely because it serves an adjacent industry, supplies one component, or integrates with the subject. '
       + 'If current evidence does not establish a credible direct alternative, say so rather than guessing.',
     query: identityContext + 'Which one ' + kind + ' would you recommend instead of ' + n.name
-      + ' for this same type of offering? Briefly explain why.'
+      + ' for this same type of offering in the same geographic market? Briefly explain why.'
   };
 }
 
@@ -558,6 +566,32 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
         intent: 'A buyer asking for one recommendation without an assumed customer segment',
         system: 'Search current public sources. Recommend one company only when its current offer and customer fit are confirmed. If the buyer type is necessary to decide, say that no single recommendation can be established without it.' + hint,
         query: 'Which company would you recommend for ' + catClean + locationStr + '? Name one only if the available evidence establishes the customer fit.'
+      }
+    ];
+  }
+
+  // A local place or in-person service is chosen or visited, not "bought".
+  // Keep this deterministic fallback natural even when query planning is
+  // unavailable.
+  if (geoScope === 'local') {
+    return [
+      {
+        label: 'Local discovery',
+        intent: 'A person discovering relevant local options',
+        system: 'Search current public sources. Name only real, active places or providers that people can actually choose in the stated local area.' + hint,
+        query: 'Which ' + catClean + ' options should someone consider' + locationStr + '? Name 3-5 specific places or providers and explain the fit.'
+      },
+      {
+        label: 'Local comparison',
+        intent: 'A person comparing local options',
+        system: 'Search current public sources. Compare only real, active local places or providers with confirmed availability in the stated area.' + hint,
+        query: 'What are the leading ' + catClean + ' options' + locationStr + ', and how do they differ?'
+      },
+      {
+        label: 'Local recommendation',
+        intent: 'A person choosing one local option',
+        system: 'Search current public sources. Recommend one real, active local place or provider only when its availability and fit are confirmed.' + hint,
+        query: 'Which ' + catClean + ' would you recommend' + locationStr + '? Give one name and explain why.'
       }
     ];
   }
@@ -848,6 +882,8 @@ function normalizeSimInput(input) {
   var customerQuestion  = String(input.customerQuestion || '').trim().slice(0, 500);
   var subjectType       = ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(String(input.subjectType || 'business')) !== -1
     ? String(input.subjectType || 'business') : 'business';
+  var selectedReach     = ['local', 'regional', 'national', 'international', 'global'].indexOf(String(input.marketReach || '').toLowerCase()) !== -1
+    ? String(input.marketReach).toLowerCase() : '';
 
   if (!name || !category) {
     throw new Error('Missing name or category');
@@ -901,7 +937,8 @@ function normalizeSimInput(input) {
   );
   var isRegional = /europe|nordic|dach|mena|apac|latam|south asia|north america|latin america/i.test(scopeCombined) && !isGlobalB2B;
 
-  if (isLocalService) geoScope = 'local';
+  if (selectedReach) geoScope = selectedReach;
+  else if (isLocalService) geoScope = 'local';
   else if (isGlobalB2B) geoScope = 'global';
   else if (isRegional) geoScope = 'regional';
   else if (businessModel === 'farm_brand_dtc') geoScope = 'national';
@@ -923,13 +960,20 @@ function normalizeSimInput(input) {
   var marketStr = '';
   if (geoScope === 'local') marketStr = city;
   else if (geoScope === 'national') marketStr = countryOrMarket;
-  else if (geoScope === 'regional') marketStr = regionMap[cityKey] || 'Europe';
+  else if (geoScope === 'regional') marketStr = 'the region around ' + city;
+  else if (geoScope === 'international') marketStr = 'the international markets this provider serves';
   else if (geoScope === 'global') marketStr = ''; // no location anchor for global B2B
+  var marketDescription = geoScope === 'local' ? city
+    : geoScope === 'regional' ? 'the region around ' + city
+    : geoScope === 'national' ? countryOrMarket
+    : geoScope === 'international' ? 'customers across several countries'
+    : 'customers worldwide';
 
   return {
     name: name, category: category, city: city, catClean: catClean,
     description: description, businessModel: businessModel,
-    geoScope: geoScope, marketStr: marketStr,
+    geoScope: geoScope, marketStr: marketStr, marketReach: selectedReach || geoScope,
+    marketDescription: marketDescription,
     websiteContext: websiteContext, kgText: kgText,
     competitorDomains: competitorDomains, knownCompetitors: knownCompetitors,
     customerQuestion: customerQuestion,
@@ -970,16 +1014,29 @@ async function generateQueryPlan(n) {
   // Pass geoScope and marketStr so generateQueryPlan knows the buyer scope
   var geoHint = n.geoScope === 'global'
     ? 'GEOGRAPHIC SCOPE: GLOBAL — this business serves buyers worldwide. Do NOT anchor queries to the HQ city or country. Do not call the buyers enterprises unless the evidence explicitly says enterprise, large organization, procurement team, or tier-one customer.'
+    : n.geoScope === 'international'
+    ? 'GEOGRAPHIC SCOPE: INTERNATIONAL — this offer is available across several countries. Recommend only providers with confirmed international availability; do not restrict the questions to the headquarters country.'
     : n.geoScope === 'regional'
     ? 'GEOGRAPHIC SCOPE: REGIONAL (' + (n.marketStr || 'Europe') + ') — this business serves buyers across a region, not just one country. Use the region name in queries, not the HQ city.'
     : n.geoScope === 'local'
     ? 'GEOGRAPHIC SCOPE: LOCAL — this business serves buyers in its city. Anchor all queries to ' + n.city + '.'
     : 'GEOGRAPHIC SCOPE: NATIONAL — this business serves buyers in ' + (n.city || 'its country') + '. Anchor queries to the country, not a specific city.';
 
+  var subjectPlanningRules = n.subjectType === 'creator'
+    ? 'SUBJECT-TYPE RULES — CREATOR OR INFLUENCER (override the business templates below): Generate (1) an unbranded discovery question naming active creators in the evidenced topic and audience, (2) a comparison question between creators with that same topic and audience, and (3) one direct creator recommendation. Use follow, watch, learn from, invite, book, sponsor, or collaborate with only when the evidence supports that intent. Never call a creator a company, vendor, product, or organization. Never use buy-or-license wording.'
+    : n.subjectType === 'personal_brand'
+    ? 'SUBJECT-TYPE RULES — PERSON OR PERSONAL BRAND (override the business templates below): Generate discovery, comparison, and direct-recommendation questions about real active people with the same evidenced expertise, role, and audience. Never call the person a company, vendor, product, or organization. Never use buy-or-license wording.'
+    : n.subjectType === 'organization'
+    ? 'SUBJECT-TYPE RULES — ORGANIZATION (override the commercial business templates when no purchase is involved): Generate discovery, comparison, and direct-recommendation questions about active organizations with the same evidenced mission, activity, audience, and geographic reach. Use support, join, visit, work with, or choose only when supported by the evidence. Never force buying or licensing language.'
+    : n.subjectType === 'product'
+    ? 'SUBJECT-TYPE RULES — PRODUCT OR SERVICE: Questions must name and compare specific current products or services, not only their parent companies. Use buying, subscribing, booking, or licensing language only when it matches the evidenced offer.'
+    : 'SUBJECT-TYPE RULES — BUSINESS OR COMPANY: Generate buyer questions that identify, compare, and recommend real companies selling the evidenced offer.';
+
   var prompt =
     'You are designing AI simulation queries for a competitive intelligence tool.\n\n'
     + 'BUSINESS CONTEXT:\n' + contextParts.join('\n') + '\n\n'
     + geoHint + '\n\n'
+    + subjectPlanningRules + '\n\n'
     + 'ABSOLUTE BAN — APPLY BEFORE RETURNING:\n'
     + 'If ANY of your 3 queries matches these patterns, DELETE it and write a vendor-discovery query:\n'
     + '  ✗ Compares building in-house vs licensing externally (develop vs license, eigene Plattform entwickeln oder lizenzieren, build vs buy)\n'
@@ -990,7 +1047,7 @@ async function generateQueryPlan(n) {
     + '1. Determine whether this business is B2B (sells to other businesses), B2C (sells to individual consumers), or BOTH. Use ALL context — website, knowledge graph, competitor domains, description — not just the category label. Use "both" only when the evidence explicitly confirms separate business-customer and consumer offers. If one side is uncertain, choose only the confirmed side.\n\n'
     + 'BUYER-SIZE ACCURACY: B2B describes who pays, not how large the buyer is. Never replace "businesses", "business owners", "teams", or a broad buyer description with "enterprises". Use enterprise language only when the supplied evidence explicitly establishes enterprise, large-organization, procurement, or tier-one buyers. Preserve a broad business audience when that is what the evidence says.\n\n'
     + 'PURCHASE-PURPOSE ACCURACY: Preserve exactly what the subject helps its customers evaluate, buy, monitor, or improve. Never invent a different purchasing purpose from nearby words. In particular, a tool that measures how AI platforms recommend businesses must not be reframed as a tool for choosing which AI platform to license. Use that same evidence-based discipline for every category.\n\n'
-    + '2. Generate 3 queries a real buyer would type into an AI assistant when looking to BUY OR LICENSE the type of product/service this business sells.\n\n'
+    + '2. Generate 3 queries a real person or buyer would type into an AI assistant when discovering, comparing, and choosing this exact subject type. For a business, product, or commercial service, use buy, book, subscribe, hire, or license only when the evidence supports it. For creators, people, and non-commercial organizations, follow the subject-type rules above instead.\n\n'
     + 'FOR B2B — MANDATORY QUERY FORMAT:\n'
     + 'Every query must ask WHICH COMPANY/VENDOR/PROVIDER sells this type of product — NOT what software/platform does or enables. The query subject must be a SELLER TYPE, not a product function.\n'
     + 'REQUIRED: each B2B query must contain at least one of: vendor, vendors, provider, providers, company, companies, supplier, suppliers, Anbieter, Unternehmen, or equivalent procurement word in the query language.\n'
@@ -1123,7 +1180,23 @@ async function runBeforeSimulation(input, useWebSearch) {
     console.log('[simulation] Query plan: buyerType=' + queryPlan.buyerType + ' — ' + (queryPlan.reasoning || ''));
     // System prompt omits "with live web search" when search is disabled,
     // so the model answers from training rather than spinning up a search round-trip.
-    var systemPromptBase = queryPlan.buyerType === 'b2b'
+    var systemPromptBase = n.subjectType === 'creator'
+      ? (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real, active creators or influencers whose current work, topic, audience, and geographic relevance match the question.'
+          : 'You are a helpful AI assistant. Name only real, active creators or influencers whose work, topic, audience, and geographic relevance match the question.')
+      : n.subjectType === 'personal_brand'
+      ? (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real, active people with confirmed expertise, role, audience, and geographic relevance.'
+          : 'You are a helpful AI assistant. Name only real, active people with confirmed expertise, role, audience, and geographic relevance.')
+      : n.subjectType === 'organization'
+      ? (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real, active organizations with the same mission, activity, audience, and geographic relevance.'
+          : 'You are a helpful AI assistant. Name only real, active organizations with the same mission, activity, audience, and geographic relevance.')
+      : n.subjectType === 'product'
+      ? (useWebSearch
+          ? 'You are a helpful AI assistant with live web search. Search before answering. Name specific current products or services and verify their availability in the stated market.'
+          : 'You are a helpful AI assistant. Name specific current products or services that fit the question and stated market.')
+      : queryPlan.buyerType === 'b2b'
       ? (useWebSearch
           ? 'You are a helpful AI assistant with live web search. Search before answering. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.'
           : 'You are a helpful AI assistant. Name only real B2B vendors, software providers, or platform companies — not consumer products or retail brands. Be specific and name real companies.')
@@ -1188,7 +1261,7 @@ async function runBeforeSimulation(input, useWebSearch) {
   // enterprise AI readiness). Organic means the business name is absent; it
   // does not mean removing the buyer's problem and purchasing context.
   var buyerQueries = queryPlanUsed ? rawQueries : await generateBuyerQueries(n, rawQueries);
-  if (n.customerQuestion) {
+  if (n.customerQuestion && !businessMentioned(n.customerQuestion, n.name)) {
     buyerQueries[0] = {
       label: 'Customer-provided question',
       intent: 'The exact buyer question supplied by the business',
@@ -1196,6 +1269,8 @@ async function runBeforeSimulation(input, useWebSearch) {
       query: n.customerQuestion,
       preserveLanguage: true
     };
+  } else if (n.customerQuestion) {
+    console.warn('[simulation] customer-provided question names the subject; kept out of unbranded visibility measurement');
   }
   var loc = await applyMarketLanguage(buyerQueries, n.city, input.language);
   var results = await runQuerySet(loc.queries, n.name, useWebSearch);
@@ -1243,7 +1318,7 @@ async function runDirectCompetitorQuestion(input, useWebSearch) {
 async function buildFallbackMeasurementQueries(input) {
   var n = normalizeSimInput(input);
   var queries = buildQueries(n.catClean, n.city, n.name, n.businessModel, n.geoScope, n.marketStr, n.subjectType);
-  if (n.customerQuestion) {
+  if (n.customerQuestion && !businessMentioned(n.customerQuestion, n.name)) {
     queries[0] = {
       label: 'Customer-provided question',
       intent: 'The exact buyer question supplied by the business',
