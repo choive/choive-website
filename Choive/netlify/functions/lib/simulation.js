@@ -492,6 +492,29 @@ function buildQueries(catClean, city, name, businessModel, geoScope, marketStr, 
     ];
   }
 
+  if (businessModel === 'professional_service') {
+    return [
+      {
+        label: 'Discovery query',
+        intent: 'A client searching for qualified professional help',
+        system: 'Search current public sources. Recommend real, active professionals or firms only when their expertise, service area, and client fit are confirmed.' + hint,
+        query: 'Which professionals or firms lead the market for ' + catClean + locationStr + '? Name 3-5 qualified options and explain the evidence for each.'
+      },
+      {
+        label: 'Comparison query',
+        intent: 'A client comparing professional providers',
+        system: 'Use current independent evidence, professional credentials, relevant experience, and verified client outcomes. Do not rank a provider from marketing claims alone.' + hint,
+        query: 'Which providers of ' + catClean + locationStr + ' have the strongest verified expertise and client record? Compare the best options.'
+      },
+      {
+        label: 'Direct recommendation',
+        intent: 'A client ready to choose one professional provider',
+        system: 'Recommend one real, active professional or firm only when the available evidence establishes expertise, location fit, and suitability.' + hint,
+        query: 'Which ' + catClean + ' would you recommend' + forStr + '? Give one name and explain the verified reasons.'
+      }
+    ];
+  }
+
   // B2B queries — correct for software platforms, SaaS, enterprise solutions,
   // middleware, API providers, and any business that sells to other businesses.
   // Uses procurement/vendor-selection language instead of retail "buy" language.
@@ -712,19 +735,19 @@ function buildAfterQueries(catClean, city, name, differentiator, trustSignal) {
   ];
 }
 
-// One consumer-style answer per question keeps attribution literal and costs
-// predictable. Repeat diagnostics are separate measurements, not hidden
-// duplicate calls inside one result.
-var GROUND_TRUTH_SAMPLES = 1;
+// Multiple independent answers reduce the chance that a single stochastic
+// response is mistaken for a stable provider pattern. Keep the value bounded
+// because each sample performs a grounded provider request.
+var samplesForQuestion = require('./measurement-policy').samplesForQuestion;
 
 async function runQuerySet(queries, name, useSearch) {
-  var sampleCount = useSearch ? GROUND_TRUTH_SAMPLES : 1;
   var directRecommendationInstruction = '\n\nAt the very end of your answer, add exactly one separate line in this format: TOP_RECOMMENDATION: Company Name. Use the single company you genuinely recommend for this exact question. If the subject business is your top choice, use its exact name. If you cannot establish one recommendation, write TOP_RECOMMENDATION: NONE.';
 
   // Fire every (query \u00d7 sample) combination in one parallel batch.
   var jobs = [];
   queries.forEach(function(q, qi) {
-    for (var s = 0; s < sampleCount; s++) jobs.push({ qi: qi, q: q });
+    var expected = samplesForQuestion(q, useSearch);
+    for (var s = 0; s < expected; s++) jobs.push({ qi: qi, q: q });
   });
   var settled = await Promise.allSettled(
     jobs.map(function(j) {
@@ -761,7 +784,7 @@ async function runQuerySet(queries, name, useSearch) {
       response: shown,
       appeared: appearances.length > 0,
       sampleCount: responses.length,
-      expectedSamples: sampleCount,
+      expectedSamples: samplesForQuestion(q, useSearch),
       appearedCount: appearances.length,
       // Full raw corpus \u2014 every independent response, not just the shown
       // one \u2014 so competitor frequency can be counted across ALL of them,
@@ -909,12 +932,15 @@ function normalizeSimInput(input) {
   var hasB2BSignal = /\b(b2b|wholesale|wholesaler|trade customers?|business customers?|business clients?|corporate clients?|enterprise customers?|distributor|supplier.*business|business.*supplier|for businesses|for operators?|for enterprises?|for broadcasters?|for carriers?|for telecoms?|for oems?|for manufacturers?|middleware|white.label|api platform|sdk|enterprise software)\b/i.test(combined);
   var hasB2CSignal = /\b(b2c|direct.to.consumer|direct to consumer|dtc|individual customers?|individual buyers?|individual clients?|private clients?|for individuals|consumers?|retail customers?|consumer brand)\b/i.test(combined);
   var isLocalConsumerService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|bakery/i.test(catClean);
+  var isProfessionalService = /law firm|legal service|lawyer|attorney|solicitor|accountant|accounting|architect|consulting|consultancy|financial adviser|financial advisor|therapist|psychologist|medical practice|doctor|dentist/i.test(catClean);
   var isFarmDirect = /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined)
     || (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined));
   if (hasB2BSignal && hasB2CSignal) {
     businessModel = 'mixed';
   } else if (isFarmDirect) {
     businessModel = 'farm_brand_dtc';
+  } else if (isProfessionalService) {
+    businessModel = 'professional_service';
   } else if (hasB2BSignal || /\bfor\s+(pay.tv|msso?|mvpd|isp|developers?|agencies|corporations?)\b/i.test(combined)
     || /\b(operator\s+platform|headend|backend\s+platform)\b/i.test(combined)) {
     businessModel = 'b2b';
