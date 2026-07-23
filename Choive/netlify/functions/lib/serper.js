@@ -229,9 +229,24 @@ function meaningfulCategoryTokens(category) {
   var generic = { b2b:1, b2c:1, business:1, company:1, service:1, services:1,
     platform:1, provider:1, online:1, direct:1, consumer:1, global:1,
     national:1, local:1, regional:1, international:1 };
-  return normalizeWords(category).split(' ').filter(function(token) {
+  var tokens = normalizeWords(category).split(' ').filter(function(token) {
     return token.length >= 4 && !generic[token];
   });
+  var joined = ' ' + tokens.join(' ') + ' ';
+  var expansions = [
+    { test:/\b(beef|meat|angus|steak)\b/, add:['beef','meat','fleisch','rind','rindfleisch','steak','angus','metzger'] },
+    { test:/\b(software|saas|middleware|cloud)\b/, add:['software','saas','middleware','cloud','platform','plattform'] },
+    { test:/\b(restaurant|dining|cafe|food)\b/, add:['restaurant','dining','cafe','food','essen','gastronomie'] },
+    { test:/\b(beauty|cosmetic|skincare|makeup)\b/, add:['beauty','cosmetic','cosmetics','kosmetik','skincare','hautpflege','makeup'] },
+    { test:/\b(fitness|gym|sport)\b/, add:['fitness','gym','sport','studio','training'] },
+    { test:/\b(fashion|apparel|clothing)\b/, add:['fashion','apparel','clothing','mode','kleidung'] },
+    { test:/\b(legal|law|lawyer)\b/, add:['legal','law','lawyer','anwalt','kanzlei','recht'] },
+    { test:/\b(hotel|hospitality|accommodation)\b/, add:['hotel','hospitality','accommodation','unterkunft'] }
+  ];
+  expansions.forEach(function(group) {
+    if (group.test.test(joined)) tokens = tokens.concat(group.add);
+  });
+  return tokens.filter(function(token, index) { return tokens.indexOf(token) === index; });
 }
 
 function itemNamesSubject(item, businessName, officialDomain) {
@@ -266,7 +281,8 @@ function buildSummaries(queryResults, competitors, socialSignals, businessName, 
     var qr = queryResults[i];
     var items = qr.items || [];
     if (qr.signalType === 'reputation') {
-      items = subjectRelevantItems(items, businessName, category, officialDomain, true);
+      items = subjectRelevantItems(items, businessName, category, officialDomain, true)
+        .filter(function(item) { return normalizeUrl(item.link || '') !== officialDomain; });
     } else if (qr.signalType === 'reviews') {
       items = subjectRelevantItems(items, businessName, category, officialDomain, false);
     }
@@ -332,7 +348,19 @@ async function verifyRecommendationEntity(name, category, market) {
       return (' ' + text + ' ').indexOf(' ' + token + ' ') !== -1;
     });
   });
-  var sources = categoryMatches.slice(0, 3).map(function(item) { return item.link || ''; }).filter(Boolean);
+  var candidateBrandKey = candidateCompact.replace(/(com|de|net|org|io|ai)$/i, '');
+  var nonOfficialDomains = DIRECTORY_DOMAINS.concat(Object.keys(SOCIAL_DOMAINS).map(function(key) { return SOCIAL_DOMAINS[key]; }));
+  var officialMatches = identityMatches.filter(function(item) {
+    var domain = normalizeUrl(item.link || '');
+    if (!domain || nonOfficialDomains.some(function(excluded) { return domain.indexOf(excluded) !== -1; })) return false;
+    var domainKey = domain.split('.')[0].replace(/[^a-z0-9]/g, '');
+    return candidateBrandKey.length >= 4
+      && (domainKey.indexOf(candidateBrandKey) !== -1 || candidateBrandKey.indexOf(domainKey) !== -1);
+  });
+  var supportingMatches = categoryMatches.slice().sort(function(a, b) {
+    return (officialMatches.indexOf(b) !== -1 ? 1 : 0) - (officialMatches.indexOf(a) !== -1 ? 1 : 0);
+  });
+  var sources = supportingMatches.slice(0, 3).map(function(item) { return item.link || ''; }).filter(Boolean);
   if (!identityMatches.length) {
     return { status: 'unverified', reason: 'CHOIVE could not confirm a current public business identity for this name.', sources: [], evidenceText: '' };
   }
@@ -343,7 +371,7 @@ async function verifyRecommendationEntity(name, category, market) {
     return {
       status: 'unverified',
       reason: 'The AI returned this name, but CHOIVE could not confirm that it offers the same category of product or service.',
-      domain: normalizeUrl(identityMatches[0].link || ''),
+      domain: normalizeUrl((officialMatches[0] || identityMatches[0]).link || ''),
       sources: identityMatches.slice(0, 2).map(function(item) { return item.link || ''; }).filter(Boolean),
       evidenceText: evidenceText
     };
@@ -351,7 +379,7 @@ async function verifyRecommendationEntity(name, category, market) {
   return {
     status: 'verified',
     reason: 'Public evidence confirms a real business with an offer relevant to this category.',
-    domain: normalizeUrl(categoryMatches[0].link || ''),
+    domain: normalizeUrl((officialMatches[0] || supportingMatches[0]).link || ''),
     sources: sources,
     evidenceText: evidenceText
   };
