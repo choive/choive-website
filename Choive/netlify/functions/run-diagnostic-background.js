@@ -4,7 +4,7 @@
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 // Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL
 const { updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
-const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl } = require('./lib/serper');
+const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl, verifyRecommendationEntity } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors } = require('./lib/claude');
 const { runOpenAISimulation } = require('./lib/openai-simulation');
@@ -1657,6 +1657,43 @@ exports.handler = async function (event) {
           model: lane.run && lane.run.model || null
         };
       });
+      var laneVerificationResults = await Promise.all(platformLanes.map(function(lane) {
+        if (!lane.recommendation) return Promise.resolve({ status: 'not_applicable', reason: 'No company was recommended.' });
+        return verifyRecommendationEntity(
+          lane.recommendation,
+          evidence['inferredCategory'] || category,
+          serviceableMarketLabel(input.marketReach, city)
+        ).catch(function(error) {
+          return { status: 'unverified', reason: 'Public entity verification failed: ' + error.message, sources: [] };
+        });
+      }));
+      platformLanes.forEach(function(lane, index) {
+        lane.verification = laneVerificationResults[index];
+      });
+      // Preserve every provider lane even when two names belong to the same
+      // company. Add a plain disclosure rather than silently merging answers.
+      platformLanes.forEach(function(lane, index) {
+        if (!lane.recommendation || !lane.verification) return;
+        for (var otherIndex = 0; otherIndex < index; otherIndex++) {
+          var other = platformLanes[otherIndex];
+          if (!other.recommendation || !other.verification) continue;
+          var sameDomain = lane.verification.domain && other.verification.domain
+            && lane.verification.domain === other.verification.domain;
+          var laneEvidence = String(lane.verification.evidenceText || '').toLowerCase();
+          var otherKey = String(other.recommendation).toLowerCase();
+          var otherEvidence = String(other.verification.evidenceText || '').toLowerCase();
+          var laneKey = String(lane.recommendation).toLowerCase();
+          if (sameDomain || laneEvidence.indexOf(otherKey) !== -1 || otherEvidence.indexOf(laneKey) !== -1) {
+            lane.sameBusinessAs = other.platform + ': ' + other.recommendation;
+            break;
+          }
+        }
+      });
+      // Evidence text is used only for alias detection inside the engine. Do
+      // not store a search-result text dump in the customer-facing result.
+      platformLanes.forEach(function(lane) {
+        if (lane.verification) delete lane.verification.evidenceText;
+      });
       finalResult['platformRecommendationLanes'] = platformLanes;
       finalResult['multiPlatformRecommendations'] = {
         claude: claudeTop ? [claudeTop] : [],
@@ -1674,10 +1711,10 @@ exports.handler = async function (event) {
       });
       if (completedPlatformRuns.length > 0) {
         finalResult['verdictHeadline'] = platformsWithVisibility.length === 0
-          ? 'Not mentioned by any measured AI platform'
+          ? 'Not found in unbranded buyer answers from any measured AI platform'
           : platformsWithVisibility.length === completedPlatformRuns.length
-            ? 'Mentioned by all ' + completedPlatformRuns.length + ' measured AI platforms'
-            : 'Mentioned by ' + platformsWithVisibility.length + ' of ' + completedPlatformRuns.length + ' measured AI platforms';
+            ? 'Found in unbranded buyer answers from all ' + completedPlatformRuns.length + ' measured AI platforms'
+            : 'Found in unbranded buyer answers from ' + platformsWithVisibility.length + ' of ' + completedPlatformRuns.length + ' measured AI platforms';
       }
     }
     // The dedicated category pass is authoritative for business-model fidelity.
