@@ -1643,9 +1643,20 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
           : 'Not measured');
       var resultColour = recommendation ? '#0C0C0E' : laneStatus === 'no_recommendation' ? '#67676E' : '#B83232';
       var sampleText = expected > 0 ? completed + ' of ' + expected + ' queries completed' : 'Provider result recorded';
+      var verification = safeObj(l.verification);
+      var verificationText = recommendation && safeStr(verification.status, '') === 'verified'
+        ? 'CHOIVE confirmed a real business relevant to this category.'
+        : recommendation && verification.status
+          ? 'The AI answer was recorded, but CHOIVE did not independently confirm the category match.'
+          : '';
+      var aliasText = safeStr(l.sameBusinessAs, '')
+        ? 'Same business identity as ' + safeStr(l.sameBusinessAs, '') + '.' : '';
       H.push('<div class="plat-cell"><div class="plat-name">' + esc(safeStr(l.platform, l.key)) + '</div>'
         + '<div class="plat-status" style="color:' + resultColour + ';text-transform:none;letter-spacing:0;">' + esc(resultText) + '</div>'
-        + '<div class="plat-detail">' + esc(sampleText) + '</div></div>');
+        + '<div class="plat-detail">' + esc(sampleText) + '</div>'
+        + (verificationText ? '<div class="plat-detail" style="margin-top:5px;">' + esc(verificationText) + '</div>' : '')
+        + (aliasText ? '<div class="plat-detail" style="margin-top:5px;">' + esc(aliasText) + '</div>' : '')
+        + '</div>');
     });
     H.push('</div>');
   }
