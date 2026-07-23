@@ -37,21 +37,36 @@ function sanitizeExternal(text) {
 }
 
 // ── Fast category inference ───────────────────────────────────────────────────
-async function inferCategory(name, category, websiteText, searchText) {
+async function inferCategory(name, category, websiteText, searchText, subjectType) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
-  var prompt = 'Business name: ' + name + '\n'
+  subjectType = String(subjectType || 'business').trim();
+  var subjectInstruction = subjectType === 'creator'
+    ? 'Identify the creator\'s primary topic, content format, audience, and geographic relevance. Do not force a commercial business category.'
+    : subjectType === 'personal_brand'
+      ? 'Identify the person\'s primary expertise, public role, audience, and geographic relevance. Do not force a company or retail category.'
+      : subjectType === 'organization'
+        ? 'Identify the organization\'s mission, activity, people served, and geographic scope. Do not assume it sells a product.'
+        : subjectType === 'product'
+          ? 'Identify the exact product or service type, its primary use, intended users, and geographic availability.'
+          : 'Identify the exact product or service sold, the buyer, the commercial model, and the geographic market.';
+  var prompt = 'Subject name: ' + name + '\n'
+    + 'Subject type: ' + subjectType + '\n'
     + 'Website content (excerpt): ' + String(websiteText || '').slice(0, 2000) + '\n'
     + 'Search evidence (excerpt): ' + String(searchText || '').slice(0, 2000) + '\n'
     + 'Self-described category (owner\'s own words — fallback only, use if website is thin or absent): ' + category + '\n\n'
-    + 'Based PRIMARILY on the WEBSITE CONTENT and SEARCH EVIDENCE above, determine the precise real-world category this business operates in.\n'
+    + 'Based PRIMARILY on the WEBSITE CONTENT and SEARCH EVIDENCE above, determine the subject\'s precise real-world category.\n'
+    + 'SUBJECT-SPECIFIC RULE: ' + subjectInstruction + '\n'
     + 'The website is the authoritative source. The self-described category is a weak hint — it may be vague, imprecise, or wrong.\n'
     + 'Return ONLY a JSON object with one field:\n'
     + '{ "inferredCategory": "precise category name" }\n'
     + 'Be specific. Examples:\n'
     + '- Not "software" but "B2B OTT middleware platform for telcos and carmakers"\n'
     + '- Not "coffee" but "B2B specialty coffee roaster and wholesaler"\n'
-    + 'CATEGORY FIDELITY \u2014 CRITICAL: when the business explicitly names its own category (in its title, H1, or self-description), USE ITS EXACT WORDS as the core of the category. Never substitute an adjacent industry\u2019s vocabulary: a business calling itself an "AI selection diagnostic" is NOT an "AI evaluation and benchmarking platform" \u2014 those are different markets with different buyers. Paraphrasing the category into a neighboring industry poisons every downstream measurement.\n'    + 'BUSINESS MODEL PRECISION \u2014 CRITICAL: explicitly determine and STATE in the category whether this business (a) OWNS its own production \u2014 a farm, herd, factory, or workshop it controls \u2014 and sells that output directly (a vertically-integrated brand), or (b) CURATES and resells products sourced from multiple outside producers or brands (a retailer or marketplace). These are genuinely different competitive categories even when both sell the identical end product: a farm-owned beef brand competes against OTHER farm-owned beef brands, not against a retailer reselling beef from many farms, and vice versa. If the evidence shows the business names its own farm, herd, or production facility, the category MUST include a phrase like \u201cvertically-integrated brand\u201d or \u201cowns its own [production]\u201d \u2014 never just \u201cretailer\u201d or \u201cdelivery service\u201d for a business that actually produces what it sells. Get this wrong and every downstream competitor match will be comparing the wrong kind of business.\n'
+    + 'CATEGORY FIDELITY \u2014 CRITICAL: when the subject explicitly names its own category in its title, H1, or self-description, USE ITS EXACT WORDS as the core of the category. Never substitute an adjacent category\u2019s vocabulary.\n'
+    + ((subjectType === 'business' || subjectType === 'product')
+      ? 'BUSINESS MODEL PRECISION \u2014 CRITICAL: determine whether the subject owns production and sells its output directly, or curates and resells products from outside producers. These are different competitive categories.\n'
+      : '')
     + 'Return only raw JSON. No markdown. No explanation.';
   try {
     var response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -140,6 +155,8 @@ function buildPrompt(evidence) {
   var name               = evidence.name        || '';
   var category           = evidence.category    || '';
   var city               = evidence.city        || '';
+  var marketReach        = evidence.marketReach || '';
+  var subjectType        = evidence.subjectType || 'business';
   var website            = evidence.website     || 'not provided';
   var description        = evidence.description || 'not provided';
   var inferredSite       = evidence.inferredOfficialSite || 'not found';
@@ -187,10 +204,22 @@ function buildPrompt(evidence) {
 
   var confirmedSignalsSection = buildConfirmedSignals(websiteSignals);
 
-  var prompt = 'BUSINESS:\n'
+  var subjectScoringRule = subjectType === 'creator'
+    ? 'Evaluate a CREATOR. Clarity means a clear topic, format, audience, and identity. Trust means independently verifiable coverage, recognized appearances, credited collaborations, awards, or established platform profiles; customer reviews are not required. Difference means a distinct point of view, expertise, format, or audience promise. Ease means people and AI systems can identify, verify, and find the creator across their official channels.'
+    : subjectType === 'personal_brand'
+      ? 'Evaluate a PERSONAL BRAND. Clarity means a clear expertise, role, audience, and public identity. Trust means independently verifiable credentials, coverage, appearances, outcomes, or collaborations; customer reviews are required only when the person sells a reviewed service. Difference means a specific and evidenced reason to follow, hire, cite, or choose this person. Ease means the identity and official profiles are easy to find and connect.'
+      : subjectType === 'organization'
+        ? 'Evaluate an ORGANIZATION. Clarity means a clear mission, activity, people served, and geographic scope. Trust means registrations, governance, named partners, accreditations, independent coverage, or documented outcomes; customer reviews are not a universal requirement. Difference means a distinct mission, method, constituency, or outcome. Ease means people and AI systems can understand, verify, contact, support, or participate in it.'
+        : subjectType === 'product'
+          ? 'Evaluate a PRODUCT OR SERVICE. Clarity means a precise type, use case, intended user, and availability. Trust means verified user evidence, independent reviews, testing, certifications, documented results, or credible maker evidence. Difference means an evidenced advantage over substitutable products. Ease means a user can understand, compare, obtain, and use it.'
+          : 'Evaluate a BUSINESS. Clarity means a precise offer, buyer, category, and market. Trust means independently verifiable reviews, clients, results, credentials, partnerships, or coverage appropriate to its buying process. Difference means an evidenced reason to choose it over substitutes. Ease means a buyer can understand, verify, contact, and purchase or procure it.';
+
+  var prompt = 'SUBJECT:\n'
     + 'Name: ' + name + '\n'
     + 'Category: ' + category + '\n'
     + 'Location: ' + city + '\n'
+    + 'Customer reach: ' + (marketReach || 'not supplied') + '\n'
+    + 'Subject type: ' + subjectType + '\n'
     + 'Website: ' + website + '\n'
     + 'Description: ' + description + '\n'
     + (knownCompetitors ? '\nKNOWN COMPETITORS (provided by user): ' + knownCompetitors + '\n' : '')
@@ -240,8 +269,9 @@ function buildPrompt(evidence) {
     + '\nWEBSITE VISIBLE IN SEARCH: ' + visibilityText
     + '\n\n---\n'
     + 'YOU ARE CHOIVE™ — A DECISION INTELLIGENCE ENGINE.\n\n'
+    + 'SUBJECT-SPECIFIC SCORING STANDARD — THIS OVERRIDES GENERIC BUSINESS OR CUSTOMER LANGUAGE BELOW:\n' + subjectScoringRule + '\n\n'
     + 'YOUR ONLY JOB:\n'
-    + 'Determine why a customer would or would not choose this business over alternatives.\n\n'
+    + 'Determine, from evidence, why the relevant audience would or would not choose, use, follow, hire, visit, support, cite, or recommend this subject over realistic alternatives.\n\n'
     + 'CRITICAL — CONFIRMED SIGNALS ARE GROUND TRUTH:\n'
     + 'The CONFIRMED SIGNALS section above was produced by mechanical verification — direct HTTP\n'
     + 'requests, HTML parsing, file checks. These facts are certain. Do not contradict them.\n'
@@ -253,7 +283,7 @@ function buildPrompt(evidence) {
     + '- If "Title tag: NO" and "H1: NO" → clarity cannot exceed 8\n'
     + 'These are not suggestions. They are hard constraints derived from real data.\n\n'
     + 'PILLAR SCORE ISOLATION — ABSOLUTE:\n'
-    + 'Calculate Clarity, Trust, Difference, and Ease only from the subject business evidence: its website, structured signals, search presence, independent reviews, press, partnerships, clients, and public proof. AI recommendation transcripts, provider visibility, competitor identities, competitor scores, and whether another company was recommended must have zero effect on any pillar score, pillar finding, or pillar analysis. Those AI and competitor sections may inform only the separate recommendation, competitor, summary, and action fields. First determine all four pillar scores from subject evidence alone; never raise or lower a pillar because an AI provider named or omitted the business.\n\n'
+    + 'Calculate Clarity, Trust, Difference, and Ease only from evidence about the subject: its official presence, structured signals, search presence, independent verification, coverage, partnerships, outcomes, credentials, clients or audience proof where relevant. AI recommendation transcripts, provider visibility, competitor identities, competitor scores, and whether another option was recommended must have zero effect on any pillar score, pillar finding, or pillar analysis.\n\n'
     + 'STRICT RULES:\n'
     + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
     + '2. Every score must be justified by specific evidence.\n'
@@ -267,10 +297,10 @@ function buildPrompt(evidence) {
     + 'STEP 0 — INFER REAL CATEGORY FROM EVIDENCE:\n'
     + 'User provided category: "' + category + '" — this may be vague or incorrect.\n'
     + 'Using ONLY the evidence, determine:\n'
-    + '1. What does this business actually sell?\n'
-    + '2. Who buys it — consumer, SMB, enterprise, telco, automotive?\n'
-    + '3. What precise industry category would buyers use to find this?\n'
-    + '4. B2B, B2C, or both?\n'
+    + '1. What exactly is this subject, and what does it offer, create, provide, or represent?\n'
+    + '2. Who is the relevant audience: buyers, users, followers, members, beneficiaries, partners, supporters, or employers?\n'
+    + '3. What precise category would that audience use to find it?\n'
+    + '4. What decision or discovery context applies?\n'
     + 'Set inferredCategory in the JSON. Do not write this as prose.\n\n'
     + 'DECISION ENVIRONMENT — classify first:\n'
     + '- discovery_driven: local, map-based, search-based selection\n'
@@ -278,7 +308,7 @@ function buildPrompt(evidence) {
     + '- authority_driven: selected based on reputation, partnerships, capability\n'
     + '- default_driven: category leader chosen automatically\n\n'
     + 'SCORING — four pillars, each 0-25:\n\n'
-    + 'CLARITY (0-25): How precisely and consistently is this business defined?\n'
+    + 'CLARITY (0-25): How precisely and consistently is this subject defined?\n'
     + '- Score 20+: specific H1, clear category, consistent naming across all sources\n'
     + '- Score 10-19: partially defined, some inconsistency\n'
     + '- Score 0-9: vague, inconsistent, or undefined\n'
@@ -320,7 +350,7 @@ function buildPrompt(evidence) {
     + '  If no differentiator exists, complete: "[Business] looks like every other [category] to a buyer"\n'
     + '- Analysis sentence 1: Quote the exact phrase or evidence that shows the differentiator (or its absence)\n'
     + '- Analysis sentence 2: Name the exact sales conversation moment where this difference is won or lost\n\n'
-    + 'EASE (0-25): How quickly and confidently can this business be understood and selected?\n'
+    + 'EASE (0-25): How quickly and confidently can this subject be understood, verified, and acted on?\n'
     + '- Score 20-25: schema + llms.txt + complete metadata + strong search visibility\n'
     + '- Score 14-19: schema present + complete metadata but no llms.txt\n'
     + '- Score 8-13: partial structured signals — OG tags + some metadata, no schema\n'
@@ -451,7 +481,7 @@ function buildPrompt(evidence) {
     + 'Apply only ONE of these openings. Do not blend them.\n'
     + '- Sentence 2: the single strongest evidence-based driver or gap — name the specific signal or its absence\n'
     + '- Sentence 3: the concrete moment in the buyer journey where this business is lost or won. Name the exact moment.\n\n'
-    + 'BUSINESS UNDERSTANDING — what AI currently thinks this business is:\n'
+    + 'SUBJECT UNDERSTANDING — what AI currently thinks this subject is:\n'
     + 'Write exactly two paragraphs separated by a blank line.\n'
     + 'Each paragraph must contain no more than 55 words. Use sentences of no more than 22 words.\n'
     + 'Paragraph 1 — BEFORE: Write EXACTLY what a language model would output TODAY if someone asked "What is [business name]?" or "Which [category] should I buy in [location]?" — this is a simulation of current AI output, NOT a business description. Use ONLY signals from the evidence. CRITICAL: if the AI SELECTION GROUND TRUTH shows this business was NOT named when buyers asked about its category, the paragraph MUST start with that fact: "[Business] is not a business AI currently names when asked about [category] in [location]." If the knowledge graph is empty, write what AI would say when it has minimal data — it will be vague, hedged, or possibly confused with similar businesses. Do not write a flattering summary. Write what AI actually outputs.\n'
@@ -587,7 +617,7 @@ function applySignalConstraints(rawOutput, websiteSignals) {
     // rules alone. Real crawlers seeing a blank page is the actual defect
     // Ease is supposed to measure; static files are a proxy, not the fact.
     if (s.botEmptyShellDetected && p.ease.score > 6) { p.ease.score = 6; }
-    if (s.allBotsFailed && p.ease.score > 3) { p.ease.score = 3; }
+    if ((s.allBotsFailed || s.botCrawlable === false) && p.ease.score > 3) { p.ease.score = 3; }
   }
 
   if (p.clarity) {
@@ -650,15 +680,11 @@ function applySignalConstraints(rawOutput, websiteSignals) {
       overrideSignal('trust', 'Google reviews', 'pass', s.googleRating + '★ · ' + s.googleReviewCount + ' reviews');
     } else if (s.googleRating) {
       overrideSignal('trust', 'Google reviews', 'partial', s.googleRating + '★ · review count not confirmed');
-    } else {
-      overrideSignal('trust', 'Google reviews', 'fail', 'No Google profile found');
     }
     if (s.trustpilotRating && s.trustpilotReviewCount) {
       overrideSignal('trust', 'Trustpilot', 'pass', s.trustpilotRating + '/5 · ' + s.trustpilotReviewCount + ' reviews');
     } else if (s.trustpilotRating) {
       overrideSignal('trust', 'Trustpilot', 'partial', s.trustpilotRating + '/5 · review count not confirmed');
-    } else {
-      overrideSignal('trust', 'Trustpilot', 'fail', 'No Trustpilot profile found');
     }
 
     // EASE — schema, llms.txt, bot crawlability
@@ -725,6 +751,9 @@ function safeOutput(raw) {
   return {
     overallScore:          Number(r.overallScore) || 0,
     verdictHeadline:       r.verdictHeadline      || '',
+    verdictLevel:          r.verdictLevel         || '',
+    decisionState:         r.decisionState        || '',
+    decisionEnvironment:   r.decisionEnvironment  || '',
     summaryParagraph:      moderateAbsoluteClaims(r.summaryParagraph),
     businessUnderstanding: moderateAbsoluteClaims(r.businessUnderstanding),
     evidenceNarrative:     moderateAbsoluteClaims(r.evidenceNarrative),
@@ -833,6 +862,8 @@ async function selectDominantCompetitor(evidence) {
   var siteText = sanitizeExternal(String(evidence.websiteText || '')).slice(0, 1200);
   var website  = String(evidence.website  || '').trim();
   var city     = String(evidence.city     || '').trim();
+  var marketReach = String(evidence.marketReach || '').trim();
+  var subjectType = String(evidence.subjectType || 'business').trim();
   var kgText   = sanitizeExternal(String((evidence.kgText || '')).replace(/^None$/i, '')).slice(0, 400);
 
   // AI SELECTION GROUND TRUTH — who AI actually recommended in buyer queries
@@ -864,7 +895,9 @@ async function selectDominantCompetitor(evidence) {
     + 'SUBJECT BUSINESS:\n'
     + 'Name: ' + name + (website ? ' (' + website + ')' : '') + '\n'
     + 'Inferred category: ' + inferred + '\n'
-    + (city ? 'Headquarters / primary market: ' + city + '\n' : '')
+    + 'Subject type: ' + subjectType + '\n'
+    + (city ? 'Headquarters / base location: ' + city + '\n' : '')
+    + (marketReach ? 'CUSTOMER REACH (owner selected; authoritative): ' + marketReach + '\n' : '')
     + (siteText ? 'Website content (what they actually sell and who buys it):\n' + siteText + '\n' : '')
     + (kgText ? 'Knowledge graph: ' + kgText + '\n' : '')
     + (known ? 'Competitors named by the owner: ' + known + '\n' : '')
@@ -872,7 +905,12 @@ async function selectDominantCompetitor(evidence) {
     + (groundTruth ? 'What AI currently recommends when buyers search for this category:\n' + groundTruth + '\n' : '')
     + '\n'
     + 'YOUR TASK:\n'
-    + 'Using only the supplied website, search, simulation evidence, and live searches performed in this call, identify this business\'s real competitors. Never fill a missing answer from model memory:\n\n'
+    + 'Using only the supplied website, search, simulation evidence, and live searches performed in this call, identify this subject\'s real competitors or closest alternatives. Never fill a missing answer from model memory:\n\n'
+    + (subjectType === 'creator' || subjectType === 'personal_brand'
+        ? 'CREATOR/PERSON FIT RULE: compare only active people with the same core topic or expertise, substantially overlapping audience, comparable role or content format, and the same geographic reach. Do not require them to sell a product. When the use case is hiring, sponsorship, speaking, or collaboration, require the same buyer and engagement type.\n\n'
+        : subjectType === 'organization'
+        ? 'ORGANIZATION FIT RULE: compare only active organizations with the same core mission or activity, substantially overlapping audience or beneficiaries, comparable operating model, and the same geographic reach. Do not force a commercial purchasing model onto a non-commercial organization.\n\n'
+        : '')
     + 'STEP 1 — SEARCH WITH TIER MATCHING:\n'
     + '  Search using the BUYER TIER, not just the product category. If the subject has named enterprise clients, search for who serves those same clients.\n'
     + '  Build search terms from the subject evidence. Do not begin with a list of candidate companies.\n'
@@ -892,6 +930,7 @@ async function selectDominantCompetitor(evidence) {
     + '1. SAME PRODUCT TYPE: sells the same type of product or service (not just adjacent or complementary)\n'
     + '2. SAME BUYER: the same person spends the money (same buyer role, same company type, same deal size)\n'
     + '3. SAME COMMERCIAL MODEL: both license software, or both sell direct-to-consumer, or both offer managed services — not mixed models\n\n'
+    + '4. SAME SERVICEABLE MARKET: use the owner-selected CUSTOMER REACH as authoritative. Local means the same city or realistic nearby catchment; regional means the same region; national means available throughout the same country; international means available across the subject\'s served countries; global means worldwide competitors are eligible. Headquarters alone never proves market eligibility. Reject any company buyers in the subject\'s market cannot actually choose.\n\n'
     + 'CRITICAL BUSINESS MODEL RULE — apply before anything else:\n'
     + 'If the inferred category says the business OWNS its production (farm brand, own herd, own factory, vertically-integrated, direct from farm): its competitors MUST ALSO own their own production and sell direct. A retailer that sources from multiple farms is NOT a true competitor to a farm brand — the buying decision is fundamentally different.\n'
     + 'For an own-production subject, accept a candidate only when supplied evidence or a current source found in this call explicitly confirms that the candidate owns the relevant farm, factory, workshop, or production operation. If ownership is unclear, reject the candidate.\n'
@@ -1234,6 +1273,7 @@ async function selectChannelCompetitor(evidence, channelResults) {
   var name     = String(evidence.name || '').trim();
   var category = String(evidence.inferredCategory || evidence.category || '').trim();
   var city     = String(evidence.city || '').trim();
+  var marketReach = String(evidence.marketReach || '').trim();
 
   var candidateLines = (channelResults.competitors || []).map(function(c) {
     return '- ' + (c.domain || '') + (c.title ? ' ("' + c.title.slice(0, 70) + '")' : '');
@@ -1246,11 +1286,12 @@ async function selectChannelCompetitor(evidence, channelResults) {
   var prompt = 'You identify the dominant online/DTC seller in a product category and market. Respond ONLY with valid JSON, no markdown, no explanation outside the JSON.\n\n'
     + 'SUBJECT BUSINESS: ' + name + '\n'
     + 'PRODUCT CATEGORY: ' + category + '\n'
-    + (city ? 'MARKET: ' + city + '\n' : '')
+    + (city ? 'BASE LOCATION: ' + city + '\n' : '')
+    + (marketReach ? 'CUSTOMER REACH (owner selected; authoritative): ' + marketReach + '\n' : '')
     + (candidateLines ? '\nCANDIDATES FROM "buy online" SEARCH:\n' + candidateLines + '\n' : '')
     + (searchExcerpt  ? '\nSEARCH RESULTS EXCERPT:\n' + searchExcerpt + '\n' : '')
     + '\nIdentify the ONE business that most clearly owns the online/e-commerce buying experience for this product in this market — the company a buyer would land on when searching "buy [product] online". '
-    + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the same market/country as ' + name + ', '
+    + 'Requirements: (1) actually sells and delivers this product type online, (2) serves the owner-selected customer reach of ' + name + ' from the same serviceable market, '
     + '(3) is NOT ' + name + ' itself, (4) is NOT a marketplace or aggregator (Amazon, eBay, Etsy, Google Shopping etc), '
     + '(5) the company must appear in the supplied search evidence. Never fill a missing answer from memory or general model knowledge. '
     + 'Return null when the evidence does not prove every requirement. '
@@ -1450,6 +1491,8 @@ async function selectBestFitCompetitors(evidence, candidates) {
   var name = String(evidence.name || '').trim();
   var category = String(evidence.inferredCategory || evidence.category || '').trim();
   var city = String(evidence.city || '').trim();
+  var marketReach = String(evidence.marketReach || '').trim();
+  var subjectType = String(evidence.subjectType || 'business').trim();
   var cleanCandidates = (candidates || []).filter(function(candidate) {
     return candidate && candidate.name;
   }).slice(0, 10);
@@ -1458,17 +1501,21 @@ async function selectBestFitCompetitors(evidence, candidates) {
   var prompt = 'You are adjudicating competitor candidates returned by measured AI recommendation platforms. Return only valid JSON.\n\n'
     + 'SUBJECT: ' + name + '\n'
     + 'CATEGORY: ' + category + '\n'
-    + (city ? 'MARKET: ' + city + '\n' : '')
+    + 'SUBJECT TYPE: ' + subjectType + '\n'
+    + (city ? 'BASE LOCATION: ' + city + '\n' : '')
+    + (marketReach ? 'CUSTOMER REACH (owner selected; authoritative): ' + marketReach + '\n' : '')
     + 'WEBSITE EVIDENCE: ' + sanitizeExternal(String(evidence.websiteText || '')).slice(0, 1600) + '\n\n'
     + 'CANDIDATES:\n'
     + cleanCandidates.map(function(candidate, index) {
       return (index + 1) + '. ' + candidate.name + ' (named by: ' + (candidate.sources || []).join(', ') + ')';
     }).join('\n')
     + '\n\nResearch each candidate on its official product and pricing pages before ranking. Rank the closest two real purchasing substitutes. Apply these tests in order:\n'
-    + '1. Same product or service scope.\n'
-    + '2. Same buyer and deal tier.\n'
-    + '3. Same commercial model.\n'
-    + '4. Same serviceable geography.\n'
+    + (subjectType === 'creator' || subjectType === 'personal_brand'
+        ? '1. Same topic or expertise, overlapping audience, and comparable creator/person role or format.\n2. Same follower, viewer, collaborator, sponsor, speaker-booker, or hiring context supported by the evidence.\n3. Comparable engagement model when a paid engagement is part of the evidenced use case; do not invent one otherwise.\n'
+        : subjectType === 'organization'
+        ? '1. Same mission or activity and overlapping audience or beneficiaries.\n2. Same participation, support, membership, partnership, or service context supported by the evidence.\n3. Comparable operating model; do not force a commercial purchasing model onto a non-commercial organization.\n'
+        : '1. Same product or service scope.\n2. Same buyer and deal tier.\n3. Same commercial model.\n')
+    + '4. Same serviceable geography. Apply CUSTOMER REACH strictly: local = same city or realistic nearby catchment; regional = same region; national = available throughout the same country; international = confirmed availability across the subject\'s served countries; global = worldwide competitors are eligible. A headquarters address alone does not establish serviceability.\n'
     + '5. Same market breadth. If the subject spans multiple buyer markets, a candidate with officially confirmed coverage of those same markets outranks a specialist overlapping in only one.\n'
     + 'Tests 1 and 3 are always hard fit gates. Never claim a candidate covers a buyer market, vertical, geography, product capability, or commercial model unless an official current source explicitly supports that claim. A trend article, event appearance, device discussion, integration, OEM certification, or general cross-device statement does not prove that the candidate sells a product to that buyer market. When no candidate has confirmed coverage of every subject market, select the closest purchasing substitute and explicitly label the unmatched market as a limitation; do not upgrade partial overlap into a full match. Treat a one-time diagnostic, audit, or report purchase as a different commercial model from a recurring monitoring SaaS subscription. Treat self-service software as different from an agency or managed service.\n'
     + 'Mention frequency is only a tie-breaker after business fit. Exclude customers, suppliers, infrastructure providers, directories, and the subject itself. Choose only from the supplied candidates. In each reason, explicitly state whether product scope and commercial model are full matches or partial matches.\n\n'
