@@ -33,15 +33,16 @@ function validPublicWebsite(value) {
 }
 
 function validateInput(body) {
-  const { name, category, city } = body || {};
+  const { name, category, city, marketReach } = body || {};
   const missing = [];
   if (!name || !String(name).trim()) missing.push('name');
   if (!category || !String(category).trim()) missing.push('category');
   if (!city || !String(city).trim()) missing.push('city');
+  if (!marketReach || !['local', 'regional', 'national', 'international', 'global'].includes(String(marketReach).trim().toLowerCase())) missing.push('market reach');
   if (missing.length > 0) {
     return { valid: false, error: 'Missing required fields: ' + missing.join(', ') };
   }
-  var limits = { name: 160, category: 240, city: 160, website: 500, description: 1000, knownCompetitors: 500, customerQuestion: 500 };
+  var limits = { name: 160, category: 240, city: 160, website: 500, description: 1000, knownCompetitors: 500, customerQuestion: 500, marketReach: 20 };
   for (var field in limits) {
     if (String((body || {})[field] || '').length > limits[field]) {
       return { valid: false, error: field + ' is too long' };
@@ -63,9 +64,8 @@ function clampScore(n) {
 
 const VALID_VERDICT_LEVELS    = ['absent', 'weak', 'present'];
 const VALID_DECISION_STATES   = ['not_seen', 'seen_not_considered', 'considered_not_chosen', 'trusted_not_chosen', 'chosen_by_default'];
-const VALID_PLATFORM_STATUSES = ['absent', 'weak', 'present', 'partial', 'unmeasured'];
+const VALID_PLATFORM_STATUSES = ['absent', 'weak', 'present', 'partial', 'failed', 'unmeasured'];
 const VALID_TIERS             = ['dominant', 'strong', 'upper_mid', 'mid', 'weak', 'absent'];
-const DOMINANT_TIERS          = ['dominant', 'strong'];
 const VALID_DECISION_ENVS     = ['discovery_driven', 'comparison_driven', 'authority_driven', 'default_driven'];
 
 function hasValidShape(output) {
@@ -95,6 +95,19 @@ function normalizePillar(raw) {
   };
 }
 
+function normalizeCoverage(raw, platform) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {
+      status: 'unmeasured',
+      detail: platform + ' did not return a completed provider measurement.'
+    };
+  }
+  return {
+    status: VALID_PLATFORM_STATUSES.includes(raw.status) ? raw.status : 'unmeasured',
+    detail: raw.detail || (platform + ' measurement status was not established.')
+  };
+}
+
 function resolveDisplacement(output) {
   const empty = { competitorName: '', competitorWhy: '', competitorQuery: '' };
   if (output && output.competitor && output.competitor.name) {
@@ -115,7 +128,6 @@ function resolveDisplacement(output) {
 }
 
 function buildSafeOutput(output) {
-  const fpl = { status: 'absent', detail: 'No data available.' };
   const tierLabels = {
     dominant: 'Category leader',
     strong: 'Strong market position',
@@ -152,10 +164,10 @@ function buildSafeOutput(output) {
       ease:       normalizePillar(output?.pillars?.ease)
     },
     platformCoverage: {
-      chatgpt:    output?.platformCoverage?.chatgpt    || { ...fpl },
-      perplexity: output?.platformCoverage?.perplexity || { ...fpl },
-      gemini:     output?.platformCoverage?.gemini     || { ...fpl },
-      claude:     output?.platformCoverage?.claude     || { ...fpl }
+      chatgpt:    normalizeCoverage(output?.platformCoverage?.chatgpt, 'ChatGPT'),
+      perplexity: normalizeCoverage(output?.platformCoverage?.perplexity, 'Perplexity'),
+      gemini:     normalizeCoverage(output?.platformCoverage?.gemini, 'Gemini'),
+      claude:     normalizeCoverage(output?.platformCoverage?.claude, 'Claude')
     },
     actions: Array.isArray(output?.actions) && output.actions.length > 0
       ? output.actions
@@ -177,7 +189,8 @@ function buildSafeOutput(output) {
 
   // ── Clamp pillar scores ───────────────────────────────────────────────────
   // Signal-based floors and ceilings are applied in claude.js before this runs.
-  // This function only clamps to valid range (0-25) and applies tier-based floors.
+  // This function only clamps to the valid range (0-25). Market position is a
+  // separate finding and must never manufacture pillar points.
   const cs    = clampScore(safe.pillars.clarity.score);
   const ts    = clampScore(safe.pillars.trust.score);
   const ds    = clampScore(safe.pillars.difference.score);
@@ -190,19 +203,17 @@ function buildSafeOutput(output) {
 
   // ── Market tier ───────────────────────────────────────────────────────────
   const marketTier = safe.marketPosition.tier;
-  const isDominant = DOMINANT_TIERS.includes(marketTier);
+  const isDominant = marketTier === 'dominant';
   const isStrong   = marketTier === 'strong';
 
   // ── Difference floor: dominant/strong brands ──────────────────────────────
-  const dsAdjusted = (isDominant && ds < 13) ? 13 : ds;
-  safe.pillars.difference.score = dsAdjusted;
+  safe.pillars.difference.score = ds;
 
   // ── Trust floor: dominant brands ──────────────────────────────────────────
-  const tsAdjusted = (isDominant && ts < 16) ? 16 : ts;
-  safe.pillars.trust.score = tsAdjusted;
+  safe.pillars.trust.score = ts;
 
   // ── Overall score ─────────────────────────────────────────────────────────
-  safe.overallScore = cs + tsAdjusted + dsAdjusted + es;
+  safe.overallScore = cs + ts + ds + es;
 
   // Structural evidence fallback only. Actual platform measurements are
   // attached later by the background diagnostic.
