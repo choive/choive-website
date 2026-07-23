@@ -25,6 +25,8 @@ Each pillar is worth 25 points. Together they form the CHOIVE Index out of 100.
 
 The pillar scores are calculated from evidence about the subject business. AI recommendation transcripts, competitor identities, and whether a provider recommended the subject do not automatically raise or lower the pillar scores.
 
+The current score method is evidence-rubric-v2. Code allocates numeric points from recorded evidence statuses and stores a point ledger with the observed evidence, verification type, and source where available. A model cannot submit its own final score. Interpreted checks are labelled model assessed and receive lower confidence than mechanical or independently retrieved evidence.
+
 ## AI platform measurements
 
 CHOIVE reports four provider lanes separately:
@@ -38,6 +40,8 @@ Matching company names are not merged. Each lane states what that provider retur
 
 An API response is a real provider response for that run, but it is not guaranteed to match every consumer-app session. Consumer apps may use different models, search context, product settings, conversation history, location, or personalization.
 
+CHOIVE records one response for each visibility question. The direct recommendation question normally records three independent responses. A provider-level recommendation requires more than half of the completed responses to name the same company. Failed responses remain failures and are not converted into negative recommendations.
+
 ## Competitor definitions
 
 - AI recommendation: a company named by a specific provider in the recorded answer.
@@ -50,7 +54,7 @@ CHOIVE does not label a market competitor as an AI recommendation unless the rec
 
 - CHOIVE Diagnostic: free. Headline verdict, CHOIVE Index, four pillar scores, provider recommendations when successfully measured, and competitor exposure.
 - CHOIVE Analysis: $99 one-time. Full online evidence breakdown, platform coverage, competitor comparison, prioritized actions, and ready-to-use assets.
-- CHOIVE Report: $499 one-time. A structured ten-section report with the Analysis findings, implementation plan, and clearly labelled planning projections.
+- CHOIVE Report: $499 one-time. A structured ten-section report with the Analysis findings, implementation milestones, verification criteria, and a 30-day plan. Future scores are not predicted; progress is measured by a later diagnostic.
 
 There are no recurring subscriptions for these three products.
 
