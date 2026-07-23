@@ -8,11 +8,19 @@
 // claude.js (applySignalConstraints) before this function runs.
 // Everything else is identical.
 
+function normalizeWebsite(value) {
+  var raw = String(value || '').trim();
+  if (!raw) return '';
+  // People enter domains, not URL protocols. Accept "example.com",
+  // "www.example.com", or a full public URL and store one consistent form.
+  if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+  return raw.replace(/^http:\/\//i, 'https://');
+}
+
 function validPublicWebsite(value) {
   if (!value) return true;
   try {
-    var raw = String(value).trim();
-    var parsed = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
+    var parsed = new URL(normalizeWebsite(value));
     if (!/^https?:$/.test(parsed.protocol) || parsed.username || parsed.password) return false;
     var host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
     if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return false;
@@ -49,7 +57,7 @@ function validateInput(body) {
     }
   }
   if (!validPublicWebsite((body || {}).website)) {
-    return { valid: false, error: 'Website must be a public http(s) address' };
+    return { valid: false, error: 'Enter a public website such as taurbull.com' };
   }
   var subjectType = String((body || {}).subjectType || 'business');
   if (['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(subjectType) === -1) {
@@ -248,4 +256,4 @@ function buildSafeOutput(output) {
   return safe;
 }
 
-module.exports = { validateInput, clampScore, hasValidShape, buildSafeOutput };
+module.exports = { normalizeWebsite, validateInput, clampScore, hasValidShape, buildSafeOutput };
