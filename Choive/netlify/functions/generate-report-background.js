@@ -510,12 +510,18 @@ function buildSchemaDraft(schemaBrief, bizName, website, input) {
 
 // ── PERSONALISED LETTER ───────────────────────────────────────────────────────
 function buildLetter(bizName, score, weakest, compName, input, centralFinding) {
+  var letterType = safeStr(safeObj(input).subjectType, 'business');
+  var letterSubject = letterType === 'creator' ? 'creator'
+    : letterType === 'personal_brand' ? 'person'
+      : letterType === 'organization' ? 'organization'
+        : letterType === 'product' ? 'product'
+          : 'business';
 
   var pillarWhy = {
     'Trust':      'The diagnostic found limited independent evidence that a buyer or AI provider could verify.',
     'Clarity':    'The diagnostic found that the offer or intended buyer was not described consistently enough.',
-    'Difference': 'The diagnostic did not find enough verified evidence separating the business from alternatives.',
-    'Ease':       'Important business information was missing or difficult for compatible crawlers to retrieve.'
+    'Difference': 'The diagnostic did not find enough verified evidence separating this ' + letterSubject + ' from alternatives.',
+    'Ease':       'Important public information was missing or difficult for compatible crawlers to retrieve.'
   };
   var wLabel = weakest && weakest.label ? weakest.label : 'Trust';
   var wScore = weakest && typeof weakest.score === 'number' ? weakest.score : 0;
@@ -528,7 +534,7 @@ function buildLetter(bizName, score, weakest, compName, input, centralFinding) {
   // Middle — specific to their score. Direct and honest.
   var middle;
   if (score >= 76) {
-    middle = '<strong>' + esc(bizName) + ' scored ' + score + ' out of 100.</strong> Public evidence is strong across the four CHOIVE pillars, but this score does not mean every AI provider recommended the business. ' + weakestLine + ' Sections 5 and 6 show the recorded provider answers. Section 8 gives the actions in priority order.';
+    middle = '<strong>' + esc(bizName) + ' scored ' + score + ' out of 100.</strong> Public evidence is strong across the four CHOIVE pillars, but this score does not mean every AI provider recommended this ' + letterSubject + '. ' + weakestLine + ' Sections 5 and 6 show the recorded provider answers. Section 8 gives the actions in priority order.';
   } else if (score >= 56) {
     middle = '<strong>' + esc(bizName) + ' scored ' + score + ' out of 100.</strong> Its public evidence is usable, but uneven across the four CHOIVE pillars. ' + weakestLine
       + (compName ? ' The recorded evidence also identified <strong>' + esc(compName) + '</strong> for comparison.' : '')
@@ -538,7 +544,7 @@ function buildLetter(bizName, score, weakest, compName, input, centralFinding) {
       + (compName ? ' The recorded evidence also identified <strong>' + esc(compName) + '</strong> for comparison.' : '')
       + ' Sections 5 and 6 show the provider answers. Section 8 gives the actions in priority order.';
   } else {
-    middle = '<strong>' + esc(bizName) + ' scored ' + score + ' out of 100.</strong> The public evidence collected for this diagnostic was too incomplete to describe the business consistently across all four pillars. ' + weakestLine + ' Section 5 shows what the diagnostic measured. Section 8 gives the first actions to complete.';
+    middle = '<strong>' + esc(bizName) + ' scored ' + score + ' out of 100.</strong> The public evidence collected for this diagnostic was too incomplete to describe this ' + letterSubject + ' consistently across all four pillars. ' + weakestLine + ' Section 5 shows what the diagnostic measured. Section 8 gives the first actions to complete.';
   }
 
   var closing = 'This report separates recorded evidence from interpretation. Forecasts are marked as estimates. Only a new diagnostic can confirm whether a change affected the measured result.'
@@ -998,7 +1004,13 @@ var CSS = [
   var date  = new Date().toLocaleDateString('en-GB', { year:'numeric', month:'long', day:'numeric' });
 
   // Input fields
-  var bizName  = safeStr(input.name, 'Your Business');
+  var bizName  = safeStr(input.name, 'Your Subject');
+  var subjectType = safeStr(input.subjectType, 'business');
+  var subjectNoun = subjectType === 'creator' ? 'creator'
+    : subjectType === 'personal_brand' ? 'person'
+      : subjectType === 'organization' ? 'organization'
+        : subjectType === 'product' ? 'product'
+          : 'business';
   // Preserve original casing but ensure first letter is capitalised
   if (bizName && bizName === bizName.toLowerCase()) {
     bizName = bizName.charAt(0).toUpperCase() + bizName.slice(1);
@@ -1336,11 +1348,11 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     ['Improvement Scenario',       'Estimated targets, clearly marked as estimates'],
     ['Recorded AI Description',    'The generated description and the evidence used to assess it'],
     ['Four Pillar Analysis',       'Clarity, Trust, Difference, and Ease'],
-    ['AI Platform Coverage',       'Which measured providers mentioned the business'],
+    ['AI Platform Coverage',       'Which measured providers mentioned the ' + subjectNoun],
     ['AI Platform Measurements',   'Questions and separately attributed answers'],
     ['Competitor Intelligence',    'Direct evidence and measurable differences'],
     ['Priority Actions',           'Ordered work, effort, impact, and consequence'],
-    ['Ready-to-Use Assets',        'Implementation text prepared for the business'],
+    ['Ready-to-Use Assets',        'Implementation text prepared for the ' + subjectNoun],
     ['30-Day Implementation Plan', 'Owners, dates, tasks, and verification'],
   ];
   H.push('<div class="toc">');
@@ -1363,7 +1375,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div><div class="score-verdict-pill">' + tier + '</div>');
   H.push('<div class="score-verdict-h">' + esc(verdict) + '</div>');
   H.push('<div class="score-summary">' + esc(summary) + '</div></div></div>');
-  H.push('<div style="padding:14px 18px;background:#F5F2EE;border-left:3px solid #C9A86A;margin-bottom:26px;font-size:12px;color:#48484F;line-height:1.7;"><strong style="color:#0C0C0E;">What the score means:</strong> The CHOIVE Index measures Clarity, Trust, Difference, and Ease from the evidence collected in this diagnostic. It is not the percentage of AI platforms that recommended the business. Provider mentions are reported separately in Sections 5 and 6.</div>');
+  H.push('<div style="padding:14px 18px;background:#F5F2EE;border-left:3px solid #C9A86A;margin-bottom:26px;font-size:12px;color:#48484F;line-height:1.7;"><strong style="color:#0C0C0E;">What the score means:</strong> The CHOIVE Index measures Clarity, Trust, Difference, and Ease from the evidence collected in this diagnostic. It is not the percentage of AI platforms that recommended the ' + esc(subjectNoun) + '. Provider mentions are reported separately in Sections 5 and 6.</div>');
   H.push('<div class="eyebrow">How to read the evidence</div>');
   H.push('<div class="evidence-key">'
     + '<div class="evidence-key-item"><div class="evidence-key-name" style="color:#2A7A48;">Verified</div><div class="evidence-key-copy">Confirmed from the website or a public source.</div></div>'
@@ -1446,11 +1458,11 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   } else {
     H.push('<div class="eyebrow">AI perception — current state</div>');
     H.push('<div class="aip"><div class="aip-label">AI’s view of ' + esc(bizName) + '</div>');
-    H.push('<div class="aip-text">Based on available signals, ' + esc(bizName) + ' appears to be a business operating in the ' + esc(category) + ' category. However, without independent third-party verification, AI platforms treat it as an unconfirmed entrant — present in its own signals, absent from the broader conversation.</div></div>');
+    H.push('<div class="aip-text">Based on available signals, ' + esc(bizName) + ' appears to be a ' + esc(subjectNoun) + ' in the ' + esc(category) + ' category. Without enough independent verification, AI platforms may identify it from its own pages without confidently surfacing it in broader category answers.</div></div>');
   }
   H.push('<div style="margin-top:20px;padding:18px 22px;background:#F5F2EE;border-left:3px solid #B83232;">');
   H.push('<div style="font-size:12px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">Why this matters</div>');
-  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">This is one AI-generated description recorded during the diagnostic. It may contain mistakes. CHOIVE uses the confirmed website and public evidence in this report when deciding what the business should improve.</div>');
+  H.push('<div style="font-size:13px;color:#48484F;line-height:1.8;">This is one AI-generated description recorded during the diagnostic. It may contain mistakes. CHOIVE uses the confirmed website and public evidence in this report when deciding what the ' + esc(subjectNoun) + ' should improve.</div>');
   H.push('</div>');
   H.push('<div style="margin-top:28px;"><div class="eyebrow">Evidence required before the next measurement</div>');
   H.push('<div style="background:#EDEAE5;padding:24px 28px;border:1px solid rgba(12,12,14,0.06);">');
@@ -1691,11 +1703,11 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('<div class="section">');
   if (compName) {
     H.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:24px;">');
-    H.push('<div style="padding:18px 20px;background:#EDEAE5;border-top:3px solid #C9A86A;"><div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#9A6A14;margin-bottom:7px;">Direct replacement</div><div style="font-size:13px;color:#48484F;line-height:1.65;">Competes for the same buyer, purchasing requirement, and commercial decision.</div></div>');
-    H.push('<div style="padding:18px 20px;background:#F5F2EE;border-top:3px solid #67676E;"><div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;margin-bottom:7px;">Market benchmark</div><div style="font-size:13px;color:#48484F;line-height:1.65;">A wider category leader buyers may compare, even when it is not a like-for-like replacement.</div></div>');
+    H.push('<div style="padding:18px 20px;background:#EDEAE5;border-top:3px solid #C9A86A;"><div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#9A6A14;margin-bottom:7px;">Head-to-head competitor</div><div style="font-size:13px;color:#48484F;line-height:1.65;">Competes for the same buyer, purchasing requirement, and commercial decision.</div></div>');
+    H.push('<div style="padding:18px 20px;background:#F5F2EE;border-top:3px solid #67676E;"><div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;margin-bottom:7px;">Market competitor</div><div style="font-size:13px;color:#48484F;line-height:1.65;">A wider category leader buyers may compare, even when it is not a like-for-like replacement.</div></div>');
     H.push('</div>');
     H.push('<div class="comp-dark">');
-    H.push('<div class="comp-eyebrow">' + (hasVerifiedDirectCompetitor ? 'Direct replacement identified in this diagnostic' : 'Competitor named in the diagnostic evidence') + '</div>');
+    H.push('<div class="comp-eyebrow">' + (hasVerifiedDirectCompetitor ? 'Head-to-head competitor identified in this diagnostic' : 'Competitor named in the diagnostic evidence') + '</div>');
     H.push('<div class="comp-name">' + esc(compName) + '</div>');
     if (compQuery) H.push('<div class="comp-query">On queries like: “' + esc(compQuery) + '”</div>');
     if (compWhy)   H.push('<div class="comp-why">' + esc(compWhy) + '</div>');
@@ -1742,7 +1754,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
         && marketCompName.toLowerCase().replace(/[^a-z0-9]/g, '')
           !== compName.toLowerCase().replace(/[^a-z0-9]/g, '')) {
       H.push('<div style="padding:20px 24px;background:#0C0C0E;margin-bottom:28px;border-left:4px solid #67676E;">'
-        + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.72);margin-bottom:6px;">Market benchmark</div>'
+        + '<div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.72);margin-bottom:6px;">Market competitor</div>'
         + '<div style="font-family:Georgia,serif;font-size:27px;color:#F5F2EE;margin-bottom:6px;">' + esc(marketCompName) + '</div>'
         + '<div style="font-size:12px;color:rgba(245,242,238,0.76);line-height:1.7;">' + esc(marketCompReason || 'Included as the wider category benchmark. It is not presented as a like-for-like replacement unless the evidence also confirms the same buyer and purchasing requirement.') + '</div></div>');
     }
@@ -1867,7 +1879,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   if (metaCurrent || metaImproved) {
     H.push('<div class="asset-block">');
     H.push('<div class="asset-label">Meta description ' + ownerTag + '</div>');
-    H.push('<div class="asset-desc">Update in your website SEO settings. The improved version includes your core category signals which AI systems use to classify and cite your business.</div>');
+    H.push('<div class="asset-desc">Update this in your website SEO settings. The improved version includes the core category signals AI systems use to classify and cite this ' + esc(subjectNoun) + '.</div>');
     H.push('<div class="meta-compare">');
     if (metaCurrent) H.push('<div class="mc mc-cur"><div class="mc-label">Current</div><div class="mc-text">' + esc(metaCurrent) + '</div></div>');
     if (metaImproved) H.push('<div class="mc mc-imp"><div class="mc-label">Improved</div><div class="mc-text">' + esc(metaImproved) + '</div></div>');
