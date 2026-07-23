@@ -2624,10 +2624,21 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
           <input id="bC" type="text" class="diag-input" placeholder="e.g. family restaurant" autocomplete="off"/>
         </div>
         <div class="diag-field">
+          <label class="diag-label" for="bReach">Where can people choose you?</label>
+          <select id="bReach" class="diag-input" aria-label="Geographic area where this offer is available">
+            <option value="" selected>Select your actual reach</option>
+            <option value="local">Local — one city and nearby areas</option>
+            <option value="regional">Regional — one state, province or region</option>
+            <option value="national">National — throughout one country</option>
+            <option value="international">International — across several countries</option>
+            <option value="global">Global — available worldwide</option>
+          </select>
+        </div>
+        <div class="diag-field">
           <label class="diag-label" for="bL">City &amp; country</label>
           <input id="bL" type="text" class="diag-input" placeholder="e.g. London, UK" autocomplete="off"/>
         </div>
-        <div class="diag-field">
+        <div class="diag-field diag-field--full">
           <label class="diag-label" for="bW">Your website</label>
           <input id="bW" type="text" class="diag-input" placeholder="e.g. thecornertable.com" autocomplete="off"/>
         </div>
@@ -2896,14 +2907,15 @@ function runDiagnostic() {
   const subjectType = document.getElementById('bType') ? document.getElementById('bType').value : 'business';
   const name        = document.getElementById('bN').value.trim();
   const category    = document.getElementById('bC').value.trim();
+  const marketReach = document.getElementById('bReach') ? document.getElementById('bReach').value : '';
   const city        = document.getElementById('bL').value.trim();
   let website        = document.getElementById('bW') ? document.getElementById('bW').value.trim() : '';
   const description      = document.getElementById('bD') ? document.getElementById('bD').value.trim() : '';
   const knownCompetitors = document.getElementById('bComp') ? document.getElementById('bComp').value.trim() : '';
   const customerQuestion = document.getElementById('bQuestion') ? document.getElementById('bQuestion').value.trim() : '';
 
-  if (!name || !category || !city) {
-    alert('Please fill in your business name, category, and city.');
+  if (!name || !category || !city || !marketReach) {
+    alert('Please add the name, what you do, city and country, and where people can choose you.');
     return;
   }
   if (!website) {
@@ -2916,7 +2928,7 @@ function runDiagnostic() {
   }
 
   const language = document.getElementById('bLang') ? document.getElementById('bLang').value : '';
-  bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language, subjectType };
+  bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language, subjectType, marketReach };
 
   document.getElementById('dI').style.display = 'none';
   document.getElementById('dS').classList.add('active');
@@ -2951,6 +2963,7 @@ async function startDiagnostic(biz) {
         customerQuestion: biz.customerQuestion || '',
         language:         biz.language         || '',
         subjectType:      biz.subjectType      || 'business'
+        ,marketReach:     biz.marketReach      || ''
       })
     });
 
@@ -2991,6 +3004,14 @@ function pollDiagnostic(jobId) {
       const data = await res.json();
       consecutiveFailures = 0;
       console.log('[CHOIVE poll response]', data);
+      if (data.input) {
+        bizData.name = data.input.name || '';
+        bizData.category = data.input.category || '';
+        bizData.city = data.input.city || '';
+        bizData.website = data.input.website || '';
+        bizData.subjectType = data.input.subjectType || 'business';
+        bizData.marketReach = data.input.marketReach || '';
+      }
       updateEngineStage(data.status);
       if (data.status === 'complete') {
         if (pollTimer) clearInterval(pollTimer);
@@ -3030,7 +3051,7 @@ function buildScoreLabels(r) {
   const tier = r.marketPosition?.tier || 'unknown';
   const score = Number(r.overallScore) || 0;
 
-  // Recommendation strength from market tier
+  // Market position is evidence-derived. It is not a provider recommendation.
   const strengthMap = {
     dominant:  { label: 'HIGH',   cls: 'high' },
     strong:    { label: 'HIGH',   cls: 'high' },
@@ -3071,7 +3092,7 @@ function buildScoreLabels(r) {
 
   return `<div class="score-labels">
     <div class="score-label-row">
-      <div class="score-label-key">Recommendation</div>
+      <div class="score-label-key">Market position</div>
       <div class="score-label-val ${strength.cls}">${strength.label}</div>
     </div>
     <div class="score-label-row">
@@ -3410,6 +3431,16 @@ function showResults(r, jobId) {
   const bName = esc(bizData.name || '');
   const bCat  = esc(bizData.category || '');
   const bCity = esc(bizData.city || '');
+  const subjectNouns = { business:'business', product:'product', creator:'creator', personal_brand:'person', organization:'organization' };
+  const subjectNoun = subjectNouns[bizData.subjectType] || 'business';
+  const reachLabels = {
+    local: 'Local', regional: 'Regional', national: 'National',
+    international: 'International', global: 'Global'
+  };
+  const reachLabel = reachLabels[bizData.marketReach] || '';
+  const measuredMarket = reachLabel
+    ? (reachLabel === 'Global' ? 'Global' : reachLabel + (bCity ? ' · ' + bCity : ''))
+    : '';
   const bWeb = [
     bizData.website || '',
     bizData.description || '',
@@ -3439,12 +3470,12 @@ function showResults(r, jobId) {
   // The score describes the business evidence only. Platform recommendations
   // are reported separately from the measured platform responses.
   const scoreLabel = score >= 76
-    ? 'AI can clearly understand this business and find strong public proof for it.'
+    ? 'AI can clearly understand this ' + subjectNoun + ' and find strong public proof for it.'
     : score >= 56
-      ? 'AI can understand this business, but some important public proof is missing or unclear.'
+      ? 'AI can understand this ' + subjectNoun + ', but some important public proof is missing or unclear.'
       : score >= 31
-        ? 'AI can identify this business, but it cannot find enough clear and trusted proof to recommend it reliably.'
-        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this business.';
+        ? 'AI can identify this ' + subjectNoun + ', but it cannot find enough clear and trusted proof to recommend it reliably.'
+        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this ' + subjectNoun + '.';
 
   function buildApiMeasurementSummary() {
     var labels = { claude:'Claude', openai:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini' };
@@ -3502,9 +3533,7 @@ function showResults(r, jobId) {
   var topCompReason = (explicitHeadToHead && (explicitHeadToHead.evidence || explicitHeadToHead.advantage))
     || cd.reason
     || (topComp ? topComp + ' sells a similar product to the same type of customer.' : '');
-  var topCompReasonSummary = topComp
-    ? topComp + ' sells a similar product to the same type of customer, at a similar business level and in a similar market.'
-    : '';
+  var topCompReasonSummary = topCompReason;
   var widerMarketDecision = r.marketCompetitorDecision && r.marketCompetitorDecision.name
     ? r.marketCompetitorDecision : null;
   window.__choiveTopComp = topComp;
@@ -3609,7 +3638,7 @@ function showResults(r, jobId) {
     if (String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) return '';
     return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market benchmark</div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
       + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
       + '</div>';
@@ -3617,7 +3646,8 @@ function showResults(r, jobId) {
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
         ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
-          + '<h1 style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:0;margin:0 0 16px;">' + esc(name) + '</h1>'
+          + '<h1 style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:0;margin:0 0 8px;">' + esc(name) + '</h1>'
+          + (measuredMarket ? '<div style="font-size:11px;font-weight:700;color:rgba(245,242,238,0.62);margin-bottom:16px;">Measured market: ' + esc(measuredMarket) + '</div>' : '')
         : '');
   // Second competitor name (if present)
   var secondComp = cd.secondAiCompetitor || '';
@@ -3656,7 +3686,7 @@ function showResults(r, jobId) {
     if (isConfirmedRecommendationLeader) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
         + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
         + buildMarketCompetitorRow()
@@ -3667,7 +3697,7 @@ function showResults(r, jobId) {
       // contest, not a false alarm. Urgency comes from the stakes being live
       // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
         + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
         + buildMarketCompetitorRow()
@@ -3676,7 +3706,7 @@ function showResults(r, jobId) {
     }
   } else if (cd.categoryUnowned) {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
@@ -3688,7 +3718,7 @@ function showResults(r, jobId) {
       + '</div>';
   } else {
     competitorBanner = bannerHead
-      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Direct replacement</div>'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
@@ -3849,8 +3879,8 @@ function showResults(r, jobId) {
           return '<div style="background:var(--paper-2);padding:22px 28px;margin-bottom:2px;">'
             + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">'
             + (String(cp.queryContext || '').toLowerCase() === 'head-to-head'
-              ? 'Direct replacement'
-              : 'Market benchmark') + '</div>'
+              ? 'Head-to-head competitor'
+              : 'Market competitor') + '</div>'
             + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this company is the closest direct competitor, how the two businesses differ, and what proof would make your business easier for buyers and AI systems to understand and trust.</div>'
@@ -4235,8 +4265,8 @@ function showResults(r, jobId) {
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
       + '<div class="executive-fact"><div class="executive-fact-label">Measured outcome</div><div class="executive-fact-value">' + (measuredCount ? recommendedOther + ' of ' + measuredCount + ' AI platforms recommended another company' : 'Platform recommendations were not fully available') + '</div><div class="executive-fact-copy">This states only what this run measured. It is not influenced by the CHOIVE score.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Direct replacement</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Market benchmark</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
       + '</section>';
   }
@@ -4318,7 +4348,7 @@ function showResults(r, jobId) {
     if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
       an = r.arenaScores.online.priorityAction || '';
     }
-    var _extraLabel = 'Market benchmark';
+    var _extraLabel = 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
@@ -5370,6 +5400,7 @@ async function fetchSharedResult(jobId) {
         bizData.city     = data.input.city     || '';
         bizData.website  = data.input.website  || '';
         bizData.subjectType = data.input.subjectType || 'business';
+        bizData.marketReach = data.input.marketReach || '';
       }
       // Hide homepage sections so paid result shows cleanly
       var dI = document.getElementById('dI');
@@ -5391,6 +5422,7 @@ async function fetchSharedResult(jobId) {
     }
   } catch (err) {
     console.error('fetchSharedResult error:', err);
+    showError('This result could not be loaded. Please check the link and try again.');
   }
 }
 
