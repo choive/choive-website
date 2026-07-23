@@ -357,7 +357,7 @@ function extractMeta(html) {
 }
 
 // ── Build website text summary for Claude ─────────────────────────────────────
-function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists) {
+function buildWebsiteSummary(meta, schema, homepageText, aboutText, proofText, llmsTxtExists) {
   var parts = [];
 
   if (meta.h1)          parts.push('H1: ' + meta.h1);
@@ -380,6 +380,7 @@ function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExist
 
   if (homepageText) parts.push('\nHOMEPAGE CONTENT:\n' + homepageText);
   if (aboutText)    parts.push('\nABOUT PAGE CONTENT:\n' + aboutText);
+  if (proofText)    parts.push('\nPUBLIC PROOF PAGE CONTENT:\n' + proofText);
 
   return parts.join('\n');
 }
@@ -405,6 +406,10 @@ async function fetchWebsiteText(url) {
     checkSitemapExists(base),                 // [4] sitemap.xml
     checkRobotsExists(base),                  // [5] robots.txt
     fetchHtml(base + '/robots.txt'),          // [6] raw robots.txt text, for Google-Extended check
+    safeFetch(base + '/case-studies', 1600),  // [7] B2B proof
+    safeFetch(base + '/customers',    1600),  // [8] customer proof
+    safeFetch(base + '/testimonials', 1600),  // [9] service/local proof
+    safeFetch(base + '/partners',     1600),  // [10] partnership proof
   ]);
 
   var homepageHtml  = settled[0].status === 'fulfilled' ? settled[0].value : '';
@@ -415,6 +420,12 @@ async function fetchWebsiteText(url) {
   var sitemapExists = settled[4].status === 'fulfilled' ? settled[4].value : false;
   var robotsExists  = settled[5].status === 'fulfilled' ? settled[5].value : false;
   var robotsRawText = settled[6].status === 'fulfilled' ? settled[6].value : '';
+  var proofText = settled.slice(7, 11)
+    .filter(function(item) { return item.status === 'fulfilled' && item.value; })
+    .map(function(item) { return item.value; })
+    .slice(0, 2)
+    .join('\n')
+    .slice(0, 2600);
 
   var meta          = extractMeta(homepageHtml);
   var schema        = extractSchema(homepageHtml);
@@ -475,7 +486,7 @@ async function fetchWebsiteText(url) {
     googleExtendedBlocked: botCrawl ? botCrawl.googleExtendedBlocked : null,
   };
 
-  var text = buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExists);
+  var text = buildWebsiteSummary(meta, schema, homepageText, aboutText, proofText, llmsTxtExists);
 
   return { text, signals };
 }
