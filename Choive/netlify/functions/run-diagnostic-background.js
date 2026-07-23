@@ -10,6 +10,8 @@ const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, sel
 const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { runGeminiSimulation, runPerplexitySimulation } = require('./lib/additional-platform-simulations');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
+const { applyDeterministicScoring } = require('./lib/deterministic-scoring');
+const { strictMajorityThreshold } = require('./lib/measurement-policy');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
@@ -98,8 +100,10 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
     if (isFinite(pp) && isFinite(cp)) delta.pillars[k] = cp - pp;
   }
 
-  var prevSite = (prevRow.evidence && prevRow.evidence.website) || {};
-  var curSite  = (evidence && evidence.website) || {};
+  // Current diagnostics store mechanically confirmed website facts under
+  // `websiteSignals`. Keep the older `website` key only for historical rows.
+  var prevSite = (prevRow.evidence && (prevRow.evidence.websiteSignals || prevRow.evidence.website)) || {};
+  var curSite  = (evidence && (evidence.websiteSignals || evidence.website)) || {};
   var sigMap = [
     ['hasSchema',          'Schema markup'],
     ['hasLlmsTxt',         'llms.txt'],
@@ -460,6 +464,8 @@ exports.handler = async function (event) {
         websiteText:          websiteText    || '',
         websiteSignals:       websiteSignals,   // ← structured signals attached here
         searchText:           serperPayload.searchText   || 'No search results returned.',
+        searchResults:        serperPayload.results      || [],
+        knowledgeGraph:       serperPayload.knowledgeGraph || null,
         kgText:               serperPayload.kgText       || 'None',
         visibilityPosition:   visibilityPos,
         competitors:          serperPayload.competitors   || [],
@@ -713,6 +719,30 @@ exports.handler = async function (event) {
               var claudeReplacementResult = sharedPlatformQueries.find(function(result) {
                 return result && /branded replacement/i.test(String(result.label || ''));
               });
+              var claudeRecommendationCounts = {};
+              var claudeRecommendationNames = {};
+              var claudeReplacementResponses = claudeReplacementResult && Array.isArray(claudeReplacementResult.allResponses)
+                ? claudeReplacementResult.allResponses : [];
+              claudeReplacementResponses.forEach(function(response) {
+                var match = String(response || '').replace(/\*\*/g, '').match(/(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*([^\n\r]+)/i);
+                if (!match) return;
+                var recommendationName = String(match[1] || '').trim().replace(/[.;]+$/, '');
+                if (!recommendationName || /^none\b/i.test(recommendationName)) return;
+                var recommendationKey = recommendationName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!recommendationKey) return;
+                claudeRecommendationNames[recommendationKey] = claudeRecommendationNames[recommendationKey] || recommendationName;
+                claudeRecommendationCounts[recommendationKey] = (claudeRecommendationCounts[recommendationKey] || 0) + 1;
+              });
+              var claudeRankedKeys = Object.keys(claudeRecommendationCounts).sort(function(a, b) {
+                return claudeRecommendationCounts[b] - claudeRecommendationCounts[a];
+              });
+              var claudeMajorityThreshold = strictMajorityThreshold(claudeReplacementResponses.length);
+              var claudeTopRecommendation = claudeRankedKeys[0]
+                && claudeRecommendationCounts[claudeRankedKeys[0]] >= claudeMajorityThreshold
+                ? claudeRecommendationNames[claudeRankedKeys[0]] : null;
+              var claudeExplicitNoRecommendation = claudeReplacementResponses.filter(function(response) {
+                return /(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*NONE\b/i.test(String(response || '').replace(/\*\*/g, ''));
+              }).length >= claudeMajorityThreshold && claudeMajorityThreshold > 0;
               evidence['platformSimulations']['claude'] = {
                 available: claudeCompletedSamples > 0,
                 configured: Boolean(process.env.ANTHROPIC_API_KEY),
@@ -727,7 +757,20 @@ exports.handler = async function (event) {
                 totalQueries: simBefore.before.totalQueries,
                 completedSamples: claudeCompletedSamples,
                 expectedSamples: claudeExpectedSamples,
-                recommendationCompleted: Boolean(claudeReplacementResult && Number(claudeReplacementResult.sampleCount || 0) > 0),
+                sampleCountPerQuery: Number(sharedPlatformQueries[0] && sharedPlatformQueries[0].expectedSamples || 0),
+                recommendationSamples: Number(claudeReplacementResult && claudeReplacementResult.expectedSamples || 0),
+                topRecommendation: claudeTopRecommendation,
+                recommendationCounts: claudeRecommendationCounts,
+                recommendationCompleted: Boolean(claudeReplacementResult && Number(claudeReplacementResult.sampleCount || 0) > 0
+                  && (claudeTopRecommendation || claudeExplicitNoRecommendation)),
+                explicitNoRecommendation: claudeExplicitNoRecommendation,
+                recommendationAgreement: {
+                  name: claudeTopRecommendation,
+                  count: claudeTopRecommendation ? claudeRecommendationCounts[claudeRankedKeys[0]] : 0,
+                  completedSamples: claudeReplacementResponses.length,
+                  threshold: claudeMajorityThreshold,
+                  counts: claudeRecommendationCounts
+                },
                 recommendationQuery: claudeReplacementResult && claudeReplacementResult.query || null,
                 recommendationResponse: claudeReplacementResult && claudeReplacementResult.response || null,
                 results: sharedPlatformQueries
@@ -1291,9 +1334,21 @@ exports.handler = async function (event) {
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
     }
     if (!hasValidShape(rawOutput)) {
-      console.warn('[' + jobId + '] Claude output shape invalid — applying safe normalization');
+      console.warn('[' + jobId + '] Claude output shape invalid — retrying scoring once');
+      try {
+        rawOutput = await scoreWithClaude(evidence);
+      } catch (retryErr) {
+        console.error('[' + jobId + '] Claude scoring retry failed:', retryErr.message);
+        await saveError(jobId, 'Scoring retry failed: ' + retryErr.message).catch(() => {});
+        return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
+      }
+      if (!hasValidShape(rawOutput)) {
+        console.error('[' + jobId + '] Claude output remained invalid after retry');
+        await saveError(jobId, 'Scoring returned an incomplete result after retry.').catch(() => {});
+        return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: false, jobId }) };
+      }
     }
-    const finalResult = buildSafeOutput(rawOutput);
+    const finalResult = applyDeterministicScoring(evidence, buildSafeOutput(rawOutput));
     // ── V5 COMPETITOR CONFIRMATION ─────────────────────────────────────────────────────
     // scoreWithClaude calls selectDominantCompetitor v5 which writes directly to
     // evidence.competitorDecision (JS object passed by reference). After scoreWithClaude
@@ -1529,6 +1584,33 @@ exports.handler = async function (event) {
         perplexity: coverageForRun(measuredPerplexity, 'Perplexity'),
         gemini: coverageForRun(measuredGemini, 'Gemini')
       };
+      var manifestForRun = function(run, provider) {
+        var results = run && Array.isArray(run.results) ? run.results : [];
+        return {
+          provider: provider,
+          model: run && run.model || null,
+          status: run && run.status || 'unmeasured',
+          completedSamples: Number(run && run.completedSamples || results.reduce(function(total, item) {
+            return total + Number(item && item.sampleCount || 0);
+          }, 0)),
+          expectedSamples: Number(run && run.expectedSamples || results.reduce(function(total, item) {
+            return total + Number(item && item.expectedSamples || 0);
+          }, 0)),
+          samplesPerQuery: Number(run && run.sampleCountPerQuery || (results[0] && results[0].expectedSamples) || 0),
+          recommendationSamples: Number(run && run.recommendationSamples || 0),
+          queries: results.map(function(item) { return String(item && item.query || ''); }).filter(Boolean)
+        };
+      };
+      finalResult['measurementManifest'] = {
+        methodologyVersion: 'evidence-rubric-v2',
+        collectedAt: evidence.collectedAt || null,
+        providers: {
+          claude: manifestForRun(measuredClaude, 'Claude'),
+          chatgpt: manifestForRun(measuredOpenAI, 'ChatGPT'),
+          perplexity: manifestForRun(measuredPerplexity, 'Perplexity'),
+          gemini: manifestForRun(measuredGemini, 'Gemini')
+        }
+      };
       var openaiRecommendations = measuredOpenAI && measuredOpenAI.recommendations
         ? [measuredOpenAI.recommendations.primary, measuredOpenAI.recommendations.second, measuredOpenAI.recommendations.third].filter(Boolean)
         : [];
@@ -1539,6 +1621,7 @@ exports.handler = async function (event) {
         });
       };
       var extractDirectRecommendation = function(run) {
+        if (run && run.topRecommendation) return run.topRecommendation;
         var direct = findDirectRecommendationResult(run);
         if (!direct) return null;
         var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
@@ -1652,6 +1735,8 @@ exports.handler = async function (event) {
           status: laneStatus(lane.run, lane.recommendation),
           query: lane.query,
           subjectAppeared: Boolean(lane.run && Number(lane.run.appearedCount || 0) > 0),
+          visibilityAppearedCount: Number(lane.run && lane.run.appearedCount || 0),
+          visibilityTotalQueries: Number(lane.run && lane.run.totalQueries || 0),
           completedSamples: Number(lane.run && lane.run.completedSamples || 0),
           expectedSamples: Number(lane.run && lane.run.expectedSamples || 0),
           model: lane.run && lane.run.model || null
@@ -2007,10 +2092,12 @@ exports.handler = async function (event) {
     try {
       var cdSummary = finalResult['competitorDecision'] || {};
       var simB = evidence['aiSimulationBefore'] && evidence['aiSimulationBefore'].before;
-      var searchUsed = null;
+      var completedRecordedQueries = null;
       try {
         if (simB && Array.isArray(simB.results)) {
-          searchUsed = simB.results.some(function(r) { return r && r.sampleCount && r.sampleCount > 1; });
+          completedRecordedQueries = simB.results.filter(function(r) {
+            return Number(r && r.sampleCount || 0) > 0;
+          }).length;
         }
       } catch (e) {}
       console.log('[' + jobId + '] SUMMARY ' + JSON.stringify({
@@ -2025,7 +2112,9 @@ exports.handler = async function (event) {
         },
         groundTruth: {
           language:      simB && simB.language || 'en',
-          multiSampled:  searchUsed, // renamed from dualSampled: the redesign samples 4x per query, not 2x \u2014 old field name/value were stale after the frequency-architecture rewrite
+          samplesPerQuery: simB && simB.results && simB.results[0]
+            ? Number(simB.results[0].expectedSamples || simB.results[0].sampleCount || 0) : null,
+          completedQueries: completedRecordedQueries,
           appearedRate:  simB && simB.results && simB.results.some(function(r){return Number(r.sampleCount || 0) > 0;})
             ? (simB.results.filter(function(r){return r.appeared;}).length + '/' + simB.results.filter(function(r){return Number(r.sampleCount || 0) > 0;}).length)
             : null
