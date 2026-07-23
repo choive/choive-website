@@ -39,7 +39,7 @@ function sanitizeExternal(text) {
 // ── Fast category inference ───────────────────────────────────────────────────
 async function inferCategory(name, category, websiteText, searchText, subjectType) {
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 15000);
+  var timer = setTimeout(function() { controller.abort(); }, 30000);
   subjectType = String(subjectType || 'business').trim();
   var subjectInstruction = subjectType === 'creator'
     ? 'Identify the creator\'s primary topic, content format, audience, and geographic relevance. Do not force a commercial business category.'
@@ -661,13 +661,9 @@ function applySignalConstraints(rawOutput, websiteSignals) {
       }
     }
 
-    // CLARITY — H1 and meta description
-    if (s.hasH1) {
-      var h1Detail = s.h1Text ? ('"' + String(s.h1Text).slice(0, 60) + '"') : 'H1 present';
-      overrideSignal('clarity', 'H1 headline', 'pass', h1Detail);
-    } else {
-      overrideSignal('clarity', 'H1 headline', 'fail', 'No H1 tag detected on page');
-    }
+    // CLARITY — H1 relevance remains an interpreted check. Mechanical H1
+    // presence is recorded separately and must not be mistaken for proof that
+    // the headline actually names the product or service.
     if (s.hasMetaDescription) {
       var metaSnip = s.metaDescriptionText ? ('"' + String(s.metaDescriptionText).slice(0, 60) + '"') : 'Meta description present';
       overrideSignal('clarity', 'Meta description', 'pass', metaSnip);
@@ -704,14 +700,18 @@ function applySignalConstraints(rawOutput, websiteSignals) {
     } else {
       overrideSignal('ease', 'llms.txt file', 'fail', 'No llms.txt found');
     }
-    if (s.botEmptyShellDetected) {
+    if (s.botCrawlable === null || s.botCrawlable === undefined) {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Crawler access was not measured');
+    } else if (s.botEmptyShellDetected) {
       overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Bots see empty shell — JS-only render');
     } else if (s.allBotsFailed) {
       overrideSignal('ease', 'AI crawlers can read page', 'fail', 'All bot fetches blocked or failed');
     } else if (s.botCrawlable === false) {
       overrideSignal('ease', 'AI crawlers can read page', 'partial', 'Partial content visible to bots');
-    } else {
+    } else if (s.botCrawlable === true) {
       overrideSignal('ease', 'AI crawlers can read page', 'pass', 'Bots see substantive page content');
+    } else {
+      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Crawler access failed');
     }
   }
 
