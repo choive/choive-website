@@ -29,6 +29,16 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+function serviceableMarketLabel(reach, city) {
+  var parts = String(city || '').split(',').map(function(part) { return part.trim(); }).filter(Boolean);
+  var country = parts.length ? parts[parts.length - 1] : String(city || '').trim();
+  if (reach === 'local') return String(city || '').trim();
+  if (reach === 'regional') return 'the region around ' + String(city || '').trim();
+  if (reach === 'national') return country;
+  if (reach === 'international') return 'the international markets served by the subject';
+  if (reach === 'global') return 'global';
+  return String(city || '').trim();
+}
 function buildSubjectRecommendationMatcher(name, website) {
   var keys = {};
   function add(value) {
@@ -63,7 +73,9 @@ function buildSubjectRecommendationMatcher(name, website) {
 function computeProgressDelta(prevRow, finalResult, evidence) {
   if (!prevRow || !prevRow.result || !finalResult) return null;
   var prev      = prevRow.result;
-  var prevScore = Number(prev.score);
+  var prevScore = Number(prev.overallScore);
+  // Backward compatibility for the oldest stored result shape.
+  if (!isFinite(prevScore)) prevScore = Number(prev.score);
   var curScore  = Number(finalResult.overallScore);
   if (!isFinite(prevScore) || !isFinite(curScore)) return null;
 
@@ -118,10 +130,14 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
     };
   }
 
-  var prevComp = Array.isArray(prev.competitors) && prev.competitors[0] && prev.competitors[0].name
-    ? String(prev.competitors[0].name).trim() : null;
-  var curComp = Array.isArray(finalResult.competitors) && finalResult.competitors[0] && finalResult.competitors[0].name
-    ? String(finalResult.competitors[0].name).trim() : null;
+  var prevComp = prev.competitorDecision && prev.competitorDecision.realCompetitor
+    ? String(prev.competitorDecision.realCompetitor).trim()
+    : (Array.isArray(prev.competitors) && prev.competitors[0] && prev.competitors[0].name
+      ? String(prev.competitors[0].name).trim() : null);
+  var curComp = finalResult.competitorDecision && finalResult.competitorDecision.realCompetitor
+    ? String(finalResult.competitorDecision.realCompetitor).trim()
+    : (Array.isArray(finalResult.competitors) && finalResult.competitors[0] && finalResult.competitors[0].name
+      ? String(finalResult.competitors[0].name).trim() : null);
   if (prevComp && curComp && prevComp.toLowerCase() !== curComp.toLowerCase()) {
     delta.competitorChange = { from: prevComp, to: curComp };
   }
@@ -341,17 +357,23 @@ exports.handler = async function (event) {
     const description      = safeStr(input.description);
     const knownCompetitors = safeStr(input.knownCompetitors);
     const customerQuestion = safeStr(input.customerQuestion).slice(0, 500);
+    const marketReach      = ['local', 'regional', 'national', 'international', 'global'].indexOf(safeStr(input.marketReach).toLowerCase()) !== -1
+      ? safeStr(input.marketReach).toLowerCase() : '';
+    const serviceableMarket = serviceableMarketLabel(marketReach, city);
     const subjectType      = ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(safeStr(input.subjectType)) !== -1
       ? safeStr(input.subjectType) : 'business';
     var isSubjectRecommendation = buildSubjectRecommendationMatcher(name, website);
     const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
     if (!jobId)                      throw new Error('Missing jobId');
+    // New diagnostics require marketReach at entry. Older paid diagnostics can
+    // still be re-run; simulation.js falls back to evidence-based scope
+    // inference when their stored input predates this field.
     if (!name || !category || !city) throw new Error('Missing required input fields');
     await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
     // Every diagnostic is a fresh measurement. Historical jobs remain stored
     // for audit and progress comparison, but their evidence, provider answers,
     // and competitor decisions are never used as the input to this run.
-    const fingerprint = buildFingerprint({ name, category, city, website });
+    const fingerprint = buildFingerprint({ name, category, city, website, subjectType, marketReach });
     let evidence = null;
     if (!evidence) {
       await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
@@ -433,7 +455,7 @@ exports.handler = async function (event) {
         );
       }
         evidence = {
-        name, category, city, website, description, knownCompetitors, customerQuestion,
+        name, category, city, website, description, knownCompetitors, customerQuestion, marketReach, subjectType,
         inferredOfficialSite: inferredSite   || '',
         websiteText:          websiteText    || '',
         websiteSignals:       websiteSignals,   // ← structured signals attached here
@@ -565,7 +587,7 @@ exports.handler = async function (event) {
       // ── STAGE 1b: CATEGORY INFERENCE + SECOND-PASS COMPETITOR SEARCH ─────────
       var inferredCat = category;
       try {
-        var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText']);
+        var catResult = await inferCategory(name, category, evidence['websiteText'], evidence['searchText'], subjectType);
         // Trust the inference when the website was actually fetched (substantial text =
         // the model grounded on real evidence). Only revert to the user-typed category
         // when the website is missing or very thin — in that case, the inference has
@@ -588,7 +610,7 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] Category inference failed:', err.message);
       }
       try {
-        var compSearch = await searchCompetitors(name, inferredCat, city, knownCompetitors);
+        var compSearch = await searchCompetitors(name, inferredCat, serviceableMarket, knownCompetitors);
         if (compSearch.competitors && compSearch.competitors.length > 0) {
           var existingDomains = (evidence['competitors'] || []).map(function(c) { return c['domain']; });
           var newComps = compSearch.competitors.filter(function(c) { return existingDomains.indexOf(c['domain']) === -1; });
@@ -634,6 +656,7 @@ exports.handler = async function (event) {
             knownCompetitors:  knownCompetitors || '',
             customerQuestion:  customerQuestion || ''
             ,subjectType:      subjectType
+            ,marketReach:     marketReach
           });
           if (simBefore && simBefore.before) {
             evidence['aiSimulationBefore'] = simBefore;
@@ -651,6 +674,7 @@ exports.handler = async function (event) {
                 description: description,
                 inferredCategory: evidence['inferredCategory'] || category
                 ,subjectType: subjectType
+                ,marketReach: marketReach
               }, true) : null;
               evidence['directCompetitorCheck'] = directCompetitorCheck;
             } catch (directErr) {
@@ -851,7 +875,9 @@ exports.handler = async function (event) {
                       'TASK: From the AI recommendation responses below, identify the real business names being recommended as competitors to the subject business.\n\n'
                       + 'SUBJECT BUSINESS (exclude this from results): ' + name + '\n'
                       + 'SUBJECT CATEGORY: ' + inferredCatForPrompt + '\n'
-                      + (city ? 'SUBJECT MARKET / LOCATION: ' + city + '\n' : '')
+                      + (city ? 'SUBJECT BASE LOCATION: ' + city + '\n' : '')
+                      + 'SUBJECT CUSTOMER REACH: ' + marketReach + '\n'
+                      + 'SUBJECT SERVICEABLE MARKET: ' + serviceableMarket + '\n'
                       + '\n'
                       + 'KNOWN COMPETITORS (company names or domains — prioritise these if they appear in responses):\n'
                       + (hintList || 'none') + '\n\n'
@@ -954,7 +980,8 @@ exports.handler = async function (event) {
                       .replace(/[^a-z0-9]+/g, ' ').trim();
                     if (!normalizedCandidate) return 0;
                     return allSimResponses.filter(function(response) {
-                      var normalizedResponse = String(response || '').replace(/[^a-z0-9]+/g, ' ').trim();
+                      var normalizedResponse = String(response || '').toLowerCase()
+                        .replace(/[^a-z0-9]+/g, ' ').trim();
                       return (' ' + normalizedResponse + ' ').indexOf(' ' + normalizedCandidate + ' ') !== -1;
                     }).length;
                   };
@@ -1051,6 +1078,7 @@ exports.handler = async function (event) {
               inferredCategory: evidence['inferredCategory'] || category,
               customerQuestion: customerQuestion || ''
               ,subjectType: subjectType
+              ,marketReach: marketReach
             });
             var fallbackPlatformInput = {
               name: name,
@@ -1228,7 +1256,7 @@ exports.handler = async function (event) {
         // brand competitor search that runs inside selectDominantCompetitor.
         try {
           var productType = evidence['inferredCategory'] || category;
-          var market      = city;
+          var market      = serviceableMarket;
           console.log('[' + jobId + '] Searching online channel competitors for: ' + productType + ' / ' + market);
           var channelSearchResults = await searchOnlineChannelCompetitor(productType, market);
           console.log('[' + jobId + '] Channel search found ' + (channelSearchResults.competitors || []).length + ' candidates');
