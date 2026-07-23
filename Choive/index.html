@@ -3611,11 +3611,23 @@ function showResults(r, jobId) {
       var state = recommendation ? 'recommended' : (lane.status || 'unmeasured');
       var recommendationKey = String(recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       var recommendsSubject = laneNamesSubject(recommendation);
+      var verification = lane.verification && typeof lane.verification === 'object' ? lane.verification : null;
+      var verificationHtml = '';
+      if (recommendation && verification) {
+        verificationHtml = verification.status === 'verified'
+          ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Confirmed as a real category-relevant business</div>'
+          : '<div style="font-size:10px;color:#F0B45A;margin-top:7px;">AI answer recorded · category match not independently confirmed</div>'
+            + (verification.reason ? '<div style="font-size:10px;color:rgba(245,242,238,0.48);line-height:1.45;margin-top:4px;">' + esc(verification.reason) + '</div>' : '');
+      }
+      var aliasHtml = lane.sameBusinessAs
+        ? '<div style="font-size:10px;color:rgba(245,242,238,0.52);margin-top:5px;">Same business identity as ' + esc(lane.sameBusinessAs) + '</div>' : '';
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(recommendation || statusText[state] || 'Measurement status unavailable') + '</div>'
         + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
+        + verificationHtml
+        + aliasHtml
         + (consumerRecord
           ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#72C99A;margin-top:7px;">Consumer-app record · user supplied</div>'
             + (apiRecommendation && String(apiRecommendation).toLowerCase() !== String(recommendation).toLowerCase()
