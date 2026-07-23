@@ -170,6 +170,19 @@ async function checkSitemapExists(baseUrl) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
       signal: controller.signal
     });
+    if (res.ok) { clearTimeout(timer); return true; }
+    // A number of valid sites reject HEAD while serving the file normally.
+    // Confirm with GET before recording a false missing-sitemap signal.
+    if (res.status === 403 || res.status === 405 || res.status === 501) {
+      clearTimeout(timer);
+      controller = new AbortController();
+      timer = setTimeout(function() { controller.abort(); }, 5000);
+      res = await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
+        signal: controller.signal
+      });
+    }
     clearTimeout(timer);
     return res.ok;
   } catch (err) {
@@ -190,6 +203,17 @@ async function checkRobotsExists(baseUrl) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
       signal: controller.signal
     });
+    if (res.ok) { clearTimeout(timer); return true; }
+    if (res.status === 403 || res.status === 405 || res.status === 501) {
+      clearTimeout(timer);
+      controller = new AbortController();
+      timer = setTimeout(function() { controller.abort(); }, 5000);
+      res = await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CHOIVE-Bot/1.0)' },
+        signal: controller.signal
+      });
+    }
     clearTimeout(timer);
     return res.ok;
   } catch (err) {
@@ -368,11 +392,13 @@ function buildWebsiteSummary(meta, schema, homepageText, aboutText, llmsTxtExist
 async function fetchWebsiteText(url) {
   if (!url) return { text: '', signals: {} };
   var safeUrl = url.startsWith('http') ? url : 'https://' + url;
-  var base    = safeUrl.replace(/\/$/, '');
+  var pageUrl = safeUrl.replace(/\/$/, '');
+  var base = pageUrl;
+  try { base = new URL(pageUrl).origin; } catch (e) {}
 
   // Fetch everything in parallel
   var settled = await Promise.allSettled([
-    fetchHtml(base),                          // [0] homepage HTML
+    fetchHtml(pageUrl),                       // [0] submitted page HTML
     safeFetch(base + '/about',    MAX_CHARS_PAGE),  // [1] about page
     safeFetch(base + '/about-us', MAX_CHARS_PAGE),  // [2] about-us page
     checkLlmsTxtExists(base),                 // [3] llms.txt
@@ -399,7 +425,7 @@ async function fetchWebsiteText(url) {
   // homepageText's length as the comparison baseline.
   var botCrawl = null;
   try {
-    botCrawl = await checkBotCrawlability(base, homepageText.trim().length, robotsRawText);
+    botCrawl = await checkBotCrawlability(pageUrl, homepageText.trim().length, robotsRawText);
   } catch (e) {
     botCrawl = null;
   }
@@ -442,6 +468,7 @@ async function fetchWebsiteText(url) {
     ogTitle:            meta.ogTitle || '',
     // AI crawler visibility \u2014 real bot fetches, not just static file checks
     botCrawlable:          botCrawl ? !botCrawl.allBotsFailed : null,
+    allBotsFailed:         botCrawl ? botCrawl.allBotsFailed : null,
     botEmptyShellDetected: botCrawl ? botCrawl.emptyShellDetected : null,
     botEmptyShellBots:     botCrawl ? botCrawl.emptyShellBots : [],
     botCrawlResults:       botCrawl ? botCrawl.results : [],
