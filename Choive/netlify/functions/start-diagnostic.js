@@ -92,6 +92,10 @@ exports.handler = async function (event) {
     };
   }
 
+  // Normalize ordinary customer input before validation. A person can enter
+  // "taurbull.com" or "www.taurbull.com" without knowing URL syntax.
+  if (body.website) body.website = valid.normalizeWebsite(body.website);
+
   var validation = valid.validateInput(body);
   if (!validation.valid) {
     return {
@@ -105,10 +109,12 @@ exports.handler = async function (event) {
     name: String(body['name'] || '').trim(),
     category: String(body['category'] || '').trim(),
     city: String(body['city'] || '').trim(),
-    website: String(body['website'] || '').trim(),
+    website: valid.normalizeWebsite(body['website']),
     description: String(body['description'] || '').trim(),
     knownCompetitors: String(body['knownCompetitors'] || '').trim(),
     customerQuestion: String(body['customerQuestion'] || '').trim(),
+    marketReach: ['local', 'regional', 'national', 'international', 'global'].indexOf(String(body['marketReach'] || '').trim().toLowerCase()) !== -1
+      ? String(body['marketReach']).trim().toLowerCase() : '',
     subjectType: ['business', 'product', 'creator', 'personal_brand', 'organization'].indexOf(String(body['subjectType'] || 'business')) !== -1
       ? String(body['subjectType'] || 'business') : 'business',
     // Customer-market language override; '' = auto-detect from location
