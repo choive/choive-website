@@ -19,8 +19,10 @@ function getClient() {
 // beef delivery") produce different hashes under text-only matching, silently
 // losing all continuity (competitor identity, evidence cache, progress
 // tracking) even though it's obviously the same business. When a website is
-// provided, the normalized domain IS the fingerprint; text matching is only
-// the fallback for businesses with no site at all.
+// provided, the normalized domain is the stable identity base. Subject type
+// and market reach remain part of the measurement identity so a product audit
+// is never compared with a company audit, and a local audit is never compared
+// with a global one.
 function normalizeDomain(url) {
   var u = String(url || '').trim().toLowerCase();
   if (!u) return '';
@@ -31,8 +33,11 @@ function normalizeDomain(url) {
 
 function buildFingerprint(input) {
   var domain = normalizeDomain(input.website);
+  var subjectType = String(input.subjectType || 'business').toLowerCase().trim();
+  var marketReach = String(input.marketReach || '').toLowerCase().trim();
+  var measurement = '|subject:' + subjectType + '|reach:' + marketReach;
   if (domain) {
-    return crypto.createHash('sha256').update('domain:' + domain).digest('hex').slice(0, 32);
+    return crypto.createHash('sha256').update('domain:' + domain + measurement).digest('hex').slice(0, 32);
   }
   // Category is deliberately EXCLUDED from the fallback identity: it's free
   // text, and two different people describing the same business (or the same
@@ -45,7 +50,7 @@ function buildFingerprint(input) {
   // the same real-world business" than any free-text category ever will be.
   var name = String(input.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
   var city = String(input.city || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '');
-  var raw  = name + '|' + city;
+  var raw  = name + '|' + city + measurement;
   return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
 // Generates a URL-safe slug from a business name.
