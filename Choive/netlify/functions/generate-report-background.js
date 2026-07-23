@@ -5,7 +5,7 @@
 //   - Personalised founder letter (dynamic to score/trust/competitor)
 //   - Score gauge SVG, pillar ring SVGs
 //   - AI perception section
-//   - Score projection table
+//   - Implementation targets and verification criteria
 //   - Colour-coded competitor signal table
 //   - AI simulation word-for-word
 //   - Difficulty dots + consequence blocks on actions
@@ -1033,18 +1033,9 @@ var CSS = [
     : score >= 31 ? 'Important public evidence is incomplete across the four CHOIVE pillars.'
     : 'The diagnostic found insufficient public evidence across the four CHOIVE pillars.';
 
-  // Projection — weighted by actual pillar headroom so each business gets
-  // numbers that reflect their specific starting position, not a flat formula.
-  // Clarity responds fastest (content rewrite); Trust takes longer but has
-  // the highest ceiling; Difference and Ease are moderate.
+  // Pillar headroom is used only to decide which work comes first. CHOIVE does
+  // not manufacture future scores; a later diagnostic must measure them.
   var hrCl = 25 - cl, hrTr = 25 - tr, hrDi = 25 - di, hrEa = 25 - ea;
-  var gain30 = Math.round(hrCl * 0.35 + hrTr * 0.20 + hrDi * 0.15 + hrEa * 0.12);
-  var gain60 = Math.round(hrCl * 0.65 + hrTr * 0.45 + hrDi * 0.30 + hrEa * 0.25);
-  var gain90 = Math.round(hrCl * 0.85 + hrTr * 0.70 + hrDi * 0.55 + hrEa * 0.45);
-  var proj30 = Math.min(95, score + Math.max(gain30, 6));
-  var proj60 = Math.min(97, score + Math.max(gain60, 12));
-  var proj90 = Math.min(99, score + Math.max(gain90, 18));
-
   // Primary improvement driver — the weakest pillar with the most headroom
   var pillarDrivers = [
     { name: 'Clarity',    score: cl, hr: hrCl, action: 'Rewritten H1, structured schema, and llms.txt', rate: 0.35 },
@@ -1345,7 +1336,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   // ── TOC ──────────────────────────────────────────────────────────────────────
   var tocItems = [
     ['Executive Summary',          'The result and the evidence behind it'],
-    ['Improvement Scenario',       'Estimated targets, clearly marked as estimates'],
+    ['Implementation Targets',     'Required work and how completion will be verified'],
     ['Recorded AI Description',    'The generated description and the evidence used to assess it'],
     ['Four Pillar Analysis',       'Clarity, Trust, Difference, and Ease'],
     ['AI Platform Coverage',       'Which measured providers mentioned the ' + subjectNoun],
@@ -1402,47 +1393,42 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 2: PROJECTION ───────────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">02</div><div class="sdp-title">Improvement Scenario</div><div class="sdp-sub">An evidence-based estimate of how the four pillar scores could change after the listed work is completed. These are targets, not guaranteed future results.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">02</div><div class="sdp-title">Implementation Targets</div><div class="sdp-sub">The work required to improve the weakest evidence. No future score is claimed. Only a new diagnostic can measure a later result.</div></div>');
   H.push('<div class="section">');
-  H.push('<div class="eyebrow">Estimated score path — 90 days</div>');
-  H.push('<div class="diag-wrap">');
-  H.push(buildTrajectoryChartSVG(score, proj30, proj60, proj90));
-  H.push('</div>');
+  H.push('<div class="eyebrow">Current measured baseline</div>');
   H.push('<div class="proj-grid">');
-  [{cls:'pc0',label:'Today',   s:score,  note:'Baseline'},
-   {cls:'pc1',label:'30 days', s:proj30, note:'Most important website and proof improvements completed'},
-   {cls:'pc2',label:'60 days', s:proj60, note:'Named customer results and independent coverage published'},
-   {cls:'pc3',label:'90 days', s:proj90, note:'Full implementation complete'}
+  [{cls:'pc0',label:'Measured now', s:score, note:'Recorded by this diagnostic'},
+   {cls:'pc1',label:'First milestone', s:'—', note:'Website wording and structured facts implemented'},
+   {cls:'pc2',label:'Second milestone', s:'—', note:'Independent proof and named results published'},
+   {cls:'pc3',label:'Verification', s:'—', note:'Run CHOIVE again to establish the new score'}
   ].forEach(function(p) {
     H.push('<div class="proj-cell ' + p.cls + '"><div class="proj-label">' + p.label + '</div><div class="proj-score">' + p.s + '</div><div class="proj-note">' + esc(p.note) + '</div></div>');
   });
   H.push('</div>');
   H.push('<div style="padding:20px 24px;background:#F5F2EE;border-left:2px solid rgba(12,12,14,0.12);margin-bottom:36px;">');
   H.push('<div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#67676E;margin-bottom:8px;">What drives the improvement</div>');
-  var driverGrowth = Math.min(25, mainDriver.score + Math.round(mainDriver.hr * 0.70));
-  H.push('<div style="font-size:14px;color:#48484F;line-height:1.8;"><strong style="color:#0C0C0E;">' + mainDriver.name + '</strong> has the largest estimated effect for ' + esc(bizName) + '. The scenario models this pillar moving from ' + mainDriver.score + ' to ' + driverGrowth + ' over 90 days. That estimate assumes completion of: ' + mainDriver.action + '. Section 8 lists the work in the order used by this estimate.</div>');
+  H.push('<div style="font-size:14px;color:#48484F;line-height:1.8;"><strong style="color:#0C0C0E;">' + mainDriver.name + '</strong> has the most available improvement room for ' + esc(bizName) + '. Start with: ' + mainDriver.action + '. Completion is not treated as improvement until the work is publicly visible and a later diagnostic measures the result.</div>');
   H.push('</div>');
-  // Pillar projection table
-  H.push('<div class="eyebrow">Pillar-by-pillar targets</div>');
+  // Pillar completion-criteria table. It contains no projected scores.
+  H.push('<div class="eyebrow">Pillar-by-pillar completion criteria</div>');
   H.push('<table style="width:100%;border-collapse:collapse;">');
   H.push('<thead><tr>'
-    + ['Pillar','Today','30 days','90 days','Primary driver'].map(function(h,i) {
+    + ['Pillar','Measured now','Required public evidence','How CHOIVE verifies it'].map(function(h,i) {
         return '<th class="cth" style="text-align:' + (i===0?'left':'center') + ';">' + h + '</th>';
       }).join('')
     + '</tr></thead><tbody>');
   [
-    ['Clarity',    cl,    Math.min(25, cl + Math.max(1, Math.round(hrCl * 0.35))),  Math.min(25, cl + Math.max(2, Math.round(hrCl * 0.85))),  'Rewritten H1 + meta description + schema markup'],
-    ['Trust',      tr,    Math.min(25, tr + Math.max(1, Math.round(hrTr * 0.20))),  Math.min(25, tr + Math.max(3, Math.round(hrTr * 0.70))),  'Independent reviews + press mention + case study'],
-    ['Difference', di,    Math.min(25, di + Math.max(1, Math.round(hrDi * 0.15))),  Math.min(25, di + Math.max(2, Math.round(hrDi * 0.55))),  'Named case study + category differentiation claim'],
-    ['Ease',       ea,    Math.min(25, ea + Math.max(1, Math.round(hrEa * 0.12))),  Math.min(25, ea + Math.max(1, Math.round(hrEa * 0.45))),  'FAQ schema + llms.txt + response-ready content'],
+    ['Clarity', cl, 'A clear H1, accurate description, and category-specific structured data', 'Fetch and inspect the published page and markup'],
+    ['Trust', tr, 'Current independent reviews, coverage, credentials, or named customer results', 'Confirm each source and its relationship to the subject'],
+    ['Difference', di, 'A specific, verifiable reason to choose this subject over comparable options', 'Check that the claim is public and supported by evidence'],
+    ['Ease', ea, 'Accessible pages, crawl controls, sitemap, and machine-readable facts', 'Repeat the mechanical website and crawler checks'],
   ].forEach(function(row) {
     var todayCol = row[1] < 8 ? '#B83232' : row[1] < 14 ? '#9A6A14' : '#2A7A48';
     H.push('<tr>'
       + '<td style="padding:13px 15px;font-size:13px;font-weight:600;border-bottom:1px solid rgba(12,12,14,0.05);">' + row[0] + '</td>'
       + '<td style="padding:13px 15px;text-align:center;font-family:Georgia,serif;font-size:18px;color:' + todayCol + ';border-bottom:1px solid rgba(12,12,14,0.05);">' + row[1] + '</td>'
-      + '<td style="padding:13px 15px;text-align:center;font-family:Georgia,serif;font-size:18px;color:#9A6A14;border-bottom:1px solid rgba(12,12,14,0.05);">' + row[2] + '</td>'
-      + '<td style="padding:13px 15px;text-align:center;font-family:Georgia,serif;font-size:18px;color:#2A7A48;border-bottom:1px solid rgba(12,12,14,0.05);">' + row[3] + '</td>'
-      + '<td style="padding:13px 15px;font-size:12px;color:#67676E;border-bottom:1px solid rgba(12,12,14,0.05);">' + esc(row[4]) + '</td>'
+      + '<td style="padding:13px 15px;font-size:12px;color:#48484F;border-bottom:1px solid rgba(12,12,14,0.05);">' + esc(row[2]) + '</td>'
+      + '<td style="padding:13px 15px;font-size:12px;color:#67676E;border-bottom:1px solid rgba(12,12,14,0.05);">' + esc(row[3]) + '</td>'
       + '</tr>');
   });
   H.push('</tbody></table>');
@@ -1494,6 +1480,34 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     H.push('<div class="pd-bar"><div class="pd-fill" style="width:' + pct(sc, 25) + '%;background:' + col + ';opacity:0.7;"></div></div>');
     if (an) H.push('<div class="pd-analysis">' + esc(an) + '</div>');
     if (ev) H.push('<div class="pd-evidence">' + esc(ev) + '</div>');
+    var scoreAudits = safeObj(safeObj(r.scoreMethod).audits);
+    var scoreRules = safeArr(scoreAudits[key]);
+    var pillarConfidence = safeObj(safeObj(safeObj(safeObj(r).pillars)[key]).confidence);
+    if (scoreRules.length > 0) {
+      H.push('<div style="margin-top:16px;border-top:1px solid rgba(12,12,14,0.08);padding-top:14px;">');
+      H.push('<div style="display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:10px;">');
+      H.push('<div style="font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;">Deterministic point ledger</div>');
+      H.push('<div style="font-size:9.5px;color:#67676E;">Confidence: ' + esc(pillarConfidence.level || 'not established') + ' · ' + esc(pillarConfidence.score === undefined ? '' : pillarConfidence.score + '%') + '</div>');
+      H.push('</div>');
+      scoreRules.forEach(function(rule) {
+        var sources = Array.isArray(rule.source) ? rule.source : (rule.source ? [rule.source] : []);
+        H.push('<div style="padding:8px 0;border-bottom:1px solid rgba(12,12,14,0.05);">');
+        H.push('<div style="display:flex;justify-content:space-between;gap:14px;font-size:11px;line-height:1.5;">');
+        H.push('<div><strong>' + esc(rule.ruleId || '') + '</strong> · ' + esc(rule.label || '') + '</div>');
+        H.push('<div style="font-weight:700;white-space:nowrap;">' + esc(rule.points) + ' / ' + esc(rule.maxPoints) + '</div>');
+        H.push('</div>');
+        H.push('<div style="font-size:10.5px;color:#67676E;line-height:1.45;margin-top:2px;">' + esc(rule.observed || '') + ' · ' + esc(rule.verification || '') + '</div>');
+        if (sources.length) {
+          H.push('<div style="font-size:9.5px;line-height:1.4;margin-top:3px;">' + sources.slice(0, 3).map(function(source) {
+            return /^https?:\/\//i.test(String(source || ''))
+              ? '<a href="' + esc(source) + '" style="color:#8A681F;text-decoration:none;overflow-wrap:anywhere;">' + esc(source) + '</a>'
+              : esc(source);
+          }).join('<br>') + '</div>');
+        }
+        H.push('</div>');
+      });
+      H.push('</div>');
+    }
     // Signal checklist — programmatic signals checked for this pillar
     var saObj = safeObj(r.signalAudit || {});
     var saSignals = safeArr(saObj[key] || []).filter(function(sig) { return sig && sig.name; });
@@ -1642,7 +1656,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
           : laneStatus === 'not_configured' ? 'API not configured'
           : 'Not measured');
       var resultColour = recommendation ? '#0C0C0E' : laneStatus === 'no_recommendation' ? '#67676E' : '#B83232';
-      var sampleText = expected > 0 ? completed + ' of ' + expected + ' queries completed' : 'Provider result recorded';
+      var sampleText = expected > 0 ? completed + ' of ' + expected + ' recorded measurements completed' : 'Provider result recorded';
       var verification = safeObj(l.verification);
       var verificationText = recommendation && safeStr(verification.status, '') === 'verified'
         ? 'CHOIVE confirmed a real business relevant to this category.'
@@ -1651,11 +1665,15 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
           : '';
       var aliasText = safeStr(l.sameBusinessAs, '')
         ? 'Same business identity as ' + safeStr(l.sameBusinessAs, '') + '.' : '';
+      var visibilityTotal = safeNum(l.visibilityTotalQueries, 0);
+      var visibilityText = visibilityTotal > 0
+        ? 'Unbranded buyer questions: the subject appeared in ' + safeNum(l.visibilityAppearedCount, 0) + ' of ' + visibilityTotal + '.' : '';
       H.push('<div class="plat-cell"><div class="plat-name">' + esc(safeStr(l.platform, l.key)) + '</div>'
         + '<div class="plat-status" style="color:' + resultColour + ';text-transform:none;letter-spacing:0;">' + esc(resultText) + '</div>'
         + '<div class="plat-detail">' + esc(sampleText) + '</div>'
         + (verificationText ? '<div class="plat-detail" style="margin-top:5px;">' + esc(verificationText) + '</div>' : '')
         + (aliasText ? '<div class="plat-detail" style="margin-top:5px;">' + esc(aliasText) + '</div>' : '')
+        + (visibilityText ? '<div class="plat-detail" style="margin-top:5px;">' + esc(visibilityText) + '</div>' : '')
         + '</div>');
     });
     H.push('</div>');
@@ -2044,7 +2062,7 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
     '<div style="font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#67676E;margin-bottom:8px;">What\'s inside</div>',
     '<div style="font-size:13px;color:#48484F;line-height:1.85;">',
     '→ Personalised founder letter<br>',
-    '→ Score projection — 30, 60, and 90 days<br>',
+    '→ Implementation targets and verification milestones<br>',
     '→ Recorded AI description and supporting evidence<br>',
     '→ Four pillar breakdown with evidence<br>',
     '→ Platform coverage across ChatGPT, Perplexity, Gemini, Claude<br>',
