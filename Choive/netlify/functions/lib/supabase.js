@@ -66,28 +66,26 @@ function buildSlugBase(name) {
     .slice(0, 60);                                      // max length
 }
 
-// Returns a unique slug — appends -2, -3 etc. if the base slug is already taken.
-// Returns null if name is empty or generation fails (jobId fallback still works).
-async function generateUniqueSlug(supabase, name) {
+// Returns a unique slug. After one base-slug lookup, repeated diagnostics use
+// a short job-id suffix. Never scan `-2`, `-3`, ... sequentially: popular or
+// repeatedly tested businesses can otherwise exhaust the start function's
+// execution window before the diagnostic row is created.
+async function generateUniqueSlug(supabase, name, uniqueSuffix) {
   var base = buildSlugBase(name);
   if (!base) return null;
   var { data: existing } = await supabase
     .from('diagnostics').select('slug').eq('slug', base).maybeSingle();
   if (!existing) return base;
-  for (var n = 2; n <= 99; n++) {
-    var candidate = base + '-' + n;
-    var { data: taken } = await supabase
-      .from('diagnostics').select('slug').eq('slug', candidate).maybeSingle();
-    if (!taken) return candidate;
-  }
-  return null;
+  var suffix = String(uniqueSuffix || crypto.randomBytes(4).toString('hex'))
+    .toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
+  return base.slice(0, Math.max(1, 60 - suffix.length - 1)) + '-' + suffix;
 }
 
 async function createDiagnostic(jobId, input, ipHash) {
   const supabase = getClient();
   const fingerprint = buildFingerprint(input);
   var slug = null;
-  try { slug = await generateUniqueSlug(supabase, input.name); }
+  try { slug = await generateUniqueSlug(supabase, input.name, jobId); }
   catch (e) { console.warn('createDiagnostic: slug generation failed (non-critical):', e.message); }
   const { error } = await supabase
     .from('diagnostics')
