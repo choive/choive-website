@@ -11,6 +11,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS'
 };
+
+function publicInput(input) {
+  input = input && typeof input === 'object' ? input : {};
+  return {
+    name: input.name || '',
+    category: input.category || '',
+    city: input.city || '',
+    website: input.website || '',
+    subjectType: input.subjectType || 'business',
+    marketReach: input.marketReach || ''
+  };
+}
  
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -59,7 +71,8 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         jobId: job.job_id,
         status: job.status,
-        stage: job.stage || null
+        stage: job.stage || null,
+        input: publicInput(job.input)
       })
     };
   }
@@ -78,7 +91,8 @@ exports.handler = async function (event) {
         status: 'complete',
         stage: 'preparing_result',
         result: job.paid === true ? job.result : buildPublicResult(job.result),
-        paid: job.paid === true
+        paid: job.paid === true,
+        input: publicInput(job.input)
       })
     };
   }
