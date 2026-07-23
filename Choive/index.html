@@ -3114,7 +3114,7 @@ function buildDisplacementBlock(r) {
     '<div class="disp-block">',
     '  <div class="disp-query">When someone asks: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
     '  <div class="disp-name">' + esc(d.competitorName || '') + '</div>',
-    '  <div class="disp-label">Is being recommended instead</div>',
+    '  <div class="disp-label">Named in the recorded answer for this query</div>',
     '  <div class="disp-why"><strong>Why:</strong> ' + esc(d.competitorWhy || '') + '</div>',
     '</div>'
   ].join('\n');
@@ -3366,6 +3366,7 @@ function buildPillarCards(r, isPaid) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
     var finding = raw.finding || '';
+    var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var pct = score / 25 * 100;
     var findingHtml = isPaid
       ? '<div class="pillar-finding">' + esc(finding) + '</div>'
@@ -3374,6 +3375,7 @@ function buildPillarCards(r, isPaid) {
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
       + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + (isPaid && confidence ? '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Evidence confidence: ' + esc(confidence) + '</div>' : '')
       + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
       + findingHtml
       + '</div>';
@@ -3621,6 +3623,9 @@ function showResults(r, jobId) {
       }
       var aliasHtml = lane.sameBusinessAs
         ? '<div style="font-size:10px;color:rgba(245,242,238,0.52);margin-top:5px;">Same business identity as ' + esc(lane.sameBusinessAs) + '</div>' : '';
+      var visibilityTotal = Number(lane.visibilityTotalQueries || 0);
+      var visibilityHtml = visibilityTotal > 0
+        ? '<div style="font-size:10px;color:rgba(245,242,238,0.52);margin-top:7px;">Unbranded buyer questions: your business appeared in ' + Number(lane.visibilityAppearedCount || 0) + ' of ' + visibilityTotal + '</div>' : '';
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
@@ -3628,6 +3633,7 @@ function showResults(r, jobId) {
         + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
         + verificationHtml
         + aliasHtml
+        + visibilityHtml
         + (consumerRecord
           ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#72C99A;margin-top:7px;">Consumer-app record · user supplied</div>'
             + (apiRecommendation && String(apiRecommendation).toLowerCase() !== String(recommendation).toLowerCase()
@@ -4034,6 +4040,20 @@ function showResults(r, jobId) {
     var score = p.score || 0;
     var pct   = Math.round(score / 25 * 100);
     var audit = r.signalAudit && Array.isArray(r.signalAudit[key]) ? r.signalAudit[key] : [];
+    var scoreRules = r.scoreMethod && r.scoreMethod.audits && Array.isArray(r.scoreMethod.audits[key])
+      ? r.scoreMethod.audits[key] : [];
+    var confidence = p.confidence && p.confidence.level ? String(p.confidence.level) : 'not established';
+    var scoreRuleHtml = scoreRules.length ? '<details class="report-details"><summary>View evidence point ledger · confidence ' + esc(confidence) + '</summary><div class="report-details-body">'
+      + scoreRules.map(function(rule) {
+        var sources = Array.isArray(rule.source) ? rule.source : (rule.source ? [rule.source] : []);
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--rule);">'
+          + '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;"><span><strong>' + esc(rule.ruleId || '') + '</strong> · ' + esc(rule.label || '') + '</span><strong>' + esc(rule.points) + ' / ' + esc(rule.maxPoints) + '</strong></div>'
+          + '<div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;">' + esc(rule.observed || '') + ' · ' + esc(rule.verification || '') + '</div>'
+          + (sources.length ? '<div style="font-size:10px;line-height:1.5;margin-top:4px;overflow-wrap:anywhere;">' + sources.slice(0,3).map(function(source) {
+              return /^https?:\/\//i.test(String(source || '')) ? '<a href="' + esc(source) + '" target="_blank" rel="noopener" style="color:var(--ac-d);">' + esc(source) + '</a>' : esc(source);
+            }).join('<br>') + '</div>' : '')
+          + '</div>';
+      }).join('') + '</div></details>' : '';
     var auditHtml = audit.length ? '<div class="signal-audit" aria-label="' + esc(label) + ' evidence checks">'
       + audit.map(function(signal) {
         var status = ['pass','fail','partial'].indexOf(String(signal && signal.status || '').toLowerCase()) !== -1
@@ -4055,6 +4075,7 @@ function showResults(r, jobId) {
         + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
         + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
         + '</div></details>' : '')
+      + scoreRuleHtml
       + auditHtml
       + '</div>';
   }
@@ -4750,9 +4771,9 @@ function showResults(r, jobId) {
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--ghost);margin-bottom:10px;line-height:1.2;">Get the complete branded PDF report.</div>'
-      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Emailed to your inbox seconds after payment.</div>'
+      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Usually emailed within a few minutes after payment is confirmed.</div>'
       + '<button onclick=\"initiateReportCheckout(\'' + (jobId||'') + '\')\" id=\"reportCheckoutBtn\" style=\"background:var(--ac);color:var(--void);border:none;font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;padding:16px 28px;cursor:pointer;min-height:52px;\">Get Full Report — $499 →</button>'
-      + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF delivered instantly after payment</div>'
+      + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF usually emailed within a few minutes after payment confirmation</div>'
       + '</div>' : '')
     + '<div class="pay-section" style="border-bottom:none;text-align:center;padding-top:32px;">'
     + '<button class="pay-btn-secondary" onclick="resetDiagnostic()">Run another diagnostic →</button>'
@@ -4782,7 +4803,7 @@ function showResults(r, jobId) {
     confirmBanner.innerHTML = '<div style="font-size:16px;color:var(--ac);flex-shrink:0;">✓</div>'
       + '<div>'
       + '<div style="font-size:13px;font-weight:700;color:var(--ghost);margin-bottom:4px;">Your CHOIVE· Report is being prepared.</div>'
-      + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;">Your branded PDF report will be emailed to you seconds after payment. Check your inbox — including spam. Questions? <a href="mailto:hello@choive.com" style="color:var(--ac);text-decoration:none;">hello@choive.com</a></div>'
+      + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;">Your branded PDF report is usually emailed within a few minutes after payment is confirmed. Check your inbox — including spam. Questions? <a href="mailto:hello@choive.com" style="color:var(--ac);text-decoration:none;">hello@choive.com</a></div>'
       + '</div>';
     var rZone = document.getElementById('dR');
     if (rZone && rZone.firstChild) {
