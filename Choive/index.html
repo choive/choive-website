@@ -2967,9 +2967,10 @@ async function startDiagnostic(biz) {
       })
     });
 
-    if (!res.ok) throw new Error('Could not start diagnostic. Please try again.');
-
-    const data = await res.json();
+    const data = await res.json().catch(function() { return {}; });
+    if (!res.ok) {
+      throw new Error(data.error || 'Could not start diagnostic. Please try again.');
+    }
     if (!data.jobId) throw new Error('No job ID returned. Please try again.');
 
     if (data.verificationToken) {
