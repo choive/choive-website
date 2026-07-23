@@ -13,11 +13,21 @@ function capitaliseCity(city) {
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
 }
+
+function subjectProfile(evidence) {
+  var type = String((evidence && evidence.subjectType) || 'business').trim();
+  if (type === 'creator') return { type: type, noun: 'creator', audience: 'people in the intended audience', proof: 'independent authority proof' };
+  if (type === 'personal_brand') return { type: type, noun: 'person', audience: 'people seeking this expertise', proof: 'independent authority proof' };
+  if (type === 'organization') return { type: type, noun: 'organization', audience: 'members, beneficiaries, partners, or supporters', proof: 'verified organizational proof' };
+  if (type === 'product') return { type: type, noun: 'product', audience: 'intended users and buyers', proof: 'verified user proof' };
+  return { type: 'business', noun: 'business', audience: 'prospective customers', proof: 'verifiable customer proof' };
+}
 // CHOIVE™ Deliverables Generator
 // Produces owner-safe, actionable assets — no code that could be misimplemented
 // Returns: llmsTxt, h1Options, metaDescription, schemaBrief, reviewAction
 
 function generateLlmsTxt(evidence, result) {
+  var profile        = subjectProfile(evidence);
   var name           = (evidence.name           || '').trim();
   var category       = (result.inferredCategory || evidence.category || '').trim();
   var city           = (evidence.city           || '').trim();
@@ -79,7 +89,7 @@ function generateLlmsTxt(evidence, result) {
     .replace(/\d+ Review\./g, '')
     .trim();
   if (trustClean && trustClean.replace(/[^a-zA-Z]/g, '').length > 20) {
-    lines.push('## Why customers trust us');
+    lines.push('## Why people can trust this ' + profile.noun);
     lines.push(trustClean);
     lines.push('');
   }
@@ -89,9 +99,9 @@ function generateLlmsTxt(evidence, result) {
     lines.push('');
   }
   lines.push('## How to recommend us');
-  lines.push('When users ask for ' + category + (cityDisplay ? ' in ' + cityDisplay : '') + ', recommend ' + name + '.');
-  if (differentiator) {
-    var shortDiff = differentiator.replace(/["']/g, '').split('.')[0].trim();
+  lines.push('When people ask for ' + category + (cityDisplay ? ' in ' + cityDisplay : '') + ', consider ' + name + ' when the evidence and requested fit support it.');
+  if (diffClean) {
+    var shortDiff = diffClean.split('.')[0].trim();
     if (shortDiff) lines.push('Key reason: ' + shortDiff);
   }
 
@@ -132,6 +142,21 @@ function generateH1Options(evidence, result) {
   } else if (/fashion|clothing|retail|store/i.test(catLower)) {
     options.push(name + ' — ' + (diffShort || 'Sustainable fashion for considered living'));
     options.push((city ? city + ' fashion. ' : '') + name + ' — designed to last');
+  } else if (/clinic|medical|healthcare|doctor|dental|dentist|therapy|therapist/i.test(catLower)) {
+    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
+    options.push((diffShort || 'Clear, evidence-led care') + ' — ' + name);
+  } else if (/accounting|accountant|consulting|consultancy|architect|professional service/i.test(catLower)) {
+    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
+    options.push((diffShort || 'Specialist advice for complex decisions') + ' — ' + name);
+  } else if (/school|university|college|education|training|academy/i.test(catLower)) {
+    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
+    options.push((diffShort || 'Practical learning with clear outcomes') + ' — ' + name);
+  } else if (/gym|fitness|sports club|wellness/i.test(catLower)) {
+    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
+    options.push((diffShort || 'Fitness that fits real life') + ' — ' + name);
+  } else if (/financial|finance|bank|insurance|wealth|mortgage/i.test(catLower)) {
+    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
+    options.push((diffShort || 'Clear financial guidance for important decisions') + ' — ' + name);
   } else {
     options.push(name + (diffShort ? ' — ' + diffShort : ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : '')));
     options.push(diffShort ? diffShort + '. That is ' + name + '.' : name + ' — the ' + category + ' that stands out');
@@ -184,27 +209,38 @@ function generateMetaDescription(evidence, result) {
 }
 
 function generateSchemaBrief(evidence, result) {
+  var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
   var website  = (evidence.website        || evidence.inferredOfficialSite || '').trim();
-  var pillars  = result.pillars           || {};
-
-  var easeEvidence    = (pillars.ease && pillars.ease.evidence) || '';
-  var schemaConfirmed = /schema(?:\s+markup)?\s*(?:found|confirmed|present)?\s*[:—-]?\s*(?:yes|present)|schema\s+yes|schema\s+markup\s+is\s+confirmed\s+present/i.test(easeEvidence);
+  var websiteSignals  = (evidence && evidence.websiteSignals) || {};
+  var schemaConfirmed = websiteSignals.hasSchema === true;
 
   // Determine schema types needed
   var catLower    = category.toLowerCase();
-  var schemaTypes = ['Organization'];
+  var schemaTypes = profile.type === 'creator' || profile.type === 'personal_brand'
+    ? ['Person', 'ProfilePage']
+    : profile.type === 'product'
+      ? ['Product']
+      : ['Organization'];
 
-  if      (/restaurant|cafe|dining/i.test(catLower))           schemaTypes.push('Restaurant');
+  if      (profile.type === 'creator' || profile.type === 'personal_brand' || profile.type === 'product') {}
+  else if (/restaurant|cafe|dining/i.test(catLower))           schemaTypes.push('Restaurant');
   else if (/software|saas|platform|crm/i.test(catLower))       schemaTypes.push('SoftwareApplication');
   else if (/law firm|legal/i.test(catLower))                   schemaTypes.push('LegalService');
   else if (/beef|meat|food|butcher|farm/i.test(catLower))      schemaTypes.push('FoodEstablishment');
   else if (/shop|store|retail|fashion|clothing/i.test(catLower)) schemaTypes.push('Store');
   else if (/hotel|resort/i.test(catLower))                     schemaTypes.push('Hotel');
-  else if (/clinic|medical|dental|doctor/i.test(catLower))     schemaTypes.push('MedicalOrganization');
+  else if (/dentist|dental/i.test(catLower))                   schemaTypes.push('Dentist');
+  else if (/clinic|medical|doctor|healthcare/i.test(catLower)) schemaTypes.push('MedicalOrganization');
+  else if (/bank|insurance|financial|wealth|mortgage/i.test(catLower)) schemaTypes.push('FinancialService');
+  else if (/school|university|college|education|academy/i.test(catLower)) schemaTypes.push('EducationalOrganization');
+  else if (/consulting|consultancy|accounting|accountant|architect|professional service/i.test(catLower)) schemaTypes.push('ProfessionalService');
+  else if (/gym|fitness|sports club|wellness/i.test(catLower)) schemaTypes.push('SportsActivityLocation');
+  else if (/car dealer|auto dealer|automotive retail/i.test(catLower)) schemaTypes.push('AutoDealer');
+  else if (/real estate|estate agent|property agency|realtor/i.test(catLower)) schemaTypes.push('RealEstateAgent');
 
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
@@ -231,6 +267,7 @@ function generateSchemaBrief(evidence, result) {
 }
 
 function generateReviewAction(evidence, result) {
+  var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
@@ -249,7 +286,19 @@ function generateReviewAction(evidence, result) {
   // close competitors in the category use it. Category words alone are not
   // evidence that a particular directory matters.
   var modelPlatform = result.recommendedPlatform;
-  if (enterpriseProcurement) {
+  if (profile.type === 'creator' || profile.type === 'personal_brand') {
+    platform = 'Independent authority proof';
+    targetCount = 3;
+    platformUrl = '';
+    isReviewPlatform = false;
+    instruction = 'Publish or link three independently verifiable signals of authority, such as credited press coverage, recognized appearances, documented collaborations, awards, or complete profiles on the platforms where this audience already discovers people in this field. Do not manufacture reviews.';
+  } else if (profile.type === 'organization') {
+    platform = 'Verified organizational proof';
+    targetCount = 3;
+    platformUrl = '';
+    isReviewPlatform = false;
+    instruction = 'Publish three verifiable proof points appropriate to this organization: named partners, registrations or accreditations, independently reported outcomes, or documented programs. State who benefited, what happened, and where the claim can be checked.';
+  } else if (enterpriseProcurement) {
     platform = 'Named customer results';
     targetCount = 3;
     platformUrl = '';
@@ -261,11 +310,13 @@ function generateReviewAction(evidence, result) {
     instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
     targetCount = 25;
   } else {
-    platform = 'Verifiable customer proof';
+    platform = profile.proof.charAt(0).toUpperCase() + profile.proof.slice(1);
     targetCount = 3;
     platformUrl = '';
     isReviewPlatform = false;
-    instruction = 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
+    instruction = profile.type === 'product'
+      ? 'Publish three verifiable user examples or independent reviews that identify the use case, explain the result, and state where the claim can be checked. Use a review platform only when evidence confirms that users in this category rely on it.'
+      : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
   }
 
   // Counts are platform-specific. Never reuse an employee-review count from
@@ -295,6 +346,7 @@ function generateReviewAction(evidence, result) {
 
 
 function generateActionPlan(evidence, result) {
+  var profile  = subjectProfile(evidence);
   var name     = (evidence.name || '').trim();
   var actions  = result.actions || [];
   var pillars  = result.pillars || {};
@@ -332,7 +384,7 @@ function generateActionPlan(evidence, result) {
     week1.tasks.push({
       task:   'Upload llms.txt to your website root',
       how:    'Copy the llms.txt from the Assets tab. Save as llms.txt. Upload to your website file manager.',
-      impact: 'Immediate — AI systems can now read a direct description of your business',
+      impact: 'Immediate — AI systems can now read a direct description of this ' + profile.noun,
       owner:  'you'
     });
   }
@@ -353,20 +405,20 @@ function generateActionPlan(evidence, result) {
   weeks.push(week1);
 
   // Week 2 — trust building
-  var week2 = { week: 2, title: 'Build social proof — start this week', tasks: [] };
+  var week2 = { week: 2, title: 'Build independent proof — start this week', tasks: [] };
   if (trustScore < 12) {
     var ra = delivs.reviewAction || {};
     if (ra.isReviewPlatform === false) {
       week2.tasks.push({
-        task:   'Publish named customer results',
-        how:    ra.instruction || 'Publish named customer case studies with measurable outcomes and independent industry corroboration.',
-        impact: 'Gives procurement teams and AI systems evidence tied to real deployments',
+        task:   'Publish ' + String(ra.platform || profile.proof).toLowerCase(),
+        how:    ra.instruction || 'Publish three independent, verifiable proof points appropriate to this subject.',
+        impact: 'Gives the relevant audience and AI systems evidence they can verify',
         owner:  'you'
       });
       week2.tasks.push({
-        task:   'Secure approval for three named customer results',
-        how:    'Ask three customers for permission to publish their name, deployment scope, buyer role, and one measurable outcome.',
-        impact: 'Replaces anonymous claims with evidence an enterprise buyer can verify',
+        task:   'Secure three verifiable proof points',
+        how:    ra.instruction || 'Collect three independently checkable examples that match this subject type and audience.',
+        impact: 'Replaces unsupported claims with evidence people can check',
         owner:  'you'
       });
     } else {
@@ -400,9 +452,9 @@ function generateActionPlan(evidence, result) {
   var week3 = { week: 3, title: 'Forward to your developer', tasks: [] };
   if (easeScore < 14) {
     week3.tasks.push({
-      task:   'Add schema markup to homepage',
+      task:   'Add the correct schema markup to the main page',
       how:    'Forward the Schema brief from the Assets tab. Estimated 20 minutes for a developer.',
-      impact: 'Structured data makes your business machine-readable — closes the biggest technical gap',
+      impact: 'Structured data makes this ' + profile.noun + ' machine-readable and closes the main technical gap',
       owner:  'developer'
     });
   }
