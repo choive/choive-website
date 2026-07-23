@@ -219,15 +219,59 @@ function extractCompetitors(queryResults, businessName) {
 }
  
 // ── Build simple summaries for Claude ────────────────────────────────────────
-function buildSummaries(queryResults, competitors, socialSignals) {
+function normalizeWords(value) {
+  var text = String(value || '').toLowerCase();
+  try { text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  return text.replace(/\u00df/g, 'ss').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function meaningfulCategoryTokens(category) {
+  var generic = { b2b:1, b2c:1, business:1, company:1, service:1, services:1,
+    platform:1, provider:1, online:1, direct:1, consumer:1, global:1,
+    national:1, local:1, regional:1, international:1 };
+  return normalizeWords(category).split(' ').filter(function(token) {
+    return token.length >= 4 && !generic[token];
+  });
+}
+
+function itemNamesSubject(item, businessName, officialDomain) {
+  var text = normalizeWords([item && item.title, item && item.snippet, item && item.link].join(' '));
+  var name = normalizeWords(businessName);
+  var compactText = text.replace(/\s+/g, '');
+  var compactName = name.replace(/\s+/g, '');
+  return Boolean((name && (' ' + text + ' ').indexOf(' ' + name + ' ') !== -1)
+    || (compactName.length >= 5 && compactText.indexOf(compactName) !== -1)
+    || (officialDomain && normalizeUrl(item && item.link || '') === officialDomain));
+}
+
+// Same-name search results are not automatically evidence about the subject.
+// This prevents fictional characters, unrelated products, and similarly named
+// companies from entering the visible reputation summary.
+function subjectRelevantItems(items, businessName, category, officialDomain, requireCategory) {
+  var categoryTokens = meaningfulCategoryTokens(category);
+  return (items || []).filter(function(item) {
+    if (!itemNamesSubject(item, businessName, officialDomain)) return false;
+    if (!requireCategory || normalizeUrl(item.link || '') === officialDomain) return true;
+    var text = normalizeWords([item.title, item.snippet, item.link].join(' '));
+    return categoryTokens.some(function(token) { return (' ' + text + ' ').indexOf(' ' + token + ' ') !== -1; });
+  });
+}
+
+function buildSummaries(queryResults, competitors, socialSignals, businessName, category, officialDomain) {
   var reviewItems     = [];
   var reputationItems = [];
   var authorityItems  = [];
  
   for (var i = 0; i < queryResults.length; i++) {
     var qr = queryResults[i];
-    for (var j = 0; j < qr.items.length; j++) {
-      var item = qr.items[j];
+    var items = qr.items || [];
+    if (qr.signalType === 'reputation') {
+      items = subjectRelevantItems(items, businessName, category, officialDomain, true);
+    } else if (qr.signalType === 'reviews') {
+      items = subjectRelevantItems(items, businessName, category, officialDomain, false);
+    }
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j];
       if (qr.signalType === 'reviews')    reviewItems.push(item.snippet);
       if (qr.signalType === 'reputation') reputationItems.push(item.snippet);
       if (qr.signalType === 'authority')  authorityItems.push(item.snippet);
@@ -259,6 +303,57 @@ function buildSummaries(queryResults, competitors, socialSignals) {
     authoritySummary:  authoritySummary,
     competitorSummary: competitorSummary,
     socialSummary:     socialStr
+  };
+}
+
+// Verify that an AI-named recommendation resolves to a real entity whose
+// public search evidence overlaps the measured category. This does not rewrite
+// the provider's answer; it supplies an independent CHOIVE verification label.
+async function verifyRecommendationEntity(name, category, market) {
+  var candidate = String(name || '').trim();
+  if (!candidate) return { status: 'not_applicable', reason: 'No company was recommended.' };
+  if (!process.env.SERPER_API_KEY) {
+    return { status: 'unverified', reason: 'Public entity verification was unavailable in this run.', sources: [] };
+  }
+  var query = '"' + candidate.replace(/"/g, '') + '" ' + String(category || '') + ' ' + String(market || '');
+  var data = await fetchSerper(query);
+  var items = data && Array.isArray(data.organic) ? data.organic.slice(0, 5) : [];
+  var candidateWords = normalizeWords(candidate);
+  var candidateCompact = candidateWords.replace(/\s+/g, '');
+  var categoryTokens = meaningfulCategoryTokens(category);
+  var identityMatches = items.filter(function(item) {
+    var text = normalizeWords([item.title, item.snippet, item.link].join(' '));
+    return (' ' + text + ' ').indexOf(' ' + candidateWords + ' ') !== -1
+      || (candidateCompact.length >= 5 && text.replace(/\s+/g, '').indexOf(candidateCompact) !== -1);
+  });
+  var categoryMatches = identityMatches.filter(function(item) {
+    var text = normalizeWords([item.title, item.snippet].join(' '));
+    return categoryTokens.length === 0 || categoryTokens.some(function(token) {
+      return (' ' + text + ' ').indexOf(' ' + token + ' ') !== -1;
+    });
+  });
+  var sources = categoryMatches.slice(0, 3).map(function(item) { return item.link || ''; }).filter(Boolean);
+  if (!identityMatches.length) {
+    return { status: 'unverified', reason: 'CHOIVE could not confirm a current public business identity for this name.', sources: [], evidenceText: '' };
+  }
+  var evidenceText = normalizeWords(identityMatches.map(function(item) {
+    return [item.title, item.snippet, item.link].join(' ');
+  }).join(' ')).slice(0, 3000);
+  if (!categoryMatches.length) {
+    return {
+      status: 'unverified',
+      reason: 'The AI returned this name, but CHOIVE could not confirm that it offers the same category of product or service.',
+      domain: normalizeUrl(identityMatches[0].link || ''),
+      sources: identityMatches.slice(0, 2).map(function(item) { return item.link || ''; }).filter(Boolean),
+      evidenceText: evidenceText
+    };
+  }
+  return {
+    status: 'verified',
+    reason: 'Public evidence confirms a real business with an offer relevant to this category.',
+    domain: normalizeUrl(categoryMatches[0].link || ''),
+    sources: sources,
+    evidenceText: evidenceText
   };
 }
  
@@ -421,7 +516,8 @@ async function searchSerper(name, category, city) {
   });
   var competitors  = extractCompetitors(queryResults, name);
   var socialSignals = detectSocialSignals(allResults, name);
-  var summaries    = buildSummaries(queryResults, competitors, socialSignals);
+  var officialDomain = inferOfficialSite('', { knowledgeGraph: knowledgeGraph, results: results }, name);
+  var summaries    = buildSummaries(queryResults, competitors, socialSignals, name, category, officialDomain);
   var searchText   = buildSearchText(queryResults);
   var kgText       = buildKgText(knowledgeGraph);
  
@@ -620,5 +716,6 @@ module.exports = {
   searchCompetitors:              searchCompetitors,
   searchOnlineChannelCompetitor:  searchOnlineChannelCompetitor,
   inferOfficialSite:              inferOfficialSite,
+  verifyRecommendationEntity:     verifyRecommendationEntity,
   normalizeUrl:                   normalizeUrl
 };
