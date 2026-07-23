@@ -80,14 +80,18 @@ function hasValidShape(output) {
   if (!output || typeof output !== 'object') return false;
   const p  = output.pillars;
   const pc = output.platformCoverage;
+  const validScore = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 25;
+  const validPillar = value => value && typeof value === 'object'
+    && validScore(value.score)
+    && typeof value.finding === 'string' && value.finding.trim().length > 0
+    && typeof value.evidence === 'string';
   return (
     p && pc &&
-    p.clarity && p.trust && p.difference && p.ease &&
+    validPillar(p.clarity) && validPillar(p.trust) &&
+    validPillar(p.difference) && validPillar(p.ease) &&
     pc.chatgpt && pc.perplexity && pc.gemini && pc.claude &&
-    typeof p.clarity.score    === 'number' &&
-    typeof p.trust.score      === 'number' &&
-    typeof p.difference.score === 'number' &&
-    typeof p.ease.score       === 'number'
+    typeof output.summaryParagraph === 'string' && output.summaryParagraph.trim().length > 0 &&
+    typeof output.evidenceNarrative === 'string' && output.evidenceNarrative.trim().length > 0
   );
 }
 
@@ -104,6 +108,15 @@ function normalizePillar(raw) {
 }
 
 function normalizeCoverage(raw, platform) {
+  if (typeof raw === 'string') {
+    const status = raw.trim().toLowerCase();
+    return {
+      status: VALID_PLATFORM_STATUSES.includes(status) ? status : 'unmeasured',
+      detail: VALID_PLATFORM_STATUSES.includes(status)
+        ? platform + ' coverage was reported as ' + status + ' by the scoring model.'
+        : platform + ' measurement status was not established.'
+    };
+  }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return {
       status: 'unmeasured',
