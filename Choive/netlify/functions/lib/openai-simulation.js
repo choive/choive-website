@@ -10,10 +10,8 @@ const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-chat-latest';
 const OPENAI_FALLBACK_MODEL = 'gpt-5-mini';
 const REQUEST_TIMEOUT_MS = 90000;
-
-function sampleCount() {
-  return 1;
-}
+const { majorityRecommendation } = require('./recommendation-consensus');
+const { recommendationSampleCount, samplesForQuestion, strictMajorityThreshold } = require('./measurement-policy');
 
 function outputText(data) {
   if (data && typeof data.output_text === 'string') return data.output_text.trim();
@@ -232,10 +230,10 @@ async function runOpenAISimulation(input) {
     return { available: false, configured: true, complete: false, provider: 'openai', status: 'no_queries', reason: 'No shared buyer questions were supplied', results: [] };
   }
 
-  var samples = sampleCount();
   var jobs = [];
   sourceResults.forEach(function(result, queryIndex) {
-    for (var i = 0; i < samples; i++) jobs.push({ queryIndex: queryIndex, result: result });
+    var expected = samplesForQuestion(result, true);
+    for (var i = 0; i < expected; i++) jobs.push({ queryIndex: queryIndex, result: result });
   });
   var settled = await Promise.allSettled(jobs.map(function(job) {
     // Preserve the exact buyer-role framing used for the shared query. Without
@@ -269,6 +267,7 @@ async function runOpenAISimulation(input) {
       appeared: appearances.length > 0,
       appearedCount: appearances.length,
       sampleCount: responses.length,
+      expectedSamples: samplesForQuestion(source, true),
       allResponses: responses,
       error: errors[index][0] || null
     };
@@ -293,31 +292,40 @@ async function runOpenAISimulation(input) {
   var directResult = results.filter(function(result) {
     return String(result && result.label || '').toLowerCase().indexOf('branded replacement') !== -1;
   })[0];
-  var directTopRecommendation = directResult && Array.isArray(directResult.allResponses)
-    ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean)[0] || null
-    : null;
-  var explicitNoRecommendation = Boolean(directResult && (directResult.allResponses || []).some(hasExplicitNoRecommendation));
+  var directConsensus = majorityRecommendation(
+    directResult && Array.isArray(directResult.allResponses)
+      ? directResult.allResponses.map(extractTopRecommendation).filter(Boolean) : [],
+    Number(directResult && directResult.sampleCount || 0)
+  );
+  var directTopRecommendation = directConsensus.name;
+  var directMajorityThreshold = directResult && directResult.sampleCount > 0
+    ? strictMajorityThreshold(directResult.sampleCount) : 0;
+  var explicitNoRecommendation = Boolean(directResult && directResult.sampleCount > 0
+    && (directResult.allResponses || []).filter(hasExplicitNoRecommendation).length >= directMajorityThreshold);
   var recommendationCompleted = Boolean(directResult && directResult.sampleCount > 0
     && (directTopRecommendation || explicitNoRecommendation));
   return {
     available: results.some(function(result) { return result.sampleCount > 0; }),
-    complete: results.every(function(result) { return result.sampleCount === samples; }),
+    complete: results.every(function(result) { return result.sampleCount === result.expectedSamples; }),
     configured: true,
-    status: results.every(function(result) { return result.sampleCount === samples; })
+    status: results.every(function(result) { return result.sampleCount === result.expectedSamples; })
       ? 'complete'
       : (results.some(function(result) { return result.sampleCount > 0; }) ? 'partial' : 'failed'),
     completedSamples: results.reduce(function(total, result) { return total + result.sampleCount; }, 0),
-    expectedSamples: results.length * samples,
+    expectedSamples: results.reduce(function(total, result) { return total + result.expectedSamples; }, 0),
     provider: 'openai',
     model: OPENAI_MODEL,
     language: input.language || null,
-    sampleCountPerQuery: samples,
+    sampleCountPerQuery: 1,
+    recommendationSamples: recommendationSampleCount(),
     appearedCount: visibilityResults.filter(function(result) { return result.appeared; }).length,
     totalQueries: visibilityResults.length,
     recommendations: recommendations,
     topRecommendation: directTopRecommendation,
     recommendationQuery: directResult ? directResult.query : null,
     recommendationResponse: directResult ? directResult.response : null,
+    recommendationCounts: directConsensus.counts,
+    recommendationAgreement: directConsensus,
     recommendationCompleted: recommendationCompleted,
     explicitNoRecommendation: explicitNoRecommendation,
     recommendationError: directResult && directResult.error
