@@ -1,5 +1,6 @@
 // Low-cost, independently attributed Gemini and Perplexity measurements.
-// Each provider answers the same three unbranded buyer questions once.
+// Each provider answers visibility questions once and the direct recommendation
+// question multiple times so consensus does not multiply every provider call.
 
 'use strict';
 
@@ -10,9 +11,11 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 // Use a separate stable, lower-latency model when the primary model is under
 // capacity pressure. A preview from the same high-demand family is not a
 // reliable fallback during a regional availability spike.
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
 const REQUEST_TIMEOUT_MS = 75000;
+const { majorityRecommendation } = require('./recommendation-consensus');
+const { recommendationSampleCount, samplesForQuestion, strictMajorityThreshold } = require('./measurement-policy');
 
 function isTransientProviderError(error) {
   var status = Number(error && error.status || 0);
@@ -188,63 +191,98 @@ async function runProvider(provider, input, requestFn, configured) {
   if (!configured) return { available: false, configured: false, provider: provider, status: 'not_configured', results: [] };
   if (!sources.length) return { available: false, configured: true, provider: provider, status: 'no_queries', results: [] };
 
+  var jobs = [];
+  sources.forEach(function(source, sourceIndex) {
+    var expected = samplesForQuestion(source, true);
+    for (var sampleIndex = 0; sampleIndex < expected; sampleIndex++) {
+      jobs.push({ source: source, sourceIndex: sourceIndex });
+    }
+  });
   var settled;
   if (provider === 'gemini') {
-    // Avoid sending four simultaneous grounded searches to a model that may
+    // Avoid sending all grounded searches to a model that may
     // temporarily throttle burst traffic. Two-at-a-time preserves reasonable
     // latency without turning capacity spikes into partial diagnostics.
     settled = [];
-    for (var batchStart = 0; batchStart < sources.length; batchStart += 2) {
-      var batch = await Promise.allSettled(sources.slice(batchStart, batchStart + 2).map(requestFn));
+    for (var batchStart = 0; batchStart < jobs.length; batchStart += 2) {
+      var batch = await Promise.allSettled(jobs.slice(batchStart, batchStart + 2).map(function(job) {
+        return requestFn(job.source);
+      }));
       settled = settled.concat(batch);
     }
   } else {
-    settled = await Promise.allSettled(sources.map(requestFn));
+    settled = await Promise.allSettled(jobs.map(function(job) { return requestFn(job.source); }));
   }
+  var grouped = sources.map(function() { return []; });
+  var groupedErrors = sources.map(function() { return []; });
+  var groupedModels = sources.map(function() { return []; });
+  settled.forEach(function(outcome, jobIndex) {
+    var sourceIndex = jobs[jobIndex].sourceIndex;
+    if (outcome.status === 'rejected') {
+      groupedErrors[sourceIndex].push(String(outcome.reason && outcome.reason.message || 'Request failed'));
+      return;
+    }
+    var value = outcome.value;
+    var raw = value && typeof value === 'object' ? String(value.text || '') : String(value || '');
+    var cleaned = cleanResponse(raw);
+    if (cleaned) grouped[sourceIndex].push(cleaned);
+    if (value && typeof value === 'object' && value.model) groupedModels[sourceIndex].push(value.model);
+  });
   var results = sources.map(function(source, index) {
-    var fulfilledValue = settled[index].status === 'fulfilled' ? settled[index].value : '';
-    var raw = fulfilledValue && typeof fulfilledValue === 'object'
-      ? String(fulfilledValue.text || '') : String(fulfilledValue || '');
-    var response = cleanResponse(raw);
+    var responses = grouped[index];
+    var appearances = responses.filter(function(response) { return businessMentioned(response, input.name); });
+    var consensus = majorityRecommendation(
+      responses.map(function(response) { return extractTopRecommendation(response, input.name); }).filter(Boolean),
+      responses.length
+    );
     return {
       label: source.label,
       intent: source.intent,
       query: source.query,
-      response: response,
-      appeared: businessMentioned(response, input.name),
-      appearedCount: businessMentioned(response, input.name) ? 1 : 0,
-      sampleCount: response ? 1 : 0,
-      allResponses: response ? [response] : [],
-      model: fulfilledValue && typeof fulfilledValue === 'object' ? fulfilledValue.model || null : null,
-      topRecommendation: extractTopRecommendation(response, input.name),
-      error: settled[index].status === 'rejected' ? String(settled[index].reason && settled[index].reason.message || 'Request failed') : null
+      response: appearances[0] || responses[0] || '',
+      appeared: appearances.length > 0,
+      appearedCount: appearances.length,
+      sampleCount: responses.length,
+      expectedSamples: samplesForQuestion(source, true),
+      allResponses: responses,
+      model: groupedModels[index].filter(function(value, position, values) { return values.indexOf(value) === position; }).join(', ') || null,
+      topRecommendation: consensus.name,
+      recommendationCounts: consensus.counts,
+      recommendationAgreement: consensus,
+      error: groupedErrors[index][0] || null
     };
   });
   var replacement = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') !== -1; })[0];
-  var explicitNoRecommendation = Boolean(replacement && hasExplicitNoRecommendation(replacement.response));
+  var replacementMajorityThreshold = replacement && replacement.sampleCount > 0
+    ? strictMajorityThreshold(replacement.sampleCount) : 0;
+  var explicitNoRecommendation = Boolean(replacement && replacement.sampleCount > 0
+    && replacement.allResponses.filter(hasExplicitNoRecommendation).length >= replacementMajorityThreshold);
   var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') === -1; });
   // Only the explicit branded "who instead?" question populates this lane.
   // Unbranded discovery answers remain visibility evidence.
   var chosen = replacement && replacement.topRecommendation ? replacement : null;
-  var completed = results.filter(function(result) { return result.sampleCount === 1; }).length;
+  var completed = results.reduce(function(total, result) { return total + result.sampleCount; }, 0);
+  var expected = results.reduce(function(total, result) { return total + result.expectedSamples; }, 0);
   var failureReasons = results.map(function(result) { return result.error; }).filter(Boolean);
   var actualModels = results.map(function(result) { return result.model; }).filter(Boolean)
     .filter(function(value, index, values) { return values.indexOf(value) === index; });
   if (failureReasons.length) {
     console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
   }
-  if (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation && !explicitNoRecommendation) {
+  if (replacement && replacement.sampleCount > 0 && !replacement.topRecommendation && !explicitNoRecommendation) {
     console.warn('[' + provider + '-simulation] Branded replacement answer completed but no recommendation name could be extracted.');
   }
   return {
     available: completed > 0,
     configured: true,
-    complete: completed === sources.length,
+    complete: completed === expected,
     provider: provider,
     model: provider === 'gemini' ? (actualModels.join(', ') || GEMINI_MODEL) : PERPLEXITY_MODEL,
-    status: completed === sources.length ? 'complete' : (completed > 0 ? 'partial' : 'failed'),
+    status: completed === expected ? 'complete' : (completed > 0 ? 'partial' : 'failed'),
     completedSamples: completed,
-    expectedSamples: sources.length,
+    expectedSamples: expected,
+    sampleCountPerQuery: 1,
+    recommendationSamples: recommendationSampleCount(),
     appearedCount: buyerResults.filter(function(result) { return result.appeared; }).length,
     totalQueries: buyerResults.length,
     topRecommendation: chosen ? chosen.topRecommendation : null,
@@ -252,12 +290,12 @@ async function runProvider(provider, input, requestFn, configured) {
     competitorRecommendationQuery: replacement ? replacement.query : null,
     recommendationQuery: replacement ? replacement.query : null,
     recommendationResponse: replacement ? replacement.response : null,
-    recommendationCompleted: Boolean(replacement && replacement.sampleCount === 1
+    recommendationCompleted: Boolean(replacement && replacement.sampleCount > 0
       && (replacement.topRecommendation || explicitNoRecommendation)),
     explicitNoRecommendation: explicitNoRecommendation,
     recommendationError: replacement && replacement.error
-      || (replacement && replacement.sampleCount === 1 && !replacement.topRecommendation && !explicitNoRecommendation
-        ? 'The provider answered, but no recommendation name could be verified in the response.' : null),
+      || (replacement && replacement.sampleCount > 0 && !replacement.topRecommendation && !explicitNoRecommendation
+        ? 'The provider answered, but no recommendation reached majority agreement across the recorded samples.' : null),
     reason: completed === 0 ? (failureReasons[0] || 'No platform response was returned') : null,
     results: results
   };
