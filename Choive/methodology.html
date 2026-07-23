@@ -16,7 +16,7 @@
   "@type": "TechArticle",
   "headline": "How CHOIVE Measures AI Recommendations",
   "description": "The public methodology and limitations for the CHOIVE AI recommendation diagnostic.",
-  "dateModified": "2026-07-17",
+  "dateModified": "2026-07-23",
   "author": {
     "@type": "Organization",
     "name": "CHOIVE",
@@ -67,7 +67,7 @@ footer a{color:#ddd}
   </div>
 </header>
 <main>
-  <div class="eyebrow">Public methodology · Version 1.0 · 17 July 2026</div>
+  <div class="eyebrow">Public methodology · Version 2.1 · 23 July 2026</div>
   <h1>How CHOIVE measures an AI recommendation.</h1>
   <p class="lede">This page explains what CHOIVE measures, what the score means, how competitors are selected, and where the product has limits. The method applies to every business, including CHOIVE itself.</p>
 
@@ -93,7 +93,7 @@ footer a{color:#ddd}
       <div class="item"><strong>Perplexity</strong>Measured through the Perplexity API.</div>
       <div class="item"><strong>Gemini</strong>Measured through the Google Gemini API.</div>
     </div>
-    <p class="note">The four answers remain separate. If two providers recommend the same company, CHOIVE still shows both provider results rather than merging them into one vote.</p>
+    <p class="note">Each provider records one response for each visibility question. The direct recommendation question normally records three independent responses and shows a company only when the same name receives more than half of the completed responses. Failed responses remain failures. The four provider results remain separate and are not merged into one vote.</p>
     <p>An API response is a real provider response for that diagnostic run. It is not a guarantee of the answer every person will see inside a consumer app. Consumer apps can use different models, search context, product settings, conversation history, location, or personalization.</p>
   </section>
 
@@ -107,6 +107,8 @@ footer a{color:#ddd}
       <div class="item"><strong>Ease</strong>Can people, search engines, and AI systems find, read, and act on the business information?</div>
     </div>
     <p class="note">The pillar scores use evidence about the subject business. Whether an AI provider recommended or omitted the business does not automatically raise or lower any pillar score.</p>
+    <p>Final points are allocated by a versioned evidence rubric. Code converts recorded evidence statuses into points; a model cannot submit its own final score. Mechanical checks are labelled mechanical, independently retrieved sources are labelled independent, and interpreted checks are labelled model assessed. Clarity and Difference include interpreted checks and therefore carry lower confidence when independent verification is limited.</p>
+    <p class="note">Every paid Analysis and Report includes a point ledger showing the rule ID, observed evidence, points awarded, maximum points, verification type, source where available, and pillar confidence.</p>
   </section>
 
   <section>
@@ -125,7 +127,7 @@ footer a{color:#ddd}
     <ul>
       <li><strong>Free Diagnostic, $0:</strong> headline verdict, CHOIVE Index, four pillar scores, platform recommendations when successfully measured, and competitor exposure.</li>
       <li><strong>CHOIVE Analysis, $99 once:</strong> the full online evidence breakdown, platform coverage, competitor comparison, prioritized actions, and ready-to-use assets.</li>
-      <li><strong>CHOIVE Report, $499 once:</strong> the Analysis plus a structured ten-section report, implementation plan, and clearly labelled planning projections.</li>
+      <li><strong>CHOIVE Report, $499 once:</strong> the Analysis plus a structured ten-section report, implementation milestones, verification criteria, and a 30-day plan. It does not predict future scores.</li>
     </ul>
   </section>
 
