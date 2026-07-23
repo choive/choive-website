@@ -2923,9 +2923,9 @@ function runDiagnostic() {
     document.getElementById('bW').focus();
     return;
   }
-  if (website && !website.startsWith('http')) {
-    website = 'https://' + website;
-  }
+  if (website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
+  website = website.replace(/^http:\/\//i, 'https://');
+  if (document.getElementById('bW')) document.getElementById('bW').value = website;
 
   const language = document.getElementById('bLang') ? document.getElementById('bLang').value : '';
   bizData = { name, category, city, website, knownCompetitors, description, customerQuestion, language, subjectType, marketReach };
