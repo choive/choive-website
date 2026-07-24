@@ -535,10 +535,19 @@ exports.handler = async function (event) {
         console.warn('[' + jobId + '] Review fetch failed:', (parallelResults[1].reason || {}).message || parallelResults[1].reason);
       }
       // ── [2] Apify review evidence ─────────────────────────────────────────────
-      var apifyResult = { apifyText: '', trustpilot: null, googleReviews: null };
+      var apifyResult = {
+        apifyText: '',
+        trustpilot: null,
+        googleReviews: null,
+        measurement: { trustpilot: 'not_measured', googleReviews: 'not_measured' }
+      };
       if (parallelResults[2].status === 'fulfilled') {
         try {
           apifyResult = parallelResults[2].value || apifyResult;
+          evidence.reviewMeasurement = apifyResult.measurement || {
+            trustpilot: 'unavailable',
+            googleReviews: 'unavailable'
+          };
           if (apifyResult.apifyText) {
             evidence['apifyText']     = apifyResult.apifyText;
             evidence['trustpilot']    = apifyResult.trustpilot;
