@@ -735,9 +735,9 @@ nav {
   background:var(--paper-2); padding:24px 28px;
   margin-bottom:2px; border-bottom:1px solid var(--rule);
 }
-.score-label-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule-2); }
+.score-label-row { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:12px 0; border-bottom:1px solid var(--rule-2); }
 .score-label-row:last-child { border-bottom:none; }
-.score-label-key { font-size:12px; font-weight:400; color:var(--body); }
+.score-label-key { font-size:12px; font-weight:400; color:var(--body); line-height:1.5; }
 .score-label-val { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
 .score-label-val.high    { color:var(--green); }
 .score-label-val.mid     { color:var(--amber); }
@@ -3093,15 +3093,15 @@ function buildScoreLabels(r) {
 
   return `<div class="score-labels">
     <div class="score-label-row">
-      <div class="score-label-key">Market position</div>
+      <div class="score-label-key">Strength of publicly available business evidence</div>
       <div class="score-label-val ${strength.cls}">${strength.label}</div>
     </div>
     <div class="score-label-row">
-      <div class="score-label-key">AI Readability</div>
+      <div class="score-label-key">How clearly AI can understand this business</div>
       <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
     </div>
     <div class="score-label-row">
-      <div class="score-label-key">Gap</div>
+      <div class="score-label-key">How often measured AI providers recommended another business</div>
       <div class="score-label-val ${gapCls}">${gapLabel}</div>
     </div>
   </div>`;
@@ -3359,6 +3359,13 @@ function buildPillarCards(r, isPaid) {
     var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
     var finding = raw.finding || '';
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
+    var confidenceCopy = confidence === 'high'
+      ? 'Based mainly on directly confirmed public facts'
+      : confidence === 'medium'
+        ? 'Based on a mix of confirmed facts and assessed signals'
+        : confidence
+          ? 'Includes assessed signals that need more public confirmation'
+          : '';
     var pct = score / 25 * 100;
     var findingHtml = isPaid
       ? '<div class="pillar-finding">' + esc(finding) + '</div>'
@@ -3367,7 +3374,7 @@ function buildPillarCards(r, isPaid) {
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
       + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
-      + (isPaid && confidence ? '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Evidence confidence: ' + esc(confidence) + '</div>' : '')
+      + (isPaid && confidenceCopy ? '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">' + esc(confidenceCopy) + '</div>' : '')
       + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
       + findingHtml
       + '</div>';
@@ -3465,11 +3472,11 @@ function showResults(r, jobId) {
   // The score describes the business evidence only. Platform recommendations
   // are reported separately from the measured platform responses.
   const scoreLabel = score >= 76
-    ? 'AI can clearly understand this ' + subjectNoun + ' and find strong public proof for it.'
+    ? 'AI can clearly understand this ' + subjectNoun + ' and find strong publicly available evidence that supports it.'
     : score >= 56
-      ? 'AI can understand this ' + subjectNoun + ', but some important public proof is missing or unclear.'
+      ? 'AI can find and understand this ' + subjectNoun + ', but some evidence that buyers and AI systems use to verify it is missing.'
       : score >= 31
-        ? 'AI can identify this ' + subjectNoun + ', but it cannot find enough clear and trusted proof to recommend it reliably.'
+        ? 'AI can identify this ' + subjectNoun + ', but CHOIVE did not find enough clear, independently checkable evidence to support a reliable recommendation.'
         : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this ' + subjectNoun + '.';
 
   function buildApiMeasurementSummary() {
@@ -3491,7 +3498,7 @@ function showResults(r, jobId) {
     });
     var parts = [];
     if (named.length) parts.push('API measurement: ' + named.join('; ') + '.');
-    if (explicitNone.length) parts.push(explicitNone.join(', ') + ' did not establish one majority recommendation across the completed responses.');
+    if (explicitNone.length) parts.push(explicitNone.join(', ') + ' gave different recommendations across the recorded tests, so no single answer was consistent.');
     if (failed.length) parts.push(failed.join(', ') + ' could not complete a verifiable recommendation measurement.');
     if (unmeasured.length) parts.push(unmeasured.join(', ') + ' was not measured in this run.');
     parts.push('These API answers do not change the CHOIVE score, which measures Clarity, Trust, Difference, and Ease separately.');
@@ -3587,17 +3594,17 @@ function showResults(r, jobId) {
       totalCompleted += visibilityTotal;
       var resultText = visibilityTotal > 0
         ? 'Appeared in ' + visibilityAppeared + ' of ' + visibilityTotal
-        : (statusText[lane.status || 'unmeasured'] || 'No completed unbranded probe');
+        : (statusText[lane.status || 'unmeasured'] || 'No completed buying-question test without the business name');
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (visibilityTotal ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(resultText) + '</div>'
-        + '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">Official API probe</div>'
+        + '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">Recorded through the official AI provider system</div>'
         + '</div>';
     }).join('');
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">AI probe coverage</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' completed unbranded API answers. Recommendation names and full answers are shown in the technical appendix.</div>'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">When AI was asked buying questions</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' recorded answers to buying questions that did not include its name. Recommendation names and complete answers appear later in the analysis.</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
       + '</div>';
   }
@@ -3706,7 +3713,7 @@ function showResults(r, jobId) {
     + '<div class="mono-score-num" id="scoreNum">0</div>'
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
-    + '<div style="font-size:16px;font-weight:600;color:var(--tp);margin-bottom:8px;">Business evidence score: ' + score + ' / 100</div>'
+    + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Business evidence score</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. The recorded platform recommendations are reported separately and are not changed by the CHOIVE score.'
@@ -3732,9 +3739,12 @@ function showResults(r, jobId) {
 
     var sigLines = (d.signals || []).map(function(s) {
       var fixed = s.to === true;
+      var signalLabel = /llms\.txt/i.test(String(s.label || ''))
+        ? 'Website file containing a direct business summary for AI systems (/llms.txt)'
+        : s.label;
       return '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
         + '<span style="color:' + (fixed ? 'var(--ac)' : '#E05252') + ';margin-right:8px;">' + (fixed ? '\u2713' : '\u2717') + '</span>'
-        + esc(s.label) + ': ' + (s.from ? 'present' : 'absent') + ' \u2192 ' + (s.to ? 'present' : 'absent')
+        + esc(signalLabel) + ': ' + (s.from ? 'detected in the previous run' : 'not detected in the previous run') + ' \u2192 ' + (s.to ? 'detected in this run' : 'not detected in this run')
         + '</div>';
     }).join('');
 
@@ -3742,7 +3752,7 @@ function showResults(r, jobId) {
     if (d.selectionRate) {
       rateLine = '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
         + '<span style="color:var(--ac);margin-right:8px;">\u25B8</span>'
-        + 'AI selection rate: ' + d.selectionRate.previous + '/' + d.selectionRate.total
+        + 'Buying questions that mentioned the business: ' + d.selectionRate.previous + '/' + d.selectionRate.total
         + ' \u2192 <strong style="color:var(--ac);">' + d.selectionRate.current + '/' + d.selectionRate.total + '</strong></div>';
     }
 
@@ -3750,14 +3760,14 @@ function showResults(r, jobId) {
     if (d.competitorChange) {
       compLine = '<div style="font-size:13px;color:var(--tb);padding:5px 0;">'
         + '<span style="color:var(--ac);margin-right:8px;">\u25B8</span>'
-        + 'Dominant competitor: ' + esc(d.competitorChange.from) + ' \u2192 ' + esc(d.competitorChange.to) + '</div>';
+        + 'Head-to-head competitor changed from ' + esc(d.competitorChange.from) + ' to ' + esc(d.competitorChange.to) + ' in this run.</div>';
     }
 
     // HONESTY GATE: "verified" is earned only by mechanically confirmed change.
     var hasConfirmed = (d.signals || []).length > 0
       || (d.selectionRate && d.selectionRate.previous !== d.selectionRate.current)
       || !!d.competitorChange;
-    var headTxt = hasConfirmed ? 'Verified progress' : 'Since last run';
+    var headTxt = hasConfirmed ? 'Score change since the previous run' : 'Score comparison with the previous run';
     var driftNote = (!hasConfirmed && sd !== 0)
       ? '<div style="font-size:12px;color:var(--tm);margin-top:12px;font-style:italic;">No confirmed signal changes detected \u2014 this movement reflects refreshed evidence, not verified fixes.</div>'
       : '';
@@ -3894,7 +3904,7 @@ function showResults(r, jobId) {
         return '<div style="border:1px solid var(--rule);padding:18px;background:var(--paper-2);min-width:0;">'
           + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;">'
           + '<strong style="font-size:13px;color:var(--ink);">' + platform.label + '</strong>'
-          + '<span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#26734d;">Consumer-app record · user supplied</span></div>'
+          + '<span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#26734d;">Answer you saved from the public AI app</span></div>'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;">' + esc(record.recommendation) + '</div>'
           + (date ? '<div style="font-size:10px;color:var(--muted);margin-top:7px;">Saved ' + esc(date) + '</div>' : '')
           + '<details style="margin-top:12px;"><summary style="font-size:11px;font-weight:700;color:var(--body);cursor:pointer;">View pasted answer</summary>'
@@ -3911,15 +3921,15 @@ function showResults(r, jobId) {
         + '<strong style="font-size:13px;color:var(--ink);">' + platform.label + '</strong>'
         + '<a href="' + platform.url + '" target="_blank" rel="noopener" style="font-size:10px;font-weight:800;color:var(--ac);">Open app ↗</a></div>'
         + '<textarea id="consumerTranscript-' + platform.key + '" rows="6" placeholder="Paste the complete answer from ' + platform.label + '" style="box-sizing:border-box;width:100%;resize:vertical;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:12px;font:12px/1.6 Inter,sans-serif;margin-bottom:10px;"></textarea>'
-        + '<label for="consumerName-' + platform.key + '" style="display:block;font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Recommended name shown in the answer</label>'
+        + '<label for="consumerName-' + platform.key + '" style="display:block;font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Which business did the AI recommend?</label>'
         + '<input id="consumerName-' + platform.key + '" type="text" maxlength="180" placeholder="Confirm the exact name" style="box-sizing:border-box;width:100%;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:11px;font:13px Inter,sans-serif;margin-bottom:10px;" />'
         + '<button type="button" onclick="saveConsumerVerification(\'' + platform.key + '\')" style="width:100%;border:0;background:var(--ink);color:var(--paper);padding:11px;font-size:11px;font-weight:800;cursor:pointer;">Save consumer-app record</button>'
         + '<div id="consumerMsg-' + platform.key + '" style="font-size:11px;line-height:1.5;color:var(--muted);margin-top:8px;"></div></div>';
     }).join('');
     return '<section id="consumer-verification" style="padding:30px 28px;background:var(--paper);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Consumer-app verification</div>'
-      + '<h2 style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.3;letter-spacing:0;margin:0 0 9px;color:var(--ink);">Record what each public AI app actually answers.</h2>'
-      + '<p style="font-size:13px;line-height:1.7;color:var(--body);max-width:760px;margin:0 0 16px;">Use the same question in each app. Paste the complete answer and confirm the exact recommended name. CHOIVE stores each answer separately as a user-supplied consumer-app record, with its time. The saved answer is visible on the shared result page and does not change the CHOIVE score.</p>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">What you see when you use AI yourself</div>'
+      + '<h2 style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.3;letter-spacing:0;margin:0 0 9px;color:var(--ink);">Check what the public AI apps say when you ask directly.</h2>'
+      + '<p style="font-size:13px;line-height:1.7;color:var(--body);max-width:760px;margin:0 0 16px;">CHOIVE records answers through official AI provider systems. The public ChatGPT, Claude, Perplexity, and Gemini apps may answer differently. Ask the question below in each app, paste the complete answer, and save it here. CHOIVE keeps your saved answers separate. They add context but do not change your score.</p>'
       + '<div style="background:var(--paper-2);border-left:3px solid var(--ac);padding:14px 16px;margin-bottom:18px;">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Ask this exact question</div>'
       + '<div id="consumerVerificationQuestion" style="font-size:13px;line-height:1.65;color:var(--ink);">' + esc(question) + '</div>'
@@ -3929,11 +3939,14 @@ function showResults(r, jobId) {
 
   zone.innerHTML =
     (isPaid ? buildExecutiveVerdict() : competitorBanner)
+    + (isPaid && r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">What the evidence says</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This is the main diagnosis from the website checks, publicly available sources, and recorded AI-provider answers. The complete scoring record appears below.</div>'
+      + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-verdict">Diagnosis</a><a href="#report-score">Score</a><a href="#report-organic-gap">Discovery</a><a href="#report-competitors">Competitors</a>'
-      + '<a href="#report-arena">Comparison</a><a href="#simSection">API Probes</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
+      + '<a href="#report-verdict">Your result</a><a href="#report-score">Your score</a><a href="#report-organic-gap">What AI says</a><a href="#report-competitors">Your competitors</a>'
+      + '<a href="#report-arena">How you compare</a><a href="#simSection">AI platform results</a><a href="#report-method">How this works</a><a href="#report-actions">What to do</a>'
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
-      + '<a href="#report-roadmap">Roadmap</a><a href="#report-assets">Assets</a><a href="#report-download">Download</a>'
+      + '<a href="#report-roadmap">Your plan</a><a href="#report-assets">Changes to make</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
     + buildPlatformRecommendationBlock()
     + (isPaid
@@ -3998,7 +4011,14 @@ function showResults(r, jobId) {
     var scoreRules = r.scoreMethod && r.scoreMethod.audits && Array.isArray(r.scoreMethod.audits[key])
       ? r.scoreMethod.audits[key] : [];
     var confidence = p.confidence && p.confidence.level ? String(p.confidence.level) : 'not established';
-    var scoreRuleHtml = scoreRules.length ? '<details class="report-details"><summary>View evidence point ledger · confidence ' + esc(confidence) + '</summary><div class="report-details-body">'
+    var confidenceSummary = confidence === 'high'
+      ? 'most points came from confirmed public facts'
+      : confidence === 'medium'
+        ? 'points came from confirmed facts and assessed signals'
+        : confidence === 'low'
+          ? 'some signals need more public confirmation'
+          : 'the evidence basis was not established';
+    var scoreRuleHtml = scoreRules.length ? '<details class="report-details"><summary>See every point and where it came from · ' + esc(confidenceSummary) + '</summary><div class="report-details-body">'
       + scoreRules.map(function(rule) {
         var sources = Array.isArray(rule.source) ? rule.source : (rule.source ? [rule.source] : []);
         return '<div style="padding:10px 0;border-bottom:1px solid var(--rule);">'
@@ -4036,8 +4056,9 @@ function showResults(r, jobId) {
   }
 
   function buildPaidPillarEvidence() {
-    return '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">How Every Point Was Awarded</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:18px;max-width:760px;">Each pillar shows its recorded finding, the scoring rules applied, the evidence used, and the confidence level. Missing evidence receives no points.</div>'
+    return '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">Exactly Where Your Score Comes From</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:10px;max-width:760px;">Each pillar shows its recorded finding, the scoring rules applied, the evidence used, and the confidence level. Missing evidence receives no points.</div>'
+      + '<div style="font-size:12px;color:var(--tb);line-height:1.7;padding:14px 16px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;max-width:800px;"><strong style="color:var(--ink);">What evidence confidence means:</strong> It shows how much of the score came from direct checks and confirmed sources instead of model interpretation. It does not show whether the score is good or bad. A low score can have high confidence when CHOIVE directly confirmed that evidence is missing.</div>'
       + '<div class="paid-pillars">'
       + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
       + pillarDetail('difference','Difference') + pillarDetail('ease','Ease')
@@ -4104,14 +4125,14 @@ function showResults(r, jobId) {
     });
     var diagnosis = completed
       ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
-        + ' completed unbranded buyer answers across ' + completedPlatforms + ' AI platform'
+        + ' recorded answers to buying questions that did not name the business, across ' + completedPlatforms + ' AI provider'
         + (completedPlatforms === 1 ? '' : 's') + '. '
         + (appeared === completed
           ? 'Every completed buyer answer named the business.'
           : appeared === 0
             ? 'None of the completed buyer answers named the business.'
             : 'The business appeared in some buying contexts but was absent from others.')
-      : 'No unbranded buyer answer completed, so this run did not establish an AI visibility result.';
+      : 'No buying-question test without the business name completed, so this run did not establish whether AI would mention the business.';
     var implication = completed
       ? (appeared === completed
         ? 'The immediate task is to preserve this coverage and verify it again after model or website changes.'
@@ -4170,8 +4191,8 @@ function showResults(r, jobId) {
     });
     var statement = completed
       ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
-        + ' completed unbranded buyer answers. The priority actions above target the specific missing evidence and category signals identified in this run.'
-      : 'This run did not complete enough unbranded buyer answers to support a visibility conclusion. Rerun the diagnostic before implementing recommendation-specific changes.';
+        + ' recorded answers to buying questions that did not include its name. The priority actions above address the specific missing evidence found in this run.'
+      : 'This run did not complete enough buying-question tests without the business name to support a conclusion. Run the diagnostic again before making recommendation-specific changes.';
     return '<section class="pay-section" id="report-conclusion">'
       + '<div class="pay-eyebrow">What This Business Now Knows</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.5;color:var(--ink);max-width:880px;">' + statement + '</div>'
@@ -4212,17 +4233,20 @@ function showResults(r, jobId) {
     var measuredCount = measured.length;
     var probeAppeared = 0;
     var probeCompleted = 0;
+    var probePlatformsAppeared = 0;
     measuredPlatformRuns().forEach(function(item) {
       var results = completedUnbrandedResults(item.run);
       probeCompleted += results.length;
-      probeAppeared += results.filter(function(result) { return result.appeared; }).length;
+      var platformAppeared = results.filter(function(result) { return result.appeared; }).length;
+      probeAppeared += platformAppeared;
+      if (platformAppeared > 0) probePlatformsAppeared++;
     });
-    var verdictTitle = esc(name || 'This business') + ' scored ' + score + ' / 100 for public evidence'
-      + (probeCompleted ? ' and appeared in ' + probeAppeared + ' of ' + probeCompleted + ' completed unbranded API answers.' : '.');
-    var verdictLead = 'The score measures Clarity, Trust, Difference, and Ease from recorded public evidence. '
+    var verdictTitle = esc(name || 'This business') + ' scored ' + score + ' out of 100.'
+      + (probeCompleted ? ' AI mentioned this business in ' + probeAppeared + ' of the ' + probeCompleted + ' buying questions CHOIVE tested without putting its name in the question.' : '');
+    var verdictLead = 'The score comes from the publicly available evidence CHOIVE recorded for Clarity, Trust, Difference, and Ease. '
       + (probeCompleted
-        ? 'The appearance count measures separate point-in-time API probes and does not change the score.'
-        : 'No unbranded API probe completed, so this run does not support an AI appearance conclusion.');
+        ? 'The score and the number of AI mentions are separate measurements. One does not change the other.'
+        : 'No unnamed buying-question test completed, so this run cannot show whether AI mentioned the business.');
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     if (marketName && String(marketName).toLowerCase().replace(/[^a-z0-9]/g, '')
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
@@ -4247,12 +4271,12 @@ function showResults(r, jobId) {
         + '</div>';
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
-      + '<div class="pay-eyebrow">Executive Verdict</div>'
-      + (r.verdictHeadline ? '<div class="verdict-headline-label">' + esc(r.verdictHeadline) + '</div>' : '')
+      + '<div class="pay-eyebrow">Your Result</div>'
+      + (probeCompleted ? '<div class="verdict-headline-label">Mentioned by ' + probePlatformsAppeared + ' of 4 measured AI providers when CHOIVE asked buying questions without naming the business</div>' : '')
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
-      + '<div class="executive-fact"><div class="executive-fact-label">API probe coverage</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' completed unbranded answers mentioned the business' : 'No completed unbranded API answer') + '</div><div class="executive-fact-copy">This is a point-in-time API measurement, not a transcript from a public consumer app.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">When AI was asked buying questions</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' recorded answers mentioned the business' : 'No buying-question result was completed') + '</div><div class="executive-fact-copy">CHOIVE recorded these answers through official AI provider systems. They are not transcripts from the public ChatGPT, Claude, Perplexity, or Gemini apps.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
@@ -4297,6 +4321,9 @@ function showResults(r, jobId) {
   }
   var compName     = compList.length > 0 ? compList[0].name : '';
   var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
+  compAnalysis = String(compAnalysis || '')
+    .replace(/via Owler and Growjo competitor data cited in the competitor selection stage/gi, 'using publicly available business comparison databases')
+    .replace(/competitor selection stage/gi, 'competitor research');
   var compEvidence = compList.length > 0 ? (compList[0].evidence || '') : '';
   var compContext  = compList.length > 0 ? (compList[0].queryContext || '') : '';
   var isCatBased   = compContext === 'category-based analysis';
@@ -4355,7 +4382,7 @@ function showResults(r, jobId) {
         var emptyState = {
           not_configured: 'API not configured',
           failed: 'Measurement failed',
-          no_recommendation: 'No majority recommendation established'
+          no_recommendation: 'No consistent answer across the recorded tests'
         };
         if (!entry || !entry.name || !scoreData || !scoreData.pillars) {
           return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;min-height:190px;">'
@@ -4375,11 +4402,13 @@ function showResults(r, jobId) {
           if (deficit > largestDeficit.value) largestDeficit = { key:key, value:deficit };
           var statusClass = gap > 0 ? 'arena-status-ahead' : (gap < 0 ? 'arena-status-behind' : 'arena-status-equal');
           var statusText = gap > 0 ? 'Ahead by ' + gap : (gap < 0 ? 'Behind by ' + Math.abs(gap) : 'Equal');
-          return '<div style="margin-bottom:13px;">'
-            + '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:5px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">'
-            + '<span>' + esc(key) + '</span><span class="arena-comparison-label"><strong>You: ' + you + '</strong> · ' + esc(entry.name || 'Competitor') + ': ' + competitor + '<br><span class="' + statusClass + '">' + statusText + '</span></span></div>'
-            + '<div style="height:3px;background:var(--rule);position:relative;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ac);width:' + Math.round(you / 25 * 100) + '%;"></span></div>'
-            + '<div style="height:2px;background:var(--rule);position:relative;margin-top:3px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ink);opacity:0.25;width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
+          return '<div style="margin-bottom:16px;">'
+            + '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">'
+            + '<span>' + esc(key) + '</span><span class="' + statusClass + '">' + statusText + '</span></div>'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--body);margin-bottom:3px;"><strong>Your business · ' + you + '</strong><span style="color:var(--ac-d);">solid gold bar</span></div>'
+            + '<div style="height:5px;background:var(--rule);position:relative;margin-bottom:7px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ac);width:' + Math.round(you / 25 * 100) + '%;"></span></div>'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--body);margin-bottom:3px;"><strong>' + esc(entry.name || 'Competitor') + ' · ' + competitor + '</strong><span style="color:var(--muted);">striped grey bar</span></div>'
+            + '<div style="height:5px;background:var(--rule);position:relative;"><span style="position:absolute;height:100%;left:0;top:0;background:repeating-linear-gradient(90deg,rgba(12,12,14,0.52) 0,rgba(12,12,14,0.52) 6px,transparent 6px,transparent 10px);width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
         }).join('');
         return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
           + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + '</div>'
@@ -4387,12 +4416,13 @@ function showResults(r, jobId) {
           + rows
           + (largestDeficit.value > 0
             ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest estimated score difference: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
-              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">This difference is an estimate based on public evidence. It is not a measured fact about the competitor. Use the Priority Actions below to improve your own evidence.</div>'
+              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">This comparison shows where the difference in publicly available evidence is largest. Competitor values are estimates from public sources and are not part of the audited CHOIVE score.</div>'
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
       }
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Verified Competitor Comparison</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">This chart includes only the verified head-to-head competitor and the separately verified market competitor. API-named alternatives remain in the technical probe appendix. Competitor pillar values are estimates from public evidence and show relative position, not an audited score.</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:12px;line-height:1.7;">This chart includes only the verified head-to-head competitor and the separately verified market competitor. API-named alternatives remain in the technical probe appendix. Competitor pillar values are estimates from public evidence and show relative position, not an audited score.</div>'
+        + '<div style="font-size:12px;color:var(--tb);padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:20px;"><strong>How to read every chart:</strong> the solid gold bar is your business. The striped grey bar is the named competitor. The exact values and the difference are written above each pair of bars.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
     }
@@ -4418,15 +4448,17 @@ function showResults(r, jobId) {
           return '<div style="margin-bottom:14px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
             + '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">' + key + '</span>'
-            + '<span style="font-size:11px;color:var(--body);"><span style="color:var(--ink);font-weight:600;">You: ' + (Number(pd.you)||0) + '</span>'
-            + '<span style="color:var(--muted);"> · Competitor: ' + (Number(pd.competitor)||0) + '</span>'
+            + '<span style="font-size:11px;color:var(--body);"><span style="color:var(--ink);font-weight:600;">Your business: ' + (Number(pd.you)||0) + '</span>'
+            + '<span style="color:var(--muted);"> · ' + esc(competitorName || 'Competitor') + ': ' + (Number(pd.competitor)||0) + '</span>'
             + '<span style="display:block;text-align:right;font-size:10px;font-weight:700;color:' + gapColor + ';margin-top:2px;">' + (gap > 0 ? 'Ahead by ' + gap : (gap < 0 ? 'Behind by ' + Math.abs(gap) : 'Equal')) + '</span></span>'
             + '</div>'
-            + '<div style="position:relative;height:3px;background:var(--rule);margin-bottom:3px;">'
+            + '<div style="font-size:9px;color:var(--ac-d);margin-bottom:2px;">Your business · solid gold</div>'
+            + '<div style="position:relative;height:5px;background:var(--rule);margin-bottom:5px;">'
             + '<div style="position:absolute;left:0;top:0;height:100%;background:var(--ac);width:' + youPct + '%;"></div>'
             + '</div>'
-            + '<div style="position:relative;height:2px;background:var(--rule);">'
-            + '<div style="position:absolute;left:0;top:0;height:100%;background:var(--ink);opacity:0.22;width:' + compPct + '%;"></div>'
+            + '<div style="font-size:9px;color:var(--muted);margin-bottom:2px;">' + esc(competitorName || 'Competitor') + ' · striped grey</div>'
+            + '<div style="position:relative;height:5px;background:var(--rule);">'
+            + '<div style="position:absolute;left:0;top:0;height:100%;background:repeating-linear-gradient(90deg,rgba(12,12,14,0.52) 0,rgba(12,12,14,0.52) 6px,transparent 6px,transparent 10px);width:' + compPct + '%;"></div>'
             + '</div>'
             + '</div>';
         }
@@ -4564,7 +4596,7 @@ function showResults(r, jobId) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var recommendation = lane.recommendation || '';
       var status = recommendation ? 'Completed'
-        : lane.status === 'no_recommendation' ? 'No majority recommendation established'
+        : lane.status === 'no_recommendation' ? 'No consistent answer — this provider gave different recommendations across the recorded tests'
         : lane.status === 'failed' ? 'Measurement failed'
         : lane.status === 'not_configured' ? 'API not configured'
         : 'Not measured in this run';
@@ -4591,7 +4623,7 @@ function showResults(r, jobId) {
     if (completed < 4) limitations.push((4 - completed) + ' platform measurement' + (4 - completed === 1 ? ' was' : 's were') + ' unavailable or did not establish a named recommendation.');
     if (!topComp) limitations.push('The available evidence was not strong enough to name a direct competitor.');
     if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('The available evidence did not support naming a separate market benchmark.');
-    limitations.push('Platform answers are point-in-time API measurements. Consumer-app answers can vary with model version, location, account context, wording, and search availability.');
+    limitations.push('These answers were recorded through official AI provider systems during this diagnostic. The public AI apps may answer differently because models, search access, location, account settings, and question wording can vary.');
     limitations.push('A named AI recommendation records what the platform answered; it does not certify that the recommended company is objectively the best supplier.');
     var limitationsHtml = limitations.map(function(item) { return '<li>' + esc(item) + '</li>'; }).join('');
     return '<section class="pay-section" id="report-method">'
@@ -4614,13 +4646,21 @@ function showResults(r, jobId) {
     function actionTitle(index, fallback) {
       return ranked[index] && ranked[index].title ? ranked[index].title : fallback;
     }
+    function actionInstruction(index, fallback) {
+      var action = ranked[index] || {};
+      return action.body || action.explanation || fallback;
+    }
+    function actionVerification(index, fallback) {
+      var action = ranked[index] || {};
+      return action.verification || action.successMeasure || action.if_nothing || fallback;
+    }
     return '<section class="pay-section" id="report-roadmap">'
       + '<div class="pay-eyebrow">30 / 60 / 90-Day Operating Roadmap</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">A practical sequence for implementation and remeasurement. This roadmap does not promise a future score; it defines what to change and when to verify the result.</div>'
       + '<div class="roadmap">'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 1–30 · Build</div><div class="roadmap-title">' + esc(actionTitle(0, 'Fix the highest-priority structural gap')) + '</div><div class="roadmap-copy">Implement the first three priority actions and publish the ready-to-use assets in this analysis.</div><div class="roadmap-check">Completion evidence: live URLs, structured data validation, and the first new independent trust signal.</div></div>'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 31–60 · Prove</div><div class="roadmap-title">' + esc(actionTitle(1, 'Strengthen independent market evidence')) + '</div><div class="roadmap-copy">Secure current third-party proof, make named outcomes discoverable, and confirm that search systems can retrieve the new evidence.</div><div class="roadmap-check">Decision gate: rerun the same buyer questions and compare platform answers lane by lane.</div></div>'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 61–90 · Consolidate</div><div class="roadmap-title">' + esc(actionTitle(2, 'Close the remaining recommendation gap')) + '</div><div class="roadmap-copy">Improve the weakest remaining pillar using the second diagnostic’s evidence, then reinforce the pages and sources that influenced selection.</div><div class="roadmap-check">Success measure: documented pillar movement and more measured platforms naming the business as the top recommendation.</div></div>'
+      + '<div class="roadmap-phase"><div class="roadmap-day">Days 1–30 · Publish</div><div class="roadmap-title">' + esc(actionTitle(0, 'Complete the first priority action')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(0, 'Publish the exact change described in the first Priority Action.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(0, 'Record the live URL and confirm that the required wording or evidence appears on the published page.')) + '</div></div>'
+      + '<div class="roadmap-phase"><div class="roadmap-day">Days 31–60 · Confirm</div><div class="roadmap-title">' + esc(actionTitle(1, 'Complete the second priority action')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(1, 'Publish the exact change described in the second Priority Action.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(1, 'Confirm the published evidence through the source or website check named in the Priority Action.')) + '</div></div>'
+      + '<div class="roadmap-phase"><div class="roadmap-day">Days 61–90 · Measure</div><div class="roadmap-title">' + esc(actionTitle(2, 'Complete the third priority action and rerun the diagnostic')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(2, 'Publish the third Priority Action, then run CHOIVE again using the same business details.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(2, 'Compare the new score, evidence checks, and provider API answers with this recorded result.')) + '</div></div>'
       + '</div></section>';
   }
 
@@ -4675,12 +4715,10 @@ function showResults(r, jobId) {
       + buildEvidenceLegend()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Discovery Evidence</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section answers one question: when an AI platform receives an unbranded buyer question, does it mention ' + esc(bizData.name || 'this business') + '? The result appears first. Open the recorded answers only when you want to inspect the evidence.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:inline-block;margin-left:10px;padding:3px 10px;border:1px solid var(--ac);color:var(--ac);font-size:10px;font-weight:700;text-transform:uppercase;\">Questions asked in ' + L[lg] + '</span>' : ''; })() + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section answers one question: when an AI provider receives a buying question that does not include the business name, does it mention ' + esc(bizData.name || 'this business') + '? The result appears first. Open the recorded answers only when you want to inspect the evidence.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:block;margin-top:10px;padding:9px 12px;border-left:3px solid var(--ac);background:var(--paper-2);color:var(--tb);font-size:11px;font-weight:600;\">The questions were asked in ' + L[lg] + ' to match the market language recorded for this diagnostic.</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + buildBusinessIntelligence()
-      + '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">Evidence Narrative</div>'
-      + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>'
       + buildCustomerQuestionReport()
       + buildMeasurementIntegrity()
       + buildConsumerVerificationBlock()
@@ -4692,8 +4730,8 @@ function showResults(r, jobId) {
       + mergedActions.map(actionItem).join('') + '</div></section>'
       + buildOperatingRoadmap()
       + '<section class="pay-section deliv-section" id="report-assets">'
-      + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Prepared from the facts collected for ' + esc(bizData.name || '') + '. Check names, locations, availability, and regulated claims before publishing.</div>'
+      + '<div class="pay-eyebrow">Changes You Can Make Today</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">These changes are based on what CHOIVE found for ' + esc(bizData.name || '') + '. Check every name, location, availability statement, and factual claim before publishing. Text marked for copying is ready after that review. The schema example must be checked and tested by a developer before it goes live.</div>'
       + '<div id="delivContent"></div></section>'
       + buildClosingConclusion()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
@@ -4838,7 +4876,10 @@ function buildDeliverables(r) {
           return '<div style="font-size:13px;color:var(--tb);padding:8px 12px;background:var(--dk-3);border-left:2px solid var(--rule-d);">' + esc(f) + '</div>';
         }).join('')
       + '</div>'
-      + '<div style="font-size:12px;color:var(--tm);">Estimated time: ' + esc(sb.timeEstimate || '20 minutes') + '</div>'
+      + (sb.jsonLd ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin:14px 0 8px;">Factual base JSON-LD · developer review required</div>'
+        + '<div class="deliv-code" id="dSchemaCode">' + esc(sb.jsonLd) + '</div>'
+        + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dSchemaCode\')">Copy JSON-LD base</button>' : '')
+      + '<div style="font-size:12px;color:var(--tm);margin-top:12px;">Timing: ' + esc(sb.timeEstimate || 'Ask your developer for an estimate after reviewing the website setup') + '</div>'
       + '</div>';
   }
 
@@ -4870,7 +4911,7 @@ function buildDeliverables(r) {
     { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
     { id: 'dH1',     label: 'H1',         content: h1Html     },
     { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
-    { id: 'dReview', label: 'Reviews',    content: reviewHtml },
+    { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer evidence' : 'Reviews', content: reviewHtml },
     { id: 'dSchema', label: 'Schema',     content: schemaHtml }
   ];
 
@@ -4994,7 +5035,7 @@ async function runAISimulation(r) {
           + '</div>';
       }).join('');
       var answers = measured.map(function(qr, index) {
-        return '<details class="sim-answer-details"><summary>View recorded answer for question ' + (index + 1) + '</summary>'
+        return '<details class="sim-answer-details"><summary>See the recorded AI answer to: ' + esc(questionPurpose(qr)) + '</summary>'
           + '<div class="sim-answer-body">' + esc(stripMd(qr.response || 'No recorded answer is available.')) + '</div></details>';
       }).join('');
       return '<div class="sim-provider">'
@@ -5093,9 +5134,9 @@ function exportPDF() {
     : '';
   var pdfScore = Number(r.overallScore) || 0;
   var pdfScoreMeaning = pdfScore >= 76
-    ? 'AI can clearly understand this business and find strong public proof for it.'
+    ? 'AI can clearly understand this business and find strong publicly available evidence that supports it.'
     : pdfScore >= 56
-      ? 'AI can understand this business, but some important public proof is missing or unclear.'
+      ? 'AI can find and understand this business, but some evidence that buyers and AI systems use to verify it is missing.'
       : pdfScore >= 31
         ? 'AI can identify this business, but it cannot find enough clear and trusted proof to recommend it reliably.'
         : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this business.';
@@ -5153,10 +5194,12 @@ function animateNum(id, from, to, dur) {
   var el = document.getElementById(id);
   if (!el) return;
   var start = performance.now();
+  var showDecimal = Math.abs(Number(to) - Math.round(Number(to))) > 0.001;
   function tick(now) {
     var p = Math.min((now - start) / dur, 1);
     var eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(from + (to - from) * eased);
+    var value = from + (to - from) * eased;
+    el.textContent = showDecimal ? value.toFixed(1) : String(Math.round(value));
     if (p < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
