@@ -29,7 +29,7 @@ async function runActor(actorId, input) {
   var apiKey = process.env.APIFY_API_KEY;
   if (!apiKey) {
     console.warn('APIFY_API_KEY not set — skipping Apify');
-    return null;
+    return { state: 'unavailable', items: null };
   }
 
   var startUrl = APIFY_BASE + '/acts/' + actorId + '/runs?token=' + apiKey;
@@ -41,7 +41,7 @@ async function runActor(actorId, input) {
     body: JSON.stringify(input)
   }).catch(function(err) {
     console.warn('Apify start failed:', err.message);
-    return null;
+    return { state: 'unavailable', items: null };
   });
 
   if (!startRes || !startRes.ok) {
@@ -56,14 +56,14 @@ async function runActor(actorId, input) {
         console.warn('Apify 400 detail for', actorId + ':', errBody.slice(0, 300));
       } catch (e) {}
     }
-    return null;
+    return { state: 'unavailable', items: null };
   }
 
   var startData = await startRes.json();
   var runId     = startData && startData.data && startData.data.id;
   if (!runId) {
     console.warn('Apify run ID not found');
-    return null;
+    return { state: 'unavailable', items: null };
   }
 
   // Poll for completion
@@ -87,19 +87,20 @@ async function runActor(actorId, input) {
         APIFY_BASE + '/datasets/' + datasetId + '/items?token=' + apiKey + '&limit=20'
       ).catch(function() { return null; });
 
-      if (!itemsRes || !itemsRes.ok) return null;
-      return await itemsRes.json();
+      if (!itemsRes || !itemsRes.ok) return { state: 'unavailable', items: null };
+      var items = await itemsRes.json();
+      return { state: Array.isArray(items) && items.length ? 'available' : 'no_verified_match', items: items };
     }
 
     if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
       console.warn('Apify run', status, 'for actor', actorId);
-      return null;
+      return { state: 'unavailable', items: null };
     }
     // RUNNING or READY — keep polling
   }
 
   console.warn('Apify timeout for actor', actorId);
-  return null;
+  return { state: 'unavailable', items: null };
 }
 
 // ── Identity guard ────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ async function fetchTrustpilot(businessName, website) {
   // company-page pattern: trustpilot.com/review/{domain}. Only attempted
   // when a domain is actually known \u2014 neither actor works from a name alone.
   var domain = (website || '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-  if (!domain) return null;
+  if (!domain) return { data: null, status: 'not_measured' };
   var tpUrl = 'https://www.trustpilot.com/review/' + domain;
 
   // Search-style query, for the third candidate specifically \u2014 an OLDER
@@ -150,27 +151,32 @@ async function fetchTrustpilot(businessName, website) {
     { id: 'easyapify~trustpilot-scraper',           input: { startUrls: [{ url: 'https://www.trustpilot.com/search?query=' + encodeURIComponent(tpQuery) }], maxReviews: 10, reviewsLanguage: 'en' } }
   ];
   var items = null;
+  var measured = false;
   for (var t = 0; t < tpAttempts.length; t++) {
-    items = await runActor(tpAttempts[t].id, tpAttempts[t].input);
-    if (items && Array.isArray(items) && items.length > 0) break;
+    var attempt = await runActor(tpAttempts[t].id, tpAttempts[t].input);
+    if (attempt && attempt.state !== 'unavailable') measured = true;
+    items = attempt && attempt.items;
+    if (Array.isArray(items) && items.length > 0) break;
     items = null;
   }
 
-  if (!items || !Array.isArray(items) || items.length === 0) return null;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { data: null, status: measured ? 'no_verified_match' : 'unavailable' };
+  }
 
   var company = items[0];
-  if (!company) return null;
+  if (!company) return { data: null, status: 'no_verified_match' };
 
   if (!looksLikeSameBusiness(company.name, company.url, businessName, domain)) {
     console.warn('[apify] Trustpilot result "' + (company.name || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
-    return null;
+    return { data: null, status: 'no_verified_match' };
   }
 
   var reviews = (company.reviews || []).slice(0, 5).map(function(r) {
     return (r.rating ? r.rating + '/5: ' : '') + (r.text || '').slice(0, 200);
   });
 
-  return {
+  return { data: {
     platform:     'trustpilot',
     name:         company.name         || businessName,
     rating:       company.rating       || null,
@@ -179,7 +185,7 @@ async function fetchTrustpilot(businessName, website) {
     url:          company.url          || '',
     reviews:      reviews,
     source:       'apify'
-  };
+  }, status: 'available' };
 }
 
 // ── Fetch Google Maps reviews ─────────────────────────────────────────────────
@@ -193,27 +199,32 @@ async function fetchGoogleReviews(businessName, city) {
   ];
 
   var items = null;
+  var measured = false;
   for (var i = 0; i < actors.length; i++) {
-    items = await runActor(actors[i].id, actors[i].input);
-    if (items && Array.isArray(items) && items.length > 0) break;
+    var attempt = await runActor(actors[i].id, actors[i].input);
+    if (attempt && attempt.state !== 'unavailable') measured = true;
+    items = attempt && attempt.items;
+    if (Array.isArray(items) && items.length > 0) break;
     items = null;
   }
 
-  if (!items || !Array.isArray(items) || items.length === 0) return null;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { data: null, status: measured ? 'no_verified_match' : 'unavailable' };
+  }
 
   var place = items[0];
-  if (!place) return null;
+  if (!place) return { data: null, status: 'no_verified_match' };
 
   if (!looksLikeSameBusiness(place.title, place.website, businessName, '')) {
     console.warn('[apify] Google result "' + (place.title || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
-    return null;
+    return { data: null, status: 'no_verified_match' };
   }
 
   var reviews = (place.reviews || []).slice(0, 5).map(function(r) {
     return (r.stars ? r.stars + '/5: ' : '') + (r.text || '').slice(0, 200);
   });
 
-  return {
+  return { data: {
     platform:    'google_reviews',
     name:        place.title          || businessName,
     rating:      place.totalScore     || null,
@@ -223,7 +234,7 @@ async function fetchGoogleReviews(businessName, city) {
     website:     place.website        || '',
     reviews:     reviews,
     source:      'apify'
-  };
+  }, status: 'available' };
 }
 
 // ── Build review text for Claude prompt ───────────────────────────────────────
@@ -262,7 +273,12 @@ async function fetchApifyEvidence(name, city, website) {
   // Skip if no API key configured
   if (!process.env.APIFY_API_KEY) {
     console.warn('[apify] APIFY_API_KEY not set — skipping review collection');
-    return { trustpilot: null, googleReviews: null, apifyText: '' };
+    return {
+      trustpilot: null,
+      googleReviews: null,
+      apifyText: '',
+      measurement: { trustpilot: 'not_measured', googleReviews: 'not_measured' }
+    };
   }
 
   // Run Trustpilot and Google Reviews in parallel
@@ -272,15 +288,21 @@ async function fetchApifyEvidence(name, city, website) {
     fetchGoogleReviews(name, city)
   ]);
 
-  var trustpilot    = settled[0].status === 'fulfilled' ? settled[0].value : null;
-  var googleReviews = settled[1].status === 'fulfilled' ? settled[1].value : null;
+  var trustpilotResult = settled[0].status === 'fulfilled' ? settled[0].value : { data: null, status: 'unavailable' };
+  var googleResult = settled[1].status === 'fulfilled' ? settled[1].value : { data: null, status: 'unavailable' };
+  var trustpilot = trustpilotResult && trustpilotResult.data;
+  var googleReviews = googleResult && googleResult.data;
+  var measurement = {
+    trustpilot: trustpilotResult && trustpilotResult.status || 'unavailable',
+    googleReviews: googleResult && googleResult.status || 'unavailable'
+  };
 
   var apifyText = buildApifyText(trustpilot, googleReviews);
 
-  console.log('[apify] trustpilot:', trustpilot ? trustpilot.reviewCount + ' reviews' : 'unavailable or no verified match');
-  console.log('[apify] googleReviews:', googleReviews ? googleReviews.reviewCount + ' reviews' : 'unavailable or no verified match');
+  console.log('[apify] trustpilot:', trustpilot ? trustpilot.reviewCount + ' reviews' : measurement.trustpilot);
+  console.log('[apify] googleReviews:', googleReviews ? googleReviews.reviewCount + ' reviews' : measurement.googleReviews);
 
-  return { trustpilot, googleReviews, apifyText };
+  return { trustpilot, googleReviews, apifyText, measurement };
 }
 
 module.exports = { fetchApifyEvidence: fetchApifyEvidence, buildApifyText: buildApifyText };
