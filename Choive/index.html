@@ -3561,17 +3561,6 @@ function showResults(r, jobId) {
       { key: 'gemini', platform: 'Gemini' }
     ];
     var supplied = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
-    if (!supplied.length && r.competitorComparison && Array.isArray(r.competitorComparison.entries)) {
-      supplied = r.competitorComparison.entries.map(function(entry) {
-        var platformName = String(entry && entry.platform || '').toLowerCase();
-        return {
-          key: platformName === 'chatgpt' ? 'openai' : platformName,
-          recommendation: entry && entry.name,
-          status: entry && entry.status,
-          query: entry && entry.query
-        };
-      });
-    }
     var statusText = {
       not_configured: 'API not configured',
       failed: 'Measurement failed',
@@ -3942,7 +3931,7 @@ function showResults(r, jobId) {
     (isPaid ? buildExecutiveVerdict() : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
       + '<a href="#report-verdict">Diagnosis</a><a href="#report-score">Score</a><a href="#report-organic-gap">Discovery</a><a href="#report-competitors">Competitors</a>'
-      + '<a href="#report-arena">API Appendix</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
+      + '<a href="#report-arena">Comparison</a><a href="#simSection">API Probes</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Roadmap</a><a href="#report-assets">Assets</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
@@ -4205,14 +4194,6 @@ function showResults(r, jobId) {
 
   function buildExecutiveVerdict() {
     var lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
-    if (!lanes.length && r.competitorComparison && Array.isArray(r.competitorComparison.entries)) {
-      lanes = r.competitorComparison.entries.map(function(entry) {
-        return {
-          recommendation: entry && entry.name,
-          status: entry && entry.status
-        };
-      });
-    }
     var measured = lanes.filter(function(lane) {
       return lane && (lane.recommendation || lane.status === 'complete' || lane.status === 'no_recommendation');
     });
@@ -4370,7 +4351,7 @@ function showResults(r, jobId) {
     if (comparisonEntries.length) {
       function comparisonCard(entry, index) {
         var scoreData = entry && entry.score;
-        var platformLabel = (entry && entry.platform) || ('Platform ' + (index + 1));
+        var platformLabel = (entry && entry.roleLabel) || (entry && entry.platform) || ('Competitor ' + (index + 1));
         var emptyState = {
           not_configured: 'API not configured',
           failed: 'Measurement failed',
@@ -4401,7 +4382,7 @@ function showResults(r, jobId) {
             + '<div style="height:2px;background:var(--rule);position:relative;margin-top:3px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ink);opacity:0.25;width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
         }).join('');
         return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
-          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + ' recommendation</div>'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + '</div>'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
           + rows
           + (largestDeficit.value > 0
@@ -4410,8 +4391,8 @@ function showResults(r, jobId) {
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
       }
-      competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Technical Appendix: API-Named Alternatives</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Each row preserves a recommendation returned through an official provider API. These are point-in-time API probes, not transcripts from the public consumer apps. Competitor pillar scores are estimates based on public information, not scores supplied by those companies.</div>'
+      competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Verified Competitor Comparison</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">This chart includes only the verified head-to-head competitor and the separately verified market competitor. API-named alternatives remain in the technical probe appendix. Competitor pillar values are estimates from public evidence and show relative position, not an audited score.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
     }
@@ -4578,17 +4559,6 @@ function showResults(r, jobId) {
       { key:'gemini', label:'Gemini' }
     ];
     var supplied = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
-    if (!supplied.length && r.competitorComparison && Array.isArray(r.competitorComparison.entries)) {
-      supplied = r.competitorComparison.entries.map(function(entry) {
-        var platformName = String(entry && entry.platform || '').toLowerCase();
-        return {
-          key: platformName === 'chatgpt' ? 'openai' : platformName,
-          recommendation: entry && entry.name,
-          status: entry && entry.status,
-          query: entry && entry.query
-        };
-      });
-    }
     var completed = 0;
     var laneRows = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
