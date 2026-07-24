@@ -819,6 +819,7 @@ var MARKET_LANGS = [
   ['zh', /\b(china|beijing|shanghai|shenzhen|taiwan|taipei)\b/],
   ['ar', /\b(saudi|riyadh|jeddah|egypt|cairo|jordan|amman|kuwait|qatar|doha|bahrain|oman|muscat|morocco|casablanca|rabat|tunisia|tunis|algeria|iraq|baghdad|lebanon|beirut)\b/],
   ['ru', /\b(russia|moscow|st\.? petersburg|kazakhstan|almaty|belarus|minsk)\b/],
+  ['hi', /\b(india|bharat|delhi|new delhi|mumbai|bombay|bengaluru|bangalore|hyderabad|chennai|kolkata|pune|ahmedabad|jaipur|lucknow|gurugram|gurgaon|noida)\b/],
   ['id', /\b(indonesia|jakarta|surabaya|bali)\b/]
 ];
 var LANG_NAMES = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' };
@@ -1446,5 +1447,6 @@ module.exports = {
   runAfterSimulation: runAfterSimulation,
   runDirectCompetitorQuestion: runDirectCompetitorQuestion,
   buildFallbackMeasurementQueries: buildFallbackMeasurementQueries,
-  classifyBusinessInput: classifyBusinessInput
+  classifyBusinessInput: classifyBusinessInput,
+  detectMarketLanguage: detectMarketLanguage
 };
