@@ -7,11 +7,11 @@
 // Use the current grounded Gemini model with a stable lower-latency fallback.
 // Perplexity Pro is the closer research-quality analogue to
 // its consumer recommendation experience than the base low-cost Sonar model.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 // Use a separate stable, lower-latency model when the primary model is under
 // capacity pressure. A preview from the same high-demand family is not a
 // reliable fallback during a regional availability spike.
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash';
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
 const REQUEST_TIMEOUT_MS = 75000;
 const { majorityRecommendation } = require('./recommendation-consensus');
@@ -107,7 +107,6 @@ async function requestGeminiWithModel(source, model) {
         tools: [{ google_search: {} }],
         generationConfig: {
           maxOutputTokens: 1400,
-          thinkingConfig: { thinkingLevel: 'minimal' }
         }
       }),
       signal: controller.signal
