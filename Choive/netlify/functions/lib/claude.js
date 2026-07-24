@@ -621,7 +621,7 @@ function parseClaudeResponse(data) {
 }
 
 // ── Apply hard score constraints from confirmed signals ───────────────────────
-function applySignalConstraints(rawOutput, websiteSignals) {
+function applySignalConstraints(rawOutput, websiteSignals, reviewMeasurement) {
   if (!websiteSignals || Object.keys(websiteSignals).length === 0) return rawOutput;
   var s = websiteSignals;
   var p = rawOutput.pillars || {};
@@ -700,11 +700,15 @@ function applySignalConstraints(rawOutput, websiteSignals) {
       overrideSignal('trust', 'Google reviews', 'pass', s.googleRating + '★ · ' + s.googleReviewCount + ' reviews');
     } else if (s.googleRating) {
       overrideSignal('trust', 'Google reviews', 'partial', s.googleRating + '★ · review count not confirmed');
+    } else if (reviewMeasurement && reviewMeasurement.googleReviews === 'unavailable') {
+      overrideSignal('trust', 'Google reviews', 'unmeasured', 'CHOIVE could not verify Google review evidence because the review provider was unavailable');
     }
     if (s.trustpilotRating && s.trustpilotReviewCount) {
       overrideSignal('trust', 'Trustpilot', 'pass', s.trustpilotRating + '/5 · ' + s.trustpilotReviewCount + ' reviews');
     } else if (s.trustpilotRating) {
       overrideSignal('trust', 'Trustpilot', 'partial', s.trustpilotRating + '/5 · review count not confirmed');
+    } else if (reviewMeasurement && reviewMeasurement.trustpilot === 'unavailable') {
+      overrideSignal('trust', 'Trustpilot', 'unmeasured', 'CHOIVE could not verify Trustpilot evidence because the review provider was unavailable');
     }
 
     // EASE — schema, llms.txt, bot crawlability
@@ -1279,7 +1283,7 @@ async function scoreWithClaudeOnce(evidence) {
     }
 
     var raw = parseClaudeResponse(data);
-    raw = applySignalConstraints(raw, evidence.websiteSignals || {});
+    raw = applySignalConstraints(raw, evidence.websiteSignals || {}, evidence.reviewMeasurement || {});
     return safeOutput(raw);
 
   } catch (error) {
