@@ -293,3 +293,51 @@ test('market language detection recognizes major Indian locations as Hindi', () 
   assert.equal(detectMarketLanguage('Bengaluru, India'), 'hi');
   assert.equal(detectMarketLanguage('Global'), 'en');
 });
+
+test('global assets keep all recorded buyer groups and do not narrow the market to headquarters', () => {
+  const evidence = {
+    name: '3 Screen Solutions',
+    category: 'B2B multiscreen entertainment platform',
+    description: '3 Screen Solutions licenses multiscreen software to pay-TV operators, telcos, and automotive OEMs worldwide.',
+    city: 'Germany', marketReach: 'global', website: 'https://3ss.tv',
+    websiteSignals: { metaDescriptionText: 'Existing factual meta description.' }
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.scoreMethod = { audits: { trust: [] } };
+  result.actions = [];
+  result.readyToUseAssets = {
+    h1Options: ['Multiscreen entertainment platform for pay-TV operators and automotive OEMs'],
+    llmsFacts: {
+      summary: evidence.description,
+      offers: ['Multiscreen software for pay-TV operators and telcos.'],
+      audiences: ['pay-TV operators', 'telcos', 'automotive OEMs'],
+      serviceArea: 'Worldwide', distinctions: []
+    }
+  };
+  const assets = generateDeliverables(evidence, result);
+  assert.match(assets.llmsTxt, /pay-TV operators, telcos, automotive OEMs/);
+  assert.equal(assets.metaDesc.current, evidence.websiteSignals.metaDescriptionText);
+  assert.doesNotMatch(assets.metaDesc.improved, / in Germany\.?$/i);
+});
+
+test('asset generator rejects unsupported absolute headlines and supplies reviewable JSON-LD', () => {
+  const evidence = {
+    name: 'Example Platform', category: 'B2B software platform',
+    description: 'Example Platform provides software for enterprise teams worldwide.',
+    marketReach: 'global', website: 'https://example.test', websiteSignals: {}
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.scoreMethod = { audits: { trust: [] } };
+  result.actions = [];
+  result.readyToUseAssets = {
+    h1Options: ['One Platform. Every Screen. Enterprise Software', 'B2B software platform for enterprise teams'],
+    llmsFacts: null
+  };
+  const assets = generateDeliverables(evidence, result);
+  assert.doesNotMatch(assets.h1Options.options.join(' '), /every screen/i);
+  assert.match(assets.schemaBrief.jsonLd, /<script type="application\/ld\+json">/);
+  assert.match(assets.schemaBrief.jsonLd, /"@type": "Organization"/);
+  assert.doesNotMatch(assets.schemaBrief.jsonLd, /addressLocality/);
+});
