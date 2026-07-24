@@ -120,7 +120,10 @@ function reviewEvidence(evidence) {
     || Boolean(trustpilot.platform && (trustpilot.rating || trustpilot.reviewCount || trustpilot.url))
     || Boolean(google.platform && (google.rating || google.reviewCount || google.url));
   var source = trustpilot.url || google.url || (platforms.length ? platforms.join(', ') : '');
-  return { verified: verified, count: count, platforms: platforms, source: source };
+  var measurement = safeObject(evidence.reviewMeasurement);
+  var unavailable = !verified
+    && (measurement.trustpilot === 'unavailable' || measurement.googleReviews === 'unavailable');
+  return { verified: verified, count: count, platforms: platforms, source: source, unavailable: unavailable };
 }
 
 function isEnterpriseSubject(evidence) {
@@ -162,8 +165,8 @@ function trustEntries(evidence) {
   var proofMatch = String(evidence.websiteText || '').match(/PUBLIC PROOF PAGE CONTENT:\s*([\s\S]+)/i);
   var proofLength = proofMatch ? String(proofMatch[1] || '').trim().length : 0;
   return [
-    entry('TR-01', 'Verified external review record', reviews.verified ? reviewIdentityMax : 0, reviewIdentityMax, reviews.verified ? (reviews.platforms.join(', ') || 'Verified review record') : 'Not verified', reviews.source, 'independent'),
-    entry('TR-02', 'Verified review volume', scaledReviewPoints(reviews.count, reviewVolumeMax), reviewVolumeMax, reviews.count + ' verified reviews', reviews.source, 'independent'),
+    entry('TR-01', 'Verified external review record', reviews.verified ? reviewIdentityMax : 0, reviewIdentityMax, reviews.verified ? (reviews.platforms.join(', ') || 'Verified review record') : (reviews.unavailable ? 'Not verified — review provider unavailable during this run' : 'No verified review record found'), reviews.source, reviews.unavailable ? 'unmeasured' : 'independent'),
+    entry('TR-02', 'Verified review volume', scaledReviewPoints(reviews.count, reviewVolumeMax), reviewVolumeMax, reviews.verified ? (reviews.count + ' verified reviews') : (reviews.unavailable ? 'Review count not verified — provider unavailable' : 'No verified review count found'), reviews.source, reviews.unavailable ? 'unmeasured' : 'independent'),
     entry('TR-03', 'Independent authority coverage', Math.min(authorityMax, authority.length * (authorityMax / 4)), authorityMax, authority.length + ' relevant independent result(s)', authority.map(function(item) { return item.link; }), 'independent'),
     entry('TR-04', 'Independent reputation evidence', Math.min(reputationMax, reputation.length * (reputationMax / 3)), reputationMax, reputation.length + ' relevant independent result(s)', reputation.map(function(item) { return item.link; }), 'independent'),
     entry('TR-05', 'Substantive proof on owned pages', proofLength >= 120 ? proofMax : 0, proofMax, proofLength ? proofLength + ' proof-page characters collected' : 'Not detected', siteUrl(evidence, '/case-studies'), 'mechanical')
@@ -184,13 +187,18 @@ function easeEntries(evidence, result) {
   var s = safeObject(evidence.websiteSignals);
   var root = siteUrl(evidence, '/');
   var crawlerPoints = s.botCrawlable === true && !s.botEmptyShellDetected ? 8 : 0;
+  var crawlerDetail = s.botCrawlable === null || s.botCrawlable === undefined
+    ? 'Not measured'
+    : (crawlerPoints
+      ? 'Substantive content returned'
+      : (s.allBotsFailed ? 'Not verified — all bot requests failed or were blocked' : 'Confirmed empty or partial response'));
   return [
     entry('EA-01', 'Schema markup', s.hasSchema ? 3 : 0, 3, safeArray(s.schemaTypes).join(', ') || 'Not detected', root, 'mechanical'),
     entry('EA-02', 'Category-specific schema', s.hasSpecificSchema ? 4 : 0, 4, s.hasSpecificSchema ? 'Detected' : 'Not detected', root, 'mechanical'),
     entry('EA-03', 'llms.txt', s.hasLlmsTxt ? 3 : 0, 3, s.hasLlmsTxt ? 'Fetched successfully' : 'Not fetched', siteUrl(evidence, '/llms.txt'), 'mechanical'),
     entry('EA-04', 'Sitemap', s.hasSitemap ? 3 : 0, 3, s.hasSitemap ? 'Fetched successfully' : 'Not fetched', siteUrl(evidence, '/sitemap.xml'), 'mechanical'),
     entry('EA-05', 'Robots file', s.hasRobots ? 2 : 0, 2, s.hasRobots ? 'Fetched successfully' : 'Not fetched', siteUrl(evidence, '/robots.txt'), 'mechanical'),
-    entry('EA-06', 'AI crawler accessibility', crawlerPoints, 8, s.botCrawlable === null || s.botCrawlable === undefined ? 'Not measured' : (crawlerPoints ? 'Substantive content returned' : 'Failed, blocked, or empty response'), root, 'mechanical'),
+    entry('EA-06', 'AI crawler accessibility', crawlerPoints, 8, crawlerDetail, root, 'mechanical'),
     auditEntry('EA-07', 'Structured FAQ or explainer', 2, result, 'ease', 'Structured FAQ', root)
   ];
 }
