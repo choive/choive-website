@@ -1807,9 +1807,8 @@ exports.handler = async function (event) {
     console.log('[' + jobId + '] Score:', finalResult.overallScore, '| Verdict:', finalResult.verdictHeadline);
 
     // ── FOUR-PLATFORM RECOMMENDATION ARENA ──────────────────────────────────
-    // Keep one lane per measured platform, even when two platforms return the
-    // same company. Duplicate companies are scored once and reused so the UI
-    // preserves attribution without paying for duplicate comparison calls.
+    // Research the wider market, then score only the verified competitive
+    // roles. Provider recommendation lanes stay separate and unscored.
     try {
       var multiRecs = finalResult['multiPlatformRecommendations'] || {};
       var claudeRecs = Array.isArray(multiRecs.claude) ? multiRecs.claude : [];
@@ -1872,44 +1871,47 @@ exports.handler = async function (event) {
         }
       }
 
-      var recommendationLanes = Array.isArray(finalResult['platformRecommendationLanes'])
-        ? finalResult['platformRecommendationLanes'] : [];
-      var uniqueArenaNames = [];
-      var arenaNameByKey = {};
-      recommendationLanes.forEach(function(lane) {
-        var laneName = String(lane && lane.recommendation || '').trim();
-        var laneKey = normalizeRecommendationName(laneName);
-        if (!laneKey || laneKey === subjectComparisonKey || isSubjectRecommendation(laneName) || isPlatformName(laneName)) return;
-        if (!arenaNameByKey[laneKey]) {
-          arenaNameByKey[laneKey] = laneName;
-          uniqueArenaNames.push(laneName);
-        }
-      });
-      var arenaScores = await Promise.allSettled(uniqueArenaNames.map(function(arenaName) {
-        return scoreArena(evidence, finalResult, arenaName, 'competitor');
+      // The competitive chart compares only verified competitor roles. Names
+      // returned by individual provider APIs remain in their attributed probe
+      // lanes and never become chart competitors by themselves.
+      var roleCandidates = [];
+      var directName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').trim();
+      if (directName && !isSubjectRecommendation(directName) && !isPlatformName(directName)) {
+        roleCandidates.push({
+          role: 'head_to_head',
+          roleLabel: 'Head-to-head competitor',
+          name: directName,
+          reason: String(finalResult['competitorDecision'].reason || '').trim()
+        });
+      }
+      var widerDecision = finalResult['marketCompetitorDecision'] || {};
+      var widerName = String(widerDecision.name || '').trim();
+      if (widerName
+          && normalizeRecommendationName(widerName) !== normalizeRecommendationName(directName)
+          && !isSubjectRecommendation(widerName) && !isPlatformName(widerName)) {
+        roleCandidates.push({
+          role: 'market',
+          roleLabel: 'Market competitor',
+          name: widerName,
+          reason: String(widerDecision.reason || '').trim()
+        });
+      }
+      var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
+        return scoreArena(evidence, finalResult, candidate.name, candidate.role);
       }));
-      var arenaScoreByKey = {};
-      uniqueArenaNames.forEach(function(arenaName, index) {
-        var scoreResult = arenaScores[index];
-        if (scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value) {
-          arenaScoreByKey[normalizeRecommendationName(arenaName)] = scoreResult.value;
-        }
-      });
       finalResult['competitorComparison'] = {
-        entries: recommendationLanes.map(function(lane) {
-          var laneName = String(lane && lane.recommendation || '').trim();
-          var laneKey = normalizeRecommendationName(laneName);
+        entries: roleCandidates.map(function(candidate, index) {
+          var scoreResult = roleScores[index];
           return {
-            platform: lane.platform,
-            platformKey: lane.key,
-            name: laneName || null,
-            status: lane.status,
-            query: lane.query || null,
-            subjectAppeared: Boolean(lane.subjectAppeared),
-            score: laneKey ? (arenaScoreByKey[laneKey] || null) : null
+            role: candidate.role,
+            roleLabel: candidate.roleLabel,
+            name: candidate.name,
+            reason: candidate.reason,
+            status: scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value ? 'complete' : 'score_unavailable',
+            score: scoreResult && scoreResult.status === 'fulfilled' ? (scoreResult.value || null) : null
           };
         }),
-        selectionRule: 'One independently measured top recommendation per platform. Identical company names remain in separate attributed lanes.'
+        selectionRule: 'Only the separately verified head-to-head and market competitor roles are charted. API-named alternatives remain in the technical probe appendix.'
       };
     } catch (comparisonErr) {
       console.warn('[' + jobId + '] Universal competitor comparison failed (non-critical):', comparisonErr.message);
