@@ -1650,7 +1650,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       var completed = safeNum(l.completedSamples, 0);
       var expected = safeNum(l.expectedSamples, 0);
       var resultText = recommendation
-        || (laneStatus === 'no_recommendation' ? 'Explicitly returned no named recommendation'
+        || (laneStatus === 'no_recommendation' ? 'No majority recommendation established'
           : laneStatus === 'failed' ? 'Measurement failed'
           : laneStatus === 'partial' ? 'Incomplete measurement'
           : laneStatus === 'not_configured' ? 'API not configured'
