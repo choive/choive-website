@@ -499,6 +499,14 @@ function buildPrompt(evidence) {
     + 'Write exactly what was found and what was not found. Name specific search queries that returned zero results.\n'
     + 'Name specific signals that were confirmed. Name the exact gap between what exists and what is needed.\n'
     + 'Do not summarise. Do not soften. Do not generalise. Every sentence must be evidence-backed.\n\n'
+    + 'REPORT WRITING STANDARD — apply this to every narrative, finding, action, and explanation:\n'
+    + '- Use plain language and short sentences. One sentence should communicate one idea.\n'
+    + '- State the measured fact first, then its practical meaning. Never hide the conclusion behind introductory wording.\n'
+    + '- Avoid vague words such as improve, optimize, strengthen, enhance, establish, leverage, visibility, authority, positioning, or trust unless the same sentence states the exact object, location, and proof required.\n'
+    + '- Every action body must state: what must change, where it must change, and what observable evidence proves completion.\n'
+    + '- Never promise selection, revenue, rankings, a future score, or a platform response.\n'
+    + '- Keep summaryParagraph, businessUnderstanding, and evidenceNarrative to a maximum of 120 words each. Keep findings to 24 words and action bodies to 70 words.\n'
+    + '- Write for a business owner without technical training. Define technical terms in the sentence where they first appear.\n\n'
     + 'SIGNAL AUDIT — populate signalAudit with EXACTLY the signals below per pillar. Use ONLY these three status values: "pass", "fail", "partial".\n'
     + 'For each signal, detail must be a short specific phrase (max 12 words) — name the exact value found, or state exactly what was missing.\n'
     + 'NEVER leave detail blank on a "pass". NEVER write "N/A" or "none". NEVER invent data not in the evidence.\n\n'
@@ -522,6 +530,10 @@ function buildPrompt(evidence) {
     + '2. "llms.txt file present" — pass if confirmed; fail if absent\n'
     + '3. "AI crawlers can read page" — pass if bots see substantive content; partial if thin; fail if blocked or empty shell\n'
     + '4. "Structured FAQ or explainer content" — pass if clear question/answer format found; partial if present but thin; fail if absent\n\n'
+    + 'READY-TO-USE ASSETS — write business-specific copy using ONLY facts explicitly present in the owner input or collected evidence.\n'
+    + 'Create 2 or 3 homepage H1 options. Each must plainly name the offer/category and intended buyer or use case; include the service market only when relevant. Keep each between 45 and 115 characters.\n'
+    + 'Also return structured llmsFacts: a factual one-sentence summary, concrete offers, intended audiences, service area, and published distinctions. Empty arrays are correct when evidence is missing.\n'
+    + 'Never invent or imply leadership, quality, popularity, trust, awards, certifications, outcomes, clients, availability, or locations. Avoid vague phrases such as "built for results", "where every detail matters", "solutions that stand out", and "teams trust".\n\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
 
   var jsonSchema = '{\n'
@@ -538,6 +550,10 @@ function buildPrompt(evidence) {
     + '  "marketPosition": { "tier": "", "label": "", "explanation": "" },\n'
     + '  "platformCoverage": { "chatgpt": "weak", "perplexity": "weak", "gemini": "weak", "claude": "weak" },\n'
     + '  "recommendedPlatform": { "name": "", "url": "", "reason": "" },\n'
+    + '  "readyToUseAssets": {\n'
+    + '    "h1Options": ["", ""],\n'
+    + '    "llmsFacts": { "summary": "", "offers": [], "audiences": [], "serviceArea": "", "distinctions": [] }\n'
+    + '  },\n'
     + '  "pillars": {\n'
     + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
     + '    "trust":      { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
@@ -773,6 +789,7 @@ function safeOutput(raw) {
     competitors:  Array.isArray(r.competitors) ? r.competitors.filter(function(c) { return c && c.name; }) : [],
     competitor:   r.competitor  || null,
     actions:      actions,
+    readyToUseAssets: (r.readyToUseAssets && typeof r.readyToUseAssets === 'object') ? r.readyToUseAssets : null,
     deliverables: r.deliverables || null
   };
 }
