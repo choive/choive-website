@@ -300,7 +300,7 @@ async function runOpenAISimulation(input) {
   var directTopRecommendation = directConsensus.name;
   var directMajorityThreshold = directResult && directResult.sampleCount > 0
     ? strictMajorityThreshold(directResult.sampleCount) : 0;
-  var explicitNoRecommendation = Boolean(directResult && directResult.sampleCount > 0
+  var explicitNoRecommendation = Boolean(directResult && directResult.sampleCount >= 2
     && (directResult.allResponses || []).filter(hasExplicitNoRecommendation).length >= directMajorityThreshold);
   var recommendationCompleted = Boolean(directResult && directResult.sampleCount > 0
     && (directTopRecommendation || explicitNoRecommendation));
