@@ -11,7 +11,8 @@ const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { runGeminiSimulation, runPerplexitySimulation } = require('./lib/additional-platform-simulations');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
 const { applyDeterministicScoring } = require('./lib/deterministic-scoring');
-const { strictMajorityThreshold } = require('./lib/measurement-policy');
+const { strictMajorityThreshold, completedProviderRuns } = require('./lib/measurement-policy');
+const { majorityRecommendation, normalizeName: normalizeRecommendationName } = require('./lib/recommendation-consensus');
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
@@ -719,8 +720,7 @@ exports.handler = async function (event) {
               var claudeReplacementResult = sharedPlatformQueries.find(function(result) {
                 return result && /branded replacement/i.test(String(result.label || ''));
               });
-              var claudeRecommendationCounts = {};
-              var claudeRecommendationNames = {};
+              var claudeRecommendationValues = [];
               var claudeReplacementResponses = claudeReplacementResult && Array.isArray(claudeReplacementResult.allResponses)
                 ? claudeReplacementResult.allResponses : [];
               claudeReplacementResponses.forEach(function(response) {
@@ -728,19 +728,16 @@ exports.handler = async function (event) {
                 if (!match) return;
                 var recommendationName = String(match[1] || '').trim().replace(/[.;]+$/, '');
                 if (!recommendationName || /^none\b/i.test(recommendationName)) return;
-                var recommendationKey = recommendationName.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (!recommendationKey) return;
-                claudeRecommendationNames[recommendationKey] = claudeRecommendationNames[recommendationKey] || recommendationName;
-                claudeRecommendationCounts[recommendationKey] = (claudeRecommendationCounts[recommendationKey] || 0) + 1;
+                if (normalizeRecommendationName(recommendationName)) claudeRecommendationValues.push(recommendationName);
               });
-              var claudeRankedKeys = Object.keys(claudeRecommendationCounts).sort(function(a, b) {
-                return claudeRecommendationCounts[b] - claudeRecommendationCounts[a];
-              });
-              var claudeMajorityThreshold = strictMajorityThreshold(claudeReplacementResponses.length);
-              var claudeTopRecommendation = claudeRankedKeys[0]
-                && claudeRecommendationCounts[claudeRankedKeys[0]] >= claudeMajorityThreshold
-                ? claudeRecommendationNames[claudeRankedKeys[0]] : null;
-              var claudeExplicitNoRecommendation = claudeReplacementResponses.filter(function(response) {
+              var claudeRecommendationAgreement = majorityRecommendation(
+                claudeRecommendationValues,
+                claudeReplacementResponses.length
+              );
+              var claudeRecommendationCounts = claudeRecommendationAgreement.counts;
+              var claudeMajorityThreshold = claudeRecommendationAgreement.threshold;
+              var claudeTopRecommendation = claudeRecommendationAgreement.name;
+              var claudeExplicitNoRecommendation = claudeReplacementResponses.length >= 2 && claudeReplacementResponses.filter(function(response) {
                 return /(?:^|\n)\s*TOP_RECOMMENDATION\s*:\s*NONE\b/i.test(String(response || '').replace(/\*\*/g, ''));
               }).length >= claudeMajorityThreshold && claudeMajorityThreshold > 0;
               evidence['platformSimulations']['claude'] = {
@@ -764,13 +761,7 @@ exports.handler = async function (event) {
                 recommendationCompleted: Boolean(claudeReplacementResult && Number(claudeReplacementResult.sampleCount || 0) > 0
                   && (claudeTopRecommendation || claudeExplicitNoRecommendation)),
                 explicitNoRecommendation: claudeExplicitNoRecommendation,
-                recommendationAgreement: {
-                  name: claudeTopRecommendation,
-                  count: claudeTopRecommendation ? claudeRecommendationCounts[claudeRankedKeys[0]] : 0,
-                  completedSamples: claudeReplacementResponses.length,
-                  threshold: claudeMajorityThreshold,
-                  counts: claudeRecommendationCounts
-                },
+                recommendationAgreement: claudeRecommendationAgreement,
                 recommendationQuery: claudeReplacementResult && claudeReplacementResult.query || null,
                 recommendationResponse: claudeReplacementResult && claudeReplacementResult.response || null,
                 results: sharedPlatformQueries
@@ -825,7 +816,7 @@ exports.handler = async function (event) {
                 var kcNames = String(evidence['knownCompetitors'] || knownCompetitors || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
                 var allCandidates = compCandidates.concat(kcNames);
                 // Deduplicate by normalized key; exclude platforms, generics, and the subject itself
-                var normSelf = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                var normSelf = normalizeRecommendationName(name);
                 var subjectCandidateKeys = {};
                 subjectCandidateKeys[normSelf] = true;
                 var subjectDomain = normalizeUrl(website || evidence['inferredOfficialSite'] || '');
@@ -840,7 +831,7 @@ exports.handler = async function (event) {
                   }).join('')] = true;
                 }
                 var isExtractedSubject = function(value) {
-                  var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  var key = normalizeRecommendationName(value);
                   if (!key) return false;
                   if (subjectCandidateKeys[key]) return true;
                   // Handle combined forms such as "3SS (3 Screen Solutions)".
@@ -852,8 +843,8 @@ exports.handler = async function (event) {
                 var seenKeys = {};
                 var uniqueCandidates = allCandidates.filter(function(n) {
                   if (!n) return false;
-                  var key = n.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  var keyWithoutTld = String(n).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].replace(/\.[a-z]{2,}$/i, '').replace(/[^a-z0-9]/g, '');
+                  var key = normalizeRecommendationName(n);
+                  var keyWithoutTld = normalizeRecommendationName(String(n).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]);
                   if (subjectCandidateKeys[key] || subjectCandidateKeys[keyWithoutTld]) return false;
                   if (isPlatformName(n) || isGenericEntity(n) || isGenericPhrase(n)) return false;
                   if (seenKeys[key]) return false;
@@ -1378,7 +1369,7 @@ exports.handler = async function (event) {
       if (cd && cd.realCompetitor) {
         if (!Array.isArray(finalResult.competitors)) finalResult.competitors = [];
         var comps = finalResult.competitors;
-        var normName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+        var normName = normalizeRecommendationName;
         var target = normName(cd.realCompetitor);
         var idx = comps.findIndex(function(c) { return c && normName(c.name) === target; });
         if (idx === 0) {
@@ -1485,7 +1476,7 @@ exports.handler = async function (event) {
           console.warn('[' + jobId + '] [competitor-validation] "' + cdV.realCompetitor + '" is a platform, not a rival — replaced with ' + (replacement || 'null'));
           cdV.realCompetitor = replacement;
           if (Array.isArray(finalResult['competitors']) && replacement) {
-            var normV = function(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+            var normV = normalizeRecommendationName;
             var already = finalResult['competitors'].some(function(cc) { return normV(cc && cc.name) === normV(replacement); });
             if (!already) {
               finalResult['competitors'].unshift({ name: replacement, queryContext: 'head-to-head', why: 'Named by the business itself as its direct comparison.' });
@@ -1507,9 +1498,9 @@ exports.handler = async function (event) {
       // consistent recommendation leader. Remove cards whose only basis is
       // unverified displacement; retain the researched market rival.
       if (cdV && !cdV.aiRecommends && Array.isArray(finalResult['competitors'])) {
-        var marketKey = String(cdV.realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var marketKey = normalizeRecommendationName(cdV.realCompetitor);
         finalResult['competitors'] = finalResult['competitors'].filter(function(cc) {
-          var key = String(cc && cc.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var key = normalizeRecommendationName(cc && cc.name);
           var context = String(cc && cc.queryContext || '').toLowerCase();
           if (marketKey && key === marketKey) {
             cc.queryContext = 'head-to-head';
@@ -1622,6 +1613,9 @@ exports.handler = async function (event) {
       };
       var extractDirectRecommendation = function(run) {
         if (run && run.topRecommendation) return run.topRecommendation;
+        // New runs already calculate strict consensus. Never fall back to the
+        // first raw response when the samples did not agree.
+        if (run && (run.recommendationAgreement || run.recommendationCompleted === false)) return null;
         var direct = findDirectRecommendationResult(run);
         if (!direct) return null;
         var responses = Array.isArray(direct.allResponses) && direct.allResponses.length
@@ -1640,7 +1634,7 @@ exports.handler = async function (event) {
       };
       var subjectRecommendationKeys = {};
       var addSubjectKey = function(value) {
-        var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var key = normalizeRecommendationName(value);
         if (key) subjectRecommendationKeys[key] = true;
       };
       addSubjectKey(name);
@@ -1656,12 +1650,12 @@ exports.handler = async function (event) {
         addSubjectKey(subjectAcronymKey);
       }
       isSubjectRecommendation = function(value) {
-        var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var key = normalizeRecommendationName(value);
         if (!key || subjectRecommendationKeys[key]) return Boolean(key);
         // Providers often return a compact brand plus its expanded legal or
         // descriptive name, e.g. "3SS (3 Screen Solutions)". Treat any value
         // containing the full normalized subject identity as the subject.
-        var fullSubjectKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var fullSubjectKey = normalizeRecommendationName(name);
         if (fullSubjectKey.length >= 5 && key.indexOf(fullSubjectKey) !== -1) return true;
         // Digit-bearing coined acronyms such as 3SS are sufficiently specific
         // to match combined forms even when the expansion varies slightly
@@ -1673,7 +1667,7 @@ exports.handler = async function (event) {
       var dedupeRecommendations = function(values) {
         var seen = {};
         return values.filter(function(value) {
-          var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var key = normalizeRecommendationName(value);
           if (!key || seen[key] || isSubjectRecommendation(value)) return false;
           seen[key] = true;
           return true;
@@ -1685,7 +1679,7 @@ exports.handler = async function (event) {
       var firstLaneRecommendation = function(values) {
         var seen = {};
         return (values || []).filter(function(value) {
-          var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var key = normalizeRecommendationName(value);
           // A provider may honestly recommend the diagnosed business itself.
           // Preserve that answer in the attributed provider lane. Subject
           // filtering still happens later when constructing the competitor
@@ -1699,7 +1693,7 @@ exports.handler = async function (event) {
       var laneStatus = function(run, recommendation) {
         if (!run || run.configured === false || run.status === 'not_configured') return 'not_configured';
         if (!run.available || run.status === 'failed') return 'failed';
-        if (run.recommendationCompleted === false) return 'failed';
+        if (run.recommendationCompleted === false) return 'no_recommendation';
         return recommendation ? 'recommended' : 'no_recommendation';
       };
       var claudeTop = firstLaneRecommendation([extractDirectRecommendation(measuredClaude)]);
@@ -1707,7 +1701,8 @@ exports.handler = async function (event) {
       var geminiTop = firstLaneRecommendation([measuredGemini && measuredGemini.topRecommendation]);
       var perplexityTop = firstLaneRecommendation([measuredPerplexity && measuredPerplexity.topRecommendation]);
       var claudeDirectResult = findDirectRecommendationResult(measuredClaude);
-      if (measuredClaude && claudeDirectResult && Number(claudeDirectResult.sampleCount || 0) > 0 && !claudeTop) {
+      if (measuredClaude && measuredClaude.recommendationAgreement === undefined
+        && claudeDirectResult && Number(claudeDirectResult.sampleCount || 0) > 0 && !claudeTop) {
         var claudeDirectResponses = Array.isArray(claudeDirectResult.allResponses) && claudeDirectResult.allResponses.length
           ? claudeDirectResult.allResponses : [claudeDirectResult.response];
         var claudeExplicitNone = claudeDirectResponses.some(function(response) {
@@ -1788,9 +1783,12 @@ exports.handler = async function (event) {
         openaiComplete: measuredOpenAI ? measuredOpenAI.complete !== false : false,
         note: 'Each platform reports one independently measured top recommendation. Identical names remain separately attributed.'
       };
-      var completedPlatformRuns = [measuredClaude, measuredOpenAI, measuredPerplexity, measuredGemini].filter(function(run) {
-        return run && run.available;
-      });
+      // Only fully completed provider runs can support a present/absent headline.
+      // A partial run remains visible as partial coverage, but missing answers
+      // must never be interpreted as evidence that the subject was absent.
+      var completedPlatformRuns = completedProviderRuns([
+        measuredClaude, measuredOpenAI, measuredPerplexity, measuredGemini
+      ]);
       var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
         return Number(run.appearedCount || 0) > 0;
       });
@@ -1837,11 +1835,11 @@ exports.handler = async function (event) {
       geminiResearchRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Gemini competitor research' }); });
       researchedRecs.forEach(function(value) { orderedComparisonCandidates.push({ name: value, source: 'Market analysis' }); });
       if (verifiedGlobalBenchmark) orderedComparisonCandidates.push({ name: verifiedGlobalBenchmark, source: 'Verified global benchmark research' });
-      var subjectComparisonKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      var verifiedHeadToHeadKey = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      var subjectComparisonKey = normalizeRecommendationName(name);
+      var verifiedHeadToHeadKey = normalizeRecommendationName(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor);
       var candidateMap = {};
       orderedComparisonCandidates.forEach(function(candidate) {
-        var key = String(candidate.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var key = normalizeRecommendationName(candidate.name);
         if (!key || key === subjectComparisonKey || key === verifiedHeadToHeadKey || isSubjectRecommendation(candidate.name) || isPlatformName(candidate.name)) return;
         if (!candidateMap[key]) candidateMap[key] = { name: candidate.name, sources: [] };
         if (candidateMap[key].sources.indexOf(candidate.source) === -1) candidateMap[key].sources.push(candidate.source);
@@ -1858,10 +1856,10 @@ exports.handler = async function (event) {
           selectionRule: 'Strongest wider-market alternative across completed provider research; this does not replace the separately researched head-to-head competitor.'
         };
         if (Array.isArray(finalResult['competitors'])) {
-          var adjudicatedKey = String(adjudicated.best.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          var headToHeadKey = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          var adjudicatedKey = normalizeRecommendationName(adjudicated.best.name);
+          var headToHeadKey = normalizeRecommendationName(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor);
           var adjudicatedIndex = finalResult['competitors'].findIndex(function(comp) {
-            return String(comp && comp.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') === adjudicatedKey;
+            return normalizeRecommendationName(comp && comp.name) === adjudicatedKey;
           });
           var adjudicatedCard = adjudicatedIndex >= 0
             ? finalResult['competitors'].splice(adjudicatedIndex, 1)[0]
@@ -1880,7 +1878,7 @@ exports.handler = async function (event) {
       var arenaNameByKey = {};
       recommendationLanes.forEach(function(lane) {
         var laneName = String(lane && lane.recommendation || '').trim();
-        var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        var laneKey = normalizeRecommendationName(laneName);
         if (!laneKey || laneKey === subjectComparisonKey || isSubjectRecommendation(laneName) || isPlatformName(laneName)) return;
         if (!arenaNameByKey[laneKey]) {
           arenaNameByKey[laneKey] = laneName;
@@ -1894,13 +1892,13 @@ exports.handler = async function (event) {
       uniqueArenaNames.forEach(function(arenaName, index) {
         var scoreResult = arenaScores[index];
         if (scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value) {
-          arenaScoreByKey[arenaName.toLowerCase().replace(/[^a-z0-9]/g, '')] = scoreResult.value;
+          arenaScoreByKey[normalizeRecommendationName(arenaName)] = scoreResult.value;
         }
       });
       finalResult['competitorComparison'] = {
         entries: recommendationLanes.map(function(lane) {
           var laneName = String(lane && lane.recommendation || '').trim();
-          var laneKey = laneName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          var laneKey = normalizeRecommendationName(laneName);
           return {
             platform: lane.platform,
             platformKey: lane.key,
@@ -1933,7 +1931,7 @@ exports.handler = async function (event) {
         : evidence['onlineCompetitor'];
       // Guard: if both arenas resolved to the same competitor name, scoring the
       // same entity twice produces meaningless numbers. Collapse to brand-only.
-      var normalizeArenaName = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      var normalizeArenaName = normalizeRecommendationName;
       if (onlineComp && onlineComp.name && brandCompName && normalizeArenaName(onlineComp.name) === normalizeArenaName(brandCompName)) {
         console.log('[' + jobId + '] Dual-arena skipped — both arenas resolved to same competitor (' + brandCompName + '). Running brand-only.');
         onlineComp = null;
@@ -1990,7 +1988,7 @@ exports.handler = async function (event) {
     // The dual-arena block may also have added a competitor via Claude's JSON
     // output (source: 'ai-competitor') — that is a secondary fallback only.
     try {
-      var normComp = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+      var normComp = normalizeRecommendationName;
       var cd2 = evidence['competitorDecision'];
       var secondAiName = cd2 && cd2.secondAiCompetitor;
       if (secondAiName && !isSubjectRecommendation(secondAiName) && !isPlatformName(secondAiName) && !isGenericEntity(secondAiName)) {
