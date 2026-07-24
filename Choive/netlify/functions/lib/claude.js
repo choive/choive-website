@@ -130,6 +130,8 @@ function buildConfirmedSignals(websiteSignals) {
       lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): FAILED \u2014 ' + (s.botEmptyShellBots || []).join(', ') + ' see a near-empty page despite the static checks above. The site likely renders content client-side (JS), which these crawlers do not execute. This is a REAL crawlability defect, independent of schema/llms.txt.');
     } else if (s.botCrawlable) {
       lines.push('AI CRAWLER CHECK (real GPTBot/PerplexityBot/ClaudeBot fetches): PASSED \u2014 real bot user-agents see substantive content, matching what a normal browser sees.');
+    } else if (s.allBotsFailed) {
+      lines.push('AI CRAWLER CHECK: NOT VERIFIED \u2014 all bot requests failed or were blocked during this run. This does not prove the website blocks AI crawlers or serves an empty page.');
     }
   }
   if (s.googleExtendedBlocked) {
@@ -184,6 +186,10 @@ function buildPrompt(evidence) {
   var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
   var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
   var apifyText          = sanitizeExternal(evidence.apifyText  || '');
+  var reviewMeasurement  = evidence.reviewMeasurement || {};
+  var reviewMeasurementText = 'Trustpilot collection: ' + (reviewMeasurement.trustpilot || 'not measured')
+    + '\nGoogle Reviews collection: ' + (reviewMeasurement.googleReviews || 'not measured')
+    + '\nAn unavailable result means CHOIVE could not verify the evidence. It does not mean reviews do not exist.';
   var socialSignals      = evidence.socialSignals || {};
   var summaries          = evidence.summaries     || {};
   var websiteSignals     = evidence.websiteSignals || {};
@@ -261,8 +267,9 @@ function buildPrompt(evidence) {
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
     + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
     + (apifyText ? '\n\nLIVE REVIEW DATA:\n' + apifyText : '')
+    + '\n\nREVIEW COLLECTION STATUS:\n' + reviewMeasurementText
     + '\n\nEVIDENCE SUMMARIES:\n'
-    + 'Reviews: '     + (summaries.reviewSummary     || 'No review data.') + '\n'
+    + 'Reviews: '     + (summaries.reviewSummary     || 'No verified review data was collected in this run.') + '\n'
     + 'Reputation: '  + (summaries.reputationSummary || 'No reputation data.') + '\n'
     + 'Authority: '   + (summaries.authoritySummary  || 'No authority data.') + '\n'
     + 'Competitors: ' + (summaries.competitorSummary || 'No competitor data.') + '\n'
@@ -288,6 +295,7 @@ function buildPrompt(evidence) {
     + '1. Use ONLY the evidence provided above. No prior knowledge. No assumptions.\n'
     + '2. Every score must be justified by specific evidence.\n'
     + '3. If a signal is missing, say it is missing. Do not invent it.\n'
+    + '3A. EVIDENCE-AVAILABILITY RULE: "unavailable", "not measured", and "not verified" are not proof that a review, citation, crawler permission, or other signal does not exist. Never convert an unavailable check into "none exist", "no buyer has reviewed", "the site blocks all crawlers", or another factual absence. State exactly that CHOIVE could not verify the signal during this run.\n'
     + '4. Every pillar finding must quote or directly reference specific evidence.\n'
     + '4A. Never claim the subject is the "only vendor", "only company", "unique", "first", "market leader", or "category leader" unless a credible independent source in the supplied evidence explicitly proves that exact claim. Otherwise describe the evidenced distinction precisely without an absolute or superlative.\n'
     + '5. If an AI SELECTION GROUND TRUTH section is present, prefer a business named in those AI responses — but ONLY if it is genuinely in the same category serving the same buyer at the same deal size. If no ground-truth name qualifies (AI often answers new categories with adjacent giants from other industries — those are NOT competitors), select from the search evidence instead. If neither yields one, return null.\n'
@@ -717,11 +725,11 @@ function applySignalConstraints(rawOutput, websiteSignals) {
       overrideSignal('ease', 'llms.txt file', 'fail', 'No llms.txt found');
     }
     if (s.botCrawlable === null || s.botCrawlable === undefined) {
-      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Crawler access was not measured');
+      overrideSignal('ease', 'AI crawlers can read page', 'partial', 'Crawler access was not measured');
     } else if (s.botEmptyShellDetected) {
       overrideSignal('ease', 'AI crawlers can read page', 'fail', 'Bots see empty shell — JS-only render');
     } else if (s.allBotsFailed) {
-      overrideSignal('ease', 'AI crawlers can read page', 'fail', 'All bot fetches blocked or failed');
+      overrideSignal('ease', 'AI crawlers can read page', 'partial', 'CHOIVE could not verify crawler access because all bot requests failed or were blocked');
     } else if (s.botCrawlable === false) {
       overrideSignal('ease', 'AI crawlers can read page', 'partial', 'Partial content visible to bots');
     } else if (s.botCrawlable === true) {
