@@ -3244,18 +3244,12 @@ function buildGapBlock(r) {
     : pts >= 30 ? (gap > 0 ? 'critical' : 'advantage') : pts >= 15 ? (gap > 0 ? 'meaningful' : 'advantage') : pts >= 1 ? 'minor' : 'aligned';
 
   var mainCopy = forceExposure
-    ? 'Your structure is ahead of the market \u2014 but ' + activeThreatName + ' is winning the AI recommendation right now. That gap closes the moment your trust signals catch up.'
-    : pts >= 30
-    ? (gap > 0
-        ? 'A better-structured competitor will be selected instead of you.'
-        : 'Your structure already outperforms how the market currently sees you \u2014 trust signals are the only thing between you and a much higher recommendation rate.')
-    : pts >= 15
-    ? (gap > 0
-        ? 'You are being evaluated. You are not being selected.'
-        : 'You are already better positioned than the market reflects \u2014 close the trust gap and that advantage becomes visible to buyers.')
-    : pts >= 1
-    ? 'The gap is small. Close it before it widens.'
-    : 'Position is structurally aligned.';
+    ? activeThreatName + ' was named in the measured recommendation answers. The CHOIVE score does not establish why that platform selected it.'
+    : gap > 0
+      ? 'The recorded public-evidence score is ' + pts + ' points below the comparison baseline. The pillar evidence below shows where those points were not awarded.'
+      : gap < 0
+        ? 'The recorded public-evidence score is ' + pts + ' points above the comparison baseline. This does not guarantee that an AI platform will recommend the business.'
+        : 'The recorded public-evidence score matches the comparison baseline.';
 
   return [
     '<div class="gap-block">',
@@ -3344,9 +3338,7 @@ function buildWhnBlock(r, gap) {
           <button class="whn-cta-btn" onclick="openForm('CHOIVE Analysis™')">
             Unlock full CHOIVE™ Analysis — $99
           </button>
-          <span class="whn-cta-micro">${risk === 'The position is structurally sound.' || risk === 'The position is close. Structural precision will lock it.'
-            ? 'Strengthen your position before a competitor closes the gap.'
-            : 'Right now, you are being chosen by habit — not by structure.'}</span>
+          <span class="whn-cta-micro">The full analysis shows the evidence, missing signals, and implementation order behind this result.</span>
         </div>
       </div>
     </div>`;
@@ -3499,7 +3491,7 @@ function showResults(r, jobId) {
     });
     var parts = [];
     if (named.length) parts.push('API measurement: ' + named.join('; ') + '.');
-    if (explicitNone.length) parts.push(explicitNone.join(', ') + ' explicitly returned no named recommendation.');
+    if (explicitNone.length) parts.push(explicitNone.join(', ') + ' did not establish one majority recommendation across the completed responses.');
     if (failed.length) parts.push(failed.join(', ') + ' could not complete a verifiable recommendation measurement.');
     if (unmeasured.length) parts.push(unmeasured.join(', ') + ' was not measured in this run.');
     parts.push('These API answers do not change the CHOIVE score, which measures Clarity, Trust, Difference, and Ease separately.');
@@ -3587,7 +3579,7 @@ function showResults(r, jobId) {
       not_configured: 'API not configured',
       failed: 'Measurement failed',
       unmeasured: 'Not measured in this run',
-      no_recommendation: 'No named recommendation established'
+      no_recommendation: 'No majority recommendation established'
     };
     var subjectLaneKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     var subjectLaneTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
@@ -4372,7 +4364,7 @@ function showResults(r, jobId) {
       + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
       + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
       + '</div>'
-    : '<div class="paid-comp-none">No established competitor dominates this category in AI — a significant opportunity to be the first business AI consistently recommends.</div>';
+    : '<div class="paid-comp-none">This run did not find enough evidence to verify a direct competitor. CHOIVE therefore does not name one.</div>';
 
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
@@ -4401,7 +4393,7 @@ function showResults(r, jobId) {
         var emptyState = {
           not_configured: 'API not configured',
           failed: 'Measurement failed',
-          no_recommendation: 'No named recommendation established'
+          no_recommendation: 'No majority recommendation established'
         };
         if (!entry || !entry.name || !scoreData || !scoreData.pillars) {
           return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;min-height:190px;">'
@@ -4621,7 +4613,7 @@ function showResults(r, jobId) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
       var recommendation = lane.recommendation || '';
       var status = recommendation ? 'Completed'
-        : lane.status === 'no_recommendation' ? 'Explicitly returned no named recommendation'
+        : lane.status === 'no_recommendation' ? 'No majority recommendation established'
         : lane.status === 'failed' ? 'Measurement failed'
         : lane.status === 'not_configured' ? 'API not configured'
         : 'Not measured in this run';
@@ -4754,7 +4746,7 @@ function showResults(r, jobId) {
       + buildOperatingRoadmap()
       + '<section class="pay-section deliv-section" id="report-assets">'
       + '<div class="pay-eyebrow">Ready-to-Use Assets</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Generated specifically for ' + esc(bizData.name || '') + '. Copy and implement these directly.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Prepared from the facts collected for ' + esc(bizData.name || '') + '. Check names, locations, availability, and regulated claims before publishing.</div>'
       + '<div id="delivContent"></div></section>'
       + buildClosingConclusion()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
@@ -4827,7 +4819,7 @@ function buildDeliverables(r) {
 
   var llmsHtml = '<div style="margin-bottom:16px;">'
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Save this file as <strong>llms.txt</strong> and upload it to your website root so it is accessible at <strong>yourdomain.com/llms.txt</strong>. Works in Shopify, Squarespace, WordPress, and any website builder that allows file uploads.</div>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Review the facts below. Then save the approved content as <strong>llms.txt</strong> at <strong>yourdomain.com/llms.txt</strong>. Your website provider or developer can confirm whether root-level file uploads are supported.</div>'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
     + '<div class="deliv-code" id="dLlmsCode">' + esc(d.llmsTxt || '') + '</div>'
     + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsCode\')">Copy llms.txt</button>'
@@ -4877,9 +4869,10 @@ function buildDeliverables(r) {
     var urgColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
     reviewHtml = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:12px;">The target below is a practical working target for this category, not a guaranteed threshold for AI recommendations.</div>'
       + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Current reviews</div><div style="font-size:28px;font-weight:700;color:var(--tp);">' + (ra.currentCount || 0) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + (ra.targetCount || 50) + '+</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Working target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + (ra.targetCount || 50) + '+</div></div>'
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform || 'Trustpilot') + '</div></div>'
       + '</div>'
       + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
@@ -5127,7 +5120,7 @@ function exportPDF() {
           + (an ? '<div style="font-size:13px;color:#444;line-height:1.65;">' + an + '</div>' : '')
           + '</div>';
       }).join('')
-    : '<div style="font-size:13px;color:#777;font-style:italic;">No established competitor dominates this category in AI — a significant opportunity.</div>';
+    : '<div style="font-size:13px;color:#777;font-style:italic;">This run did not find enough evidence to verify a direct competitor. CHOIVE therefore does not name one.</div>';
 
   var actionsHtml = Array.isArray(r.actions) ? r.actions.map(pdfAction).join('') : '';
   var pillarsHtml  = pdfPillar('clarity','Clarity') + pdfPillar('trust','Trust') + pdfPillar('difference','Difference') + pdfPillar('ease','Ease');
