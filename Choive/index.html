@@ -2660,8 +2660,8 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
         <div class="diag-field diag-field--full">
           <label class="diag-label" for="bLang">Customer search language</label>
           <select id="bLang" class="diag-input" aria-label="Language your customers search in">
-            <option value="en" selected>English (default)</option>
-            <option value="">Let CHOIVE detect from location</option>
+            <option value="" selected>Auto-detect (recommended)</option>
+            <option value="en">English</option>
             <option value="de">German — Deutsch</option>
             <option value="es">Spanish — Español</option>
             <option value="fr">French — Français</option>
@@ -3097,8 +3097,8 @@ function buildScoreLabels(r) {
       <div class="score-label-val ${strength.cls}">${strength.label}</div>
     </div>
     <div class="score-label-row">
-      <div class="score-label-key">How clearly AI can understand this business</div>
-      <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
+    <div class="score-label-key">How clearly this business can be understood and verified</div>
+    <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
     </div>
     <div class="score-label-row">
       <div class="score-label-key">How often measured AI providers recommended another business</div>
@@ -3472,12 +3472,12 @@ function showResults(r, jobId) {
   // The score describes the business evidence only. Platform recommendations
   // are reported separately from the measured platform responses.
   const scoreLabel = score >= 76
-    ? 'AI can clearly understand this ' + subjectNoun + ' and find strong publicly available evidence that supports it.'
+    ? 'Strong publicly available evidence supports this ' + subjectNoun + ' being understood, verified, and selected.'
     : score >= 56
-      ? 'AI can find and understand this ' + subjectNoun + ', but some evidence that buyers and AI systems use to verify it is missing.'
+      ? 'This ' + subjectNoun + ' is findable, but some evidence that buyers and AI systems use to verify it is missing.'
       : score >= 31
-        ? 'AI can identify this ' + subjectNoun + ', but CHOIVE did not find enough clear, independently checkable evidence to support a reliable recommendation.'
-        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this ' + subjectNoun + '.';
+        ? 'This ' + subjectNoun + ' is identifiable, but the publicly checkable evidence needed to support a confident recommendation is incomplete.'
+        : 'The publicly available evidence is not yet sufficient for this ' + subjectNoun + ' to be consistently understood, verified, and selected.';
 
   function buildApiMeasurementSummary() {
     var labels = { claude:'Claude', openai:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini' };
@@ -3779,7 +3779,7 @@ function showResults(r, jobId) {
       + '</div>'
       + (chips ? '<div style="margin-bottom:' + ((sigLines || rateLine || compLine) ? '14px' : '0') + ';">' + chips + '</div>' : '')
       + sigLines + rateLine + compLine + driftNote
-      + (sd > 0 && hasConfirmed ? '<div style="font-size:12px;color:var(--tm);margin-top:12px;font-style:italic;">The changes are mechanically confirmed live \u2014 and the score moved with them. This is your diagnostic proving it.</div>' : '')
+      + (sd > 0 && hasConfirmed ? '<div style="font-size:12px;color:var(--tm);margin-top:12px;font-style:italic;">The recorded changes above were confirmed in this run. The score was recalculated separately from all evidence collected in this diagnostic.</div>' : '')
       + '</div>';
   }
 
@@ -3950,12 +3950,12 @@ function showResults(r, jobId) {
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Your plan</a><a href="#report-assets">Changes to make</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
-    + buildPlatformRecommendationBlock()
-    + (isPaid
+      + (isPaid
       ? buildPaidPillarEvidence()
         + competitorBanner
       : scoreHeader
         + buildScoreLabels(r)
+        + buildGapBlock(r)
         + buildProgressDelta(r)
         + [].concat(buildDisplacementBlock(r)).join('')
         + buildFreeCompetitorBlock()
@@ -4028,9 +4028,10 @@ function showResults(r, jobId) {
       }).join('') + '</div></details>' : '';
     var auditHtml = audit.length ? '<div class="signal-audit" aria-label="' + esc(label) + ' evidence checks">'
       + audit.map(function(signal) {
-        var status = ['pass','fail','partial'].indexOf(String(signal && signal.status || '').toLowerCase()) !== -1
-          ? String(signal.status).toLowerCase() : 'partial';
-        var statusLabel = status === 'pass' ? 'Confirmed' : status === 'fail' ? 'Missing' : 'Partially confirmed';
+        var rawStatus = String(signal && signal.status || '').toLowerCase();
+        var status = ['pass','fail','partial'].indexOf(rawStatus) !== -1 ? rawStatus : 'partial';
+        var statusLabel = rawStatus === 'unmeasured' ? 'Not verified'
+          : status === 'pass' ? 'Confirmed' : status === 'fail' ? 'Missing' : 'Partially confirmed';
         return '<div class="signal-row signal-' + status + '">'
           + '<span class="signal-status-dot" aria-hidden="true"></span>'
           + '<span class="signal-name">' + esc(signal && signal.name || 'Evidence check') + '</span>'
