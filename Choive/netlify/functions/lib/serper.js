@@ -331,17 +331,33 @@ async function verifyRecommendationEntity(name, category, market) {
   if (!process.env.SERPER_API_KEY) {
     return { status: 'unverified', reason: 'Public entity verification was unavailable in this run.', sources: [] };
   }
-  var query = '"' + candidate.replace(/"/g, '') + '" ' + String(category || '') + ' ' + String(market || '');
-  var data = await fetchSerper(query);
-  var items = data && Array.isArray(data.organic) ? data.organic.slice(0, 5) : [];
   var candidateWords = normalizeWords(candidate);
   var candidateCompact = candidateWords.replace(/\s+/g, '');
+  var candidateSearchName = candidate.replace(/^https?:\/\//i, '').replace(/^www\./i, '')
+    .replace(/\.(?:com|de|net|org|io|ai|co\.uk|co|eu|tv|app)\/?$/i, '');
+  var aliases = [candidate, candidateSearchName, candidateCompact]
+    .map(function(value) { return String(value || '').trim(); })
+    .filter(function(value, index, all) { return value && all.indexOf(value) === index; });
+  var query = aliases.map(function(alias) { return '"' + alias.replace(/"/g, '') + '"'; }).join(' OR ')
+    + ' ' + String(category || '') + ' ' + String(market || '');
+  var data = await fetchSerper(query);
+  var items = data && Array.isArray(data.organic) ? data.organic.slice(0, 5) : [];
   var categoryTokens = meaningfulCategoryTokens(category);
-  var identityMatches = items.filter(function(item) {
+  var matchesCandidateIdentity = function(item) {
     var text = normalizeWords([item.title, item.snippet, item.link].join(' '));
     return (' ' + text + ' ').indexOf(' ' + candidateWords + ' ') !== -1
       || (candidateCompact.length >= 5 && text.replace(/\s+/g, '').indexOf(candidateCompact) !== -1);
-  });
+  };
+  var identityMatches = items.filter(matchesCandidateIdentity);
+  // Exact searches occasionally return only unrelated directory pages for a
+  // joined brand or country-code domain. Retry once without quote constraints.
+  // Category relevance is still required below before verification can pass.
+  if (!identityMatches.length && aliases.length) {
+    var fallbackData = await fetchSerper(aliases.join(' OR '));
+    var fallbackItems = fallbackData && Array.isArray(fallbackData.organic) ? fallbackData.organic.slice(0, 5) : [];
+    identityMatches = fallbackItems.filter(matchesCandidateIdentity);
+    if (identityMatches.length) items = fallbackItems;
+  }
   var categoryMatches = identityMatches.filter(function(item) {
     var text = normalizeWords([item.title, item.snippet].join(' '));
     return categoryTokens.length === 0 || categoryTokens.some(function(token) {
