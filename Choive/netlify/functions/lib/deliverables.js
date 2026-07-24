@@ -107,7 +107,7 @@ function sourceLinks(result) {
 }
 
 var ASSET_STOP_WORDS = new Set(('the a an and or for with from into this that these those your our their its is are was were be to of in on at by as it we you they business company organization product service services solutions platform providing provides offers based').split(' '));
-var UNSUPPORTED_ASSET_CLAIMS = /\b(best|leading|leader|market-leading|premium|trusted|award[- ]winning|number one|#1|top-rated|world-class|proven results?|guaranteed|teams trust|built for results|stands out|every detail matters)\b/i;
+var UNSUPPORTED_ASSET_CLAIMS = /\b(best|leading|leader|market-leading|premium|trusted|award[- ]winning|number one|#1|top-rated|world-class|proven results?|guaranteed|teams trust|built for results|stands out|every detail matters|every screen|all screens|works everywhere|always available)\b/i;
 
 function assetWords(value) {
   return String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g) || [];
@@ -133,6 +133,15 @@ function supportedAssetText(value, evidence, result, minLength, maxLength) {
   return text;
 }
 
+function supportedAudienceText(value, evidence, result) {
+  var text = cleanAssetText(value, 100);
+  if (!text || text.length < 3 || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
+  var meaningful = assetWords(text).filter(function(word) { return !ASSET_STOP_WORDS.has(word); });
+  var corpus = evidenceCorpus(evidence, result);
+  if (!meaningful.length || !meaningful.every(function(word) { return corpus.indexOf(word) !== -1; })) return '';
+  return text;
+}
+
 function verifiedReadyAssets(evidence, result) {
   var proposed = result && result.readyToUseAssets;
   if (!proposed || typeof proposed !== 'object') return { h1Options: [], llmsFacts: null };
@@ -146,7 +155,7 @@ function verifiedReadyAssets(evidence, result) {
     llmsFacts: {
       summary: supportedAssetText(facts.summary, evidence, result, 25, 260),
       offers: (Array.isArray(facts.offers) ? facts.offers : []).map(function(v) { return supportedAssetText(v, evidence, result, 8, 160); }).filter(Boolean).slice(0, 5),
-      audiences: (Array.isArray(facts.audiences) ? facts.audiences : []).map(function(v) { return supportedAssetText(v, evidence, result, 3, 100); }).filter(Boolean).slice(0, 4),
+      audiences: (Array.isArray(facts.audiences) ? facts.audiences : []).map(function(v) { return supportedAudienceText(v, evidence, result); }).filter(Boolean).slice(0, 4),
       serviceArea: supportedAssetText(facts.serviceArea, evidence, result, 2, 80),
       distinctions: (Array.isArray(facts.distinctions) ? facts.distinctions : []).map(function(v) { return supportedAssetText(v, evidence, result, 8, 180); }).filter(Boolean).slice(0, 3)
     }
@@ -176,7 +185,9 @@ function generateLlmsTxt(evidence, result) {
   var summary        = modelFacts.summary || factualSummary(evidence, result, 260);
   var differentiator = safeDifferentiator(evidence, result);
   var serviceArea    = modelFacts.serviceArea || marketLabel(evidence);
-  var audience       = (modelFacts.audiences && modelFacts.audiences[0]) || intendedAudience(evidence, result, profile.audience);
+  var audience       = (modelFacts.audiences && modelFacts.audiences.length)
+    ? modelFacts.audiences.join(', ')
+    : intendedAudience(evidence, result, profile.audience);
   var independent    = sourceLinks(result);
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
@@ -260,6 +271,8 @@ function generateMetaDescription(evidence, result) {
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
+  var reach    = String(evidence.marketReach || '').trim().toLowerCase();
+  var signals  = evidence.websiteSignals || {};
   var pillars  = result.pillars           || {};
   var cityDisplay = capitaliseCity(city);
   
@@ -268,8 +281,7 @@ function generateMetaDescription(evidence, result) {
   var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
 
   // Extract current meta
-  var metaMatch = clarityEvidence.match(/[Mm]eta description[:\s]+([^\n"]+)/);
-  var current   = metaMatch ? metaMatch[1].trim().replace(/['"]/g, '') : '';
+  var current = cleanAssetText(signals.metaDescriptionText || '', 180);
 
   // Filter raw evidence noise before using in meta
   var diffIsNoise   = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(diffEvidence);
@@ -280,7 +292,8 @@ function generateMetaDescription(evidence, result) {
 
   var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135);
   var improved = name + (groundedSummary ? ' — ' + groundedSummary : ' — ' + category);
-  if (city && improved.toLowerCase().indexOf(cityDisplay.toLowerCase()) === -1) improved += ' in ' + cityDisplay;
+  if (city && ['local','regional','national'].indexOf(reach) !== -1
+      && improved.toLowerCase().indexOf(cityDisplay.toLowerCase()) === -1) improved += ' in ' + cityDisplay;
   improved = improved.replace(/[.!?]?$/, '.');
   // Only append the trust sentence if the whole thing still fits in 155 chars
   if (trust && trust.length < 100 && (improved.length + trust.length + 2) <= 155) {
@@ -337,23 +350,38 @@ function generateSchemaBrief(evidence, result) {
     ? (website.startsWith('http') ? website : 'https://' + website)
     : 'your website URL';
 
+  var serviceArea = marketLabel(evidence);
+  var schemaObject = {
+    '@context': 'https://schema.org',
+    '@type': schemaTypes[0] || 'Organization',
+    name: name,
+    url: siteUrl,
+    description: cleanAssetText(category, 220)
+  };
+  if (serviceArea) schemaObject.areaServed = serviceArea;
+  var jsonLd = '<script type="application/ld+json">\n'
+    + JSON.stringify(schemaObject, null, 2)
+    + '\n</script>';
+
   var fields = [
     'name: ' + name,
     'url: ' + siteUrl,
-    'description: ' + (category + (cityDisplay ? ' based in ' + cityDisplay : '')),
-    city ? 'address.addressLocality: ' + city : null,
-    'schema types: ' + schemaTypes.join(' + ')
+    'description: ' + category,
+    serviceArea ? 'areaServed: ' + serviceArea : null,
+    'base schema type: ' + (schemaTypes[0] || 'Organization'),
+    schemaTypes.length > 1 ? 'additional type to review with the developer: ' + schemaTypes.slice(1).join(' + ') : null
   ].filter(Boolean);
 
   return {
     alreadyHasSchema: schemaConfirmed,
     schemaTypes:      schemaTypes,
     forwardTo:        'your developer or website manager',
-    timeEstimate:     '20 minutes',
+    timeEstimate:     'Developer estimate required after reviewing the website setup',
     fields:           fields,
+    jsonLd:           jsonLd,
     instruction:      schemaConfirmed
-      ? 'Your website already has schema markup. Ask your developer to verify it includes all the fields below and matches the types listed.'
-      : 'Your website is missing schema markup. Forward this to your developer or website manager. Ask them to add JSON-LD schema with the following details:'
+      ? 'CHOIVE detected schema markup. Ask your developer to compare the existing markup with the factual base example below and test the final code before publishing it.'
+      : 'CHOIVE did not detect schema markup. Forward the factual base example below to your developer. They must review it against the live website and test the final code before publishing it.'
   };
 }
 
@@ -475,7 +503,7 @@ function generateActionPlan(evidence, result) {
     week1.tasks.push({
       task:   'Upload llms.txt to your website root',
       how:    'Copy the llms.txt from the Assets tab. Save as llms.txt. Upload to your website file manager.',
-      impact: 'Immediate — AI systems can now read a direct description of this ' + profile.noun,
+      impact: 'Completion check: the published /llms.txt URL returns a 200 response and contains the approved facts',
       owner:  'you'
     });
   }
@@ -483,14 +511,14 @@ function generateActionPlan(evidence, result) {
     week1.tasks.push({
       task:   'Update your homepage headline',
       how:    'Copy one of the H1 options from the Assets tab. Update it in your website editor.',
-      impact: 'Clearer positioning for both visitors and AI systems within 24 hours',
+      impact: 'Completion check: the published H1 names the offer and intended buyer without an unsupported claim',
       owner:  'you'
     });
   }
   week1.tasks.push({
     task:   'Update your meta description',
     how:    'Copy the improved meta description from the Assets tab. Paste into your website SEO settings.',
-    impact: 'Better representation in search results and AI citations',
+    impact: 'Completion check: the published page source contains the approved meta description',
     owner:  'you'
   });
   weeks.push(week1);
@@ -544,8 +572,8 @@ function generateActionPlan(evidence, result) {
   if (easeScore < 14) {
     week3.tasks.push({
       task:   'Add the correct schema markup to the main page',
-      how:    'Forward the Schema brief from the Assets tab. Estimated 20 minutes for a developer.',
-      impact: 'Structured data makes this ' + profile.noun + ' machine-readable and closes the main technical gap',
+      how:    'Forward the Schema asset to your developer. Ask them to review the factual base JSON-LD, adapt it to the website, and validate the final code before publishing it.',
+      impact: 'Completion check: the published JSON-LD passes a structured-data validation test and contains only verified facts',
       owner:  'developer'
     });
   }
