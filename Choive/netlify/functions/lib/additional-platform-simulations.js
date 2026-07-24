@@ -255,7 +255,7 @@ async function runProvider(provider, input, requestFn, configured) {
   var replacement = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') !== -1; })[0];
   var replacementMajorityThreshold = replacement && replacement.sampleCount > 0
     ? strictMajorityThreshold(replacement.sampleCount) : 0;
-  var explicitNoRecommendation = Boolean(replacement && replacement.sampleCount > 0
+  var explicitNoRecommendation = Boolean(replacement && replacement.sampleCount >= 2
     && replacement.allResponses.filter(hasExplicitNoRecommendation).length >= replacementMajorityThreshold);
   var buyerResults = results.filter(function(result) { return String(result.label || '').toLowerCase().indexOf('branded replacement') === -1; });
   // Only the explicit branded "who instead?" question populates this lane.
