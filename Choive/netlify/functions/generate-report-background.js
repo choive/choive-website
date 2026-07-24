@@ -1339,8 +1339,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     ['Implementation Targets',     'Required work and how completion will be verified'],
     ['Recorded AI Description',    'The generated description and the evidence used to assess it'],
     ['Four Pillar Analysis',       'Clarity, Trust, Difference, and Ease'],
-    ['AI Platform Coverage',       'Which measured providers mentioned the ' + subjectNoun],
-    ['AI Platform Measurements',   'Questions and separately attributed answers'],
+    ['API Probe Coverage',         'How often the measured providers mentioned the ' + subjectNoun],
+    ['Technical Appendix',         'Questions and separately attributed API answers'],
     ['Competitor Intelligence',    'Direct evidence and measurable differences'],
     ['Priority Actions',           'Ordered work, effort, impact, and consequence'],
     ['Ready-to-Use Assets',        'Implementation text prepared for the ' + subjectNoun],
@@ -1577,7 +1577,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   });
   H.push('</div>');
   H.push('<div style="padding:22px 26px;background:#EDEAE5;border-left:4px solid #B83232;">');
-  H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 platforms currently cite ' + esc(bizName) + '.</div>');
+  H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 provider API measurements mentioned ' + esc(bizName) + '.</div>');
   var coverageExplanation = appearedPlat === 0
     ? 'None of the four recorded platform measurements mentioned ' + esc(bizName) + '. Section 8 lists the specific evidence gaps to address. A new diagnostic is required to measure whether the answers change.'
     : appearedPlat === 4
@@ -1589,10 +1589,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">AI Platform Measurements</div><div class="sdp-sub">Buyer-style questions and the provider responses recorded during this diagnostic run. Consumer-app answers may differ because models, search context, settings, and personalization can vary.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">Technical Appendix: API Probes</div><div class="sdp-sub">Buyer-style questions and official provider API responses recorded during this diagnostic run. These are not transcripts from the public consumer apps.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Recorded queries · Unedited platform responses</div>');
-  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These are the answers returned by the AI platforms. They are shown without editing. AI platforms can make factual mistakes, so CHOIVE does not present claims inside these answers as confirmed facts unless other public evidence supports them.</div>');
+  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These are unedited answers returned through official provider APIs. Public consumer apps may answer differently. CHOIVE does not treat factual claims inside an API answer as confirmed unless separate public evidence supports them.</div>');
   function responseExcerpt(value, limit) {
     var full = safeStr(value, '');
     var max = limit || 1200;
@@ -1702,10 +1702,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="eyebrow">AI query simulation</div>');
       var appearedFlat = renderSimSet('Query', simBeforeResults);
       var flatVerdict = appearedFlat === 0
-        ? 'None of these queries returned ' + esc(bizName) + ' in the Claude response. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
+        ? 'None of these queries returned ' + esc(bizName) + ' in the recorded Claude API response. Section 7 separately evaluates competitors using market evidence.'
         : appearedFlat === simBeforeResults.length
-        ? esc(bizName) + ' appeared in all ' + simBeforeResults.length + ' queries. The priority actions in Section 8 will consolidate this position.'
-        : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' queries. Section 8 lists improvements intended to strengthen the missing evidence. A new diagnostic is required to measure whether the answers change.';
+        ? esc(bizName) + ' appeared in all ' + simBeforeResults.length + ' recorded queries. A later diagnostic is required to determine whether this result persists.'
+        : esc(bizName) + ' appeared in ' + appearedFlat + ' of ' + simBeforeResults.length + ' recorded queries. Section 8 names the missing public evidence and the exact work required. A new diagnostic is required to measure whether the answers change.';
       H.push('<div class="sim-verdict"><div class="sv-num">' + appearedFlat + '/' + simBeforeResults.length + '</div>');
       H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + '.</span>');
       H.push('<p class="sv-text-p">' + flatVerdict + '</p></div></div>');
@@ -1713,8 +1713,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
       H.push('<div class="eyebrow">Current state \u2014 before any fixes</div>');
       var appearedBefore = renderSimSet('Current state', simBeforeResults);
       var beforeVerdict = appearedBefore === 0
-        ? 'Every recorded query was answered without mentioning you. ' + (aiCompName ? esc(aiCompName) + ' was consistently named instead.' : 'No consistent alternative was established across the recorded answers.') + ' Section 7 shows the market competitor analysis.'
-        : 'The business appeared in some, but not all, recorded answers. Section 8 lists improvements based on the missing evidence. A new diagnostic is required to measure whether the answers change.';
+        ? 'Every recorded query was answered without mentioning the business. Section 7 separately evaluates competitors using market evidence.'
+        : 'The business appeared in some, but not all, recorded answers. Section 8 names the missing public evidence and the exact work required. A new diagnostic is required to measure whether the answers change.';
       H.push('<div class="sim-verdict"><div class="sv-num">' + appearedBefore + '/' + simBeforeResults.length + '</div>');
       H.push('<div><span class="sv-text-h">queries mentioned ' + esc(bizName) + ' right now.</span>');
       H.push('<p class="sv-text-p">' + beforeVerdict + '</p></div></div>');
