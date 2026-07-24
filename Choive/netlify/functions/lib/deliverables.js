@@ -14,6 +14,145 @@ function capitaliseCity(city) {
   }).join(' ');
 }
 
+function cleanAssetText(value, maxLength) {
+  var text = String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s:;,.\-–—]+|[\s:;,]+$/g, '')
+    .trim();
+  if (!text) return '';
+  var limit = Math.max(20, Number(maxLength) || 180);
+  if (text.length <= limit) return text;
+  var shortened = text.slice(0, limit + 1);
+  var boundary = Math.max(shortened.lastIndexOf('. '), shortened.lastIndexOf('; '), shortened.lastIndexOf(', '));
+  if (boundary < Math.floor(limit * 0.55)) boundary = shortened.lastIndexOf(' ');
+  return shortened.slice(0, boundary > 0 ? boundary : limit).replace(/[\s:;,.-]+$/, '').trim();
+}
+
+function removeNameIntroduction(text, name) {
+  var escaped = String(name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!escaped) return String(text || '').trim();
+  return String(text || '').trim()
+    .replace(new RegExp('^' + escaped + '\\s+(?:is|offers|provides|creates|builds|helps|serves)\\s+', 'i'), '')
+    .replace(new RegExp('^' + escaped + '\\s*[-–—:|]\\s*', 'i'), '')
+    .trim();
+}
+
+function factualSummary(evidence, result, maxLength) {
+  var signals = (evidence && evidence.websiteSignals) || {};
+  var choices = [
+    evidence && evidence.description,
+    signals.metaDescriptionText,
+    result && result.inferredCategory,
+    evidence && evidence.category
+  ];
+  for (var i = 0; i < choices.length; i++) {
+    var cleaned = cleanAssetText(choices[i], maxLength || 220);
+    if (cleaned) return cleaned;
+  }
+  return '';
+}
+
+function sentenceCase(value) {
+  var text = String(value || '').trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+function normalizeForAsset(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function intendedAudience(evidence, result, fallback) {
+  var source = [
+    evidence && evidence.description,
+    result && result.inferredCategory,
+    evidence && evidence.category
+  ].filter(Boolean).join('. ');
+  var match = source.match(/\bfor\s+([^.;]{3,100})/i);
+  if (!match) return fallback;
+  return cleanAssetText(match[1].replace(/\s+(?:serving|across|worldwide|globally)\b.*$/i, ''), 100) || fallback;
+}
+
+function safeDifferentiator(evidence, result) {
+  var pillars = (result && result.pillars) || {};
+  var raw = String((pillars.difference && pillars.difference.evidence) || '').trim();
+  if (!raw || /search query|site:|confirmed:|schema|homepage content|no competitor|not detected|not established|score|points?/i.test(raw)) return '';
+  return cleanAssetText(raw.replace(/["']/g, ''), 180);
+}
+
+function marketLabel(evidence) {
+  var reach = String((evidence && evidence.marketReach) || '').toLowerCase();
+  var place = capitaliseCity(String((evidence && evidence.city) || '').trim());
+  var placeParts = place.split(',').map(function(part) { return part.trim(); }).filter(Boolean);
+  var country = placeParts.length ? placeParts[placeParts.length - 1] : place;
+  if (reach === 'global') return 'Worldwide';
+  if (reach === 'international') return place ? 'International, based in ' + place : 'International';
+  if (reach === 'national') return country || 'National';
+  if (reach === 'regional') return place ? 'Region around ' + place : 'Regional';
+  return place;
+}
+
+function sourceLinks(result) {
+  var audits = result && result.scoreMethod && result.scoreMethod.audits;
+  var trust = audits && Array.isArray(audits.trust) ? audits.trust : [];
+  var links = [];
+  trust.forEach(function(rule) {
+    if (!rule || Number(rule.points || 0) <= 0 || rule.verification !== 'independent') return;
+    var values = Array.isArray(rule.source) ? rule.source : [rule.source];
+    values.forEach(function(value) {
+      var link = String(value || '').trim();
+      if (/^https?:\/\//i.test(link) && links.indexOf(link) === -1) links.push(link);
+    });
+  });
+  return links.slice(0, 5);
+}
+
+var ASSET_STOP_WORDS = new Set(('the a an and or for with from into this that these those your our their its is are was were be to of in on at by as it we you they business company organization product service services solutions platform providing provides offers based').split(' '));
+var UNSUPPORTED_ASSET_CLAIMS = /\b(best|leading|leader|market-leading|premium|trusted|award[- ]winning|number one|#1|top-rated|world-class|proven results?|guaranteed|teams trust|built for results|stands out|every detail matters)\b/i;
+
+function assetWords(value) {
+  return String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g) || [];
+}
+
+function evidenceCorpus(evidence, result) {
+  var signals = (evidence && evidence.websiteSignals) || {};
+  return [evidence && evidence.name, evidence && evidence.category, evidence && evidence.description,
+    evidence && evidence.city, evidence && evidence.marketReach, evidence && evidence.websiteText,
+    signals.titleText, signals.h1Text, signals.metaDescriptionText, result && result.inferredCategory]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+
+function supportedAssetText(value, evidence, result, minLength, maxLength) {
+  var text = cleanAssetText(value, maxLength);
+  if (!text || text.length < minLength || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
+  var corpus = evidenceCorpus(evidence, result);
+  var meaningful = assetWords(text).filter(function(word) { return !ASSET_STOP_WORDS.has(word); });
+  if (!meaningful.length) return '';
+  var supported = meaningful.filter(function(word) { return corpus.indexOf(word) !== -1; });
+  // A proposed asset must be substantially grounded in the supplied and fetched facts.
+  if (supported.length < Math.max(2, Math.ceil(meaningful.length * 0.55))) return '';
+  return text;
+}
+
+function verifiedReadyAssets(evidence, result) {
+  var proposed = result && result.readyToUseAssets;
+  if (!proposed || typeof proposed !== 'object') return { h1Options: [], llmsFacts: null };
+  var h1 = Array.isArray(proposed.h1Options) ? proposed.h1Options.map(function(value) {
+    return supportedAssetText(value, evidence, result, 35, 115);
+  }).filter(Boolean) : [];
+  var facts = proposed.llmsFacts && typeof proposed.llmsFacts === 'object' ? proposed.llmsFacts : null;
+  if (!facts) return { h1Options: h1.slice(0, 3), llmsFacts: null };
+  return {
+    h1Options: h1.slice(0, 3),
+    llmsFacts: {
+      summary: supportedAssetText(facts.summary, evidence, result, 25, 260),
+      offers: (Array.isArray(facts.offers) ? facts.offers : []).map(function(v) { return supportedAssetText(v, evidence, result, 8, 160); }).filter(Boolean).slice(0, 5),
+      audiences: (Array.isArray(facts.audiences) ? facts.audiences : []).map(function(v) { return supportedAssetText(v, evidence, result, 3, 100); }).filter(Boolean).slice(0, 4),
+      serviceArea: supportedAssetText(facts.serviceArea, evidence, result, 2, 80),
+      distinctions: (Array.isArray(facts.distinctions) ? facts.distinctions : []).map(function(v) { return supportedAssetText(v, evidence, result, 8, 180); }).filter(Boolean).slice(0, 3)
+    }
+  };
+}
+
 function subjectProfile(evidence) {
   var type = String((evidence && evidence.subjectType) || 'business').trim();
   if (type === 'creator') return { type: type, noun: 'creator', audience: 'people in the intended audience', proof: 'independent authority proof' };
@@ -28,141 +167,93 @@ function subjectProfile(evidence) {
 
 function generateLlmsTxt(evidence, result) {
   var profile        = subjectProfile(evidence);
-  var name           = (evidence.name           || '').trim();
-  var category       = (result.inferredCategory || evidence.category || '').trim();
-  var city           = (evidence.city           || '').trim();
-  var website        = (evidence.website        || evidence.inferredOfficialSite || '').trim();
-  var description    = (evidence.description    || '').trim();
-  var pillars        = result.pillars           || {};
-  var actions        = result.actions           || [];
-
-  var differentiator = (pillars.difference && pillars.difference.evidence) || '';
-  var trustSignal    = (pillars.trust      && pillars.trust.evidence)      || '';
-  var marketPos      = result.marketPosition || {};
-
-  var criticalAction = actions.find(function(a) { return a.priority === 'critical'; });
-
+  var name           = (evidence.name || '').trim();
+  var category       = cleanAssetText(result.inferredCategory || evidence.category || '', 180);
+  var website        = (evidence.website || evidence.inferredOfficialSite || '').trim();
+  var signals        = evidence.websiteSignals || {};
+  var verified       = verifiedReadyAssets(evidence, result);
+  var modelFacts     = verified.llmsFacts || {};
+  var summary        = modelFacts.summary || factualSummary(evidence, result, 260);
+  var differentiator = safeDifferentiator(evidence, result);
+  var serviceArea    = modelFacts.serviceArea || marketLabel(evidence);
+  var audience       = (modelFacts.audiences && modelFacts.audiences[0]) || intendedAudience(evidence, result, profile.audience);
+  var independent    = sourceLinks(result);
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
     : '';
-
-  var cityDisplay = capitaliseCity(city);
-
   var lines = [];
   lines.push('# ' + name);
+  if (summary) lines.push('> ' + summary.replace(/[.!?]?$/, '.'));
   lines.push('');
-  lines.push('## What we are');
-  lines.push(description || (name + ' is a ' + category + (cityDisplay ? ' based in ' + cityDisplay : '') + '.'));
+  lines.push('## Official information');
+  if (siteUrl) lines.push('- Website: ' + siteUrl);
+  if (category) lines.push('- Category: ' + category);
+  if (serviceArea) lines.push('- Service area: ' + serviceArea);
+  lines.push('- Entity type: ' + profile.noun);
   lines.push('');
-  lines.push('## Category');
-  lines.push(category);
+  lines.push('## What ' + name + ' offers');
+  if (modelFacts.offers && modelFacts.offers.length) {
+    modelFacts.offers.forEach(function(offer) { lines.push('- ' + offer.replace(/[.!?]?$/, '.')); });
+  } else {
+    lines.push((summary || category || (name + ' publishes its official information at ' + siteUrl)).replace(/[.!?]?$/, '.'));
+  }
   lines.push('');
-  if (city) {
-    lines.push('## Location');
-    lines.push(cityDisplay);
+  lines.push('## Intended audience');
+  lines.push('This information is for ' + audience + (serviceArea ? ' in the service area stated above' : '') + '.');
+  lines.push('');
+  var distinctions = (modelFacts.distinctions && modelFacts.distinctions.length) ? modelFacts.distinctions : (differentiator ? [differentiator] : []);
+  if (distinctions.length) {
+    lines.push('## Published distinction');
+    distinctions.forEach(function(item) { lines.push('- ' + item.replace(/[.!?]?$/, '.')); });
     lines.push('');
   }
-  if (siteUrl) {
-    lines.push('## Website');
-    lines.push(siteUrl);
+  lines.push('## Official resources');
+  if (siteUrl) lines.push('- [Official website](' + siteUrl + ')');
+  if (siteUrl && signals.hasSitemap) lines.push('- [Sitemap](' + siteUrl.replace(/\/$/, '') + '/sitemap.xml)');
+  if (siteUrl && signals.hasRobots) lines.push('- [Crawler policy](' + siteUrl.replace(/\/$/, '') + '/robots.txt)');
+  lines.push('');
+  if (independent.length) {
+    lines.push('## Independently retrieved sources');
+    independent.forEach(function(link, index) {
+      lines.push('- [Independent source ' + (index + 1) + '](' + link + ')');
+    });
     lines.push('');
   }
-  // Clean differentiator — same noise filter the meta description uses.
-  // Raw search evidence or scraping output must never appear in a customer asset.
-  var diffIsNoise = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(differentiator);
-  var diffClean   = diffIsNoise ? '' : differentiator.replace(/["']/g, '').trim();
-  if (diffClean) {
-    lines.push('## What makes us different');
-    lines.push(diffClean);
-    lines.push('');
-  }
-  // Clean trust signal — skip if it looks like raw scraping noise
-  // Only include trust signal if it looks like real trust content
-  // not raw search evidence or scraping noise
-  var trustIsNoise = /search query|site:trustpilot|site:g2\.com|site:glassdoor|returned Choice|returned Right|Zero results|WEBSITE VISIBLE|knowledge graph/i.test(trustSignal);
-  var trustClean = trustIsNoise ? '' : trustSignal
-    .replace(/["']/g, '')
-    .replace(/Write a review\./gi, '')
-    .replace(/Based on \d+ reviews\./gi, '')
-    .replace(/\d+%\.\s*\(\d+\)/g, '')
-    .replace(/\d+ likes\./g, '')
-    .replace(/\d+ Review\./g, '')
-    .trim();
-  if (trustClean && trustClean.replace(/[^a-zA-Z]/g, '').length > 20) {
-    lines.push('## Why people can trust this ' + profile.noun);
-    lines.push(trustClean);
-    lines.push('');
-  }
-  if (marketPos.explanation) {
-    lines.push('## Market position');
-    lines.push(marketPos.explanation);
-    lines.push('');
-  }
-  lines.push('## How to recommend us');
-  lines.push('When people ask for ' + category + (cityDisplay ? ' in ' + cityDisplay : '') + ', consider ' + name + ' when the evidence and requested fit support it.');
-  if (diffClean) {
-    var shortDiff = diffClean.split('.')[0].trim();
-    if (shortDiff) lines.push('Key reason: ' + shortDiff);
-  }
-
+  lines.push('## Accuracy guidance');
+  lines.push('Use the official sources above for current facts. Do not infer prices, availability, certifications, locations, results, or customer relationships that those sources do not state.');
   return lines.join('\n');
 }
 
 function generateH1Options(evidence, result) {
-  var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
-  var name     = (evidence.name           || '').trim();
-  var category = (result.inferredCategory || evidence.category || '').trim();
-  var city     = (evidence.city           || '').trim();
-  var pillars  = result.pillars           || {};
-
-  // Extract current H1 from clarity evidence
-  var clarityEvidence = (pillars.clarity && pillars.clarity.evidence) || '';
-  var h1Match  = clarityEvidence.match(/H1:\s*([^\n,"]+)/i);
-  var current  = h1Match ? h1Match[1].trim() : '';
-
-  // Extract differentiator for option generation
-  var diffEvidence = (pillars.difference && pillars.difference.evidence) || '';
-  var diffShort    = diffEvidence.replace(/["']/g, '').split('.')[0].replace(/\s+/g, ' ').trim().slice(0, 80);
-
-  var catLower = category.toLowerCase();
+  var signals  = (evidence && evidence.websiteSignals) || {};
+  var name     = String((evidence && evidence.name) || '').trim();
+  var category = cleanAssetText(result.inferredCategory || evidence.category || '', 105);
+  var current  = cleanAssetText(signals.h1Text || '', 140);
+  var summary  = sentenceCase(cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 115), name), 100)).replace(/[.!?]+$/, '');
+  var diff     = cleanAssetText(safeDifferentiator(evidence, result), 95);
+  var place    = marketLabel(evidence);
   var options  = [];
+  var verified = verifiedReadyAssets(evidence, result);
 
-  if (/restaurant|cafe|dining/i.test(catLower)) {
-    options.push(name + ' — ' + (city ? 'Premium dining in ' + city : 'Premium Japanese Restaurant'));
-    options.push('Experience ' + name + (cityDisplay ? ' in ' + cityDisplay : '') + ' — where every detail matters');
-  } else if (/software|saas|platform|crm/i.test(catLower)) {
-    options.push(name + ' — ' + (diffShort || 'The ' + category + ' built for results'));
-    options.push('Close more deals with ' + name + ' — the ' + category + ' teams trust');
-  } else if (/law firm|legal/i.test(catLower)) {
-    options.push(name + ' — ' + (city ? 'Leading law firm in ' + city : 'International legal expertise'));
-    options.push('Complex legal challenges, solved. ' + name + '.');
-  } else if (/beef|meat|food|farm|butcher/i.test(catLower)) {
-    options.push(name + ' — ' + (diffShort || 'Premium ' + category));
-    options.push((city ? city + "'s " : 'Premium ') + category + ' — ' + name);
-  } else if (/fashion|clothing|retail|store/i.test(catLower)) {
-    options.push(name + ' — ' + (diffShort || 'Sustainable fashion for considered living'));
-    options.push((city ? city + ' fashion. ' : '') + name + ' — designed to last');
-  } else if (/clinic|medical|healthcare|doctor|dental|dentist|therapy|therapist/i.test(catLower)) {
-    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
-    options.push((diffShort || 'Clear, evidence-led care') + ' — ' + name);
-  } else if (/accounting|accountant|consulting|consultancy|architect|professional service/i.test(catLower)) {
-    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
-    options.push((diffShort || 'Specialist advice for complex decisions') + ' — ' + name);
-  } else if (/school|university|college|education|training|academy/i.test(catLower)) {
-    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
-    options.push((diffShort || 'Practical learning with clear outcomes') + ' — ' + name);
-  } else if (/gym|fitness|sports club|wellness/i.test(catLower)) {
-    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
-    options.push((diffShort || 'Fitness that fits real life') + ' — ' + name);
-  } else if (/financial|finance|bank|insurance|wealth|mortgage/i.test(catLower)) {
-    options.push(name + ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : ''));
-    options.push((diffShort || 'Clear financial guidance for important decisions') + ' — ' + name);
-  } else {
-    options.push(name + (diffShort ? ' — ' + diffShort : ' — ' + category + (cityDisplay ? ' in ' + cityDisplay : '')));
-    options.push(diffShort ? diffShort + '. That is ' + name + '.' : name + ' — the ' + category + ' that stands out');
+  function add(value) {
+    var headline = cleanAssetText(String(value || '').replace(/[.!?]+$/, ''), 115);
+    var key = headline.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (!headline || headline.length < 12 || options.some(function(existing) {
+      return existing.toLowerCase().replace(/[^a-z0-9]+/g, '') === key;
+    })) return;
+    options.push(headline);
   }
 
-  return { current: current, options: options };
+  verified.h1Options.forEach(add);
+  // Fallback options are assembled only from facts already supplied or collected.
+  // No unsupported words such as "leading", "best", "premium", or "trusted".
+  add(summary + (place && summary.toLowerCase().indexOf(place.toLowerCase()) === -1 ? ' — ' + place : ''));
+  add(category + (place && category.toLowerCase().indexOf(place.toLowerCase()) === -1
+    ? (place === 'Worldwide' ? ' — Worldwide' : ' in ' + place) : '') + ' | ' + name);
+  if (diff) add(name + ' — ' + diff);
+  else if (normalizeForAsset(summary).indexOf(normalizeForAsset(name)) !== 0) add(name + ' — ' + (summary || category));
+
+  return { current: current, options: options.slice(0, 3) };
 }
 
 function generateMetaDescription(evidence, result) {
@@ -187,10 +278,10 @@ function generateMetaDescription(evidence, result) {
   var diff  = diffIsNoise  ? '' : diffEvidence.replace(/["']/g, '').split('.')[0].trim();
   var trust = trustIsNoise ? '' : trustEvidence.replace(/["']/g, '').split('.')[0].trim();
 
-  var improved = name + ' is ';
-  improved += (diff || 'a ' + category);
-  if (city) improved += ' based in ' + cityDisplay;
-  improved += '.';
+  var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135);
+  var improved = name + (groundedSummary ? ' — ' + groundedSummary : ' — ' + category);
+  if (city && improved.toLowerCase().indexOf(cityDisplay.toLowerCase()) === -1) improved += ' in ' + cityDisplay;
+  improved = improved.replace(/[.!?]?$/, '.');
   // Only append the trust sentence if the whole thing still fits in 155 chars
   if (trust && trust.length < 100 && (improved.length + trust.length + 2) <= 155) {
     improved += ' ' + trust + '.';
