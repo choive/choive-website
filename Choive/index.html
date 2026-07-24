@@ -3572,75 +3572,43 @@ function showResults(r, jobId) {
         };
       });
     }
-    var legacy = r.multiPlatformRecommendations || {};
-    var consumerRecords = r.consumerAppVerification && typeof r.consumerAppVerification === 'object'
-      ? r.consumerAppVerification : {};
     var statusText = {
       not_configured: 'API not configured',
       failed: 'Measurement failed',
       unmeasured: 'Not measured in this run',
-      no_recommendation: 'No majority recommendation established'
+      no_recommendation: 'Completed'
     };
-    var subjectLaneKey = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    var subjectLaneTokens = String(name || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
-    var subjectLaneAcronym = subjectLaneTokens.length >= 3 && subjectLaneTokens.some(function(token) { return /\d/.test(token); })
-      ? subjectLaneTokens.map(function(token) { return /^\d+$/.test(token) ? token : token.charAt(0); }).join('')
-      : '';
-    function laneNamesSubject(value) {
-      var key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (!key) return false;
-      if (key === subjectLaneKey || (subjectLaneKey.length >= 5 && key.indexOf(subjectLaneKey) !== -1)) return true;
-      return subjectLaneAcronym.length >= 3
-        && /\d/.test(subjectLaneAcronym)
-        && (key.indexOf(subjectLaneAcronym) === 0 || key.lastIndexOf(subjectLaneAcronym) === key.length - subjectLaneAcronym.length);
-    }
+    var totalAppeared = 0;
+    var totalCompleted = 0;
     var cards = laneOrder.map(function(base) {
       var lane = supplied.find(function(item) { return item && item.key === base.key; }) || {};
-      var legacyNames = Array.isArray(legacy[base.key]) ? legacy[base.key].filter(Boolean) : [];
-      var consumerKey = base.key === 'openai' ? 'chatgpt' : base.key;
-      var consumerRecord = consumerRecords[consumerKey] || null;
-      var apiRecommendation = lane.recommendation || legacyNames[0] || '';
-      var recommendation = consumerRecord && consumerRecord.recommendation
-        ? consumerRecord.recommendation : apiRecommendation;
-      var state = recommendation ? 'recommended' : (lane.status || 'unmeasured');
-      var recommendationKey = String(recommendation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      var recommendsSubject = laneNamesSubject(recommendation);
-      var verification = lane.verification && typeof lane.verification === 'object' ? lane.verification : null;
-      var verificationHtml = '';
-      if (recommendation && verification) {
-        verificationHtml = verification.status === 'verified'
-          ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Confirmed as a real category-relevant business</div>'
-          : '<div style="font-size:10px;color:#F0B45A;margin-top:7px;">AI answer recorded · category match not independently confirmed</div>'
-            + (verification.reason ? '<div style="font-size:10px;color:rgba(245,242,238,0.48);line-height:1.45;margin-top:4px;">' + esc(verification.reason) + '</div>' : '');
-      }
-      var aliasHtml = lane.sameBusinessAs
-        ? '<div style="font-size:10px;color:rgba(245,242,238,0.52);margin-top:5px;">Same business identity as ' + esc(lane.sameBusinessAs) + '</div>' : '';
       var visibilityTotal = Number(lane.visibilityTotalQueries || 0);
-      var visibilityHtml = visibilityTotal > 0
-        ? '<div style="font-size:10px;color:rgba(245,242,238,0.52);margin-top:7px;">Unbranded buyer questions: your business appeared in ' + Number(lane.visibilityAppearedCount || 0) + ' of ' + visibilityTotal + '</div>' : '';
+      var visibilityAppeared = Number(lane.visibilityAppearedCount || 0);
+      if (!visibilityTotal) {
+        var storedKey = base.key === 'openai' ? 'openai' : base.key;
+        var storedRun = r.platformSimulations && r.platformSimulations[storedKey];
+        var storedResults = Array.isArray(storedRun && storedRun.results) ? storedRun.results.filter(function(item) {
+          return item && Number(item.sampleCount || 0) > 0
+            && String(item.label || '').toLowerCase().indexOf('branded replacement') === -1;
+        }) : [];
+        visibilityTotal = storedResults.length;
+        visibilityAppeared = storedResults.filter(function(item) { return item.appeared; }).length;
+      }
+      totalAppeared += visibilityAppeared;
+      totalCompleted += visibilityTotal;
+      var resultText = visibilityTotal > 0
+        ? 'Appeared in ' + visibilityAppeared + ' of ' + visibilityTotal
+        : (statusText[lane.status || 'unmeasured'] || 'No completed unbranded probe');
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (recommendation ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
-        + esc(recommendation || statusText[state] || 'Measurement status unavailable') + '</div>'
-        + (recommendsSubject ? '<div style="font-size:10px;color:#72C99A;margin-top:7px;">Your business was the top recommendation</div>' : '')
-        + verificationHtml
-        + aliasHtml
-        + visibilityHtml
-        + (consumerRecord
-          ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#72C99A;margin-top:7px;">Consumer-app record · user supplied</div>'
-            + (apiRecommendation && String(apiRecommendation).toLowerCase() !== String(recommendation).toLowerCase()
-              ? '<div style="font-size:10px;color:rgba(245,242,238,0.48);margin-top:5px;">API measurement: ' + esc(apiRecommendation) + '</div>' : '')
-          : '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">API measurement</div>')
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (visibilityTotal ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
+        + esc(resultText) + '</div>'
+        + '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">Official API probe</div>'
         + '</div>';
     }).join('');
-    var measuredQuestion = supplied.map(function(lane) {
-      return lane && lane.query ? String(lane.query).trim() : '';
-    }).filter(Boolean)[0] || '';
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:10px;">Who each AI recommends for this buyer question</div>'
-      + (measuredQuestion
-        ? '<div style="font-size:12px;color:rgba(245,242,238,0.62);line-height:1.65;margin:-2px 0 12px;">&ldquo;' + esc(measuredQuestion) + '&rdquo;</div>'
-        : '')
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">AI probe coverage</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' completed unbranded API answers. Recommendation names and full answers are shown in the technical appendix.</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
       + '</div>';
   }
@@ -3971,22 +3939,28 @@ function showResults(r, jobId) {
   }
 
   zone.innerHTML =
-    competitorBanner
-    + buildConsumerVerificationBlock()
+    (isPaid ? buildExecutiveVerdict() : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-diagnosis">Diagnosis</a><a href="#report-organic-gap">Discovery</a><a href="#report-score">Score</a><a href="#report-competitors">Competitors</a>'
-      + '<a href="#report-arena">AI Arena</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
+      + '<a href="#report-verdict">Diagnosis</a><a href="#report-score">Score</a><a href="#report-organic-gap">Discovery</a><a href="#report-competitors">Competitors</a>'
+      + '<a href="#report-arena">API Appendix</a><a href="#report-method">Method</a><a href="#report-actions">Actions</a>'
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Roadmap</a><a href="#report-assets">Assets</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
-    + (isPaid ? buildExecutiveVerdict() : '')
     + buildPlatformRecommendationBlock()
-    + (isPaid ? '<div id="report-score">' + scoreHeader + '</div>' : scoreHeader)
-    + buildScoreLabels(r)
-    + buildProgressDelta(r)
-    + [].concat(buildDisplacementBlock(r)).join('')
-    + (isPaid ? '' : buildFreeCompetitorBlock())
-    + [].concat(buildPillarCards(r, isPaid)).join('')
+    + (isPaid
+      ? '<div id="report-score">' + scoreHeader + '</div>'
+        + buildScoreLabels(r)
+        + buildProgressDelta(r)
+        + [].concat(buildDisplacementBlock(r)).join('')
+        + [].concat(buildPillarCards(r, true)).join('')
+        + buildPaidPillarEvidence()
+        + competitorBanner
+      : scoreHeader
+        + buildScoreLabels(r)
+        + buildProgressDelta(r)
+        + [].concat(buildDisplacementBlock(r)).join('')
+        + buildFreeCompetitorBlock()
+        + [].concat(buildPillarCards(r, false)).join(''))
     + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
     + (isPaid ? '' : [].concat(buildShareBlock(jobId, topComp)).join(''))
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
@@ -4070,6 +4044,15 @@ function showResults(r, jobId) {
       + scoreRuleHtml
       + auditHtml
       + '</div>';
+  }
+
+  function buildPaidPillarEvidence() {
+    return '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">How Every Point Was Awarded</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:18px;max-width:760px;">Each pillar shows its recorded finding, the scoring rules applied, the evidence used, and the confidence level. Missing evidence receives no points.</div>'
+      + '<div class="paid-pillars">'
+      + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
+      + pillarDetail('difference','Difference') + pillarDetail('ease','Ease')
+      + '</div></section>';
   }
 
   function readableText(value, sentencesPerBlock) {
@@ -4246,21 +4229,19 @@ function showResults(r, jobId) {
       return !!candidate && !!subject && (candidate === subject || (subject.length >= 5 && candidate.indexOf(subject) !== -1));
     }
     var measuredCount = measured.length;
-    var verdictTitle = measuredCount
-      ? (recommendedOther > 0
-        ? 'Competitors received ' + recommendedOther + ' of ' + measuredCount + ' measured top recommendations.'
-        : (recommendedSubject > 0
-          ? esc(name || 'This business') + ' received ' + recommendedSubject + ' of ' + measuredCount + ' measured top recommendations.'
-          : 'No named top recommendation was established in this run.'))
-      : 'The AI recommendation outcome was not fully measured in this run.';
-    var verdictLead = measuredCount
-      ? esc(name || 'This business') + ' was measured across ' + measuredCount + ' AI platform' + (measuredCount === 1 ? '' : 's') + '. '
-        + (recommendedOther
-          ? recommendedOther + ' named another company as the top recommendation for the measured buyer question' + (recommendedOther === 1 ? '.' : 's.')
-          : recommendedSubject
-            ? recommendedSubject + ' named this business as the top recommendation.'
-            : 'No platform established a named top recommendation in this run.')
-      : 'The verdict combines the four CHOIVE pillars with the competitor and recommendation evidence collected in this diagnostic.';
+    var probeAppeared = 0;
+    var probeCompleted = 0;
+    measuredPlatformRuns().forEach(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      probeCompleted += results.length;
+      probeAppeared += results.filter(function(result) { return result.appeared; }).length;
+    });
+    var verdictTitle = esc(name || 'This business') + ' scored ' + score + ' / 100 for public evidence'
+      + (probeCompleted ? ' and appeared in ' + probeAppeared + ' of ' + probeCompleted + ' completed unbranded API answers.' : '.');
+    var verdictLead = 'The score measures Clarity, Trust, Difference, and Ease from recorded public evidence. '
+      + (probeCompleted
+        ? 'The appearance count measures separate point-in-time API probes and does not change the score.'
+        : 'No unbranded API probe completed, so this run does not support an AI appearance conclusion.');
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     if (marketName && String(marketName).toLowerCase().replace(/[^a-z0-9]/g, '')
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
@@ -4290,7 +4271,7 @@ function showResults(r, jobId) {
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
-      + '<div class="executive-fact"><div class="executive-fact-label">Measured outcome</div><div class="executive-fact-value">' + (measuredCount ? recommendedOther + ' of ' + measuredCount + ' AI platforms recommended another company' : 'Platform recommendations were not fully available') + '</div><div class="executive-fact-copy">This states only what this run measured. It is not influenced by the CHOIVE score.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">API probe coverage</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' completed unbranded answers mentioned the business' : 'No completed unbranded API answer') + '</div><div class="executive-fact-copy">This is a point-in-time API measurement, not a transcript from a public consumer app.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not verified') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately verified') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
@@ -4429,8 +4410,8 @@ function showResults(r, jobId) {
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
       }
-      competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">AI Recommendation Arena</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Each row shows the answer returned by one AI platform. If two platforms name the same company, both answers remain visible. Competitor pillar scores are estimates based on public information, not scores supplied by those companies.</div>'
+      competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Technical Appendix: API-Named Alternatives</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Each row preserves a recommendation returned through an official provider API. These are point-in-time API probes, not transcripts from the public consumer apps. Competitor pillar scores are estimates based on public information, not scores supplied by those companies.</div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
         + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
     }
@@ -4720,8 +4701,7 @@ function showResults(r, jobId) {
   }
 
   var paidSections = isPaid ? (function() {
-    return buildMeasuredDiagnosis()
-      + buildOrganicDiscoveryGap()
+    return buildOrganicDiscoveryGap()
       + buildEvidenceLegend()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">AI Discovery Evidence</div>'
@@ -4733,10 +4713,7 @@ function showResults(r, jobId) {
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>'
       + buildCustomerQuestionReport()
       + buildMeasurementIntegrity()
-      + '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">Why You Score This Way</div><div class="paid-pillars">'
-      + pillarDetail('clarity','Clarity') + pillarDetail('trust','Trust')
-      + pillarDetail('difference','Difference') + pillarDetail('ease','Ease')
-      + '</div></section>'
+      + buildConsumerVerificationBlock()
       + '<section class="pay-section" id="report-competitors"><div class="pay-eyebrow">Competitor Reality</div>'
       + compBlock + extraCompsHtml + '</section>'
       + competitorComparisonBlock
