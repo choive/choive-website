@@ -5,6 +5,11 @@ const { strictMajorityThreshold } = require('./measurement-policy');
 function normalizeName(value) {
   var text = String(value || '').toLowerCase();
   try { text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  // Providers may return the same brand as a name or as its domain.
+  text = text
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\.(?:com|de|net|org|io|ai|co\.uk|co|eu|tv|app)\/?$/i, '');
   return text.replace(/\u00df/g, 'ss').replace(/[^a-z0-9]+/g, '');
 }
 
@@ -22,7 +27,7 @@ function majorityRecommendation(names, completedSamples) {
   // A majority is strictly more than half. Math.ceil(n / 2) incorrectly
   // accepts a 1-1 split when two samples complete.
   var threshold = strictMajorityThreshold(completed);
-  var winnerKey = ranked[0] && completed > 0 && counts[ranked[0]] >= threshold
+  var winnerKey = ranked[0] && completed >= 2 && counts[ranked[0]] >= threshold
     ? ranked[0] : null;
   return {
     name: winnerKey ? displayNames[winnerKey] : null,
