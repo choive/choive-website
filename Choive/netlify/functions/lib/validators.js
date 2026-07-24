@@ -198,6 +198,7 @@ function buildSafeOutput(output) {
     socialSignals:  (output && output.socialSignals && typeof output.socialSignals === 'object') ? output.socialSignals : {},
     summaries:      (output && output.summaries    && typeof output.summaries    === 'object') ? output.summaries    : {},
     signalAudit:    (output && output.signalAudit  && typeof output.signalAudit  === 'object') ? output.signalAudit  : { clarity: [], trust: [], difference: [], ease: [] }
+    ,readyToUseAssets: (output && output.readyToUseAssets && typeof output.readyToUseAssets === 'object') ? output.readyToUseAssets : null
   };
 
   // ── Validate platform statuses ────────────────────────────────────────────
