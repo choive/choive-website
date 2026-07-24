@@ -40,7 +40,7 @@ Matching company names are not merged. Each lane states what that provider retur
 
 An API response is a real provider response for that run, but it is not guaranteed to match every consumer-app session. Consumer apps may use different models, search context, product settings, conversation history, location, or personalization.
 
-CHOIVE records one response for each visibility question. The direct recommendation question normally records three independent responses. A provider-level recommendation requires more than half of the completed responses to name the same company. Failed responses remain failures and are not converted into negative recommendations.
+CHOIVE records one response for each unbranded visibility question. The branded replacement question normally records three independent responses. A provider-level recommendation requires more than half of the completed responses to name the same company. Failed responses remain failures and are not converted into negative recommendations.
 
 ## Competitor definitions
 
