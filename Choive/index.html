@@ -3938,24 +3938,21 @@ function showResults(r, jobId) {
   }
 
   zone.innerHTML =
-    (isPaid ? buildExecutiveVerdict() : competitorBanner)
+    (isPaid
+      ? '<div id="report-score">' + scoreHeader + buildScoreLabels(r) + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict()
+      : competitorBanner)
     + (isPaid && r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">What the evidence says</div>'
       + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This is the main diagnosis from the website checks, publicly available sources, and recorded AI-provider answers. The complete scoring record appears below.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-verdict">Your result</a><a href="#report-score">Your score</a><a href="#report-organic-gap">What AI says</a><a href="#report-competitors">Your competitors</a>'
+      + '<a href="#report-score">Your score</a><a href="#report-verdict">Your result</a><a href="#report-pillars">Why this score</a><a href="#report-organic-gap">What AI says</a><a href="#report-competitors">Your competitors</a>'
       + '<a href="#report-arena">How you compare</a><a href="#simSection">AI platform results</a><a href="#report-method">How this works</a><a href="#report-actions">What to do</a>'
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Your plan</a><a href="#report-assets">Changes to make</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
     + buildPlatformRecommendationBlock()
     + (isPaid
-      ? '<div id="report-score">' + scoreHeader + '</div>'
-        + buildScoreLabels(r)
-        + buildProgressDelta(r)
-        + [].concat(buildDisplacementBlock(r)).join('')
-        + [].concat(buildPillarCards(r, true)).join('')
-        + buildPaidPillarEvidence()
+      ? buildPaidPillarEvidence()
         + competitorBanner
       : scoreHeader
         + buildScoreLabels(r)
@@ -4241,8 +4238,9 @@ function showResults(r, jobId) {
       probeAppeared += platformAppeared;
       if (platformAppeared > 0) probePlatformsAppeared++;
     });
-    var verdictTitle = esc(name || 'This business') + ' scored ' + score + ' out of 100.'
-      + (probeCompleted ? ' AI mentioned this business in ' + probeAppeared + ' of the ' + probeCompleted + ' buying questions CHOIVE tested without putting its name in the question.' : '');
+    var verdictTitle = esc(r.verdictHeadline || (name
+      ? name + ' has specific public-evidence gaps that limit confident recommendations.'
+      : 'This result has specific public-evidence gaps that limit confident recommendations.'));
     var verdictLead = 'The score comes from the publicly available evidence CHOIVE recorded for Clarity, Trust, Difference, and Ease. '
       + (probeCompleted
         ? 'The score and the number of AI mentions are separate measurements. One does not change the other.'
@@ -4718,14 +4716,13 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section answers one question: when an AI provider receives a buying question that does not include the business name, does it mention ' + esc(bizData.name || 'this business') + '? The result appears first. Open the recorded answers only when you want to inspect the evidence.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:block;margin-top:10px;padding:9px 12px;border-left:3px solid var(--ac);background:var(--paper-2);color:var(--tb);font-size:11px;font-weight:600;\">The questions were asked in ' + L[lg] + ' to match the market language recorded for this diagnostic.</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Running live AI queries for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
-      + buildBusinessIntelligence()
       + buildCustomerQuestionReport()
-      + buildMeasurementIntegrity()
       + buildConsumerVerificationBlock()
       + '<section class="pay-section" id="report-competitors"><div class="pay-eyebrow">Competitor Reality</div>'
       + compBlock + extraCompsHtml + '</section>'
       + competitorComparisonBlock
       + dualArenaBlock
+      + buildBusinessIntelligence()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('') + '</div></section>'
       + buildOperatingRoadmap()
@@ -4734,6 +4731,7 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">These changes are based on what CHOIVE found for ' + esc(bizData.name || '') + '. Check every name, location, availability statement, and factual claim before publishing. Text marked for copying is ready after that review. The schema example must be checked and tested by a developer before it goes live.</div>'
       + '<div id="delivContent"></div></section>'
       + buildClosingConclusion()
+      + buildMeasurementIntegrity()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
       + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your analysis</div>'
       + '<div class="pay-cta-body">Download a concise PDF summary of this online analysis. The separate CHOIVE Report is the complete board-ready deliverable.</div>'
