@@ -869,7 +869,7 @@ async function localizeQueries(queries, lang) {
 }
 
 async function applyMarketLanguage(queries, city, forcedLang) {
-  var lang = forcedLang || detectMarketLanguage(city);
+  var lang = forcedLang || 'en';
   if (lang === 'en') return { queries: queries, language: 'en' };
   var translatable = queries.filter(function(q) { return !q.preserveLanguage; });
   var localized = translatable.length ? await localizeQueries(translatable, lang) : [];
