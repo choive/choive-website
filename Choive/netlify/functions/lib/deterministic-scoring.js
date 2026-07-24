@@ -11,6 +11,16 @@ function safeArray(value) { return Array.isArray(value) ? value : []; }
 function safeObject(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
 function clamp(value, max) { return Math.max(0, Math.min(max, Number(value) || 0)); }
 
+var NON_INDEPENDENT_HOSTS = [
+  'linkedin.com', 'youtube.com', 'facebook.com', 'instagram.com', 'tiktok.com',
+  'x.com', 'twitter.com', 'pinterest.com', 'crunchbase.com', 'handelsregister.ai',
+  'northdata.com', 'companieshouse.gov.uk', 'companyhouse.de'
+];
+
+function hostMatches(host, blocked) {
+  return host === blocked || host.endsWith('.' + blocked);
+}
+
 function siteUrl(evidence, suffix) {
   var raw = String(evidence.website || evidence.inferredOfficialSite || '').trim();
   if (!raw) return '';
@@ -83,7 +93,13 @@ function independentResults(evidence, signalType) {
     if (!item || item.signalType !== signalType || !item.link) return false;
     var host = '';
     try { host = new URL(item.link).hostname.replace(/^www\./, ''); } catch (_) {}
-    if (!host || (official && host === official)) return false;
+    var sameOfficialSite = official && (host === official
+      || host.endsWith('.' + official)
+      || official.endsWith('.' + host));
+    var nonIndependent = NON_INDEPENDENT_HOSTS.some(function(blocked) {
+      return hostMatches(host, blocked);
+    });
+    if (!host || sameOfficialSite || nonIndependent) return false;
     var text = String(item.title || '') + ' ' + String(item.snippet || '');
     return !name || text.toLowerCase().indexOf(name) !== -1;
   });
@@ -198,6 +214,32 @@ function applyDeterministicScoring(evidence, result) {
   result.overallScore = Math.round(keys.reduce(function(total, key) {
     return total + Number(result.pillars[key].score || 0);
   }, 0) * 10) / 10;
+  var clarityAudit = audits.clarity;
+  var trustAudit = audits.trust;
+  var differenceAudit = audits.difference;
+  var easeAudit = audits.ease;
+  var reviewsAwarded = trustAudit[0].points + trustAudit[1].points;
+  var independentAwarded = trustAudit[2].points + trustAudit[3].points;
+  if (clarityAudit[1].points === 0 && clarityAudit[4].points > 0) {
+    result.pillars.clarity.finding = 'Offer explained, primary H1 missing';
+  } else if (clarityAudit[1].points === 0) {
+    result.pillars.clarity.finding = 'Primary offer and H1 are not established';
+  } else if (clarityAudit[4].points === 0) {
+    result.pillars.clarity.finding = 'Primary H1 present; offer explanation remains incomplete';
+  } else {
+    result.pillars.clarity.finding = result.pillars.clarity.score >= 19
+      ? 'Offer and audience are clearly explained'
+      : 'Core offer is only partly explained';
+  }
+  result.pillars.trust.finding = reviewsAwarded === 0 && independentAwarded > 0
+    ? 'Independent mentions found; buyer proof missing'
+    : (result.pillars.trust.score >= 18 ? 'Independent trust evidence is established' : 'Independent buyer proof remains limited');
+  result.pillars.difference.finding = differenceAudit[0].points > 0 && differenceAudit[3].points === 0
+    ? 'Specific distinction lacks measurable outcome proof'
+    : (result.pillars.difference.score >= 18 ? 'Specific distinction is supported by proof' : 'Distinctive evidence remains incomplete');
+  result.pillars.ease.finding = result.pillars.ease.score >= 20
+    ? 'Technical access is strongly established'
+    : (result.pillars.ease.score >= 12 ? 'Technical access has specific gaps' : 'Technical access is incomplete');
   if (result.overallScore >= 76) {
     result.verdictLevel = 'present';
     result.verdictHeadline = 'Strong public evidence across the four pillars';
