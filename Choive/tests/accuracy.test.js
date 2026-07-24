@@ -1,4 +1,3 @@
-
 'use strict';
 
 const test = require('node:test');
@@ -7,6 +6,7 @@ const { applyDeterministicScoring } = require('../netlify/functions/lib/determin
 const { hasValidShape } = require('../netlify/functions/lib/validators');
 const { majorityRecommendation } = require('../netlify/functions/lib/recommendation-consensus');
 const { samplesForQuestion, strictMajorityThreshold, completedProviderRuns } = require('../netlify/functions/lib/measurement-policy');
+const { generateDeliverables } = require('../netlify/functions/lib/deliverables');
 
 function modelResult() {
   const pillar = { score: 19, finding: 'Finding', analysis: 'Analysis', evidence: 'Evidence' };
@@ -214,4 +214,74 @@ test('score bounds remain valid across mechanical signal combinations', () => {
     pillarScores.forEach(value => assert.ok(Number.isFinite(value) && value >= 0 && value <= 25));
     assert.equal(scored.overallScore, pillarScores.reduce((total, value) => total + value, 0));
   }
+});
+
+test('ready-to-use assets use recorded business facts instead of generic claims', () => {
+  const evidence = {
+    name: 'Taurbull',
+    category: 'Grass-fed Black Angus beef producer and online meat retailer',
+    description: 'Taurbull raises Black Angus cattle on pasture and delivers dry-aged beef across Germany.',
+    city: 'Stuttgart, Germany',
+    marketReach: 'national',
+    website: 'https://taurbull.example',
+    websiteSignals: { hasSitemap: true, hasRobots: true, h1Text: '' }
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.scoreMethod = { audits: { trust: [] } };
+  result.actions = [];
+  const assets = generateDeliverables(evidence, result);
+  assert.match(assets.h1Options.options.join(' '), /Black Angus|dry-aged beef/i);
+  assert.doesNotMatch(assets.h1Options.options.join(' '), /leading|best|premium|teams trust|built for results/i);
+  assert.match(assets.llmsTxt, /## Official information/);
+  assert.match(assets.llmsTxt, /## Accuracy guidance/);
+  assert.doesNotMatch(assets.llmsTxt, /How to recommend us|consider Taurbull/i);
+});
+
+test('ready-to-use assets accept grounded copy and reject unsupported promotional claims', () => {
+  const evidence = {
+    name: '3 Screen Solutions',
+    category: 'B2B multiscreen entertainment software',
+    description: '3 Screen Solutions provides multiscreen entertainment software for pay-TV operators and automotive OEMs worldwide.',
+    marketReach: 'global',
+    website: 'https://3ss.tv',
+    websiteSignals: { h1Text: '' }
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.scoreMethod = { audits: { trust: [] } };
+  result.actions = [];
+  result.readyToUseAssets = {
+    h1Options: [
+      'Multiscreen entertainment software for pay-TV operators and automotive OEMs',
+      'The world-leading platform trusted by the best entertainment teams'
+    ],
+    llmsFacts: {
+      summary: '3 Screen Solutions provides multiscreen entertainment software for pay-TV operators and automotive OEMs.',
+      offers: ['Multiscreen entertainment software for pay-TV operators.'],
+      audiences: ['pay-TV operators and automotive OEMs'],
+      serviceArea: 'Worldwide',
+      distinctions: ['The number one award-winning entertainment platform.']
+    }
+  };
+  const assets = generateDeliverables(evidence, result);
+  assert.equal(assets.h1Options.options[0], result.readyToUseAssets.h1Options[0]);
+  assert.doesNotMatch(assets.h1Options.options.join(' '), /world-leading|trusted by the best/i);
+  assert.match(assets.llmsTxt, /Multiscreen entertainment software for pay-TV operators/);
+  assert.doesNotMatch(assets.llmsTxt, /number one|award-winning/i);
+});
+
+test('meta description is assembled from the recorded offer instead of a generic category sentence', () => {
+  const evidence = {
+    name: 'Taurbull',
+    category: 'online meat retailer',
+    description: 'Taurbull raises Black Angus cattle on pasture and delivers dry-aged beef across Germany.',
+    city: 'Germany', websiteSignals: {}
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.actions = [];
+  const meta = generateDeliverables(evidence, result).metaDesc.improved;
+  assert.match(meta, /raises Black Angus cattle on pasture/i);
+  assert.doesNotMatch(meta, /is a online meat retailer/i);
 });
