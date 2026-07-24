@@ -223,11 +223,6 @@ function buildSafeOutput(output) {
   safe.pillars.difference.score = ds;
   safe.pillars.ease.score       = es;
 
-  // ── Market tier ───────────────────────────────────────────────────────────
-  const marketTier = safe.marketPosition.tier;
-  const isDominant = marketTier === 'dominant';
-  const isStrong   = marketTier === 'strong';
-
   // ── Difference floor: dominant/strong brands ──────────────────────────────
   safe.pillars.difference.score = ds;
 
@@ -236,36 +231,6 @@ function buildSafeOutput(output) {
 
   // ── Overall score ─────────────────────────────────────────────────────────
   safe.overallScore = cs + ts + ds + es;
-
-  // Structural evidence fallback only. Actual platform measurements are
-  // attached later by the background diagnostic.
-  if (isDominant) {
-    safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'Strong public evidence across all four pillars';
-  } else if (isStrong && safe.overallScore >= 40) {
-    safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'Strong public evidence with specific gaps';
-  } else if (safe.overallScore <= 30) {
-    safe.verdictLevel    = 'absent';
-    safe.verdictHeadline = 'Public evidence is incomplete';
-  } else if (
-    safe.overallScore <= 55 ||
-    es < 12 ||
-    ['upper_mid', 'mid', 'weak', 'absent', 'unknown'].includes(marketTier)
-  ) {
-    safe.verdictLevel    = 'weak';
-    // This exact phrase was independently banned at the MODEL level in
-    // claude.js's prompt (AVOID AMBIGUOUS NEGATION rule) \u2014 but this hardcoded
-    // override in buildSafeOutput runs AFTER the model responds and was
-    // silently replacing whatever headline the model correctly wrote,
-    // completely bypassing that fix for every result landing in this score
-    // range. "Not consistently X" reads as "usually X, sometimes not" \u2014
-    // backwards for a weak-tier business that is not the default choice.
-    safe.verdictHeadline = 'Public evidence needs improvement';
-  } else {
-    safe.verdictLevel    = 'present';
-    safe.verdictHeadline = 'Public evidence is largely established';
-  }
 
   return safe;
 }
