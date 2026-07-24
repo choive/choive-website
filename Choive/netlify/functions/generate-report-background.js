@@ -1059,8 +1059,27 @@ var CSS = [
   var compWhy  = safeStr(disp.competitorWhy  || comp0.advantage || comp0.analysis || comp0.why, '');
   var compQuery= safeStr(disp.competitorQuery || comp0.queryContext, '');
 
-  // Competitor scores (if available)
-  var compScores = safeObj(comp0.scores || disp.competitorScores || {});
+  // Competitor scores (if available). New diagnostics store separate verified
+  // head-to-head and market roles; older diagnostics may use the legacy fields.
+  var roleComparisonEntries = safeArr(safeObj(r.competitorComparison).entries);
+  var directRoleComparison = roleComparisonEntries.filter(function(entry) {
+    return safeStr(safeObj(entry).role, '') === 'head_to_head';
+  })[0] || {};
+  var marketRoleComparison = roleComparisonEntries.filter(function(entry) {
+    return safeStr(safeObj(entry).role, '') === 'market';
+  })[0] || {};
+  function flattenRoleScores(entry) {
+    var pillars = safeObj(safeObj(safeObj(entry).score).pillars);
+    return {
+      clarity: safeNum(safeObj(pillars.clarity).competitor, 0),
+      trust: safeNum(safeObj(pillars.trust).competitor, 0),
+      difference: safeNum(safeObj(pillars.difference).competitor, 0),
+      ease: safeNum(safeObj(pillars.ease).competitor, 0)
+    };
+  }
+  var verifiedDirectScores = flattenRoleScores(directRoleComparison);
+  var hasVerifiedDirectScores = verifiedDirectScores.clarity || verifiedDirectScores.trust || verifiedDirectScores.difference || verifiedDirectScores.ease;
+  var compScores = hasVerifiedDirectScores ? verifiedDirectScores : safeObj(comp0.scores || disp.competitorScores || {});
   var compCl = safeNum(compScores.clarity,    0);
   var compTr = safeNum(compScores.trust,      0);
   var compDi = safeNum(compScores.difference, 0);
@@ -1813,10 +1832,19 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     }
     // Pillar gap chart if scores available
     if (compCl || compTr || compDi || compEa) {
-      H.push('<div class="eyebrow">Pillar-by-pillar gap</div>');
+      H.push('<div class="eyebrow">Head-to-head competitor comparison</div>');
       H.push('<div style="font-size:11px;color:#67676E;line-height:1.65;padding:10px 12px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:12px;">Your scores use the complete CHOIVE evidence rubric. Competitor scores are estimates derived from available website and search evidence using a lighter comparison method; they are not supplied or verified by the competitor and do not affect your CHOIVE score. This chart indicates relative position, not a precise point difference.</div>');
       H.push('<div class="diag-wrap">');
       H.push(buildGapChartSVG(cl, tr, di, ea, compCl, compTr, compDi, compEa, bizName, compName));
+      H.push('</div>');
+    }
+    var marketRoleScores = flattenRoleScores(marketRoleComparison);
+    var marketRoleName = safeStr(safeObj(marketRoleComparison).name, '');
+    if (marketRoleName && (marketRoleScores.clarity || marketRoleScores.trust || marketRoleScores.difference || marketRoleScores.ease)) {
+      H.push('<div class="eyebrow">Market competitor comparison</div>');
+      H.push('<div style="font-size:11px;color:#67676E;line-height:1.65;padding:10px 12px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:12px;">' + esc(marketRoleName) + ' competes for the same buyer attention or budget but is not presented as an exact replacement. Its pillar values are estimates from public evidence and show relative position, not an audited score.</div>');
+      H.push('<div class="diag-wrap">');
+      H.push(buildGapChartSVG(cl, tr, di, ea, marketRoleScores.clarity, marketRoleScores.trust, marketRoleScores.difference, marketRoleScores.ease, bizName, marketRoleName));
       H.push('</div>');
     }
     H.push('<div style="padding:22px 26px;background:#F5F2EE;border-left:3px solid #C9A86A;">');
