@@ -7,6 +7,7 @@ const { hasValidShape } = require('../netlify/functions/lib/validators');
 const { majorityRecommendation } = require('../netlify/functions/lib/recommendation-consensus');
 const { samplesForQuestion, strictMajorityThreshold, completedProviderRuns } = require('../netlify/functions/lib/measurement-policy');
 const { generateDeliverables } = require('../netlify/functions/lib/deliverables');
+const { detectMarketLanguage } = require('../netlify/functions/lib/simulation');
 
 function modelResult() {
   const pillar = { score: 19, finding: 'Finding', analysis: 'Analysis', evidence: 'Evidence' };
@@ -284,4 +285,11 @@ test('meta description is assembled from the recorded offer instead of a generic
   const meta = generateDeliverables(evidence, result).metaDesc.improved;
   assert.match(meta, /raises Black Angus cattle on pasture/i);
   assert.doesNotMatch(meta, /is a online meat retailer/i);
+});
+
+test('market language detection recognizes major Indian locations as Hindi', () => {
+  assert.equal(detectMarketLanguage('New Delhi, India'), 'hi');
+  assert.equal(detectMarketLanguage('Mumbai'), 'hi');
+  assert.equal(detectMarketLanguage('Bengaluru, India'), 'hi');
+  assert.equal(detectMarketLanguage('Global'), 'en');
 });
