@@ -1814,6 +1814,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     // Pillar gap chart if scores available
     if (compCl || compTr || compDi || compEa) {
       H.push('<div class="eyebrow">Pillar-by-pillar gap</div>');
+      H.push('<div style="font-size:11px;color:#67676E;line-height:1.65;padding:10px 12px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:12px;">Your scores use the complete CHOIVE evidence rubric. Competitor scores are estimates derived from available website and search evidence using a lighter comparison method; they are not supplied or verified by the competitor and do not affect your CHOIVE score. This chart indicates relative position, not a precise point difference.</div>');
       H.push('<div class="diag-wrap">');
       H.push(buildGapChartSVG(cl, tr, di, ea, compCl, compTr, compDi, compEa, bizName, compName));
       H.push('</div>');
