@@ -3962,7 +3962,30 @@ function showResults(r, jobId) {
         + '</div>'
         + '</div>')
   
-  + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
+      + buildPlatformRecommendationBlock()
+    + (isPaid
+      ? buildPaidPillarEvidence()
+        + competitorBanner
+      : scoreHeader
+        + buildScoreLabels(r)
+        + buildProgressDelta(r)
+        + [].concat(buildDisplacementBlock(r)).join('')
+        + buildFreeCompetitorBlock()
+        + [].concat(buildPillarCards(r, false)).join(''))
+    + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
+    + (isPaid ? '' : [].concat(buildShareBlock(jobId, topComp)).join(''))
+    + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
+        + '<div class="lead-capture-inner">'
+        + '<div class="lead-capture-eyebrow">Save your result</div>'
+        + '<div class="lead-capture-headline">Get a link back to this result by email.</div>'
+        + '<div class="lead-capture-sub">Enter your email and we\'ll send you a permanent link to this diagnostic — so you can return to it any time. Free.</div>'
+        + '<div class="lead-capture-form">'
+        + '<input type="email" id="leadEmail" placeholder="your@email.com" class="lead-email-input" />'
+        + '<button class="lead-submit-btn" onclick="submitLeadEmail()">Send my report →</button>'
+        + '</div>'
+        + '<div id="leadMsg" class="lead-msg"></div>'
+        + '</div>'
+        + '</div>')'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
         + '<div class="paywall-headline">' + (topComp ? 'See exactly how ' + esc(topComp) + ' compares.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
         + '<div class="paywall-body">' + (topComp ? 'Your scores show the gap. The Analysis shows exactly how to close it — ranked steps for each pillar, specific actions, and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.' : 'The Analysis contains ranked actions for each pillar — specific, sequenced steps and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.') + '</div>'
