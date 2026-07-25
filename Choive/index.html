@@ -3659,23 +3659,17 @@ function showResults(r, jobId) {
     var normalizedLeader = norm(cd.aiRecommends || '').replace(/\s+/g, '');
     var isConfirmedRecommendationLeader = named === true && normalizedLeader && normalizedLeader === normalizedTop;
     if (isConfirmedRecommendationLeader) {
-      // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
+      // CONFIRMED: AI consistently recommended this competitor over the subject business.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI-recommended competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
-        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     } else {
-      // UNCONFIRMED this sample: different headline entirely \u2014 an open
-      // contest, not a false alarm. Urgency comes from the stakes being live
-      // and undecided, not from a claim the evidence doesn't support.
+      // UNCONFIRMED: a competitor was named but not consistently recommended across all platforms.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,242,238,0.5);margin-bottom:6px;">Competitor found in market</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
-        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     }
@@ -3954,14 +3948,7 @@ function showResults(r, jobId) {
       ? buildPaidPillarEvidence()
         + competitorBanner
       : scoreHeader
-        + buildScoreLabels(r)
-        + buildGapBlock(r)
-        + buildProgressDelta(r)
-        + [].concat(buildDisplacementBlock(r)).join('')
-        + buildFreeCompetitorBlock()
-        + [].concat(buildPillarCards(r, false)).join(''))
     + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
-    + (isPaid ? '' : [].concat(buildShareBlock(jobId, topComp)).join(''))
     + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
         + '<div class="lead-capture-inner">'
         + '<div class="lead-capture-eyebrow">Save your result</div>'
