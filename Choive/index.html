@@ -3097,8 +3097,8 @@ function buildScoreLabels(r) {
       <div class="score-label-val ${strength.cls}">${strength.label}</div>
     </div>
     <div class="score-label-row">
-    <div class="score-label-key">How clearly this business can be understood and verified</div>
-    <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
+      <div class="score-label-key">How clearly AI can understand this business</div>
+      <div class="score-label-val ${readabilityCls}">${readabilityLabel}</div>
     </div>
     <div class="score-label-row">
       <div class="score-label-key">How often measured AI providers recommended another business</div>
@@ -3472,12 +3472,12 @@ function showResults(r, jobId) {
   // The score describes the business evidence only. Platform recommendations
   // are reported separately from the measured platform responses.
   const scoreLabel = score >= 76
-    ? 'Strong publicly available evidence supports this ' + subjectNoun + ' being understood, verified, and selected.'
+    ? 'AI can clearly understand this ' + subjectNoun + ' and find strong publicly available evidence that supports it.'
     : score >= 56
-      ? 'This ' + subjectNoun + ' is findable, but some evidence that buyers and AI systems use to verify it is missing.'
+      ? 'AI can find and understand this ' + subjectNoun + ', but some evidence that buyers and AI systems use to verify it is missing.'
       : score >= 31
-        ? 'This ' + subjectNoun + ' is identifiable, but the publicly checkable evidence needed to support a confident recommendation is incomplete.'
-        : 'The publicly available evidence is not yet sufficient for this ' + subjectNoun + ' to be consistently understood, verified, and selected.';
+        ? 'AI can identify this ' + subjectNoun + ', but CHOIVE did not find enough clear, independently checkable evidence to support a reliable recommendation.'
+        : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this ' + subjectNoun + '.';
 
   function buildApiMeasurementSummary() {
     var labels = { claude:'Claude', openai:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini' };
@@ -3659,17 +3659,23 @@ function showResults(r, jobId) {
     var normalizedLeader = norm(cd.aiRecommends || '').replace(/\s+/g, '');
     var isConfirmedRecommendationLeader = named === true && normalizedLeader && normalizedLeader === normalizedTop;
     if (isConfirmedRecommendationLeader) {
-      // CONFIRMED: AI consistently recommended this competitor over the subject business.
+      // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">AI-recommended competitor</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
+        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     } else {
-      // UNCONFIRMED: a competitor was named but not consistently recommended across all platforms.
+      // UNCONFIRMED this sample: different headline entirely \u2014 an open
+      // contest, not a false alarm. Urgency comes from the stakes being live
+      // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
-        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,242,238,0.5);margin-bottom:6px;">Competitor found in market</div>'
+        + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:-0.02em;margin-bottom:6px;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
+        + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
     }
@@ -3944,25 +3950,7 @@ function showResults(r, jobId) {
       + (hasCustomerQuestionResult() ? '<a href="#report-customer-question">Your Question</a>' : '')
       + '<a href="#report-roadmap">Your plan</a><a href="#report-assets">Changes to make</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
-      + (isPaid
-      ? buildPaidPillarEvidence()
-        + competitorBanner
-      : scoreHeader
-    + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
-    + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
-        + '<div class="lead-capture-inner">'
-        + '<div class="lead-capture-eyebrow">Save your result</div>'
-        + '<div class="lead-capture-headline">Get a link back to this result by email.</div>'
-        + '<div class="lead-capture-sub">Enter your email and we\'ll send you a permanent link to this diagnostic — so you can return to it any time. Free.</div>'
-        + '<div class="lead-capture-form">'
-        + '<input type="email" id="leadEmail" placeholder="your@email.com" class="lead-email-input" />'
-        + '<button class="lead-submit-btn" onclick="submitLeadEmail()">Send my report →</button>'
-        + '</div>'
-        + '<div id="leadMsg" class="lead-msg"></div>'
-        + '</div>'
-        + '</div>')
-  
-      + buildPlatformRecommendationBlock()
+    + buildPlatformRecommendationBlock()
     + (isPaid
       ? buildPaidPillarEvidence()
         + competitorBanner
@@ -3985,7 +3973,9 @@ function showResults(r, jobId) {
         + '</div>'
         + '<div id="leadMsg" class="lead-msg"></div>'
         + '</div>'
-        + '</div>')'
+        + '</div>')
+  
+  + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
         + '<div class="paywall-headline">' + (topComp ? 'See exactly how ' + esc(topComp) + ' compares.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
         + '<div class="paywall-body">' + (topComp ? 'Your scores show the gap. The Analysis shows exactly how to close it — ranked steps for each pillar, specific actions, and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.' : 'The Analysis contains ranked actions for each pillar — specific, sequenced steps and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.') + '</div>'
