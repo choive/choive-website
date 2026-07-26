@@ -34,16 +34,15 @@ async function runQuery(systemPrompt, userQuery, useSearch) {
   try {
     var body = {
       model: ANTHROPIC_MODEL,
-      max_tokens: useSearch ? 1600 : 400,
+      max_tokens: useSearch ? 900 : 400,
       temperature: 0,
       system: systemPrompt,
       messages: [{ role: 'user', content: userQuery }]
     };
     if (useSearch) {
-      // Three searches are sufficient to ground a buyer recommendation while
-      // preventing a single question from expanding into 8-10 searches and
-      // hundreds of thousands of billed input tokens.
-      body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+      // One search keeps each recorded answer live-grounded without allowing
+      // a six-call measurement set to expand into eighteen searches.
+      body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }];
     }
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -869,7 +868,7 @@ async function localizeQueries(queries, lang) {
 }
 
 async function applyMarketLanguage(queries, city, forcedLang) {
-  var lang = forcedLang || 'en';
+  var lang = forcedLang || detectMarketLanguage(city);
   if (lang === 'en') return { queries: queries, language: 'en' };
   var translatable = queries.filter(function(q) { return !q.preserveLanguage; });
   var localized = translatable.length ? await localizeQueries(translatable, lang) : [];
