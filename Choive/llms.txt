@@ -1,240 +1,127 @@
 # CHOIVE
-# https://choive.com/llms.txt
 
-CHOIVE is a diagnostic system that shows why a business 
-is not being recommended by AI — and what to fix.
+> CHOIVE checks how clearly public information explains and supports a business. It also records answers from Claude, ChatGPT, Perplexity, and Gemini through their provider APIs.
 
----
+Website: https://choive.com/
+Method: https://choive.com/methodology
+Report: https://choive.com/report
+Contact: hello@choive.com
 
-## THE CORE PROBLEM
+## What CHOIVE does
 
-When someone asks ChatGPT, Claude, Perplexity, or Gemini 
-to recommend a business, the AI picks one answer. 
-Most businesses never get picked.
+CHOIVE is an AI visibility and business evidence diagnostic.
 
-This is not always because the business is bad.
-It is because the AI cannot find enough clear, verified 
-information about the business to trust it.
+It checks four areas:
 
-CHOIVE finds out exactly why. It checks what each AI 
-system sees when asked about a business. It scores what 
-is working and what is missing. It names who is winning 
-instead. It delivers the specific changes and ready-to-use 
-files needed to fix it.
+- Clarity: Can people understand what the business does and who it serves?
+- Trust: Do reliable public sources support the business's claims?
+- Difference: Is there a specific, supported reason to choose the business?
+- Ease: Can people and automated systems find, read, and verify the information?
 
----
+CHOIVE combines these four areas into a score out of 100.
 
-## WHAT CHOIVE IS NOT
+The score measures public evidence. It does not control what an AI provider says.
 
-CHOIVE is not a marketing agency.
-CHOIVE is not an SEO tool.
-CHOIVE is not a consulting service.
-CHOIVE is not a ranking tool.
+## AI provider measurements
 
-It is a diagnostic system.
-It explains what is true, why it is true, 
-and what must change.
+CHOIVE sends buyer questions to the official APIs provided by Anthropic, OpenAI, Perplexity, and Google.
 
----
+Each provider answers separately. A completed answer may mention the business, mention another business, mention several businesses, or name no business.
 
-## HOW IT WORKS — THREE LEVELS
+These are recorded API measurements. They are not transcripts from the public Claude, ChatGPT, Perplexity, or Gemini apps. Public apps may return different answers.
 
-### Level 1: Free Diagnostic
+A failed provider request stays marked as failed. CHOIVE does not treat a failed request as proof that the business was absent.
 
-Anyone can run a free diagnostic at choive.com.
-No account needed. Takes about 45 seconds.
+## The free diagnostic
 
-The business enters: name, category, location, website, 
-and where people can choose them.
+The free diagnostic checks:
 
-CHOIVE asks Claude, ChatGPT, Perplexity, and Gemini 
-the same question a real buyer would ask.
-It records each answer through the official AI provider 
-systems — not the consumer apps.
-It shows whether the business appeared in the answer 
-or whether a competitor appeared instead.
-It gives a CHOIVE Score and a short breakdown.
+- the business's website and public information;
+- recorded answers from available AI providers;
+- the four CHOIVE pillars;
+- a verified head-to-head competitor when enough evidence exists; and
+- the main evidence gaps found during the run.
 
-The free result shows the score, the top competitor 
-AI recommended, and a summary of what is missing.
+No account is required.
 
-### Level 2: Full Analysis (paid)
+## The full analysis
 
-The full analysis goes deeper on every finding.
-It shows the complete evidence behind each score.
-It names the exact competitors AI recommended, 
-at which position, in which recorded query.
-It explains in plain language why each finding 
-happened — not just what the finding is.
-It delivers five ready-to-use files.
-It provides a 30/60/90 day roadmap broken 
-down week by week with completion checks.
+The paid analysis explains:
 
-### Level 3: CHOIVE Report
+- the evidence behind every awarded score point;
+- which provider questions completed;
+- which completed answers mentioned the business;
+- which companies were named in the recorded answers;
+- the verified head-to-head and wider market competitors;
+- what the business can change first; and
+- how to confirm that each change is complete.
 
-A complete branded PDF version of the full analysis.
-Designed to share with a team, agency, or board.
+The analysis may include ready-to-use website assets. Every asset must use facts recorded during the diagnostic. A business or developer must check those facts before publishing.
 
----
+## The CHOIVE Report
 
-## THE CHOIVE SCORE
+The CHOIVE Report is a branded PDF based on the saved diagnostic evidence.
 
-The CHOIVE Score is a number out of 100.
-It measures four things:
+It is designed for owners, teams, agencies, and decision-makers who need a shareable record of the findings and actions.
 
-CLARITY (out of 25)
-Is it immediately clear what the business does, 
-who it serves, and where?
-A clear business is easy for AI to describe accurately.
+## How the score works
 
-TRUST (out of 25)
-Has anyone outside the business confirmed it is good?
-This includes reviews with visible review counts, 
-press mentions, named client outcomes, 
-and third-party citations AI can verify.
-Without independent proof, AI will not name 
-a business when a buyer is deciding.
+### Clarity — 25 points
 
-DIFFERENCE (out of 25)
-Is there a clear, specific reason to choose this 
-business over the next one?
-Not a claim. A verifiable fact.
-Transaction volume. Years of operation. 
-A named specialism. A measurable outcome.
+Measures whether the business, offer, audience, and market are explained clearly.
 
-EASE (out of 25)
-Can AI systems actually read, index, 
-and reference the website?
-This includes: schema markup, llms.txt presence, 
-meta descriptions, page structure, and whether 
-any AI crawlers are blocked in robots.txt.
+### Trust — 25 points
 
----
+Measures confirmed reviews, independent coverage, credentials, named customers, documented outcomes, and other relevant public proof.
 
-## WHAT THE FULL ANALYSIS RESULT CONTAINS
+Missing or unavailable evidence does not automatically mean the evidence does not exist. It means CHOIVE did not confirm it during that run.
 
-### The Verdict
-The score. The score change since the last run. 
-The benchmark: businesses that appear consistently 
-in AI answers score above 62 across all four pillars. 
-One sentence stating what is true right now.
+### Difference — 25 points
 
-### The Competition
-The head-to-head competitor AI named instead — 
-with the exact position it appeared in each 
-recorded query (position 1, 3, 5, etc.).
-The market competitor that matched all 
-five comparison tests.
-A side-by-side pillar comparison showing 
-exactly where the gap is largest.
+Measures whether public evidence supports a meaningful reason to choose the business over alternatives.
 
-### What AI Actually Said
-The 12 recorded AI answers across Claude, ChatGPT, 
-Perplexity, and Gemini.
-The exact question asked each time.
-Whether the business appeared or not.
-Who appeared instead.
+### Ease — 25 points
 
-### Why This Is Happening
-The evidence behind each pillar score.
-Each finding is a fact found during the diagnostic run — 
-not an estimate or an opinion.
-Examples: no press mention found in search evidence, 
-Google review count not confirmed, Google-Extended 
-blocked in robots.txt preventing Gemini from indexing.
+Measures whether the website supplies clear page information, useful structured data, accessible content, and consistent business details.
 
-### Ready-To-Use Assets
-Five files written specifically for this business 
-based on the diagnostic findings:
+## Competitor definitions
 
-llms.txt — a structured file for AI systems to read, 
-ready to upload to the website root.
+Head-to-head competitor: A separately researched business offering a close substitute to the same type of customer in the same serviceable market.
 
-H1 options — three rewritten homepage headline options 
-that name the offer and the buyer without unsupported 
-claims.
+Market competitor: A business competing for the same customers, attention, or budget without being an exact replacement.
 
-Meta description — one version ready to paste into 
-website SEO settings.
+AI-named alternative: A company named in a completed provider API answer. It does not automatically become the verified head-to-head or market competitor.
 
-Schema markup — JSON-LD structured data ready 
-for a developer to validate and publish.
+## Evidence rules
 
-Customer evidence template — the exact format 
-to publish client proof that AI systems can read 
-and reference independently.
+CHOIVE separates confirmed evidence, model interpretation, and unavailable evidence.
 
-### Priority Actions
-Labeled QUICK WIN, CRITICAL, or MEDIUM.
-Each action states: what to do, why it matters, 
-and how to verify it is complete.
-Quick wins are actions that can be done in minutes 
-with no developer and no cost.
+Every awarded point should have a rule, evidence record, source, verification type, and confidence level.
 
-### 30/60/90 Day Roadmap
-Week-by-week sequence.
-Each task labeled: YOU CAN DO THIS 
-or FORWARD TO DEVELOPER.
-Each task has a completion check — 
-a specific, observable outcome that confirms the task is done.
+CHOIVE does not promise future rankings, revenue, recommendations, or a future score.
 
-### What AI Would Say After Changes
-A simulated AI response showing what ChatGPT or Claude 
-would say about the business once the priority 
-actions are completed. This is what the business 
-is working toward.
+CHOIVE does not claim that one website change will cause an AI provider to recommend a business.
 
-### Technical Evidence
-Platform measurement ledger showing coverage 
-across 4 platforms and 4 pillars.
-Report confidence level.
-Method and limitations.
+## Website assets
 
----
+An analysis may include:
 
-## KEY TERMS
+- an llms.txt draft;
+- homepage headline options;
+- a meta description;
+- JSON-LD structured data; and
+- a customer evidence template.
 
-CHOIVE Score: the business's total score out of 100 
-across Clarity, Trust, Difference, and Ease.
+An llms.txt file is a voluntary reference file. CHOIVE does not claim that every AI system reads or uses it.
 
-Selection gap: the difference between what 
-the business gives AI to work with 
-and what AI needs to recommend it.
+Google-Extended controls whether website content may be used to improve certain Gemini models. Blocking Google-Extended does not prove that a website is excluded from Gemini answers or Google Search.
 
-Head-to-head competitor: the specific business 
-AI named instead when asked about this business 
-and its exact category in its exact market.
+## Who CHOIVE is for
 
-Market competitor: the business that matched 
-all five category comparison tests — 
-same product type, same buyer tier, 
-same business model, same geography.
+CHOIVE can diagnose a business, product, service, creator, personal brand, or organization.
 
-Quick win: an action that takes less than 
-10 minutes, requires no developer, 
-and produces a measurable result.
+It supports local, regional, national, international, and global markets.
 
-llms.txt: a structured text file placed at 
-the root of a website that tells AI systems 
-the verified facts about a business — 
-what it does, who it serves, 
-and what evidence supports it.
+## One sentence
 
----
-
-## WHO CHOIVE IS FOR
-
-Businesses that are good but not getting enough clients.
-Businesses where competitors seem to be winning 
-without a clear reason why.
-Businesses that have never checked what AI says 
-about them — or what AI says instead of them.
-Businesses where one missed client recommendation 
-costs more than the diagnostic.
-
----
-
-## ONE SENTENCE
-
-CHOIVE shows why AI does not recommend your business 
-and gives you exactly what is needed to change that.
+CHOIVE records AI provider answers, checks the public evidence behind a business, and shows what can be improved and verified.
