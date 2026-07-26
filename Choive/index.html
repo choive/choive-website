@@ -4263,8 +4263,10 @@ function showResults(r, jobId) {
     var probeAppeared = 0;
     var probeCompleted = 0;
     var probePlatformsAppeared = 0;
+    var completedPlatforms = 0;
     measuredPlatformRuns().forEach(function(item) {
       var results = completedUnbrandedResults(item.run);
+      if (results.length > 0) completedPlatforms++;
       probeCompleted += results.length;
       var platformAppeared = results.filter(function(result) { return result.appeared; }).length;
       probeAppeared += platformAppeared;
@@ -4272,25 +4274,25 @@ function showResults(r, jobId) {
     });
     var verdictTitle = esc(probeCompleted
       ? (probeAppeared === 0
-        ? (name || 'This business') + ' was absent from every completed buying-question answer in this diagnostic.'
-        : (name || 'This business') + ' appeared in ' + probeAppeared + ' of ' + probeCompleted + ' completed buying-question answers.')
-      : (r.verdictHeadline || 'This run did not complete enough buying-question measurements for an AI-mention verdict.'));
+        ? 'None of the completed AI answers mentioned ' + (name || 'this business') + '.'
+        : 'AI mentioned ' + (name || 'this business') + ' in ' + probeAppeared + ' of ' + probeCompleted + ' completed answers.')
+      : (r.verdictHeadline || 'Not enough AI answers were completed to give a reliable visibility result.'));
     var verdictLead = (topComp
-      ? 'The verified head-to-head competitor is ' + topComp + '. '
+      ? topComp + ' is the closest verified competitor. '
       : '')
-      + 'The CHOIVE score shows what information people and AI can find, check, and understand about this business. '
+      + 'The CHOIVE score measures how clearly this business is explained, how well public sources support its claims, what makes it different, and how easy it is to verify online. '
       + (probeCompleted
-        ? 'The score and the recorded AI mentions are separate measurements.'
-        : 'Run the diagnostic again before making a recommendation-specific claim.');
+        ? 'The score does not decide which businesses the AI providers mention.'
+        : 'Run the diagnostic again before drawing a conclusion about AI visibility.');
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     if (marketName && String(marketName).toLowerCase().replace(/[^a-z0-9]/g, '')
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
     var competitorCopy = topComp
-      ? 'Sells the same type of offer to the same buyer and could appear in the same purchasing decision'
-      : 'The available evidence was insufficient to verify a direct replacement';
+      ? 'Offers a similar solution to the same type of customer. A customer could compare both businesses before choosing'
+      : 'CHOIVE could not verify a business offering a close replacement';
     var marketCopy = marketName
-      ? 'Competes for the same buyer attention or budget but is not an exact replacement'
-      : 'The available evidence did not support naming a separate market benchmark';
+      ? 'Competes for the same customers or budget, but does not offer an exact replacement'
+      : 'CHOIVE could not verify a separate competitor in the wider market';
     var pillarKeys = [
       { key:'clarity', label:'Clarity' },
       { key:'trust', label:'Trust' },
@@ -4307,11 +4309,11 @@ function showResults(r, jobId) {
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
       + '<div class="pay-eyebrow">Your Result</div>'
-      + (probeCompleted ? '<div class="verdict-headline-label">Mentioned by ' + probePlatformsAppeared + ' of ' + completedPlatforms + ' AI providers that completed the buying-question test</div>' : '')
+      + (probeCompleted ? '<div class="verdict-headline-label">Found by ' + probePlatformsAppeared + ' of ' + completedPlatforms + ' AI providers tested</div>' : '')
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
-      + '<div class="executive-fact"><div class="executive-fact-label">When AI was asked buying questions</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' recorded answers mentioned the business' : 'No buying-question result was completed') + '</div><div class="executive-fact-copy">These answers came from provider APIs during this diagnostic. They are separate from the answers a person may see in the public AI apps.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Did AI mention this business?</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' completed answers mentioned it' : 'No AI answer was completed') + '</div><div class="executive-fact-copy">CHOIVE recorded these answers through each provider\'s API. The public AI apps may give different answers.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not confirmed') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
       + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately confirmed') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
