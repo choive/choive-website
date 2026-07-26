@@ -1008,7 +1008,7 @@ nav {
 .pay-cta-headline { font-family:'Libre Baskerville', serif; font-size:22px; font-weight:400; font-style:italic; color:var(--ink); margin-bottom:8px; }
 .pay-cta-body { font-size:14px; font-weight:400; color:var(--body); line-height:1.75; margin-bottom:16px; }
 .result-nav { position:sticky; top:60px; z-index:80; background:rgba(247,245,242,0.97); border-top:1px solid var(--rule); border-bottom:1px solid var(--rule); backdrop-filter:blur(12px); }
-.result-nav-inner { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding:8px 0; }
+.result-nav-inner { display:flex; flex-wrap:wrap; gap:2px; overflow:visible; scrollbar-width:none; padding:8px 0; }
 .result-nav-inner::-webkit-scrollbar { display:none; }
 .result-nav a { flex:0 0 auto; padding:9px 12px; color:var(--muted); font-size:11px; font-weight:700; text-decoration:none; text-transform:uppercase; white-space:nowrap; }
 .result-nav a:hover, .result-nav a:focus-visible { color:var(--ink); background:var(--paper-2); outline:none; }
@@ -1068,7 +1068,7 @@ nav {
   .selection-status-grid { grid-template-columns:1fr; }
   .selection-status { padding:22px 18px; }
   .result-nav { top:56px; margin-left:-20px; margin-right:-20px; padding-left:20px; }
-  .result-nav-inner { padding-right:20px; }
+  .result-nav-inner { flex-wrap:nowrap; overflow-x:auto; padding-right:20px; }
   .executive-verdict { padding:28px 0 34px; }
   .executive-verdict-title { font-size:24px; }
   .executive-verdict-lead { font-size:15px; }
@@ -3344,6 +3344,33 @@ function buildWhnBlock(r, gap) {
 }
 
 
+function plainPillarFinding(key, pillar) {
+  var p = pillar && typeof pillar === 'object' ? pillar : {};
+  var score = Number(p.score) || 0;
+  var measurement = p.measurement && typeof p.measurement === 'object' ? p.measurement : null;
+  if (key === 'clarity') {
+    return score >= 19
+      ? 'People can understand the offer, but some names or details may still be inconsistent.'
+      : 'The website does not yet explain the offer clearly enough.';
+  }
+  if (key === 'trust') {
+    if (measurement && measurement.complete === false) {
+      return 'Some trust checks could not run, and CHOIVE found too little other independent proof.';
+    }
+    return score >= 18
+      ? 'Independent sources give buyers strong reasons to trust this business.'
+      : 'CHOIVE found too little independent proof from reviews, press, or customer results.';
+  }
+  if (key === 'difference') {
+    return score >= 18
+      ? 'The business clearly proves why a customer should choose it.'
+      : 'The website does not yet prove why a customer should choose this business over another.';
+  }
+  return score >= 20
+    ? 'The website is easy for search engines and AI systems to read.'
+    : 'Parts of the website are still difficult for search engines or AI systems to verify.';
+}
+
 function buildPillarCards(r, isPaid) {
   var pD = {
     clarity:    { n:'01', name:'Clarity' },
@@ -3356,7 +3383,7 @@ function buildPillarCards(r, isPaid) {
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
-    var finding = raw.finding || '';
+    var finding = plainPillarFinding(key, raw);
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
       ? 'Based mainly on directly confirmed public facts'
@@ -3477,6 +3504,13 @@ function showResults(r, jobId) {
       : score >= 31
         ? 'AI can identify this ' + subjectNoun + ', but CHOIVE did not find enough clear, independently checkable evidence to support a reliable recommendation.'
         : 'AI cannot yet find enough clear, trusted, and accessible information to understand and recommend this ' + subjectNoun + '.';
+  const scoreBand = score >= 76
+    ? '76–100: strong public evidence'
+    : score >= 56
+      ? '56–75: useful evidence with important gaps'
+      : score >= 31
+        ? '31–55: important public evidence is missing'
+        : '0–30: public evidence is seriously incomplete';
 
   function buildApiMeasurementSummary() {
     var labels = { claude:'Claude', openai:'ChatGPT', perplexity:'Perplexity', gemini:'Gemini' };
@@ -3590,6 +3624,7 @@ function showResults(r, jobId) {
       var visibilityAppeared = storedResults.filter(function(item) { return item.appeared; }).length;
       totalAppeared += visibilityAppeared;
       totalCompleted += visibilityTotal;
+      var providerFailed = !visibilityTotal && lane.status === 'failed';
       var resultText = visibilityTotal > 0
         ? 'Appeared in ' + visibilityAppeared + ' of ' + visibilityTotal
         : (statusText[lane.status || 'unmeasured'] || 'No completed buying-question test without the business name');
@@ -3597,6 +3632,7 @@ function showResults(r, jobId) {
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (visibilityTotal ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
         + esc(resultText) + '</div>'
+        + (providerFailed ? '<div style="font-size:11px;color:rgba(245,242,238,0.68);line-height:1.55;margin-top:7px;">The provider did not return a usable answer. This did not count as the business being absent and did not change the CHOIVE score.</div>' : '')
         + '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">Recorded through the provider API during this diagnostic</div>'
         + '</div>';
     }).join('');
@@ -3712,6 +3748,7 @@ function showResults(r, jobId) {
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Business evidence score</div>'
+    + '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:10px;"><strong>Score reference:</strong> ' + esc(scoreBand) + '. This is a CHOIVE evidence band, not an industry average.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand what this business does, check its claims, see what makes it different, and find its information online. The recorded AI answers are shown separately and do not change this score.'
@@ -4027,7 +4064,7 @@ function showResults(r, jobId) {
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
       + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
-      + (p.finding  ? '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc(p.finding) + '</div>' : '')
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc(plainPillarFinding(key, p)) + '</div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">Some checks were unavailable:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE did not treat this as proof that the evidence is absent.</div>' : '')
       + ((p.analysis || p.evidence) ? '<details class="report-details"><summary>Read analysis and evidence</summary><div class="report-details-body">'
         + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
@@ -4287,7 +4324,7 @@ function showResults(r, jobId) {
       return '<div class="executive-pillar">'
         + '<div class="executive-pillar-name">' + item.label + '</div>'
         + '<div class="executive-pillar-score">' + (Number(p.score) || 0) + '<span> / 25</span></div>'
-        + '<div class="executive-pillar-finding">' + esc(p.finding || 'No finding was returned for this pillar.') + '</div>'
+        + '<div class="executive-pillar-finding">' + esc(plainPillarFinding(item.key, p)) + '</div>'
         + '</div>';
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
@@ -4617,7 +4654,7 @@ function showResults(r, jobId) {
       var recommendation = lane.recommendation || '';
       var status = recommendation ? 'Completed'
         : lane.status === 'no_recommendation' ? 'No consistent answer — this provider gave different recommendations across the recorded tests'
-        : lane.status === 'failed' ? 'Measurement failed'
+        : lane.status === 'failed' ? 'Could not be measured — provider failure; not counted as an absence or in the CHOIVE score'
         : lane.status === 'not_configured' ? 'API not configured'
         : 'Not measured in this run';
       if (recommendation || lane.status === 'complete' || lane.status === 'no_recommendation') completed++;
@@ -4915,11 +4952,18 @@ function buildDeliverables(r) {
   var planHtml = '';
   if (d.actionPlan && d.actionPlan.weeks) {
     var wkColors = { you: 'var(--ac)', developer: 'var(--amber)' };
+    var seenPlanInstructions = {};
     planHtml = d.actionPlan.weeks.map(function(wk) {
+      var uniqueTasks = (wk.tasks || []).filter(function(t) {
+        var key = String(t && (t.how || t.task) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        if (!key || seenPlanInstructions[key]) return false;
+        seenPlanInstructions[key] = true;
+        return true;
+      });
       return '<div style="margin-bottom:20px;padding:20px 24px;background:var(--dk-2);border:1px solid var(--rule-d);">'
         + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:4px;">Week ' + wk.week + '</div>'
         + '<div style="font-size:15px;font-weight:700;color:var(--tp);margin-bottom:14px;">' + esc(wk.title) + '</div>'
-        + wk.tasks.map(function(t) {
+        + uniqueTasks.map(function(t) {
             var tc = wkColors[t.owner] || 'var(--tm)';
             var tl = t.owner === 'developer' ? 'Forward to developer' : 'You can do this';
             return '<div style="margin-bottom:12px;padding:12px 14px;background:var(--dk-3);border-left:2px solid ' + tc + ';">'
