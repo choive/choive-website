@@ -3975,7 +3975,7 @@ function showResults(r, jobId) {
 
   zone.innerHTML =
     (isPaid
-      ? '<div id="report-score">' + scoreHeader + buildScoreLabels(r) + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict()
+      ? '<div id="report-score">' + scoreHeader + buildScoreLabels(r) + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildBusinessIntelligence()
       : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
       + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-assets">Prepared assets</a>'
@@ -4216,6 +4216,7 @@ function showResults(r, jobId) {
     return '<section class="pay-section" id="report-conclusion">'
       + '<div class="pay-eyebrow">What This Business Now Knows</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.5;color:var(--ink);max-width:880px;">' + statement + '</div>'
+      + (completed ? '<div style="margin-top:22px;padding:16px 18px;background:var(--paper-2);border-left:3px solid var(--ac);font-size:13px;line-height:1.7;color:var(--body);"><strong style="color:var(--ink);">Verified finish line:</strong> publish the approved changes, rerun these same questions, and confirm whether the business appears in more than ' + appeared + ' of ' + completed + ' completed answers. CHOIVE does not predict the future answer.</div>' : '')
       + '</section>';
   }
 
@@ -4228,13 +4229,22 @@ function showResults(r, jobId) {
       + '<div class="pay-eyebrow">What You Can Truthfully Say</div>'
       + '<div class="paid-section-header">What the evidence supports now</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
-      + (after ? '<div class="paid-section-header" style="margin-top:26px;">What can be stated after the listed changes are verified</div>'
-        + '<div class="paid-narrative">' + readableText(after, 2) + '</div>' : '')
+      + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Illustrative target · not measured or predicted</div>'
+        + '<div style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px;">This is an example of what could be stated only after the listed facts and changes are publicly verified. It is not an answer returned by ChatGPT, Claude, Perplexity, or Gemini.</div>'
+        + '<div class="paid-narrative">' + readableText(after, 2) + '</div></div>' : '')
       + '</section>';
   }
 
   function buildCommunityEvidence() {
-    var items = Array.isArray(r.communityEvidence) ? r.communityEvidence.slice(0, 4) : [];
+    var allItems = Array.isArray(r.communityEvidence) ? r.communityEvidence : [];
+    var locationTokens = String((bizData && bizData.city) || '').toLowerCase().split(/[^a-z0-9]+/).filter(function(token) { return token.length >= 4; });
+    var items = allItems.filter(function(item) {
+      if (!item) return false;
+      if (item.subjectMentioned || !locationTokens.length || bizData.marketReach === 'global' || bizData.marketReach === 'international') return true;
+      var text = [item.url, item.title, item.summary].join(' ').toLowerCase();
+      return locationTokens.some(function(token) { return text.indexOf(token) !== -1; });
+    }).slice(0, 4);
     var direct = items.filter(function(item) { return item && item.subjectMentioned; });
     var category = items.filter(function(item) { return item && !item.subjectMentioned; });
     function rows(list, label) {
@@ -4659,9 +4669,13 @@ function showResults(r, jobId) {
         : 'Not measured in this run';
       if (recommendation || lane.status === 'complete' || lane.status === 'no_recommendation') completed++;
       var query = String(lane.query || '').trim();
+      var noConsensusExplanation = lane.status === 'no_recommendation'
+        ? '<br><span style="color:var(--muted);">The completed recommendation tests did not give one company the required majority. This does not mean that the diagnosed business appeared.</span>'
+        : '';
       return '<div class="integrity-row"><div class="integrity-row-label">' + base.label + '</div>'
         + '<div class="integrity-row-value"><strong>' + esc(status) + '</strong>'
         + (recommendation ? ' · Top recommendation: ' + esc(recommendation) : '')
+        + noConsensusExplanation
         + (query ? '<br>Measured question: “' + esc(query) + '”' : '')
         + '</div></div>';
     }).join('');
@@ -4785,7 +4799,6 @@ function showResults(r, jobId) {
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('') + '</div></section>'
       + buildOperatingRoadmap()
-      + buildBusinessIntelligence()
       + buildOrganicDiscoveryGap()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">Recorded AI Answers</div>'
@@ -4866,6 +4879,7 @@ function buildDeliverables(r) {
   }
 
   var llmsHtml = '<div style="margin-bottom:16px;">'
+    + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.11em;text-transform:uppercase;color:var(--void);background:var(--ac);padding:5px 8px;margin-bottom:10px;">Deploy today · no developer needed if you can upload a root file</div>'
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Review the facts below. Then save the approved content as <strong>llms.txt</strong> at <strong>yourdomain.com/llms.txt</strong>. Your website provider or developer can confirm whether root-level file uploads are supported.</div>'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
@@ -4961,7 +4975,10 @@ function buildDeliverables(r) {
     var seenPlanInstructions = {};
     planHtml = d.actionPlan.weeks.map(function(wk) {
       var uniqueTasks = (wk.tasks || []).filter(function(t) {
-        var key = String(t && (t.how || t.task) || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        var taskText = String(t && ((t.task || '') + ' ' + (t.how || '')) || '').toLowerCase();
+        var key = /\b(review|trustpilot|google business profile)\b/.test(taskText)
+          ? 'customer-review-action'
+          : taskText.replace(/[^a-z0-9]+/g, ' ').trim();
         if (!key || seenPlanInstructions[key]) return false;
         seenPlanInstructions[key] = true;
         return true;
@@ -4986,8 +5003,8 @@ function buildDeliverables(r) {
   }
 
   var tabs = [
-    { id: 'dPlan',   label: '30-day plan', content: planHtml   },
     { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
+    { id: 'dPlan',   label: '30-day plan', content: planHtml   },
     { id: 'dH1',     label: 'H1',         content: h1Html     },
     { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
     { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer evidence' : 'Reviews', content: reviewHtml },
