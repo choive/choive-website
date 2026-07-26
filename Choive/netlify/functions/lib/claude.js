@@ -10,7 +10,7 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_FAST_MODEL = 'claude-haiku-4-5-20251001';
 const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
-const MAX_TOKENS      = 4000; // enough for the structured analysis without paying for unnecessary long prose
+const MAX_TOKENS      = 6500; // the complete structured analysis regularly exceeds 4,000 tokens
 
 function truncate(text, max) {
   max = max || 4000;
@@ -509,6 +509,18 @@ function buildPrompt(evidence) {
     + 'Do not summarise. Do not soften. Do not generalise. Every sentence must be evidence-backed.\n\n'
     + 'REPORT WRITING STANDARD — apply this to every narrative, finding, action, and explanation:\n'
     + '- Use plain language and short sentences. One sentence should communicate one idea.\n'
+    + '- CHOIVE LANGUAGE RULE: Write so a 10-year-old can understand the first reading. Use one idea per sentence. Prefer sentences under 18 words. Use an ordinary word when one exists.\n'
+    + '- Do not use a technical term in reader-facing text unless the same sentence explains it in ordinary words. Internal codes and methodology labels must never appear in reader-facing text.\n'
+    + '- Do not turn "CHOIVE did not verify this" into "this does not exist." State collection failures and missing evidence exactly.\n'
+    + '- Do not invent a universal score threshold, review target, time-to-result, or causal claim. Use a number only when recorded evidence or a named source supports it.\n'
+    + '- Google-Extended controls some uses of website content for improving Gemini models. It does not prove that Gemini cannot read, find, cite, or recommend the website.\n'
+    + '- llms.txt supplies a voluntary reference file. Do not claim that every AI system reads it or that publishing it causes recommendations.\n'
+    + '- API answers are recorded provider measurements. They are not transcripts from the public consumer apps. State this in ordinary words wherever the distinction matters.\n'
+    + '- COMMERCIAL VALUE: Write like a confident business diagnostic, not a legal disclaimer. Lead with what the result means for the business, which competitor benefits, and what the owner should do next.\n'
+    + '- State a limitation once in the section where it matters. Do not repeat warnings, uncertainty, or methodology language across the report.\n'
+    + '- Be decisive when evidence is strong. Use "CHOIVE found", "CHOIVE confirmed", and "the recorded answers showed" when those statements are supported.\n'
+    + '- Make the cost of inaction concrete without inventing money, customers, rankings, or future outcomes. Name the missed buyer moment, missing proof, or competitor advantage shown by the evidence.\n'
+    + '- Every section must answer one useful owner question: What happened? Why does it matter? Who benefits instead? What should I do? How will I know it is fixed?\n'
     + '- State the measured fact first, then its practical meaning. Never hide the conclusion behind introductory wording.\n'
     + '- Avoid vague words such as improve, optimize, strengthen, enhance, establish, leverage, visibility, authority, positioning, or trust unless the same sentence states the exact object, location, and proof required.\n'
     + '- Every action body must state: what must change, where it must change, and what observable evidence proves completion.\n'
