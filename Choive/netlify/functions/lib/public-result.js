@@ -14,6 +14,7 @@ function buildPublicResult(result) {
     'businessUnderstanding',
     'competitorApify',
     'competitorComparison',
+    'communityEvidence',
     'deliverables',
     'evidenceNarrative',
     'googleReviews',
