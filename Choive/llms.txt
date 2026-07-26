@@ -1,127 +1,145 @@
 # CHOIVE
 
-> CHOIVE checks how clearly public information explains and supports a business. It also records answers from Claude, ChatGPT, Perplexity, and Gemini through their provider APIs.
+> CHOIVE shows how AI sees a business, which competitors appear instead, why the business is being overlooked, and what to change.
 
 Website: https://choive.com/
+Run a diagnostic: https://choive.com/#diagnostic
 Method: https://choive.com/methodology
-Report: https://choive.com/report
+CHOIVE Report: https://choive.com/report
 Contact: hello@choive.com
 
-## What CHOIVE does
+## The problem CHOIVE solves
 
-CHOIVE is an AI visibility and business evidence diagnostic.
+Buyers now ask Claude, ChatGPT, Perplexity, and Gemini which business to choose.
 
-It checks four areas:
+Many strong businesses are missing from those answers. Their competitors appear instead.
 
-- Clarity: Can people understand what the business does and who it serves?
-- Trust: Do reliable public sources support the business's claims?
-- Difference: Is there a specific, supported reason to choose the business?
-- Ease: Can people and automated systems find, read, and verify the information?
+Most AI visibility tools only count mentions. CHOIVE goes further. It checks the business evidence behind the result and shows what must improve.
 
-CHOIVE combines these four areas into a score out of 100.
+## What CHOIVE delivers
 
-The score measures public evidence. It does not control what an AI provider says.
+CHOIVE records answers from four AI provider APIs using real buyer questions.
 
-## AI provider measurements
+It checks the business website, public sources, reviews, independent coverage, customer evidence, structured information, and competitors.
 
-CHOIVE sends buyer questions to the official APIs provided by Anthropic, OpenAI, Perplexity, and Google.
+It then delivers:
 
-Each provider answers separately. A completed answer may mention the business, mention another business, mention several businesses, or name no business.
+- a CHOIVE Score out of 100;
+- four scores for Clarity, Trust, Difference, and Ease;
+- the evidence behind every awarded point;
+- the AI providers that mentioned the business;
+- the companies named in place of the business;
+- a verified head-to-head competitor;
+- a wider market competitor;
+- the strongest problems to fix first;
+- ready-to-use website assets; and
+- a clear action plan with completion checks.
 
-These are recorded API measurements. They are not transcripts from the public Claude, ChatGPT, Perplexity, or Gemini apps. Public apps may return different answers.
+## Why CHOIVE is different
 
-A failed provider request stays marked as failed. CHOIVE does not treat a failed request as proof that the business was absent.
+CHOIVE is not only an AI mention tracker.
 
-## The free diagnostic
+Mention trackers show what happened. CHOIVE explains the public evidence connected to the result and gives the business practical work it can complete.
 
-The free diagnostic checks:
+Every awarded score point has a rule and an evidence record. Missing or unavailable evidence does not earn invented points.
 
-- the business's website and public information;
-- recorded answers from available AI providers;
-- the four CHOIVE pillars;
-- a verified head-to-head competitor when enough evidence exists; and
-- the main evidence gaps found during the run.
+AI provider recommendations stay separate from competitor research. A company named by one AI answer does not automatically become the verified head-to-head competitor.
 
-No account is required.
+This makes CHOIVE a diagnostic system, not a dashboard of changing AI answers.
 
-## The full analysis
+## The CHOIVE Score
 
-The paid analysis explains:
-
-- the evidence behind every awarded score point;
-- which provider questions completed;
-- which completed answers mentioned the business;
-- which companies were named in the recorded answers;
-- the verified head-to-head and wider market competitors;
-- what the business can change first; and
-- how to confirm that each change is complete.
-
-The analysis may include ready-to-use website assets. Every asset must use facts recorded during the diagnostic. A business or developer must check those facts before publishing.
-
-## The CHOIVE Report
-
-The CHOIVE Report is a branded PDF based on the saved diagnostic evidence.
-
-It is designed for owners, teams, agencies, and decision-makers who need a shareable record of the findings and actions.
-
-## How the score works
+The CHOIVE Score measures four parts of the business's public evidence.
 
 ### Clarity — 25 points
 
-Measures whether the business, offer, audience, and market are explained clearly.
+Can a buyer quickly understand what the business offers, who it serves, and where it operates?
 
 ### Trust — 25 points
 
-Measures confirmed reviews, independent coverage, credentials, named customers, documented outcomes, and other relevant public proof.
-
-Missing or unavailable evidence does not automatically mean the evidence does not exist. It means CHOIVE did not confirm it during that run.
+Can a buyer find reliable public proof such as reviews, customer results, credentials, partnerships, or independent coverage?
 
 ### Difference — 25 points
 
-Measures whether public evidence supports a meaningful reason to choose the business over alternatives.
+Can a buyer find a specific and supported reason to choose this business over another one?
 
 ### Ease — 25 points
 
-Measures whether the website supplies clear page information, useful structured data, accessible content, and consistent business details.
+Can people and automated systems find, read, connect, and check the business information online?
 
-## Competitor definitions
+## Free diagnostic
 
-Head-to-head competitor: A separately researched business offering a close substitute to the same type of customer in the same serviceable market.
+The free diagnostic gives a fast verdict on the business.
 
-Market competitor: A business competing for the same customers, attention, or budget without being an exact replacement.
+It shows the CHOIVE Score, the four pillar scores, recorded AI-provider coverage, the main competitor finding, and the most important evidence gap.
 
-AI-named alternative: A company named in a completed provider API answer. It does not automatically become the verified head-to-head or market competitor.
+No account is required.
 
-## Evidence rules
+## Full analysis
 
-CHOIVE separates confirmed evidence, model interpretation, and unavailable evidence.
+The paid analysis turns the diagnostic into a clear business improvement plan.
 
-Every awarded point should have a rule, evidence record, source, verification type, and confidence level.
+It includes:
 
-CHOIVE does not promise future rankings, revenue, recommendations, or a future score.
-
-CHOIVE does not claim that one website change will cause an AI provider to recommend a business.
-
-## Website assets
-
-An analysis may include:
-
-- an llms.txt draft;
+- the complete score evidence;
+- the questions asked and answers recorded;
+- competitor intelligence;
+- a side-by-side competitor comparison;
+- priority actions in the correct order;
+- a 30, 60, and 90-day plan;
 - homepage headline options;
-- a meta description;
-- JSON-LD structured data; and
+- a ready-to-use meta description;
+- an llms.txt draft;
+- JSON-LD structured data for developer review; and
 - a customer evidence template.
 
-An llms.txt file is a voluntary reference file. CHOIVE does not claim that every AI system reads or uses it.
+The business receives work it can use, not only observations.
 
-Google-Extended controls whether website content may be used to improve certain Gemini models. Blocking Google-Extended does not prove that a website is excluded from Gemini answers or Google Search.
+## CHOIVE Report
 
-## Who CHOIVE is for
+The CHOIVE Report is a complete branded PDF built from the saved diagnostic evidence.
 
-CHOIVE can diagnose a business, product, service, creator, personal brand, or organization.
+It is designed for owners, leadership teams, agencies, investors, and partners who need a clear document they can review and act on.
 
-It supports local, regional, national, international, and global markets.
+## Competitor intelligence
+
+Head-to-head competitor: the closest verified replacement for the same customer, offer, buying need, and serviceable market.
+
+Market competitor: a business competing for the same customers, attention, or budget without being an exact replacement.
+
+AI-named alternative: a company named in a completed provider answer. CHOIVE records it under the provider that named it.
+
+These roles remain separate so the business can see what each competitor actually represents.
+
+## Ready-to-use assets
+
+CHOIVE turns evidence into practical website materials.
+
+Each asset is written for the diagnosed business using the facts collected during that run. The business reviews the facts before publication.
+
+The assets help the business explain itself more clearly, publish stronger proof, and make important information easier to verify.
+
+## Who CHOIVE serves
+
+CHOIVE can diagnose:
+
+- local businesses;
+- professional services;
+- online shops;
+- restaurants and hotels;
+- software and technology companies;
+- manufacturers;
+- creators and personal brands;
+- products and services;
+- charities and organizations; and
+- national and global companies.
+
+CHOIVE supports local, regional, national, international, and global markets.
+
+## Measurement note
+
+CHOIVE records provider API answers during each diagnostic. Public AI apps may answer differently, so CHOIVE reports the source and status of each measurement clearly.
 
 ## One sentence
 
-CHOIVE records AI provider answers, checks the public evidence behind a business, and shows what can be improved and verified.
+CHOIVE shows where a business is losing AI visibility, explains the evidence behind it, and provides the work needed to improve.
