@@ -346,7 +346,7 @@ function buildPrompt(evidence) {
     + '- Name the specific type of outlet that matters for this business (food media for beef brands, industry press for B2B software, etc.)\n'
     + '- Suggest one concrete, achievable step (pitch to a named outlet type, submit to a specific directory, contribute to an industry forum or podcast)\n'
     + '- Not be generic — tie it to the specific product or story the business has that would be newsworthy\n\n'
-    + 'RECOMMENDED PLATFORM \u2014 CRITICAL: name one real review or credibility platform only when the supplied evidence shows that buyers or close competitors in this exact category use it. Never infer G2 or Capterra merely from the words software, SaaS, or platform. For enterprise procurement categories such as pay-TV middleware, telecom infrastructure, automotive OEM software, or broadcast technology, prefer named customer case studies, relevant analyst coverage, trade press, awards, and industry-association evidence; return an empty recommendedPlatform when no specific platform is evidenced. Restaurants may use Google Reviews; law firms may use Chambers or Legal 500; hotels may use TripAdvisor and Google \u2014 but category fit must still be supported by the evidence.\n\n'
+    + 'RECOMMENDED PLATFORM \u2014 CRITICAL: name one real review or credibility platform only when the supplied evidence or the category policy below shows that buyers in this category use it. Never infer G2 or Capterra merely from the words software, SaaS, or platform. For enterprise procurement categories such as pay-TV middleware, telecom infrastructure, automotive OEM software, or broadcast technology, prefer named customer case studies, relevant analyst coverage, trade press, awards, and industry-association evidence; return an empty recommendedPlatform when no specific platform is evidenced. Restaurants may use Google Reviews; law firms may use Chambers or Legal 500; hotels may use TripAdvisor and Google. REAL-ESTATE POLICY: for a real-estate agency serving local buyers, make Google Reviews the primary review action. When the agency also serves international buyers, include Trustpilot as a secondary review action. If either platform could not be measured, say that clearly and tell the owner to check for an existing profile before creating one. An unavailable measurement must never earn or remove score points.\n\n'
     + 'DIFFERENCE (0-25): Can someone explain why to choose this over alternatives?\n'
     + '- Score 20-25: specific, unique differentiator clearly stated and easy to repeat\n'
     + '- Score 15-19: real differentiator visible — named niche, named enterprise clients, unique use case\n'
@@ -782,11 +782,38 @@ function safeOutput(raw) {
   }
   var supportedPlatform = (r.recommendedPlatform && r.recommendedPlatform.name) ? r.recommendedPlatform : null;
   var actions = Array.isArray(r.actions) ? r.actions : [];
+  var isRealEstate = /real[ -]?estate|estate agenc|estate agent|property (?:broker|agency|sales)|residential brokerage/i.test(String(r.inferredCategory || ''));
+  var isInternationalRealEstate = isRealEstate && /international|luxury|expat|foreign|global|costa del sol|marbella|investment/i.test(String(r.inferredCategory || ''));
   if (!supportedPlatform) {
     actions = actions.filter(function(action) {
       var text = [action && action.title, action && action.body, action && action.explanation].join(' ');
+      if (isRealEstate && /\b(?:google reviews?|trustpilot|customer reviews?)\b/i.test(text)) return true;
       return !/\b(create|claim|join|list(?:ing)?)\b[^.]{0,80}\b(g2|capterra|trustpilot|trustradius|clutch)\b/i.test(text);
     });
+  }
+  if (isInternationalRealEstate) {
+    var reviewActionIndex = actions.findIndex(function(action) {
+      return /\b(?:google reviews?|trustpilot|customer reviews?|verified reviews?)\b/i.test([
+        action && action.title, action && action.body, action && action.explanation
+      ].join(' '));
+    });
+    var trustpilotStep = 'Check for an existing Trustpilot profile before creating one, then invite confirmed international clients to leave honest reviews.';
+    if (reviewActionIndex >= 0) {
+      var existingReviewAction = Object.assign({}, actions[reviewActionIndex]);
+      if (!/trustpilot/i.test([existingReviewAction.title, existingReviewAction.body].join(' '))) {
+        existingReviewAction.title = 'Build verified reviews on Google and Trustpilot';
+        existingReviewAction.body = String(existingReviewAction.body || '').trim().replace(/\s+$/, '') + ' ' + trustpilotStep;
+      }
+      actions[reviewActionIndex] = existingReviewAction;
+    } else {
+      actions.push({
+        title: 'Build verified reviews on Google and Trustpilot',
+        priority: 'critical',
+        body: 'CHOIVE did not confirm enough independent customer reviews for ' + String(r.inferredCategory || 'this real-estate agency') + '. Confirm the Google Business Profile and ask recent customers for honest Google reviews. ' + trustpilotStep,
+        explanation: 'Google supports local comparison, while Trustpilot gives international property buyers another independent place to check customer experience.',
+        if_nothing: 'Without independently checkable customer reviews, buyers have less evidence when comparing this agency with established competitors.'
+      });
+    }
   }
   return {
     overallScore:          Number(r.overallScore) || 0,
