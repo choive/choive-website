@@ -72,7 +72,7 @@ test('every awarded point has a rule and verification trail', () => {
       assert.match(rule.ruleId, /^[A-Z]{2}-\d{2}$/);
       assert.equal(typeof rule.points, 'number');
       assert.equal(typeof rule.maxPoints, 'number');
-      assert.ok(['mechanical', 'independent', 'model_assessed'].includes(rule.verification));
+      assert.ok(['mechanical', 'independent', 'model_assessed', 'unmeasured'].includes(rule.verification));
     }
   }
 });
@@ -115,6 +115,38 @@ test('empty provider objects do not create review trust points', () => {
   }, modelResult());
   const reviewRules = scored.scoreMethod.audits.trust.filter(rule => /^TR-0[12]$/.test(rule.ruleId));
   assert.equal(reviewRules.reduce((total, rule) => total + rule.points, 0), 0);
+});
+
+test('unavailable review providers remain unverified instead of becoming zero reviews', () => {
+  const scored = applyDeterministicScoring({
+    name: 'Unknown', website: 'unknown.example', websiteSignals: {},
+    reviewMeasurement: { trustpilot: 'unavailable', googleReviews: 'unavailable' }
+  }, modelResult());
+  const identity = scored.scoreMethod.audits.trust.find(rule => rule.ruleId === 'TR-01');
+  const volume = scored.scoreMethod.audits.trust.find(rule => rule.ruleId === 'TR-02');
+  assert.equal(identity.points + volume.points, 0);
+  assert.equal(identity.verification, 'unmeasured');
+  assert.equal(volume.verification, 'unmeasured');
+  assert.match(identity.observed, /provider unavailable/i);
+  assert.match(volume.observed, /count not verified/i);
+  assert.doesNotMatch(volume.observed, /^0 verified reviews$/i);
+  assert.equal(scored.pillars.trust.measurement.complete, false);
+  assert.deepEqual(scored.pillars.trust.measurement.unavailableChecks, [
+    'Verified external review record',
+    'Verified review volume'
+  ]);
+  assert.match(scored.pillars.trust.measurement.explanation, /not proof/i);
+});
+
+test('failed bot requests are recorded as unverified, not confirmed blocking', () => {
+  const scored = applyDeterministicScoring({
+    name: 'Unknown', website: 'unknown.example',
+    websiteSignals: { botCrawlable: false, allBotsFailed: true, botEmptyShellDetected: false }
+  }, modelResult());
+  const crawler = scored.scoreMethod.audits.ease.find(rule => rule.ruleId === 'EA-06');
+  assert.equal(crawler.points, 0);
+  assert.match(crawler.observed, /not verified/i);
+  assert.doesNotMatch(crawler.observed, /site blocks|confirmed blocked/i);
 });
 
 test('official subdomains do not count as independent trust evidence', () => {
