@@ -3627,7 +3627,11 @@ function showResults(r, jobId) {
       var providerFailed = !visibilityTotal && lane.status === 'failed';
       var resultText = visibilityTotal > 0
         ? 'Appeared in ' + visibilityAppeared + ' of ' + visibilityTotal
-        : (statusText[lane.status || 'unmeasured'] || 'No completed buying-question test without the business name');
+        : providerFailed
+          ? 'Measurement failed'
+          : lane.status === 'no_recommendation' || lane.status === 'complete'
+            ? 'Replacement question completed; no unbranded test recorded'
+            : 'No unbranded buying-question test completed';
       return '<div style="padding:16px 17px;min-width:0;background:rgba(245,242,238,0.055);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:8px;">' + esc(base.platform) + '</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:17px;font-weight:700;line-height:1.35;color:' + (visibilityTotal ? 'var(--ghost)' : 'rgba(245,242,238,0.48)') + ';overflow-wrap:anywhere;">'
@@ -3636,9 +3640,12 @@ function showResults(r, jobId) {
         + '<div style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(245,242,238,0.42);margin-top:7px;">Recorded through the provider API during this diagnostic</div>'
         + '</div>';
     }).join('');
+    var coverageSummary = totalCompleted > 0
+      ? esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' completed answers to buying questions that did not include its name.'
+      : 'No provider completed an unbranded buying-question measurement in this run. The replacement recommendations shown below came from a separate question that named the business.';
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
       + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">When AI was asked buying questions</div>'
-      + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' recorded answers to buying questions that did not include its name. Recommendation names and complete answers appear later in the analysis.</div>'
+      + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + coverageSummary + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:rgba(245,242,238,0.13);">' + cards + '</div>'
       + '</div>';
   }
