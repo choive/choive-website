@@ -1358,8 +1358,8 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     ['Evidence Targets',           'The public evidence required before the next diagnostic'],
     ['Recorded AI Description',    'The generated description and the evidence used to assess it'],
     ['Four Pillar Analysis',       'Clarity, Trust, Difference, and Ease'],
-    ['Recorded AI Probe Results',  'How often official provider APIs mentioned the ' + subjectNoun],
-    ['Recorded Questions & Answers','The exact API questions and separately attributed answers'],
+    ['Recorded AI Results',        'How often the AI providers mentioned the ' + subjectNoun],
+    ['Recorded Questions & Answers','The exact questions and the answer recorded from each provider'],
     ['Competitor Intelligence',    'Direct evidence and measurable differences'],
     ['Priority Actions',           'Ordered work, effort, impact, and consequence'],
     ['Ready-to-Use Assets',        'Implementation text prepared for the ' + subjectNoun],
@@ -1378,7 +1378,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 1: EXECUTIVE SUMMARY ────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">01</div><div class="sdp-title">Executive Summary</div><div class="sdp-sub">Your overall score, verdict, and the single paragraph that explains your current AI selection position.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">01</div><div class="sdp-title">Executive Summary</div><div class="sdp-sub">Your score, what the evidence means, and the main reason AI may recommend another business.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">CHOIVE Index™ — Overall Score</div>');
   H.push('<div class="score-layout"><div>' + buildScoreGauge(score) + '</div>');
@@ -1480,9 +1480,9 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 4: PILLAR ANALYSIS ───────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">04</div><div class="sdp-title">CHOIVE Score and Evidence Ledger</div><div class="sdp-sub">The scoring rule, recorded evidence, source, and confidence behind every awarded point.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">04</div><div class="sdp-title">Where Every Score Point Came From</div><div class="sdp-sub">The evidence checked, the points awarded, and the source used for each decision.</div></div>');
   H.push('<div class="section">');
-  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:16px 18px;background:#EDEAE5;border-left:3px solid #C9A86A;margin-bottom:24px;"><strong style="color:#0C0C0E;">How CHOIVE calculates this score:</strong> Every point follows a published scoring rule and has a recorded evidence trail. Mechanically confirmed, independently confirmed, and model-assessed evidence are labelled separately. Model-assessed points carry lower confidence. Missing evidence receives no points.</div>');
+  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:16px 18px;background:#EDEAE5;border-left:3px solid #C9A86A;margin-bottom:24px;"><strong style="color:#0C0C0E;">How CHOIVE calculates this score:</strong> Every point follows a published scoring rule and has a recorded evidence trail. Confirmed missing evidence receives no points. A failed or unavailable check is labelled “not measured” and is not presented as proof that evidence does not exist.</div>');
   [['clarity','Clarity'],['trust','Trust'],['difference','Difference'],['ease','Ease']].forEach(function(pair) {
     var key = pair[0], label = pair[1];
     var sc  = pillarScore(r, key);
@@ -1497,10 +1497,14 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     var scoreAudits = safeObj(safeObj(r.scoreMethod).audits);
     var scoreRules = safeArr(scoreAudits[key]);
     var pillarConfidence = safeObj(safeObj(safeObj(safeObj(r).pillars)[key]).confidence);
+    var pillarMeasurement = safeObj(safeObj(safeObj(safeObj(r).pillars)[key]).measurement);
+    if (pillarMeasurement.complete === false) {
+      H.push('<div style="font-size:11px;color:#48484F;line-height:1.6;padding:11px 13px;background:#F6EFE4;border-left:3px solid #C98B42;margin-top:12px;"><strong style="color:#0C0C0E;">Checks not completed:</strong> ' + esc(safeArr(pillarMeasurement.unavailableChecks).join(', ')) + '. CHOIVE did not treat this as proof that the evidence is absent.</div>');
+    }
     if (scoreRules.length > 0) {
       H.push('<div style="margin-top:16px;border-top:1px solid rgba(12,12,14,0.08);padding-top:14px;">');
       H.push('<div style="display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:10px;">');
-      H.push('<div style="font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;">Deterministic point ledger</div>');
+      H.push('<div style="font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#67676E;">Where each point came from</div>');
       H.push('<div style="font-size:9.5px;color:#67676E;">Confidence: ' + esc(pillarConfidence.level || 'not established') + ' · ' + esc(pillarConfidence.score === undefined ? '' : pillarConfidence.score + '%') + '</div>');
       H.push('</div>');
       scoreRules.forEach(function(rule) {
@@ -1566,16 +1570,34 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
         if (gCount) H.push('<div style="font-size:10px;color:#67676E;">(' + gCount + ' reviews)</div>');
         H.push('</div>');
       }
-      H.push('<div style="font-size:11px;color:#67676E;margin-top:10px;line-height:1.6;">Verified at time of diagnostic. These ratings represent live public signals that AI uses when assessing trust for your category.</div>');
+      H.push('<div style="font-size:11px;color:#67676E;margin-top:10px;line-height:1.6;">Verified at the time of this diagnostic. Buyers can use these ratings when comparing businesses, and AI systems may retrieve them when the source is available.</div>');
       H.push('</div>');
     }
     H.push('</div>');
   });
+  var communityEvidence = safeArr(r.communityEvidence).slice(0, 4);
+  H.push('<div style="margin-top:24px;padding:18px;background:#F5F2EE;border-left:3px solid #C9A86A;">');
+  H.push('<div style="font-size:9.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8A681F;margin-bottom:5px;">Independent community evidence</div>');
+  H.push('<div style="font-size:16px;font-family:Georgia,serif;color:#0C0C0E;margin-bottom:8px;">What Reddit and independent communities say</div>');
+  if (!communityEvidence.length) {
+    H.push('<div style="font-size:11px;color:#67676E;line-height:1.65;">CHOIVE did not confirm a relevant Reddit or independent-community discussion in this run. This means no source was verified by the search checks; it does not prove that no discussion exists.</div>');
+  } else {
+    H.push('<div style="font-size:10.5px;color:#67676E;line-height:1.6;margin-bottom:10px;">Direct business mentions and general category discussions are labelled separately. A category discussion is not a customer review.</div>');
+    communityEvidence.forEach(function(item) {
+      H.push('<div style="padding:9px 0;border-top:1px solid rgba(12,12,14,0.08);">'
+        + '<div style="font-size:9px;font-weight:700;color:#8A681F;text-transform:uppercase;letter-spacing:0.08em;">' + esc(item.subjectMentioned ? 'Mentions this business' : 'Category discussion') + ' · ' + esc(item.platform || 'Community') + '</div>'
+        + '<div style="font-size:11px;font-weight:700;color:#0C0C0E;margin-top:3px;">' + esc(item.title || 'Community discussion') + '</div>'
+        + (item.summary ? '<div style="font-size:10px;color:#67676E;line-height:1.5;margin-top:3px;">' + esc(item.summary) + '</div>' : '')
+        + (item.url ? '<div style="font-size:9px;margin-top:3px;overflow-wrap:anywhere;"><a href="' + esc(item.url) + '" style="color:#8A681F;text-decoration:none;">' + esc(item.url) + '</a></div>' : '')
+        + '</div>');
+    });
+  }
+  H.push('</div>');
   H.push(pageFt('8'));
   H.push('</div>');
 
   // ── SECTION 5: PLATFORM COVERAGE ────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">05</div><div class="sdp-title">Recorded AI Probe Results</div><div class="sdp-sub">How often official provider APIs mentioned the subject during this diagnostic. These results are not transcripts from public consumer apps.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">05</div><div class="sdp-title">Recorded AI Results</div><div class="sdp-sub">How often the AI providers mentioned the subject in the completed tests. These are separate from answers shown in public consumer apps.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Platform status</div>');
   H.push('<div class="plat-grid">');
@@ -1591,7 +1613,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   });
   H.push('</div>');
   H.push('<div style="padding:22px 26px;background:#EDEAE5;border-left:4px solid #B83232;">');
-  H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 provider API measurements mentioned ' + esc(bizName) + '.</div>');
+  H.push('<div style="font-size:13px;font-weight:700;color:#0C0C0E;margin-bottom:7px;">' + appearedPlat + ' of 4 measured AI providers mentioned ' + esc(bizName) + '.</div>');
   var coverageExplanation = appearedPlat === 0
     ? 'None of the four recorded platform measurements mentioned ' + esc(bizName) + '. Section 8 lists the specific evidence gaps to address. A new diagnostic is required to measure whether the answers change.'
     : appearedPlat === 4
@@ -1603,10 +1625,10 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   H.push('</div>');
 
   // ── SECTION 6: AI SIMULATION ─────────────────────────────────────────────────
-  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">Recorded Questions and Answers</div><div class="sdp-sub">The exact buyer-style questions and official provider API answers saved during this diagnostic. Public ChatGPT, Claude, Perplexity, and Gemini apps may answer differently.</div></div>');
+  H.push('<div class="sdp"><div class="sdp-num">06</div><div class="sdp-title">Recorded Questions and Answers</div><div class="sdp-sub">The exact buying questions and the answer CHOIVE recorded from each AI provider. Public ChatGPT, Claude, Perplexity, and Gemini apps may answer differently.</div></div>');
   H.push('<div class="section">');
   H.push('<div class="eyebrow">Recorded queries · Unedited platform responses</div>');
-  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These are unedited answers returned through official provider APIs. Public consumer apps may answer differently. CHOIVE does not treat factual claims inside an API answer as confirmed unless separate public evidence supports them.</div>');
+  H.push('<div style="font-size:12px;color:#48484F;line-height:1.75;padding:14px 16px;background:#EDEAE5;border-left:3px solid #B78932;margin-bottom:18px;">These answers are shown without editing. CHOIVE recorded them through provider APIs, which are the official developer connections to each AI service. Public consumer apps may answer differently. A factual claim inside an AI answer is not treated as confirmed unless separate public evidence supports it.</div>');
   function responseExcerpt(value, limit) {
     var full = safeStr(value, '');
     var max = limit || 1200;
