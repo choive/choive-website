@@ -3944,34 +3944,17 @@ function showResults(r, jobId) {
       + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-assets">Prepared assets</a>'
       + '<a href="#report-actions">Actions</a><a href="#report-roadmap">90-day plan</a><a href="#report-organic-gap">AI answers</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
-    + buildPlatformRecommendationBlock()
+    + (isPaid ? buildPlatformRecommendationBlock() : '')
     + (isPaid
       ? competitorBanner
       : scoreHeader
-        + buildScoreLabels(r)
-        + buildProgressDelta(r)
-        + [].concat(buildDisplacementBlock(r)).join('')
-        + buildFreeCompetitorBlock()
-        + [].concat(buildPillarCards(r, false)).join(''))
-    + (isPaid ? '' : buildUrgencyBridge(topComp, bName, bCat))
-    + (isPaid ? '' : [].concat(buildShareBlock(jobId, topComp)).join(''))
-    + (isPaid ? '' : '<div class="lead-capture-block" id="leadCaptureBlock">'
-        + '<div class="lead-capture-inner">'
-        + '<div class="lead-capture-eyebrow">Save your result</div>'
-        + '<div class="lead-capture-headline">Get a link back to this result by email.</div>'
-        + '<div class="lead-capture-sub">Enter your email and we\'ll send you a permanent link to this diagnostic — so you can return to it any time. Free.</div>'
-        + '<div class="lead-capture-form">'
-        + '<input type="email" id="leadEmail" placeholder="your@email.com" class="lead-email-input" />'
-        + '<button class="lead-submit-btn" onclick="submitLeadEmail()">Send my report →</button>'
-        + '</div>'
-        + '<div id="leadMsg" class="lead-msg"></div>'
-        + '</div>'
-        + '</div>')
+        + [].concat(buildPillarCards(r, false)).join('')
+        + buildFreeCompetitorBlock())
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-headline">' + (topComp ? 'See exactly how ' + esc(topComp) + ' compares.' : 'You can see what\'s wrong. What\'s locked is how to fix it.') + '</div>'
-        + '<div class="paywall-body">' + (topComp ? 'Your scores show the gap. The Analysis shows exactly how to close it — ranked steps for each pillar, specific actions, and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.' : 'The Analysis contains ranked actions for each pillar — specific, sequenced steps and ready-to-use content built for ' + esc(bName || 'your business') + ' that you can implement today.') + '</div>'
+        + '<div class="paywall-headline">' + (topComp ? 'See why ' + esc(topComp) + ' is ahead — and what to change.' : 'See what is holding your business back — and what to change.') + '</div>'
+        + '<div class="paywall-body">Unlock the evidence behind every score, the full competitor comparison, your priority actions, and ready-to-use website content.</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
@@ -5631,4 +5614,3 @@ initResultRoute();
 </script>
 </body>
 </html>
-
