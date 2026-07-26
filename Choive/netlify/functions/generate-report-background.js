@@ -1975,18 +1975,22 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
   }
   if (safeStr(reviewAction.platform, '')) {
     var reviewPlatform = safeStr(reviewAction.platform, '');
+    var secondaryReviewPlatform = safeStr(reviewAction.secondaryPlatform, '');
+    var reviewPlatformLabel = secondaryReviewPlatform
+      ? reviewPlatform + ' + ' + secondaryReviewPlatform
+      : reviewPlatform;
     var reviewInstruction = safeStr(reviewAction.instruction, '');
     var reviewUrgency = safeStr(reviewAction.urgency, 'medium').toLowerCase();
     var reviewTarget = safeNum(reviewAction.targetCount, 0);
     var reviewCurrent = safeNum(reviewAction.currentCount, 0);
     H.push('<div class="asset-block">');
     H.push('<div class="asset-label">Independent trust evidence ' + ownerTag + '</div>');
-    H.push('<div class="asset-desc"><strong>Recommended evidence channel:</strong> ' + esc(reviewPlatform) + '. <strong>Priority:</strong> ' + esc(reviewUrgency) + '.</div>');
+    H.push('<div class="asset-desc"><strong>Recommended evidence channel' + (secondaryReviewPlatform ? 's' : '') + ':</strong> ' + esc(reviewPlatformLabel) + '. <strong>Priority:</strong> ' + esc(reviewUrgency) + '.</div>');
     if (reviewInstruction) H.push('<div class="asset-opt"><div class="asset-opt-text">' + esc(reviewInstruction) + '</div></div>');
     if (reviewAction.isReviewPlatform === false) {
       H.push('<div class="asset-desc" style="margin-top:10px;">Suggested target: ' + reviewTarget + ' approved, named customer results. This is an implementation target, not a verified market requirement.</div>');
     } else {
-      H.push('<div class="asset-desc" style="margin-top:10px;">Verified review count retrieved for this channel: ' + (reviewCurrent > 0 ? reviewCurrent : 'not established') + '. Suggested target: ' + reviewTarget + '. The target is planning guidance, not a guarantee of improved AI recommendations.</div>');
+      H.push('<div class="asset-desc" style="margin-top:10px;">Verified review count retrieved for the primary channel: ' + (reviewCurrent > 0 ? reviewCurrent : 'not established') + '. Suggested starting target: ' + reviewTarget + (secondaryReviewPlatform ? ' on ' + esc(reviewPlatform) + ' and ' + safeNum(reviewAction.secondaryTargetCount, 5) + ' on ' + esc(secondaryReviewPlatform) : '') + '. These are planning targets, not guaranteed triggers for AI recommendations.</div>');
     }
     H.push('</div>');
   }
