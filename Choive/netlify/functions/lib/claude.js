@@ -10,7 +10,7 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_FAST_MODEL = 'claude-haiku-4-5-20251001';
 const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
-const MAX_TOKENS      = 6500; // raised: richer ground-truth + decision context was clipping long responses mid-JSON
+const MAX_TOKENS      = 4000; // enough for the structured analysis without paying for unnecessary long prose
 
 function truncate(text, max) {
   max = max || 4000;
@@ -1004,7 +1004,7 @@ async function selectDominantCompetitor(evidence) {
       model: ANTHROPIC_MODEL,
       max_tokens: 1400,
       temperature: 0,
-      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
       messages: [{ role: 'user', content: prompt }],
       output_config: {
         format: {
