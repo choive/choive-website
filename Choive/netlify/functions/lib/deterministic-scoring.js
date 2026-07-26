@@ -57,6 +57,20 @@ function confidence(entries) {
   };
 }
 
+function measurementCoverage(entries) {
+  var available = entries.filter(function(item) { return item.verification !== 'unmeasured'; });
+  var unavailable = entries.filter(function(item) { return item.verification === 'unmeasured'; });
+  return {
+    measuredPoints: available.reduce(function(total, item) { return total + item.maxPoints; }, 0),
+    totalPoints: entries.reduce(function(total, item) { return total + item.maxPoints; }, 0),
+    unavailableChecks: unavailable.map(function(item) { return item.label; }),
+    complete: unavailable.length === 0,
+    explanation: unavailable.length
+      ? 'CHOIVE could not complete every check in this pillar. An unavailable check is not proof that the signal does not exist.'
+      : 'All scoring checks for this pillar completed.'
+  };
+}
+
 function auditItem(result, pillar, prefix) {
   var list = safeArray(safeObject(result.signalAudit)[pillar]);
   var wanted = String(prefix || '').toLowerCase();
@@ -218,6 +232,7 @@ function applyDeterministicScoring(evidence, result) {
     result.pillars[key] = safeObject(result.pillars[key]);
     result.pillars[key].score = score(audits[key]);
     result.pillars[key].confidence = confidence(audits[key]);
+    result.pillars[key].measurement = measurementCoverage(audits[key]);
   });
   result.overallScore = Math.round(keys.reduce(function(total, key) {
     return total + Number(result.pillars[key].score || 0);
