@@ -135,7 +135,7 @@ function buildConfirmedSignals(websiteSignals) {
     }
   }
   if (s.googleExtendedBlocked) {
-    lines.push('Google-Extended (Gemini AI-training crawler): BLOCKED via robots.txt \u2014 this site has opted out of Gemini training/citation.');
+    lines.push('Google-Extended: BLOCKED via robots.txt \u2014 Google says this directive controls whether site content may be used to improve certain Gemini generative models. It does not prove that the site is excluded from Gemini answers or Google Search.');
   }
 
   if (s.trustpilotReviewCount !== undefined) {
@@ -1005,9 +1005,39 @@ async function selectDominantCompetitor(evidence) {
       max_tokens: 1400,
       temperature: 0,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: prompt }],
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              realCompetitor: { type: 'string' },
+              aiRecommends: { type: 'string' },
+              secondAiCompetitor: { type: 'string' },
+              globalBenchmark: { type: 'string' },
+              sourceUrls: { type: 'array', items: { type: 'string' } },
+              source: { type: 'string' },
+              categoryUnowned: { type: 'boolean' },
+              contested: { type: 'boolean' },
+              reason: { type: 'string' }
+            },
+            required: [
+              'realCompetitor',
+              'aiRecommends',
+              'secondAiCompetitor',
+              'globalBenchmark',
+              'sourceUrls',
+              'source',
+              'categoryUnowned',
+              'contested',
+              'reason'
+            ],
+            additionalProperties: false
+          }
+        }
+      }
     };
-      
     var res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -1409,7 +1439,32 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
         model: ANTHROPIC_FAST_MODEL,
         max_tokens: 500,
         temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                pillars: {
+                  type: 'object',
+                  properties: {
+                    clarity: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    trust: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    difference: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false },
+                    ease: { type: 'object', properties: { you: { type: 'number' }, competitor: { type: 'number' }, gap: { type: 'number' } }, required: ['you', 'competitor', 'gap'], additionalProperties: false }
+                  },
+                  required: ['clarity', 'trust', 'difference', 'ease'],
+                  additionalProperties: false
+                },
+                keyGap: { type: 'string' },
+                priorityAction: { type: 'string' }
+              },
+              required: ['pillars', 'keyGap', 'priorityAction'],
+              additionalProperties: false
+            }
+          }
+        }
       }),
       signal: controller.signal
     });
@@ -1506,7 +1561,31 @@ async function selectBestFitCompetitors(evidence, candidates) {
         max_tokens: 1200,
         temperature: 0,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                best: {
+                  type: 'object',
+                  properties: { name: { type: 'string' }, reason: { type: 'string' } },
+                  required: ['name', 'reason'],
+                  additionalProperties: false
+                },
+                runnerUp: {
+                  type: 'object',
+                  properties: { name: { type: 'string' }, reason: { type: 'string' } },
+                  required: ['name', 'reason'],
+                  additionalProperties: false
+                }
+              },
+              required: ['best', 'runnerUp'],
+              additionalProperties: false
+            }
+          }
+        }
       }),
       signal: controller.signal
     });
@@ -1537,7 +1616,21 @@ async function selectBestFitCompetitors(evidence, candidates) {
           messages: [{ role: 'user', content: 'Convert the research below into the required JSON. Choose only from these candidates: '
             + cleanCandidates.map(function(candidate) { return candidate.name; }).join(', ')
             + '\nReturn exactly {"best":{"name":"Candidate","reason":"one sentence"},"runnerUp":{"name":"Candidate","reason":"one sentence"}}.\n\nRESEARCH:\n'
-            + text.slice(0, 5000) }]
+            + text.slice(0, 5000) }],
+          output_config: {
+            format: {
+              type: 'json_schema',
+              schema: {
+                type: 'object',
+                properties: {
+                  best: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name', 'reason'], additionalProperties: false },
+                  runnerUp: { type: 'object', properties: { name: { type: 'string' }, reason: { type: 'string' } }, required: ['name', 'reason'], additionalProperties: false }
+                },
+                required: ['best', 'runnerUp'],
+                additionalProperties: false
+              }
+            }
+          }
         }),
         signal: normalizeController.signal
       });
