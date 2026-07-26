@@ -397,9 +397,11 @@ function generateReviewAction(evidence, result) {
 
   // Determine target platform and count by category
   var catLower = category.toLowerCase();
-  var platform, targetCount, platformUrl, instruction;
+  var platform, secondaryPlatform, targetCount, secondaryTargetCount, platformUrl, instruction;
   var isReviewPlatform = true;
   var enterpriseProcurement = /enterprise|pay[ -]?tv|telco|telecom|operator|middleware|automotive oem|carmaker|broadcast platform/i.test(catLower);
+  var realEstate = /real[ -]?estate|estate agenc|estate agent|property (?:broker|agency|sales)|residential brokerage/i.test(catLower);
+  var internationalRealEstate = realEstate && /international|luxury|expat|foreign|global|costa del sol|marbella|investment/i.test(catLower + ' ' + String((evidence && evidence.description) || ''));
 
   // Use a named platform only when this diagnostic established that buyers or
   // close competitors in the category use it. Category words alone are not
@@ -423,6 +425,16 @@ function generateReviewAction(evidence, result) {
     platformUrl = '';
     isReviewPlatform = false;
     instruction = 'Publish three approved, named customer case studies with the buyer, deployment scope, and measurable outcome. Support them with coverage or citations from the trade press, analyst firms, or industry associations used by buyers in this category. Do not create a generic review-platform profile unless category evidence shows that procurement teams actually use it.';
+  } else if (realEstate) {
+    platform = 'Google Reviews';
+    secondaryPlatform = internationalRealEstate ? 'Trustpilot' : '';
+    targetCount = 5;
+    secondaryTargetCount = secondaryPlatform ? 5 : 0;
+    platformUrl = '';
+    instruction = 'First confirm the correct Google Business Profile and ask recent customers for honest Google reviews. '
+      + (secondaryPlatform
+        ? 'Then check whether the agency already has a Trustpilot profile before creating one, and invite confirmed international clients to leave honest reviews there.'
+        : 'Keep the business name, website, address, and contact details consistent on the profile.');
   } else if (modelPlatform && modelPlatform.name) {
     platform    = modelPlatform.name;
     platformUrl = modelPlatform.url || '';
@@ -453,9 +465,11 @@ function generateReviewAction(evidence, result) {
 
   return {
     platform:     platform,
+    secondaryPlatform: secondaryPlatform || '',
     platformUrl:  platformUrl,
     currentCount: currentCount,
     targetCount:  targetCount,
+    secondaryTargetCount: secondaryTargetCount || 0,
     gap:          gap,
     instruction:  instruction,
     isReviewPlatform: isReviewPlatform,
@@ -541,15 +555,18 @@ function generateActionPlan(evidence, result) {
         owner:  'you'
       });
     } else {
+      var reviewPlatforms = ra.secondaryPlatform
+        ? (ra.platform + ' and ' + ra.secondaryPlatform)
+        : (ra.platform || 'a category-relevant review platform');
       week2.tasks.push({
-        task:   'Set up ' + (ra.platform || 'a category-relevant review platform') + ' business profile',
+        task:   'Confirm your ' + reviewPlatforms + ' profiles',
         how:    ra.instruction || 'Create the profile and confirm that buyers in this category actively use the platform.',
         impact: 'Every verified customer review builds independent credibility',
         owner:  'you'
       });
       week2.tasks.push({
         task:   'Email your 10 best customers asking for a review',
-        how:    'Ask for honest feedback on ' + (ra.platform || 'the selected review platform') + ' and include the verified profile link.',
+        how:    'Ask for honest feedback on ' + reviewPlatforms + ' and include the correct verified profile link.',
         impact: 'Begins building independent customer evidence',
         owner:  'you'
       });
