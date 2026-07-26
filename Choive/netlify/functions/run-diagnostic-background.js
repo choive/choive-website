@@ -1556,6 +1556,34 @@ exports.handler = async function (event) {
     if (evidence['socialSignals'] && Object.keys(evidence['socialSignals']).length > 0) {
       finalResult['socialSignals'] = evidence['socialSignals'];
     }
+    // Preserve a small, source-linked community record for the paid analysis.
+    // Direct business mentions and broader category discussions stay clearly
+    // distinguished so a category thread is never presented as a review of
+    // the diagnosed business.
+    try {
+      var subjectNameForCommunity = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      finalResult['communityEvidence'] = (Array.isArray(evidence['searchResults']) ? evidence['searchResults'] : [])
+        .filter(function(item) {
+          return item && item.link
+            && (item.signalType === 'community' || item.signalType === 'reputation')
+            && /reddit\.com|quora\.com|forum|community/i.test(String(item.link));
+        })
+        .slice(0, 4)
+        .map(function(item) {
+          var searchable = (String(item.title || '') + ' ' + String(item.snippet || '')).toLowerCase();
+          return {
+            platform: /reddit\.com/i.test(String(item.link)) ? 'Reddit' : 'Independent community',
+            title: String(item.title || 'Community discussion').slice(0, 180),
+            summary: String(item.snippet || '').slice(0, 420),
+            url: String(item.link),
+            subjectMentioned: Boolean(subjectNameForCommunity && searchable.indexOf(subjectNameForCommunity) !== -1),
+            context: item.signalType === 'reputation' ? 'business mention search' : 'category discussion search'
+          };
+        });
+    } catch (communityErr) {
+      console.warn('[' + jobId + '] Community evidence formatting failed:', communityErr.message);
+      finalResult['communityEvidence'] = [];
+    }
     if (evidence['summaries'] && Object.keys(evidence['summaries']).length > 0) {
       finalResult['summaries'] = evidence['summaries'];
     }
