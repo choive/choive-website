@@ -4917,14 +4917,20 @@ function buildDeliverables(r) {
     var trustMeasurement = r.pillars && r.pillars.trust && r.pillars.trust.measurement;
     var reviewChecksUnavailable = trustMeasurement && trustMeasurement.complete === false
       && (trustMeasurement.unavailableChecks || []).some(function(label) { return /review/i.test(String(label || '')); });
+    var reviewPlatformDisplay = ra.secondaryPlatform
+      ? (ra.platform + ' + ' + ra.secondaryPlatform)
+      : (ra.platform || 'Independent customer evidence');
+    var reviewTargetDisplay = ra.secondaryPlatform
+      ? ((ra.targetCount || 5) + '+ on ' + ra.platform + '; ' + (ra.secondaryTargetCount || 5) + '+ on ' + ra.secondaryPlatform)
+      : ((ra.targetCount || 50) + '+');
     var urgColor = ra.urgency === 'critical' ? 'var(--red)' : ra.urgency === 'high' ? 'var(--amber)' : 'var(--tm)';
     reviewHtml = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
       + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:12px;">The target below is a practical working target for this category, not a guaranteed threshold for AI recommendations.</div>'
       + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Verified current reviews</div><div style="font-size:' + (reviewChecksUnavailable ? '16' : '28') + 'px;font-weight:700;color:var(--tp);">' + (reviewChecksUnavailable ? 'Not measured' : (ra.currentCount || 0)) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Working target</div><div style="font-size:28px;font-weight:700;color:var(--ac);">' + (ra.targetCount || 50) + '+</div></div>'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platform</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(ra.platform || 'Trustpilot') + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Working target</div><div style="font-size:16px;font-weight:700;line-height:1.45;color:var(--ac);">' + esc(reviewTargetDisplay) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platforms</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(reviewPlatformDisplay) + '</div></div>'
       + '</div>'
       + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
       + '</div>';
