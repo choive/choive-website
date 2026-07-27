@@ -91,16 +91,33 @@ function marketLabel(evidence) {
   return place;
 }
 
-function sourceLinks(result) {
+function sourceLinks(evidence, result) {
   var audits = result && result.scoreMethod && result.scoreMethod.audits;
   var trust = audits && Array.isArray(audits.trust) ? audits.trust : [];
+  var subjectName = String((evidence && evidence.name) || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  var officialHost = '';
+  try { officialHost = new URL(String((evidence && evidence.website) || '')).hostname.replace(/^www\./, ''); } catch (_) {}
+  var searchResults = Array.isArray(evidence && evidence.searchResults) ? evidence.searchResults : [];
+  var unsafeHosts = /(^|\.)(reddit\.com|quora\.com|facebook\.com|instagram\.com|linkedin\.com|x\.com|twitter\.com|youtube\.com|tiktok\.com|google\.[a-z.]+|bing\.com|yelp\.[a-z.]+|trustpilot\.com)$/i;
   var links = [];
   trust.forEach(function(rule) {
     if (!rule || Number(rule.points || 0) <= 0 || rule.verification !== 'independent') return;
     var values = Array.isArray(rule.source) ? rule.source : [rule.source];
     values.forEach(function(value) {
       var link = String(value || '').trim();
-      if (/^https?:\/\//i.test(link) && links.indexOf(link) === -1) links.push(link);
+      if (!/^https?:\/\//i.test(link) || links.indexOf(link) !== -1) return;
+      var host = '';
+      try { host = new URL(link).hostname.replace(/^www\./, ''); } catch (_) { return; }
+      // An llms.txt file is an official publishing asset. Community posts,
+      // social profiles, review/search pages, and category-only discussions
+      // are not safe authority citations inside that file.
+      if (!host || unsafeHosts.test(host) || (officialHost && host === officialHost)) return;
+      var matched = searchResults.find(function(item) { return item && String(item.link || '') === link; });
+      if (matched) {
+        var text = (String(matched.title || '') + ' ' + String(matched.snippet || '')).toLowerCase();
+        if (subjectName && text.indexOf(subjectName) === -1) return;
+      }
+      links.push(link);
     });
   });
   return links.slice(0, 5);
@@ -188,7 +205,7 @@ function generateLlmsTxt(evidence, result) {
   var audience       = (modelFacts.audiences && modelFacts.audiences.length)
     ? modelFacts.audiences.join(', ')
     : intendedAudience(evidence, result, profile.audience);
-  var independent    = sourceLinks(result);
+  var independent    = sourceLinks(evidence, result);
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
     : '';
