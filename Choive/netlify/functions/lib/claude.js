@@ -632,8 +632,43 @@ function parseClaudeResponse(data) {
   throw new Error('Could not parse Claude response as JSON');
 }
 
+function qualifyUnavailableReviewActions(rawOutput, reviewMeasurement) {
+  var trustpilotUnavailable = reviewMeasurement && reviewMeasurement.trustpilot === 'unavailable';
+  var googleUnavailable = reviewMeasurement && reviewMeasurement.googleReviews === 'unavailable';
+  if (!(trustpilotUnavailable || googleUnavailable) || !Array.isArray(rawOutput.actions)) return rawOutput;
+  rawOutput.actions = rawOutput.actions.map(function(action) {
+    if (!action || typeof action !== 'object') return action;
+    var joined = [action.title, action.body, action.explanation, action.if_nothing].join(' ');
+    if (!/trustpilot|google reviews?|review profile/i.test(joined)) return action;
+    var copy = Object.assign({}, action);
+    ['body', 'explanation', 'if_nothing'].forEach(function(field) {
+      var text = String(copy[field] || '');
+      if (trustpilotUnavailable && googleUnavailable) {
+        text = text.replace(/CHOIVE could not confirm any Trustpilot or Google review profile[^.]*\./gi,
+          'CHOIVE could not verify the Trustpilot or Google review status because both review checks were unavailable during this run.');
+      }
+      if (trustpilotUnavailable) {
+        text = text.replace(/(?:no|without) (?:verified )?Trustpilot (?:profile|presence|reviews?)(?: was| were)? (?:found|confirmed|verified|visible)[^.]*\./gi,
+          'CHOIVE could not verify the Trustpilot status because that review check was unavailable during this run.');
+      }
+      if (googleUnavailable) {
+        text = text.replace(/(?:no|without) (?:verified )?Google (?:review profile|reviews?)(?: was| were)? (?:found|confirmed|verified|visible)[^.]*\./gi,
+          'CHOIVE could not verify the Google review status because that review check was unavailable during this run.');
+      }
+      copy[field] = text;
+    });
+    var checkFirst = 'Check whether the relevant review profile already exists before creating or claiming one.';
+    if (String(copy.body || '').toLowerCase().indexOf(checkFirst.toLowerCase()) === -1) {
+      copy.body = (String(copy.body || '').trim() + ' ' + checkFirst).trim();
+    }
+    return copy;
+  });
+  return rawOutput;
+}
+
 // ── Apply hard score constraints from confirmed signals ───────────────────────
 function applySignalConstraints(rawOutput, websiteSignals, reviewMeasurement) {
+  rawOutput = qualifyUnavailableReviewActions(rawOutput, reviewMeasurement);
   if (!websiteSignals || Object.keys(websiteSignals).length === 0) return rawOutput;
   var s = websiteSignals;
   var p = rawOutput.pillars || {};
@@ -1714,4 +1749,4 @@ async function selectBestFitCompetitors(evidence, candidates) {
   }
 }
 
-module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors };
+module.exports = { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors, applySignalConstraints };
