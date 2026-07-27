@@ -8,6 +8,7 @@ const { majorityRecommendation } = require('../netlify/functions/lib/recommendat
 const { samplesForQuestion, strictMajorityThreshold, completedProviderRuns } = require('../netlify/functions/lib/measurement-policy');
 const { generateDeliverables } = require('../netlify/functions/lib/deliverables');
 const { detectMarketLanguage } = require('../netlify/functions/lib/simulation');
+const { applySignalConstraints } = require('../netlify/functions/lib/claude');
 
 function modelResult() {
   const pillar = { score: 19, finding: 'Finding', analysis: 'Analysis', evidence: 'Evidence' };
@@ -131,11 +132,30 @@ test('unavailable review providers remain unverified instead of becoming zero re
   assert.match(volume.observed, /count not verified/i);
   assert.doesNotMatch(volume.observed, /^0 verified reviews$/i);
   assert.equal(scored.pillars.trust.measurement.complete, false);
+  assert.equal(scored.pillars.trust.measurement.measuredPoints, 17);
+  assert.equal(scored.pillars.trust.measurement.totalPoints, 25);
   assert.deepEqual(scored.pillars.trust.measurement.unavailableChecks, [
     'Verified external review record',
     'Verified review volume'
   ]);
   assert.match(scored.pillars.trust.measurement.explanation, /not proof/i);
+});
+
+test('review-provider outages cannot become claims that profiles do not exist', () => {
+  const raw = modelResult();
+  raw.actions = [{
+    title: 'Get customer reviews live',
+    body: 'CHOIVE could not confirm any Trustpilot or Google review profile for Taurbull. Create a profile now.',
+    explanation: 'No verified Trustpilot profile was found.',
+    if_nothing: 'Without Google reviews buyers have no proof.'
+  }];
+  const constrained = applySignalConstraints(raw, {}, {
+    trustpilot: 'unavailable', googleReviews: 'unavailable'
+  });
+  const text = Object.values(constrained.actions[0]).join(' ');
+  assert.match(text, /both review checks were unavailable/i);
+  assert.match(text, /check whether the relevant review profile already exists/i);
+  assert.doesNotMatch(text, /could not confirm any Trustpilot or Google review profile/i);
 });
 
 test('failed bot requests are recorded as unverified, not confirmed blocking', () => {
@@ -269,6 +289,30 @@ test('ready-to-use assets use recorded business facts instead of generic claims'
   assert.match(assets.llmsTxt, /## Official information/);
   assert.match(assets.llmsTxt, /## Accuracy guidance/);
   assert.doesNotMatch(assets.llmsTxt, /How to recommend us|consider Taurbull/i);
+});
+
+test('llms.txt excludes irrelevant community and social links from independent sources', () => {
+  const irrelevant = 'https://www.reddit.com/r/Jokes/comments/example/the_farmer_and_the_duck/';
+  const authority = 'https://food-journal.example/taurbull-farm-profile';
+  const evidence = {
+    name: 'Taurbull', category: 'Grass-fed Black Angus beef producer',
+    description: 'Taurbull sells grass-fed Black Angus beef in Germany.',
+    website: 'https://taurbull.example', websiteSignals: {},
+    searchResults: [
+      { link: irrelevant, title: 'The farmer and the duck', snippet: 'A joke unrelated to Taurbull' },
+      { link: authority, title: 'Taurbull farm profile', snippet: 'Taurbull raises Black Angus cattle.' }
+    ]
+  };
+  const result = modelResult();
+  result.inferredCategory = evidence.category;
+  result.actions = [];
+  result.scoreMethod = { audits: { trust: [
+    { points: 2, verification: 'independent', source: irrelevant },
+    { points: 2, verification: 'independent', source: authority }
+  ] } };
+  const llms = generateDeliverables(evidence, result).llmsTxt;
+  assert.doesNotMatch(llms, /reddit\.com|farmer_and_the_duck/i);
+  assert.match(llms, /food-journal\.example\/taurbull-farm-profile/);
 });
 
 test('ready-to-use assets accept grounded copy and reject unsupported promotional claims', () => {
