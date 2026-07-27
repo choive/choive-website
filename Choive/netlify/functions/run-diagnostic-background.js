@@ -76,6 +76,12 @@ function buildSubjectRecommendationMatcher(name, website) {
 function computeProgressDelta(prevRow, finalResult, evidence) {
   if (!prevRow || !prevRow.result || !finalResult) return null;
   var prev      = prevRow.result;
+  var previousRubric = prev.scoreMethod && prev.scoreMethod.version;
+  var currentRubric = finalResult.scoreMethod && finalResult.scoreMethod.version;
+  // Scores produced by different rubrics are not a verified progression.
+  // Suppress the comparison instead of presenting a methodology change as
+  // business improvement or regression.
+  if (!previousRubric || !currentRubric || previousRubric !== currentRubric) return null;
   var prevScore = Number(prev.overallScore);
   // Backward compatibility for the oldest stored result shape.
   if (!isFinite(prevScore)) prevScore = Number(prev.score);
@@ -127,11 +133,20 @@ function computeProgressDelta(prevRow, finalResult, evidence) {
   var prevB = prev.aiSimulation && prev.aiSimulation.before;
   var curB  = (finalResult.aiSimulation && finalResult.aiSimulation.before)
            || ((evidence.aiSimulationBefore || {}).before);
-  if (prevB && curB && isFinite(Number(prevB.appearedCount)) && isFinite(Number(curB.appearedCount))) {
+  var prevQueries = prevB && Array.isArray(prevB.results) ? prevB.results.map(function(item) {
+    return String(item && item.query || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }) : [];
+  var curQueries = curB && Array.isArray(curB.results) ? curB.results.map(function(item) {
+    return String(item && item.query || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }) : [];
+  var sameQuestions = prevQueries.length > 0 && prevQueries.length === curQueries.length
+    && prevQueries.every(function(query, index) { return query && query === curQueries[index]; });
+  if (prevB && curB && sameQuestions
+      && isFinite(Number(prevB.appearedCount)) && isFinite(Number(curB.appearedCount))) {
     delta.selectionRate = {
       previous: Number(prevB.appearedCount),
       current:  Number(curB.appearedCount),
-      total:    Number(curB.totalQueries) || 3
+      total:    curQueries.length
     };
   }
 
@@ -1562,11 +1577,25 @@ exports.handler = async function (event) {
     // the diagnosed business.
     try {
       var subjectNameForCommunity = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      var communityStopWords = new Set('best top leading company companies business service services product products solution solutions platform provider providers online shop store buy buying recommendation recommendations germany german global local regional national international'.split(' '));
+      var categoryTokensForCommunity = String(evidence['category'] || finalResult['inferredCategory'] || '')
+        .toLowerCase().match(/[a-z0-9äöüß][a-z0-9äöüß-]{3,}/g) || [];
+      categoryTokensForCommunity = categoryTokensForCommunity.filter(function(token, index, all) {
+        return !communityStopWords.has(token) && all.indexOf(token) === index;
+      });
       finalResult['communityEvidence'] = (Array.isArray(evidence['searchResults']) ? evidence['searchResults'] : [])
         .filter(function(item) {
-          return item && item.link
-            && (item.signalType === 'community' || item.signalType === 'reputation')
-            && /reddit\.com|quora\.com|forum|community/i.test(String(item.link));
+          if (!item || !item.link
+              || (item.signalType !== 'community' && item.signalType !== 'reputation')
+              || !/reddit\.com|quora\.com|forum|community/i.test(String(item.link))) return false;
+          var searchable = (String(item.title || '') + ' ' + String(item.snippet || '')).toLowerCase();
+          var directMention = Boolean(subjectNameForCommunity && searchable.indexOf(subjectNameForCommunity) !== -1);
+          var categoryMatches = categoryTokensForCommunity.filter(function(token) {
+            return searchable.indexOf(token) !== -1;
+          }).length;
+          // Save a community source only when it names the subject or clearly
+          // discusses the exact category. One accidental keyword is noise.
+          return directMention || categoryMatches >= 2;
         })
         .slice(0, 4)
         .map(function(item) {
