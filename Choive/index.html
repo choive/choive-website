@@ -3773,7 +3773,7 @@ function showResults(r, jobId) {
     var chips = Object.keys(d.pillars || {}).map(function(k) {
       var v = Math.round((Number(d.pillars[k]) || 0) * 10) / 10;
       var c = v > 0 ? 'var(--ac)' : (v < 0 ? '#E05252' : 'var(--tm)');
-      return '<span style="font-size:12px;color:' + c + ';margin-right:16px;white-space:nowrap;">' + pillarNames[k] + ' ' + (v > 0 ? '+' : '') + v + '</span>';
+      return '<span style="font-size:12px;color:' + c + ';margin-right:16px;white-space:nowrap;">' + pillarNames[k] + ' ' + (v > 0 ? '+' : '') + v + ' <span aria-hidden="true" style="color:var(--rule);">·</span></span>';
     }).join('');
 
     var sigLines = (d.signals || []).map(function(s) {
