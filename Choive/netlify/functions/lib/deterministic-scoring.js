@@ -32,7 +32,7 @@ function entry(ruleId, label, points, maxPoints, observed, source, verification)
   return {
     ruleId: ruleId,
     label: label,
-    points: clamp(points, maxPoints),
+    points: Math.round(clamp(points, maxPoints) * 10) / 10,
     maxPoints: maxPoints,
     observed: String(observed || 'Not established'),
     source: source || '',
@@ -41,12 +41,18 @@ function entry(ruleId, label, points, maxPoints, observed, source, verification)
 }
 
 function score(entries) {
-  return Math.round(entries.reduce(function(total, item) { return total + item.points; }, 0) * 10) / 10;
+  var measured = entries.filter(function(item) { return item.verification !== 'unmeasured'; });
+  var earned = measured.reduce(function(total, item) { return total + item.points; }, 0);
+  var measuredMaximum = measured.reduce(function(total, item) { return total + item.maxPoints; }, 0);
+  var fullMaximum = entries.reduce(function(total, item) { return total + item.maxPoints; }, 0);
+  if (!measuredMaximum || !fullMaximum) return 0;
+  return Math.round((earned / measuredMaximum * fullMaximum) * 10) / 10;
 }
 
 function confidence(entries) {
-  var possible = entries.reduce(function(total, item) { return total + item.maxPoints; }, 0);
-  var verified = entries.reduce(function(total, item) {
+  var measured = entries.filter(function(item) { return item.verification !== 'unmeasured'; });
+  var possible = measured.reduce(function(total, item) { return total + item.maxPoints; }, 0);
+  var verified = measured.reduce(function(total, item) {
     return total + (item.verification === 'mechanical' || item.verification === 'independent' ? item.maxPoints : 0);
   }, 0);
   var ratio = possible ? verified / possible : 0;
@@ -61,12 +67,13 @@ function measurementCoverage(entries) {
   var available = entries.filter(function(item) { return item.verification !== 'unmeasured'; });
   var unavailable = entries.filter(function(item) { return item.verification === 'unmeasured'; });
   return {
+    earnedMeasuredPoints: Math.round(available.reduce(function(total, item) { return total + item.points; }, 0) * 10) / 10,
     measuredPoints: available.reduce(function(total, item) { return total + item.maxPoints; }, 0),
     totalPoints: entries.reduce(function(total, item) { return total + item.maxPoints; }, 0),
     unavailableChecks: unavailable.map(function(item) { return item.label; }),
     complete: unavailable.length === 0,
     explanation: unavailable.length
-      ? 'CHOIVE could not complete every check in this pillar. An unavailable check is not proof that the signal does not exist.'
+      ? 'Unavailable checks were excluded from the score denominator because an unavailable check is not proof that the signal is absent. The measured result was converted to the standard 25-point pillar scale.'
       : 'All scoring checks for this pillar completed.'
   };
 }
@@ -254,15 +261,15 @@ function applyDeterministicScoring(evidence, result) {
       ? 'Offer and audience are clearly explained'
       : 'Core offer is only partly explained';
   }
-  result.pillars.trust.finding = reviewsAwarded === 0 && independentAwarded > 0
-    ? 'Independent mentions found; buyer proof missing'
-    : (result.pillars.trust.score >= 18 ? 'Independent trust evidence is established' : 'Independent buyer proof remains limited');
-  result.pillars.difference.finding = differenceAudit[0].points > 0 && differenceAudit[3].points === 0
-    ? 'Specific distinction lacks measurable outcome proof'
-    : (result.pillars.difference.score >= 18 ? 'Specific distinction is supported by proof' : 'Distinctive evidence remains incomplete');
+  result.pillars.trust.finding = result.pillars.trust.score >= 18
+    ? 'Independent sources give buyers strong reasons to trust this business'
+    : 'CHOIVE found too little independent proof from reviews, press, or customer results';
+  result.pillars.difference.finding = result.pillars.difference.score >= 18
+    ? 'The business clearly proves why a customer should choose it'
+    : 'The website does not yet prove why a customer should choose this business over another';
   result.pillars.ease.finding = result.pillars.ease.score >= 20
-    ? 'Technical access is strongly established'
-    : (result.pillars.ease.score >= 12 ? 'Technical access has specific gaps' : 'Technical access is incomplete');
+    ? 'The website is easy for search engines and AI systems to read'
+    : 'Parts of the website are still difficult for search engines or AI systems to verify';
   if (result.overallScore >= 76) {
     result.verdictLevel = 'present';
     result.verdictHeadline = 'Strong public evidence across the four pillars';
