@@ -3747,11 +3747,11 @@ function showResults(r, jobId) {
     + (name ? '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--tp);margin:2px 0 8px;">' + esc(name) + '</div>' : '')
     + inferredCat
     + '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px;">'
-    + '<div class="mono-score-num" id="scoreNum">' + score + '</div>'
+    + '<div class="mono-score-num" id="scoreNum">0</div>'
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Business evidence score</div>'
-    + '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:10px;"><strong>Score reference:</strong> ' + esc(scoreBand) + '. This is a CHOIVE evidence band, not an industry average.</div>'
+    + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">Businesses that consistently appear in AI answers score above 62 on the CHOIVE Index.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand what this business does, check its claims, see what makes it different, and find its information online. The recorded AI answers are shown separately and do not change this score.'
@@ -5037,7 +5037,6 @@ function buildDeliverables(r) {
 
   var tabs = [
     { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
-    { id: 'dPlan',   label: '30-day plan', content: planHtml   },
     { id: 'dH1',     label: 'H1',         content: h1Html     },
     { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
     { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer evidence' : 'Reviews', content: reviewHtml },
