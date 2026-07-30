@@ -3774,9 +3774,16 @@ function showResults(r, jobId) {
           : appeared === total
             ? 'Every AI platform tested found this business without being given its name.'
             : 'Only ' + appeared + ' of ' + total + ' AI platforms found this business on unprompted category searches. The others did not surface it without the business name.';
+        var totalScore = Number(r.overallScore) || 0;
+        var contextLine = appeared === total
+          ? 'This score and this discovery result are aligned. The evidence is present and all platforms tested are surfacing it.'
+          : (totalScore >= 62
+            ? 'A score of ' + totalScore + ' means the evidence exists. Not all platforms are surfacing it yet — that is a placement gap, not an evidence gap.'
+            : 'A score of ' + totalScore + ' explains this result. The evidence base is not yet strong enough for consistent AI discovery. Improving the score closes this gap.');
         return '<div style="margin-top:16px;padding:16px 18px;border-left:3px solid ' + tone + ';background:var(--paper-2);">'
           + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">AI Discovery Without Your Name</div>'
           + '<div style="font-size:14px;font-weight:600;color:' + tone + ';line-height:1.5;">' + esc(verdict) + '</div>'
+          + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-top:8px;">' + esc(contextLine) + '</div>'
           + '</div>';
       })()
     + '</div>';
@@ -4355,13 +4362,15 @@ function showResults(r, jobId) {
         ? 'None of the completed AI answers mentioned ' + (name || 'this business') + '.'
         : 'AI mentioned ' + (name || 'this business') + ' in ' + probeAppeared + ' of ' + probeCompleted + ' completed answers.')
       : (r.verdictHeadline || 'Not enough AI answers were completed to give a reliable visibility result.'));
-    var verdictLead = (topComp
-      ? topComp + ' is the closest verified competitor. '
-      : '')
-      + 'The CHOIVE score measures how clearly this business is explained, how well public sources support its claims, what makes it different, and how easy it is to verify online. '
+    var _totalScore = Number(r.overallScore) || 0;
+    var verdictLead = (topComp ? topComp + ' is the closest verified competitor. ' : '')
       + (probeCompleted
-        ? 'The score does not decide which businesses the AI providers mention.'
-        : 'Run the diagnostic again before drawing a conclusion about AI visibility.');
+        ? (_totalScore >= 62
+            ? (probeAppeared < probeCompleted
+                ? 'A score of ' + _totalScore + ' means the evidence exists. The AI answers show it is not yet being consistently picked up. That is a placement gap, not an evidence gap — it can be closed without rebuilding the business from scratch.'
+                : 'A score of ' + _totalScore + ' explains the discovery result above. The evidence is present and it is being found consistently.')
+            : 'A score of ' + _totalScore + ' explains why discovery is incomplete. The evidence base is not yet strong enough to support consistent AI mentions. Improving the four pillars directly improves discovery.')
+        : 'The CHOIVE score measures how clearly this business is explained, how well public sources support its claims, what makes it different, and how easy it is to verify online. Run the diagnostic again before drawing a conclusion about AI visibility.');
     var marketName = widerMarketDecision && widerMarketDecision.name ? widerMarketDecision.name : '';
     if (marketName && String(marketName).toLowerCase().replace(/[^a-z0-9]/g, '')
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
