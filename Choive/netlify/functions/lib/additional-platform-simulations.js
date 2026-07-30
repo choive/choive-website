@@ -21,7 +21,7 @@ const GEMINI_MODEL = currentGeminiModel(process.env.GEMINI_MODEL, 'gemini-3.5-fl
 // reliable fallback during a regional availability spike.
 const GEMINI_FALLBACK_MODEL = currentGeminiModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-3.5-flash-lite');
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
-const REQUEST_TIMEOUT_MS = 75000;
+const REQUEST_TIMEOUT_MS = 120000;
 const { majorityRecommendation } = require('./recommendation-consensus');
 const { recommendationSampleCount, samplesForQuestion, strictMajorityThreshold } = require('./measurement-policy');
 
@@ -105,7 +105,7 @@ function providerPrompt(source) {
 
 async function requestGeminiWithModel(source, model) {
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
+  var timer = setTimeout(function() { controller.abort(); }, GEMINI_TIMEOUT_MS);
   try {
     var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
       method: 'POST',
