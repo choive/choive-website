@@ -3353,7 +3353,10 @@ function plainPillarFinding(key, pillar) {
   }
   if (key === 'trust') {
     if (measurement && measurement.complete === false) {
-      return 'Some trust checks could not run, and CHOIVE found too little other independent proof.';
+      var unavailable = measurement.unavailableChecks && measurement.unavailableChecks.length
+        ? measurement.unavailableChecks.join(' and ') + ' could not be confirmed.'
+        : 'Some review platforms could not be checked.';
+      return unavailable + ' No independent press, review record, or case study result was confirmed in the remaining checks.';
     }
     return score >= 18
       ? 'Independent sources give buyers strong reasons to trust this business.'
@@ -4538,8 +4541,22 @@ function showResults(r, jobId) {
           + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + '</div>'
           + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
           + rows
-          + (largestDeficit.value > 0
-            ? '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:16px;">Largest estimated score difference: <strong style="color:var(--ink);">' + esc(largestDeficit.key) + ' (' + largestDeficit.value + ' points)</strong></div>'
+          + (function() {
+              var closableInternally = { clarity: true, ease: true, difference: false, trust: false };
+              var pillarLabel = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
+              var closable = largestDeficit.key ? closableInternally[largestDeficit.key] : null;
+              if (largestDeficit.value > 0) {
+                var closeNote = closable
+                  ? 'This gap can be closed with a website change — no external publication or third-party source required.'
+                  : 'This gap requires external evidence — a press mention, review record, or independently verifiable proof — not a website change alone.';
+                return '<div style="margin-top:18px;padding:14px 16px;border-top:2px solid var(--rule);background:var(--paper-3);">'
+                  + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Largest gap · ' + esc(pillarLabel[largestDeficit.key] || largestDeficit.key) + ' (' + largestDeficit.value + ' points)</div>'
+                  + '<div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;">' + closeNote + '</div>'
+                  + '<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.55;">Competitor values are estimates from public evidence, not audited CHOIVE scores.</div>'
+                  + '</div>';
+              }
+              return '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>';
+            })()
               + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">This comparison shows where the difference in publicly available evidence is largest. Competitor values are estimates from public sources and are not part of the audited CHOIVE score.</div>'
             : '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>')
           + '</div>';
@@ -4848,14 +4865,14 @@ function showResults(r, jobId) {
         + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildPaidPillarEvidence()
       + buildCommunityEvidence()
+      + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
+      + mergedActions.map(actionItem).join('') + '</div></section>'
       + '<section class="pay-section deliv-section" id="report-assets">'
       + '<div class="pay-eyebrow">Prepared for ' + esc(bizData.name || 'Your Business') + '</div>'
       + '<div class="paid-section-header">Work CHOIVE has already prepared for you</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">CHOIVE wrote these items from the findings in this diagnostic. Check every name, place, number, and claim before publishing. The structured website code, called JSON-LD, must be checked and tested by a developer.</div>'
       + '<div style="font-size:13px;font-weight:700;color:var(--ink);padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;">Start today without a developer: review the llms.txt draft, choose a homepage headline, and copy the improved page description. Your website provider may still need to upload or publish them.</div>'
       + '<div id="delivContent"></div></section>'
-      + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
-      + mergedActions.map(actionItem).join('') + '</div></section>'
       + buildOperatingRoadmap()
       + buildOrganicDiscoveryGap()
       + '<section class="pay-section sim-section" id="simSection">'
