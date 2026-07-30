@@ -312,6 +312,11 @@ function generateMetaDescription(evidence, result) {
   if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
   if (diff  && diff.length  < 15) diff  = '';
 
+  // Discard diff or trust that echoes the business name back into the meta
+  if (diff  && name && diff.toLowerCase().startsWith(name.toLowerCase()))  diff  = '';
+  if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
+  if (diff  && diff.length  < 15) diff  = '';
+
   var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135);
   var improved = name + (groundedSummary ? ' — ' + groundedSummary : ' — ' + category);
   if (city && ['local','regional','national'].indexOf(reach) !== -1
