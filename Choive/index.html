@@ -3999,7 +3999,7 @@ function showResults(r, jobId) {
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
-  // Reveal pillar bars after rendering. The verified score is shown
+// Reveal pillar bars after rendering. The verified score is shown
   // immediately so a temporary animation value is never mistaken for it.
   setTimeout(function() {
     // Pillar bars
@@ -4007,6 +4007,11 @@ function showResults(r, jobId) {
       el.style.width = (el.dataset.pct || 0) + '%';
     });
   }, 600);
+  // Count-up animation for the CHOIVE score number
+  setTimeout(function() {
+    animateNum('scoreNum', 0, score, 1200);
+  }, 100);
+  
   // Purely visual: brief glow pulse once the count-up settles.
   setTimeout(function() {
     var scoreEl = document.getElementById('scoreNum');
