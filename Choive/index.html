@@ -3760,6 +3760,12 @@ function showResults(r, jobId) {
       ? 'This score shows how easy it is to understand what this business does, check its claims, see what makes it different, and find its information online. The recorded AI answers are shown separately and do not change this score.'
       : apiMeasurementSummary) + '</div>'
     + (function() {
+        if (isPaid) return '';
+        var _fp = r.pillars || {};
+        var _fb = ['clarity','trust','difference','ease'].filter(function(k) { return (Number((_fp[k]||{}).score)||0) < 18; }).length;
+        return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 pillars scored below 18\u202f/\u202f25. The full analysis identifies exactly what evidence is missing in each.</div>' : '';
+      })()
+    + (function() {
         if (!isPaid) return '';
         var appeared = 0; var total = 0;
         measuredPlatformRuns().forEach(function(item) {
@@ -4025,7 +4031,7 @@ function showResults(r, jobId) {
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
         + '<div class="paywall-headline">' + (topComp ? 'See why ' + esc(topComp) + ' is ahead — and what to change.' : 'See what is holding your business back — and what to change.') + '</div>'
-        + '<div class="paywall-body">Unlock the evidence behind every score, the full competitor comparison, your priority actions, and ready-to-use website content.</div>'
+        + '<div class="paywall-body">' + (function() { var _s = Number(r.overallScore) || 0; var _pl = r.pillars || {}; var _lk = ['clarity','trust','difference','ease'].reduce(function(m,k){ return (Number((_pl[k]||{}).score)||0) < (Number((_pl[m]||{}).score)||0) ? k : m; }, 'clarity'); var _ln = {clarity:'Clarity',trust:'Trust',difference:'Difference',ease:'Ease'}[_lk]; return 'This result shows a score of ' + _s + '/100, with ' + _ln + ' as the weakest pillar. The full analysis shows exactly what evidence is missing in each area, which competitor is winning buyers you should have, and what to publish first to close the gap.'; })() + '</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
