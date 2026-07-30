@@ -4218,10 +4218,13 @@ function showResults(r, jobId) {
         return String(result.label || '').toLowerCase().indexOf('organic category') !== -1;
       }) || results[0];
       var status = !organic ? 'Not completed' : (organic.appeared ? 'Business mentioned' : 'Business absent');
-      var named = organic && organic.topRecommendation ? ' Top recommendation: ' + organic.topRecommendation + '.' : '';
+      var statusColor = !organic ? 'var(--muted)' : organic.appeared ? 'var(--green)' : 'var(--red)';
+      var namedInstead = (organic && !organic.appeared && organic.topRecommendation) ? String(organic.topRecommendation) : '';
       return '<div class="integrity-row"><div class="integrity-row-label">' + item.label + '</div>'
-        + '<div class="integrity-row-value"><strong>' + status + '</strong>' + esc(named)
-        + (organic && organic.query ? '<br>Question: “' + esc(organic.query) + '”' : '')
+        + '<div class="integrity-row-value">'
+        + '<strong style="color:' + statusColor + ';">' + status + '</strong>'
+        + (organic && organic.query ? '<br><span style="font-size:11px;color:var(--muted);">Question: "' + esc(organic.query) + '"</span>' : '')
+        + (namedInstead ? '<div style="margin-top:8px;padding:9px 11px;background:var(--paper-2);border-left:2px solid var(--amber);"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Recommended instead: </span><span style="font-size:13px;font-weight:700;color:var(--ink);">' + esc(namedInstead) + '</span></div>' : '')
         + '</div></div>';
     }).join('');
     var completedOrganic = 0;
@@ -4817,15 +4820,29 @@ function showResults(r, jobId) {
     }
     function actionVerification(index, fallback) {
       var action = ranked[index] || {};
-      return action.verification || action.successMeasure || action.if_nothing || fallback;
+      return action.verification || action.successMeasure || fallback;
+    }
+    function actionConsequence(index) {
+      var action = ranked[index] || {};
+      return (action.if_nothing && String(action.if_nothing).trim()) ? String(action.if_nothing).trim() : '';
+    }
+    function roadmapPhase(dayLabel, actionIndex, titleFallback, instrFallback, verifyFallback) {
+      var consequence = actionConsequence(actionIndex);
+      return '<div class="roadmap-phase">'
+        + '<div class="roadmap-day">' + dayLabel + '</div>'
+        + '<div class="roadmap-title">' + esc(actionTitle(actionIndex, titleFallback)) + '</div>'
+        + '<div class="roadmap-copy">' + esc(actionInstruction(actionIndex, instrFallback)) + '</div>'
+        + '<div class="roadmap-check">How to verify it: ' + esc(actionVerification(actionIndex, verifyFallback)) + '</div>'
+        + (consequence ? '<div style="margin-top:10px;padding:9px 11px;background:var(--paper-2);border-left:2px solid var(--amber);font-size:12px;color:var(--body);line-height:1.6;"><strong style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);display:block;margin-bottom:3px;">What you prevent by completing this</strong>' + esc(consequence) + '</div>' : '')
+        + '</div>';
     }
     return '<section class="pay-section" id="report-roadmap">'
       + '<div class="pay-eyebrow">30 / 60 / 90-Day Operating Roadmap</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">A practical order for completing the work and checking the result again. This plan does not promise a future score.</div>'
       + '<div class="roadmap">'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 1–30 · Publish</div><div class="roadmap-title">' + esc(actionTitle(0, 'Complete the first priority action')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(0, 'Publish the exact change described in the first Priority Action.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(0, 'Record the live URL and confirm that the required wording or evidence appears on the published page.')) + '</div></div>'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 31–60 · Confirm</div><div class="roadmap-title">' + esc(actionTitle(1, 'Complete the second priority action')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(1, 'Publish the exact change described in the second Priority Action.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(1, 'Confirm the published evidence through the source or website check named in the Priority Action.')) + '</div></div>'
-      + '<div class="roadmap-phase"><div class="roadmap-day">Days 61–90 · Measure</div><div class="roadmap-title">' + esc(actionTitle(2, 'Complete the third priority action and rerun the diagnostic')) + '</div><div class="roadmap-copy">' + esc(actionInstruction(2, 'Publish the third Priority Action, then run CHOIVE again using the same business details.')) + '</div><div class="roadmap-check">How to verify it: ' + esc(actionVerification(2, 'Compare the new score, evidence checks, and provider API answers with this recorded result.')) + '</div></div>'
+      + roadmapPhase('Days 1–30 · Publish', 0, 'Complete the first priority action', 'Publish the exact change described in the first Priority Action.', 'Record the live URL and confirm that the required wording or evidence appears on the published page.')
+      + roadmapPhase('Days 31–60 · Confirm', 1, 'Complete the second priority action', 'Publish the exact change described in the second Priority Action.', 'Confirm the published evidence through the source or website check named in the Priority Action.')
+      + roadmapPhase('Days 61–90 · Measure', 2, 'Complete the third priority action and rerun the diagnostic', 'Publish the third Priority Action, then run CHOIVE again using the same business details.', 'Compare the new score, evidence checks, and provider API answers with this recorded result.')
       + '</div></section>';
   }
 
