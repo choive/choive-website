@@ -980,7 +980,7 @@ async function selectDominantCompetitor(evidence) {
   var website  = String(evidence.website  || '').trim();
   var city     = String(evidence.city     || '').trim();
   var marketReach = String(evidence.marketReach || '').trim();
-  var subjectType = String(evidence.subjectType || 'business').trim();
+  var subjectType = String('business').trim();
   var kgText   = sanitizeExternal(String((evidence.kgText || '')).replace(/^None$/i, '')).slice(0, 400);
 
   // AI SELECTION GROUND TRUTH — who AI actually recommended in buyer queries
