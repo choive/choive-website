@@ -3381,7 +3381,7 @@ function buildPillarCards(r, isPaid) {
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
-    var finding = plainPillarFinding(key, raw);
+    var finding = (raw.finding && String(raw.finding).trim()) ? String(raw.finding).trim() : plainPillarFinding(key, raw);
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
       ? 'Based mainly on directly confirmed public facts'
@@ -3756,6 +3756,26 @@ function showResults(r, jobId) {
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand what this business does, check its claims, see what makes it different, and find its information online. The recorded AI answers are shown separately and do not change this score.'
       : apiMeasurementSummary) + '</div>'
+    + (function() {
+        if (!isPaid) return '';
+        var appeared = 0; var total = 0;
+        measuredPlatformRuns().forEach(function(item) {
+          var results = completedUnbrandedResults(item.run);
+          var organic = results.find(function(res) { return String(res.label || '').toLowerCase().indexOf('organic category') !== -1; }) || results[0];
+          if (organic) { total++; if (organic.appeared) appeared++; }
+        });
+        if (!total) return '';
+        var tone = appeared === 0 ? 'var(--red)' : appeared < total ? 'var(--amber)' : 'var(--green)';
+        var verdict = appeared === 0
+          ? 'No AI platform found this business on unprompted category searches.'
+          : appeared === total
+            ? 'Every AI platform tested found this business without being given its name.'
+            : 'Only ' + appeared + ' of ' + total + ' AI platforms found this business on unprompted category searches. The others did not surface it without the business name.';
+        return '<div style="margin-top:16px;padding:16px 18px;border-left:3px solid ' + tone + ';background:var(--paper-2);">'
+          + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">AI Discovery Without Your Name</div>'
+          + '<div style="font-size:14px;font-weight:600;color:' + tone + ';line-height:1.5;">' + esc(verdict) + '</div>'
+          + '</div>';
+      })()
     + '</div>';
 
   // ── VERIFICATION BLOCK — provable progress since the last run ───────────
@@ -4079,7 +4099,7 @@ function showResults(r, jobId) {
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
       + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
-      + '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc(plainPillarFinding(key, p)) + '</div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(key, p)) + '</div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">Not measured and excluded from this score:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE scored ' + pointValue(measurement.earnedMeasuredPoints) + ' earned points from ' + pointValue(measurement.measuredPoints) + ' available points, then converted that result to the standard 25-point pillar scale.</div>' : '')
       + ((p.analysis || p.evidence) ? '<details class="report-details"><summary>Read analysis and evidence</summary><div class="report-details-body">'
         + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
@@ -4359,7 +4379,7 @@ function showResults(r, jobId) {
       return '<div class="executive-pillar">'
         + '<div class="executive-pillar-name">' + item.label + '</div>'
         + '<div class="executive-pillar-score">' + Math.round(Number(p.score) || 0) + '<span> / 25</span></div>'
-        + '<div class="executive-pillar-finding">' + esc(plainPillarFinding(item.key, p)) + '</div>'
+        + '<div class="executive-pillar-finding">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(item.key, p)) + '</div>'
         + '</div>';
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
