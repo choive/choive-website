@@ -3380,7 +3380,7 @@ function buildPillarCards(r, isPaid) {
   var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
-    var you = Math.round(Math.max(0, Math.min(25, Number(p.you) || 0)));
+    var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
     var finding = plainPillarFinding(key, raw);
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
@@ -4499,7 +4499,7 @@ function showResults(r, jobId) {
         var largestDeficit = { key: '', value: 0 };
         var rows = ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
           var p = scoreData.pillars[key] || {};
-          var you = Math.max(0, Math.min(25, Number(p.you) || 0));
+          var you = Math.round(Math.max(0, Math.min(25, Number(p.you) || 0)));
           var competitor = Math.round(Math.max(0, Math.min(25, Number(p.competitor) || 0)));
           var gap = you - competitor;
           var deficit = competitor - you;
@@ -5203,7 +5203,7 @@ function exportPDF() {
   function pdfPillar(key, label) {
     var p = r.pillars && r.pillars[key];
     if (!p) return '';
-    var score = p.score || 0;
+    var score = Math.round(p.score || 0);
     return '<div style="margin-bottom:18px;padding:16px;background:#F4F2EE;border-left:3px solid #0E0E11;">'
       + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">'
       + '<span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#666;">' + label + '</span>'
