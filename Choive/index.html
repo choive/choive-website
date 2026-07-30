@@ -5278,10 +5278,10 @@ function exportPDF() {
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:4px;">' + (a.priority || '').toUpperCase() + '</div>'
       + '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">' + (a.title || '') + '</div>'
       + '<div style="font-size:13px;color:#444;line-height:1.65;margin-bottom:6px;">' + (a.body || '') + '</div>'
+      + (a.if_nothing ? '<div style="font-size:12px;color:#7A5C2E;line-height:1.6;padding:9px 12px;background:#FEF9F0;border-left:2px solid #C98B42;margin-bottom:6px;"><strong style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;">If nothing changes</strong>' + a.if_nothing + '</div>' : '')
       + (a.explanation ? '<div style="font-size:12px;color:#777;line-height:1.6;padding-top:6px;border-top:1px solid #eee;">' + a.explanation + '</div>' : '')
       + '</div>';
   }
-
   var compList = [];
   if (Array.isArray(r.competitors) && r.competitors.length > 0) {
     compList = r.competitors.filter(function(cp) { return cp && cp.name; });
@@ -5321,6 +5321,31 @@ function exportPDF() {
     ? '<div style="font-size:16px;font-weight:600;line-height:1.55;margin-bottom:16px;">“' + esc(pdfQuestion) + '”</div>' + pdfQuestionAnswers
     : '';
   var pdfScore = Number(r.overallScore) || 0;
+  var _pdfSimAppeared = 0; var _pdfSimTotal = 0;
+  var _pdfSims = r.platformSimulations || {};
+  ['claude','openai','perplexity','gemini'].forEach(function(k) {
+    var _run = (_pdfSims[k] && Array.isArray(_pdfSims[k].results))
+      ? _pdfSims[k].results
+      : (k === 'claude' && r.aiSimulation && r.aiSimulation.before ? r.aiSimulation.before.results : []);
+    var _unbranded = (Array.isArray(_run) ? _run : []).filter(function(item) {
+      return item && Number(item.sampleCount || 0) > 0
+        && String(item.label || '').toLowerCase().indexOf('branded replacement') === -1;
+    });
+    var _organic = _unbranded.find(function(res) {
+      return String(res.label || '').toLowerCase().indexOf('organic category') !== -1;
+    }) || _unbranded[0];
+    if (_organic) { _pdfSimTotal++; if (_organic.appeared) _pdfSimAppeared++; }
+  });
+  var _pdfDiscoveryTone = _pdfSimAppeared === 0 ? '#C0392B' : _pdfSimAppeared < _pdfSimTotal ? '#C98B42' : '#4A9965';
+  var _pdfDiscoveryVerdict = _pdfSimTotal === 0 ? ''
+    : _pdfSimAppeared === 0 ? 'No AI platform found this business on unprompted category searches.'
+    : _pdfSimAppeared === _pdfSimTotal ? 'Every AI platform tested found this business without being given its name.'
+    : 'Only ' + _pdfSimAppeared + ' of ' + _pdfSimTotal + ' AI platforms found this business on unprompted category searches.';
+  var _pdfDiscoveryHtml = _pdfDiscoveryVerdict
+    ? '<div style="margin-top:14px;padding:12px 14px;background:#fff;border-left:3px solid ' + _pdfDiscoveryTone + ';">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#666;margin-bottom:4px;">AI Discovery Without Your Name</div>'
+      + '<div style="font-size:14px;font-weight:600;color:' + _pdfDiscoveryTone + ';line-height:1.5;">' + _pdfDiscoveryVerdict + '</div></div>'
+    : '';
   var pdfScoreMeaning = pdfScore >= 76
     ? 'AI can clearly understand this business and find strong publicly available evidence that supports it.'
     : pdfScore >= 56
@@ -5355,8 +5380,9 @@ function exportPDF() {
     + '<div style="font-size:16px;font-weight:600;margin-bottom:8px;">Business evidence score: ' + pdfScore + ' / 100</div>'
     + '<div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:8px;">' + pdfScoreMeaning + '</div>'
     + '<div style="font-size:14px;color:#444;line-height:1.65;">This score measures the public signals that help AI systems understand, verify, distinguish, and access this business. Platform recommendations are reported separately and are not changed by this score.</div>'
+    + _pdfDiscoveryHtml
     + '</div>'
-    + pdfSection('Your Customer’s Question', pdfCustomerQuestionHtml)
+    + pdfSection('Your Customer\u2019s Question', pdfCustomerQuestionHtml)
     + pdfSection('Business Intelligence', r.businessUnderstanding ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.businessUnderstanding + '</div>' : '')
     + pdfSection('Evidence Narrative', r.evidenceNarrative ? '<div style="font-size:13px;color:#333;line-height:1.7;">' + r.evidenceNarrative + '</div>' : '')
     + pdfSection('Why You Score This Way', pillarsHtml)
