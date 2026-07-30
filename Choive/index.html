@@ -4257,9 +4257,15 @@ function showResults(r, jobId) {
       completed += results.length;
       appeared += results.filter(function(result) { return result.appeared; }).length;
     });
+    var _cs = Number(r.overallScore) || 0;
     var statement = completed
-      ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
-        + ' recorded answers to buying questions that did not include its name. The priority actions above address the specific missing evidence found in this run.'
+      ? esc(name || 'This business') + ' scored ' + _cs + ' on the CHOIVE Index and appeared in '
+        + appeared + ' of ' + completed + ' recorded buying answers without its name being given. '
+        + (appeared === completed
+          ? 'Every tested platform surfaced this business. The task now is to preserve that coverage and verify it after changes.'
+          : _cs >= 62
+            ? 'The evidence base is above the threshold — the barrier is placement, not foundation. The priority actions close the specific gaps identified in this run.'
+            : 'The score explains the result. The evidence is not yet complete enough for consistent discovery. The priority actions address the specific gaps found.')
       : 'This run did not complete enough buying-question tests without the business name to support a conclusion. Run the diagnostic again before making recommendation-specific changes.';
     return '<section class="pay-section" id="report-conclusion">'
       + '<div class="pay-eyebrow">What This Business Now Knows</div>'
@@ -4412,8 +4418,15 @@ function showResults(r, jobId) {
     var actionTitle = firstAction && firstAction.title
       ? firstAction.title
       : 'Review the priority actions and complete the first confirmed improvement.';
+    var _pillars = r.pillars || {};
+    var _pNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
+    var _lowestKey = ['clarity','trust','difference','ease'].reduce(function(min, key) {
+      return (Number((_pillars[key] || {}).score) || 0) < (Number((_pillars[min] || {}).score) || 0) ? key : min;
+    }, 'clarity');
+    var _lowestScore = Math.round(Number((_pillars[_lowestKey] || {}).score) || 0);
     return '<section style="padding:18px 22px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Start here</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest pillar: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:7px;">' + esc(actionTitle) + '</div>'
       + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first priority action ↓</a>'
       + '</section>';
