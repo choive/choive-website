@@ -4012,8 +4012,8 @@ function showResults(r, jobId) {
       ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildStartHere() + buildBusinessIntelligence()
       : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-assets">Prepared assets</a>'
-      + '<a href="#report-actions">Actions</a><a href="#report-roadmap">90-day plan</a><a href="#report-organic-gap">AI answers</a><a href="#report-download">Download</a>'
+      + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-actions">Actions</a>'
+      + '<a href="#report-assets">Prepared assets</a><a href="#report-roadmap">90-day plan</a><a href="#report-organic-gap">AI answers</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
     + (isPaid ? buildPlatformRecommendationBlock() : '')
     + (isPaid
@@ -4156,10 +4156,8 @@ function showResults(r, jobId) {
       + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + '</div>'
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
       + '<div class="paid-action-body">' + readableText(a.body, 1) + '</div>'
-      + ((a.explanation || a.if_nothing) ? '<details class="report-details"><summary>Why this matters</summary><div class="report-details-body">'
-        + (a.explanation ? '<div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div>' : '')
-        + (a.if_nothing ? '<div class="paid-action-if">' + readableText(a.if_nothing, 2) + '</div>' : '')
-        + '</div></details>' : '')
+      + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
+      + (a.explanation ? '<details class="report-details"><summary>Why this matters</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
       + '</div>';
   }
 
