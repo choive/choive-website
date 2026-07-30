@@ -36,8 +36,22 @@ function sanitizeExternal(text) {
     }).join('\n');
 }
 
+// ── Filter Reddit content from communities unrelated to the business ──────────
+function removeOffTopicReddit(text, category) {
+  if (!text || typeof text !== 'string') return text;
+  var catWords = String(category || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function(w) { return w.length > 3; });
+  var offTopic = /^(anime|manga|gaming|pcgaming|games|funny|jokes?|memes?|dankmemes|askreddit|tifu|aww|pics|videos|movies|television|music|nfl|nba|soccer|football|leagueof\w*|minecraft|fortnite|worldofwarcraft|relationship\w*|amitheasshole|wallstreetbets)$/i;
+  return text.split(/\n{2,}/).filter(function(block) {
+    var m = block.match(/reddit\.com\/r\/([a-z0-9_]+)/i);
+    if (!m) return true;
+    var sub = m[1].toLowerCase();
+    if (catWords.some(function(w) { return sub.indexOf(w) !== -1; })) return true;
+    return !offTopic.test(sub);
+  }).join('\n\n');
+}
+
 // ── Fast category inference ───────────────────────────────────────────────────
-async function inferCategory(name, category, websiteText, searchText, subjectType) {
+async function inferCategory(name, category, websiteText, searchText) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 30000);
   subjectType = String(subjectType || 'business').trim();
@@ -163,7 +177,7 @@ function buildPrompt(evidence) {
   var description        = evidence.description || 'not provided';
   var inferredSite       = evidence.inferredOfficialSite || 'not found';
   var websiteText        = sanitizeExternal(truncate(evidence.websiteText, 3000))  || 'No website content available.';
-  var searchText         = sanitizeExternal(truncate(evidence.searchText, 5000))   || 'No search results returned.';
+  var searchText         = sanitizeExternal(truncate(removeOffTopicReddit(evidence.searchText || '', category), 5000)) || 'No search results returned.';
   var kgText             = sanitizeExternal(truncate(evidence.kgText, 1200))       || 'None';
   var visibilityPosition = evidence.visibilityPosition;
   var competitors        = evidence.competitors        || [];
@@ -184,8 +198,7 @@ function buildPrompt(evidence) {
     }).join('\n\n');
   }
   var socialText         = sanitizeExternal(evidence.socialText || 'No social media pages found.');
-  var reviewText         = sanitizeExternal(evidence.reviewText || 'No review platform pages found.');
-  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
+  var reviewText         = sanitizeExternal(removeOffTopicReddit(evidence.reviewText || '', category) || 'No review platform pages found.');  var apifyText          = sanitizeExternal(evidence.apifyText  || '');
   var reviewMeasurement  = evidence.reviewMeasurement || {};
   var reviewMeasurementText = 'Trustpilot collection: ' + (reviewMeasurement.trustpilot || 'not measured')
     + '\nGoogle Reviews collection: ' + (reviewMeasurement.googleReviews || 'not measured')
@@ -465,6 +478,7 @@ function buildPrompt(evidence) {
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
     + '- NUMERIC TARGETS: review counts, publication counts, timelines, and similar numbers may be proposed as practical goals, but never call them an AI-system minimum, required threshold, guaranteed trigger, or industry standard unless the supplied evidence contains a credible source establishing that exact threshold.\n'
     + '- REAL ENTITIES ONLY: never name a company, platform, or service in actions or plans unless you are confident it is currently operating. If an entity from search evidence may be defunct or unrecognisable, omit the name entirely.\n'
+    + '- REDDIT TRUST EXCLUSION: Reddit posts are not valid trust signals unless the subreddit name is directly related to the business category AND the post is written by a plausible buyer or verified user of this specific product. A mention in r/anime, r/gaming, r/funny, r/memes, r/jokes, or any entertainment or hobby community unrelated to this business must score zero for trust purposes. Never cite an off-topic Reddit post as a press mention, community review, or trust signal.\n\n'
     + '- COMMUNITY OPPORTUNITY: use this action only when the evidence contains a real conversation specifically about the same product category and written by a plausible buyer. Generic career, software architecture, entrepreneurship, or broad vendor-evaluation threads do not qualify. When a qualifying thread exists, ONE action may be tactical, disclosed engagement in that exact conversation \u2014 name the platform and reference what the thread is actually asking. If no qualifying buyer conversation was found, omit this action type entirely. Any founder, employee, agency, or representative must disclose their relationship clearly and follow the platform\'s self-promotion rules. Never advise posing as an unaffiliated customer, hiding a commercial connection, using a personal account to evade disclosure, or adding an unverified discount code.\n\n'
     + 'PILLAR FINDINGS — USE THESE EXACT FORMATS:\n'
     + 'Clarity finding: [one short phrase, max 6 words, no punctuation]\n'
