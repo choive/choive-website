@@ -3380,7 +3380,7 @@ function buildPillarCards(r, isPaid) {
   var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
-    var score = Math.max(0, Math.min(25, Number(raw.score) || 0));
+    var you = Math.round(Math.max(0, Math.min(25, Number(p.you) || 0)));
     var finding = plainPillarFinding(key, raw);
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
@@ -3763,7 +3763,7 @@ function showResults(r, jobId) {
     var d = r.progressDelta;
     if (!d || typeof d !== 'object' || !isFinite(Number(d.previousScore))) return '';
     var sd = Number(d.scoreDelta) || 0;
-    var displayDelta = Math.round(sd * 10) / 10;
+    var displayDelta = Math.round(sd);
     var sign = displayDelta > 0 ? '+' : '';
     var tone = sd > 0 ? 'var(--ac)' : (sd < 0 ? '#E05252' : 'var(--tm)');
     var dateTxt = '';
@@ -4024,7 +4024,7 @@ function showResults(r, jobId) {
   function pillarDetail(key, label) {
     var p = r.pillars && r.pillars[key];
     if (!p) return '';
-    var score = p.score || 0;
+    var score = Math.round(p.score || 0);
     var pct   = Math.round(score / 25 * 100);
     var audit = r.signalAudit && Array.isArray(r.signalAudit[key]) ? r.signalAudit[key] : [];
     var scoreRules = r.scoreMethod && r.scoreMethod.audits && Array.isArray(r.scoreMethod.audits[key])
@@ -4358,7 +4358,7 @@ function showResults(r, jobId) {
       var p = r.pillars && r.pillars[item.key] ? r.pillars[item.key] : {};
       return '<div class="executive-pillar">'
         + '<div class="executive-pillar-name">' + item.label + '</div>'
-        + '<div class="executive-pillar-score">' + (Number(p.score) || 0) + '<span> / 25</span></div>'
+        + '<div class="executive-pillar-score">' + Math.round(Number(p.score) || 0) + '<span> / 25</span></div>'
         + '<div class="executive-pillar-finding">' + esc(plainPillarFinding(item.key, p)) + '</div>'
         + '</div>';
     }).join('');
@@ -4500,7 +4500,7 @@ function showResults(r, jobId) {
         var rows = ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
           var p = scoreData.pillars[key] || {};
           var you = Math.max(0, Math.min(25, Number(p.you) || 0));
-          var competitor = Math.max(0, Math.min(25, Number(p.competitor) || 0));
+          var competitor = Math.round(Math.max(0, Math.min(25, Number(p.competitor) || 0)));
           var gap = you - competitor;
           var deficit = competitor - you;
           if (deficit > largestDeficit.value) largestDeficit = { key:key, value:deficit };
@@ -4552,8 +4552,8 @@ function showResults(r, jobId) {
           return '<div style="margin-bottom:14px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
             + '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">' + key + '</span>'
-            + '<span style="font-size:11px;color:var(--body);"><span style="color:var(--ink);font-weight:600;">Your business: ' + (Number(pd.you)||0) + '</span>'
-            + '<span style="color:var(--muted);"> · ' + esc(competitorName || 'Competitor') + ': ' + (Number(pd.competitor)||0) + '</span>'
+            + '<span style="color:var(--ink);font-weight:600;">Your business: ' + Math.round(Number(pd.you)||0) + '</span>'
+            + '<span style="color:var(--muted);"> · ' + esc(competitorName || 'Competitor') + ': ' + Math.round(Number(pd.competitor)||0) + '</span>'
             + '<span style="display:block;text-align:right;font-size:10px;font-weight:700;color:' + gapColor + ';margin-top:2px;">' + (gap > 0 ? 'Ahead by ' + gap : (gap < 0 ? 'Behind by ' + Math.abs(gap) : 'Equal')) + '</span></span>'
             + '</div>'
             + '<div style="font-size:9px;color:var(--ac-d);margin-bottom:2px;">Your business · solid gold</div>'
@@ -5325,12 +5325,11 @@ function animateNum(id, from, to, dur) {
   var el = document.getElementById(id);
   if (!el) return;
   var start = performance.now();
-  var showDecimal = Math.abs(Number(to) - Math.round(Number(to))) > 0.001;
   function tick(now) {
     var p = Math.min((now - start) / dur, 1);
     var eased = 1 - Math.pow(1 - p, 3);
     var value = from + (to - from) * eased;
-    el.textContent = showDecimal ? value.toFixed(1) : String(Math.round(value));
+    el.textContent = String(Math.round(value));
     if (p < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
