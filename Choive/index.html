@@ -4297,10 +4297,11 @@ function showResults(r, jobId) {
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Current AI understanding of this business</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
       + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
-        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Illustrative target · not measured or predicted</div>'
-        + '<div style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px;">This is an example of what could be stated only after the listed facts and changes are publicly verified. It is not an answer returned by ChatGPT, Claude, Perplexity, or Gemini.</div>'
-        + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:12px;"><strong style="color:var(--ink);">Complete and verify these first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
-        + '<div class="paid-narrative">' + readableText(after, 2) + '</div></div>' : '')
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">Target AI understanding — once fixes are applied</div>'
+        + '<div class="paid-narrative" style="margin-bottom:16px;">' + readableText(after, 2) + '</div>'
+        + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:10px;border-top:1px solid var(--rule);padding-top:12px;"><strong style="color:var(--ink);">Complete and verify these first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This is an example of what could be stated only after the listed facts and changes are publicly verified. It is not an answer returned by ChatGPT, Claude, Perplexity, or Gemini.</div>'
+        + '</div>' : '')
       + '</section>';
   }
 
