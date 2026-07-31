@@ -4115,12 +4115,10 @@ function showResults(r, jobId) {
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
       + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
-      + '<div style="font-size:13px;font-weight:600;color:var(--ink);letter-spacing:0.02em;margin-bottom:10px;">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(key, p)) + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:16px;line-height:1.4;color:var(--ink);margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--rule);">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(key, p)) + '</div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">Not measured and excluded from this score:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE scored ' + pointValue(measurement.earnedMeasuredPoints) + ' earned points from ' + pointValue(measurement.measuredPoints) + ' available points, then converted that result to the standard 25-point pillar scale.</div>' : '')
-      + ((p.analysis || p.evidence) ? '<details class="report-details"><summary>Read analysis and evidence</summary><div class="report-details-body">'
-        + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
-        + (p.evidence ? '<div class="paid-pillar-evidence">' + esc(p.evidence) + '</div>' : '')
-        + '</div></details>' : '')
+      + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
+      + (p.evidence ? '<details class="report-details"><summary>View raw evidence</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(p.evidence) + '</div></div></details>' : '')
       + scoreRuleHtml
       + auditHtml
       + '</div>';
@@ -4512,9 +4510,15 @@ function showResults(r, jobId) {
     }
   }
 
+  var _compPlatformTag = (typeof matchingRecommendations === 'number' && matchingRecommendations > 0 && recordedLanes && recordedLanes.length)
+    ? '<div style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--void);background:var(--ac);padding:4px 9px;margin-bottom:14px;">'
+      + 'Named by ' + matchingRecommendations + ' of ' + recordedLanes.length + ' AI platforms in this run'
+      + '</div>'
+    : '';
   var compBlock = compName
     ? '<div class="paid-comp-found">'
       + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
+      + _compPlatformTag
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
       + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
