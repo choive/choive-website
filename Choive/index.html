@@ -4296,6 +4296,7 @@ function showResults(r, jobId) {
     return '<section class="pay-section" id="report-intelligence">'
       + '<div class="pay-eyebrow">What You Can Truthfully Say</div>'
       + '<div class="paid-section-header">What the evidence supports now</div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Current AI understanding of this business</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
       + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Illustrative target · not measured or predicted</div>'
@@ -4432,6 +4433,7 @@ function showResults(r, jobId) {
     var actionTitle = firstAction && firstAction.title
       ? firstAction.title
       : 'Review the priority actions and complete the first confirmed improvement.';
+    var _startIfNothing = (firstAction && firstAction.if_nothing && String(firstAction.if_nothing).trim()) ? String(firstAction.if_nothing).trim() : '';
     var _pillars = r.pillars || {};
     var _pNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
     var _lowestKey = ['clarity','trust','difference','ease'].reduce(function(min, key) {
@@ -4441,7 +4443,8 @@ function showResults(r, jobId) {
     return '<section style="padding:18px 22px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Start here</div>'
       + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest pillar: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:7px;">' + esc(actionTitle) + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:12px;">' + esc(actionTitle) + '</div>'
+      + (_startIfNothing ? '<div style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.55);border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-bottom:12px;"><span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;display:block;margin-bottom:4px;">If nothing changes</span>' + esc(_startIfNothing) + '</div>' : '')
       + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first priority action ↓</a>'
       + '</section>';
   }
@@ -5297,8 +5300,8 @@ function exportPDF() {
       + '<span style="font-size:18px;font-weight:700;">' + score + ' <span style="font-size:11px;font-weight:400;color:#666;">/ 25</span></span>'
       + '</div>'
       + (p.finding  ? '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + p.finding + '</div>' : '')
-      + (p.analysis ? '<div style="font-size:13px;color:#333;line-height:1.65;margin-bottom:8px;">' + p.analysis + '</div>' : '')
-      + (p.evidence ? '<div style="font-size:12px;color:#666;font-style:italic;line-height:1.6;">' + p.evidence + '</div>' : '')
+      + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
+      + (p.evidence ? '<details class="report-details"><summary>View raw evidence</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(p.evidence) + '</div></div></details>' : '')
       + '</div>';
   }
 
