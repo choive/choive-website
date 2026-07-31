@@ -4161,6 +4161,7 @@ function showResults(r, jobId) {
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
       + '<div class="paid-action-body">' + readableText(a.body, 1) + '</div>'
       + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
+      + (a.verification ? '<div style="margin-top:10px;padding:10px 13px;background:var(--paper-2);border-left:3px solid var(--rule-d);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Done when</div><div style="font-size:13px;line-height:1.6;color:var(--body);">' + esc(String(a.verification)) + '</div></div>' : '')
       + (a.explanation ? '<details class="report-details"><summary>Why this matters</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
       + '</div>';
   }
@@ -4233,6 +4234,7 @@ function showResults(r, jobId) {
     }).join('');
     var completedOrganic = 0;
     var appearedOrganic = 0;
+    var _namedInsteadList = [];
     measuredPlatformRuns().forEach(function(item) {
       var results = completedUnbrandedResults(item.run);
       var organic = results.find(function(result) {
@@ -4240,16 +4242,36 @@ function showResults(r, jobId) {
       }) || results[0];
       if (organic) {
         completedOrganic++;
-        if (organic.appeared) appearedOrganic++;
+        if (organic.appeared) {
+          appearedOrganic++;
+        } else if (organic.topRecommendation) {
+          var _ni = String(organic.topRecommendation).trim();
+          if (_ni && _namedInsteadList.map(function(x) { return x.toLowerCase(); }).indexOf(_ni.toLowerCase()) === -1) {
+            _namedInsteadList.push(_ni);
+          }
+        }
       }
     });
     var summary = completedOrganic
       ? esc(name || 'This business') + ' appeared in ' + appearedOrganic + ' of ' + completedOrganic + ' completed broad category answers.'
       : 'No broad category answer completed in this run.';
+    var _zeroCallout = '';
+    if (completedOrganic > 0 && appearedOrganic === 0) {
+      var _compStr = _namedInsteadList.slice(0, 3).map(function(n) { return esc(n); }).join(' and ');
+      _zeroCallout = '<div style="padding:18px 22px;background:var(--paper-2);border-left:4px solid var(--red);margin-bottom:20px;">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--red);margin-bottom:8px;">Not found without the business name</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:18px;line-height:1.4;color:var(--ink);">'
+        + (_compStr
+          ? _compStr + ' appeared instead of ' + esc(name || 'this business') + ' across every completed AI category answer in this run.'
+          : esc(name || 'This business') + ' did not appear in any completed AI category answer in this run.')
+        + '</div>'
+        + '</div>';
+    }
     return '<section class="pay-section" id="report-organic-gap">'
       + '<div class="pay-eyebrow">Can AI Find You Without Your Name?</div>'
       + '<div class="paid-narrative" style="margin-bottom:18px;">' + summary
       + ' The question did not include the business name. This shows whether AI can find the business on its own.</div>'
+      + _zeroCallout
       + '<div class="integrity-ledger">' + rows + '</div>'
       + '</section>';
   }
