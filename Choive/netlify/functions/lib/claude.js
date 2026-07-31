@@ -471,7 +471,7 @@ function buildPrompt(evidence) {
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
     + '- ACTION TRACEABILITY: Sentence 1 of every action body must name the exact observation that triggered it: a measured query and platform answer, a confirmed page element, a named source, or a missing public signal. Sentence 2 must state the exact deliverable to create or change. Sentence 3 must state how completion will be verified. Never tell the reader only to "improve visibility", "strengthen trust", "optimize presence", "build authority", or "close the gap".\n'
-    + '- ACTION LENGTH: Use exactly 3 short sentences in each action body and no more than 75 words total. Keep explanation and if_nothing to no more than 45 words each.\n'
+    + '- VERIFICATION FIELD: Copy sentence 3 of the action body into the verification field, rewritten as a standalone instruction. Maximum 20 words. Must name a specific observable result — a URL, a review count, a date, a platform search — that proves the action is done.\n'    + '- ACTION LENGTH: Use exactly 3 short sentences in each action body and no more than 75 words total. Keep explanation and if_nothing to no more than 45 words each.\n'
     + '- ACTION OWNERSHIP: When the evidence supports it, name the practical owner such as website team, communications lead, product marketing lead, or founder. Do not invent a person or job title that the evidence does not establish.\n'
     + '- PLAIN LANGUAGE: Reader-facing text must explain the concrete event, evidence, consequence, and action. Avoid abstract labels unless the following words define them. Never use "chosen by AI", "known by AI", "AI-ready", "selection infrastructure", "trust signals", or "visibility gap" without immediately stating the measured answer or missing evidence in plain language.\n'
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
@@ -604,11 +604,10 @@ function buildPrompt(evidence) {
     + '    { "name": "", "whyAIRecommendsThem": "", "advantage": "", "gapLocation": "", "closeGap": "", "evidence": "", "queryContext": "search" }\n'
     + '  ],\n'
     + '  "actions": [\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
-    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
-    + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "" },\n'
-    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "" }\n'
-    + '  ]\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
+    + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
+    + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
+    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" }\n'
     + '}';
 
   var competitorReminder = (evidence.competitorDecision && evidence.competitorDecision.realCompetitor)
