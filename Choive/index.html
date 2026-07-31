@@ -4274,8 +4274,10 @@ function showResults(r, jobId) {
             ? 'The evidence base is above the threshold — the barrier is placement, not foundation. The priority actions close the specific gaps identified in this run.'
             : 'The score explains the result. The evidence is not yet complete enough for consistent discovery. The priority actions address the specific gaps found.')
       : 'This run did not complete enough buying-question tests without the business name to support a conclusion. Run the diagnostic again before making recommendation-specific changes.';
+      var _sigLine = (r.signatureLine && String(r.signatureLine).trim()) ? String(r.signatureLine).trim() : '';
     return '<section class="pay-section" id="report-conclusion">'
       + '<div class="pay-eyebrow">What This Business Now Knows</div>'
+      + (_sigLine ? '<div style="font-size:13px;font-weight:600;color:var(--tm);letter-spacing:0.03em;margin-bottom:14px;line-height:1.6;">' + esc(_sigLine) + '</div>' : '')
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.5;color:var(--ink);max-width:880px;">' + statement + '</div>'
       + (completed ? '<div style="margin-top:22px;padding:16px 18px;background:var(--paper-2);border-left:3px solid var(--ac);font-size:13px;line-height:1.7;color:var(--body);"><strong style="color:var(--ink);">Verified finish line:</strong> publish the approved changes, rerun these same questions, and confirm whether the business appears in more than ' + appeared + ' of ' + completed + ' completed answers. CHOIVE does not predict the future answer.</div>' : '')
       + '</section>';
@@ -4370,11 +4372,15 @@ function showResults(r, jobId) {
       probeAppeared += platformAppeared;
       if (platformAppeared > 0) probePlatformsAppeared++;
     });
-    var verdictTitle = esc(probeCompleted
+     var _aiHeadline = (r.verdictHeadline && String(r.verdictHeadline).trim()) ? String(r.verdictHeadline).trim() : '';
+    var _countLine = probeCompleted
       ? (probeAppeared === 0
-        ? 'None of the completed AI answers mentioned ' + (name || 'this business') + '.'
-        : 'AI mentioned ' + (name || 'this business') + ' in ' + probeAppeared + ' of ' + probeCompleted + ' completed answers.')
-      : (r.verdictHeadline || 'Not enough AI answers were completed to give a reliable visibility result.'));
+          ? 'None of the completed AI answers mentioned ' + (name || 'this business') + '.'
+          : 'AI mentioned ' + (name || 'this business') + ' in ' + probeAppeared + ' of ' + probeCompleted + ' completed answers.')
+      : '';
+    var verdictTitle = probeCompleted && _aiHeadline
+      ? esc(_aiHeadline)
+      : esc(_countLine || _aiHeadline || 'Not enough AI answers were completed to give a reliable visibility result.');
     var _totalScore = Number(r.overallScore) || 0;
     var verdictLead = (topComp ? topComp + ' is the closest verified competitor. ' : '')
       + (probeCompleted
@@ -4411,6 +4417,7 @@ function showResults(r, jobId) {
       + '<div class="pay-eyebrow">Your Result</div>'
       + (probeCompleted ? '<div class="verdict-headline-label">Found by ' + probePlatformsAppeared + ' of ' + completedPlatforms + ' AI providers tested</div>' : '')
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
+      + (probeCompleted && _aiHeadline && _countLine ? '<div style="font-size:14px;color:var(--tm);margin-top:8px;margin-bottom:0;line-height:1.6;">' + esc(_countLine) + '</div>' : '')
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
       + '<div class="executive-fact"><div class="executive-fact-label">Did AI mention this business?</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' completed answers mentioned it' : 'No AI answer was completed') + '</div><div class="executive-fact-copy">CHOIVE recorded these answers through each provider\'s API. The public AI apps may give different answers.</div></div>'
