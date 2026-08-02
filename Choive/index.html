@@ -3276,7 +3276,34 @@ function buildGapBlock(r) {
 
 
 function buildWhnBlock(r, gap) {
-  const risk = gap >= 30
+  var _topComp = window.__choiveTopComp || '';
+  var _pillars = r.pillars || {};
+  var _pNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
+  var _lowestKey = ['clarity','trust','difference','ease'].reduce(function(min, key) {
+    return (Number((_pillars[key] || {}).score) || 0) < (Number((_pillars[min] || {}).score) || 0) ? key : min;
+  }, 'clarity');
+  var _lowestScore = Math.round(Number((_pillars[_lowestKey] || {}).score) || 0);
+  var _lowestName = _pNames[_lowestKey];
+
+  var _lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+  var _completedLanes = _lanes.filter(function(l) { return l && (l.status === 'no_recommendation' || l.recommendation); }).length;
+
+  var _bullet1, _bullet2, _bullet3;
+  if (_topComp) {
+    _bullet1 = 'Why ' + _topComp + ' is named above you — and the exact evidence gap that explains it';
+    _bullet2 = 'Your ' + _lowestName + ' score of ' + _lowestScore + '/25 — and the specific proof that raises it';
+    _bullet3 = _completedLanes > 0
+      ? 'What ' + _completedLanes + ' AI platform' + (_completedLanes !== 1 ? 's' : '') + ' need to see before they can recommend you'
+      : '4 priority actions in the order that changes your score fastest';
+  } else {
+    _bullet1 = 'Which pillar is the primary reason you are not appearing in AI answers';
+    _bullet2 = 'Your ' + _lowestName + ' score of ' + _lowestScore + '/25 — and the specific proof that raises it';
+    _bullet3 = _completedLanes > 0
+      ? 'What ' + _completedLanes + ' AI platform' + (_completedLanes !== 1 ? 's' : '') + ' need to see before they can recommend you'
+      : '4 priority actions in the order that changes your score fastest';
+  }
+
+  var risk = gap >= 30
     ? 'A competitor has substantially stronger public evidence.'
     : gap >= 15
     ? 'Competitors currently have a meaningful evidence advantage.'
@@ -3284,47 +3311,34 @@ function buildWhnBlock(r, gap) {
     ? 'The public-evidence difference is small and can be addressed.'
     : 'No public-evidence disadvantage was measured.';
 
-  return `
-    <div class="whn-block">
-      <div class="whn-eyebrow">What Happens Next</div>
+  var _reality = gap <= 0
+    ? 'No competitor evidence advantage was measured in this comparison.'
+    : (_topComp
+      ? esc(_topComp) + ' has a stronger public-evidence record than this business in this run.'
+      : 'Competitors currently give buyers and AI systems more public evidence to check.');
 
-      <div class="whn-section">
-        <div class="whn-reality">
-          ${gap <= 0
-            ? 'No competitor evidence advantage was measured in this comparison.'
-            : 'Competitors currently give buyers and AI systems more public evidence to check.'}
-        </div>
-      </div>
+  var _jId = window.__choiveShareJobId || '';
 
-      <div class="whn-section">
-        <div class="whn-risk">
-          <strong>${risk}</strong>
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-explain">
-          CHOIVE shows which evidence is working, which evidence is missing, and what to change first.
-        </div>
-      </div>
-
-      <div class="whn-section">
-        <div class="whn-bullets">
-          <div class="whn-bullet-tier">CHOIVE Analysis™</div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Where competitors have stronger evidence</div>
-          </div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Exact changes required</div>
-          </div>
-          <div class="whn-bullet-item">
-            <div class="whn-bullet-arrow">→</div>
-            <div class="whn-bullet-text">Work ordered by priority</div>
-          </div>
-        </div>
-      </div>
+  return '<div class="whn-block">'
+    + '<div class="whn-eyebrow">What Happens Next</div>'
+    + '<div class="whn-section"><div class="whn-reality">' + _reality + '</div></div>'
+    + '<div class="whn-section"><div class="whn-risk"><strong>' + risk + '</strong></div></div>'
+    + '<div class="whn-section"><div class="whn-explain">CHOIVE shows which evidence is working, which evidence is missing, and what to change first.</div></div>'
+    + '<div class="whn-section"><div class="whn-bullets">'
+    + '<div class="whn-bullet-tier">CHOIVE Analysis\u2122</div>'
+    + '<div class="whn-bullet-item"><div class="whn-bullet-arrow">\u2192</div><div class="whn-bullet-text">' + esc(_bullet1) + '</div></div>'
+    + '<div class="whn-bullet-item"><div class="whn-bullet-arrow">\u2192</div><div class="whn-bullet-text">' + esc(_bullet2) + '</div></div>'
+    + '<div class="whn-bullet-item"><div class="whn-bullet-arrow">\u2192</div><div class="whn-bullet-text">' + esc(_bullet3) + '</div></div>'
+    + '</div></div>'
+    + '<div class="whn-section"><div class="whn-tension">' + (gap <= 0 ? 'Keep the evidence current and continue measuring it.' : 'Complete the highest-priority change first.') + '</div></div>'
+    + '<div class="whn-section"><div class="whn-cta">'
+    + '<button class="whn-cta-btn" onclick="initiateCheckout(\'' + esc(_jId) + '\')">'
+    + 'Unlock full CHOIVE\u2122 Analysis \u2014 $99'
+    + '</button>'
+    + '<span class="whn-cta-micro">The full analysis shows the evidence, missing signals, and implementation order behind this result.</span>'
+    + '</div></div>'
+    + '</div>';
+}
 
       <div class="whn-section">
         <div class="whn-tension">${gap <= 0 ? 'Keep the evidence current and continue measuring it.' : 'Complete the highest-priority change first.'}</div>
