@@ -2452,7 +2452,7 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
     </p>
 
     <!-- CTA — immediate, no scroll required -->
-    <a href="/#diagnostic" class="hero-cta">
+    <a href="#diagnostic" class="hero-cta" onclick="event.preventDefault();var t=document.getElementById('diagnostic');if(t){t.scrollIntoView({behavior:'smooth',block:'start'});}">
       Find out right now →
     </a>
 
@@ -4025,8 +4025,14 @@ function showResults(r, jobId) {
     + (isPaid
       ? ''
       : scoreHeader
+        : scoreHeader
         + [].concat(buildPillarCards(r, false)).join('')
-        + buildFreeCompetitorBlock())
+        + buildFreeCompetitorBlock()
+        + (function() {
+            var _t = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
+            var _g = (_t[(r.marketPosition && r.marketPosition.tier) || 'unknown'] || 0) - (Number(r.overallScore) || 0);
+            return buildGapBlock(r) + buildWhnBlock(r, _g);
+          })())
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
