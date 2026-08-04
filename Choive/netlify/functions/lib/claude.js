@@ -10,7 +10,7 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_FAST_MODEL = 'claude-haiku-4-5-20251001';
 const { logAnthropicUsage } = require('./anthropic-usage');
 const TIMEOUT_MS      = 240000; // scoring gets 4 min; the background function budget is 15
-const MAX_TOKENS      = 6500; // the complete structured analysis regularly exceeds 4,000 tokens
+const MAX_TOKENS      = 8500; // expanded: 6 actions at 150 words each, 3-sentence pillar analysis, llmsDraft, schemaDraft
 
 function truncate(text, max) {
   max = max || 4000;
@@ -474,8 +474,8 @@ function buildPrompt(evidence) {
     + '- BANNED WORDS — NEVER use in action title OR body: JSON-LD, schema markup, metadata, canonical, llms.txt\n'
     + '- NEVER give generic actions. Every action must be impossible to give to a different business.\n'
     + '- ACTION TRACEABILITY: Sentence 1 of every action body must name the exact observation that triggered it: a measured query and platform answer, a confirmed page element, a named source, or a missing public signal. Sentence 2 must state the exact deliverable to create or change. Sentence 3 must state how completion will be verified. Never tell the reader only to "improve visibility", "strengthen trust", "optimize presence", "build authority", or "close the gap".\n'
-    + '- VERIFICATION FIELD: Copy sentence 3 of the action body into the verification field, rewritten as a standalone instruction. Maximum 20 words. Must name a specific observable result — a URL, a review count, a date, a platform search — that proves the action is done.\n'    + '- ACTION LENGTH: Use exactly 3 short sentences in each action body and no more than 75 words total. Keep explanation and if_nothing to no more than 45 words each.\n'
-    + '- ACTION OWNERSHIP: When the evidence supports it, name the practical owner such as website team, communications lead, product marketing lead, or founder. Do not invent a person or job title that the evidence does not establish.\n'
+    + '- VERIFICATION FIELD: Copy sentence 3 of the action body into the verification field, rewritten as a standalone instruction. Maximum 20 words. Must name a specific observable result — a URL, a review count, a date, a platform search — that proves the action is done.\n'    
+    + '- ACTION LENGTH: Each action body must use exactly 3 sentences. Sentence 1 names the exact gap with specific evidence — a number, a platform name, or a confirmed missing signal. Sentence 2 names the exact deliverable and gives a working example drawn from this business: a draft phrase, a specific URL path, or copy the owner can use today. Sentence 3 states exactly how completion is verified. Total body: 100 to 150 words. Explanation: 50 to 80 words. if_nothing: 40 to 60 words.\n'     + '- ACTION OWNERSHIP: When the evidence supports it, name the practical owner such as website team, communications lead, product marketing lead, or founder. Do not invent a person or job title that the evidence does not establish.\n'
     + '- PLAIN LANGUAGE: Reader-facing text must explain the concrete event, evidence, consequence, and action. Avoid abstract labels unless the following words define them. Never use "chosen by AI", "known by AI", "AI-ready", "selection infrastructure", "trust signals", or "visibility gap" without immediately stating the measured answer or missing evidence in plain language.\n'
     + '- SEQUENCE: actions must be ordered by what unlocks what — fixing trust before ease, clarity before difference\n'
     + '- NUMERIC TARGETS: review counts, publication counts, timelines, and similar numbers may be proposed as practical goals, but never call them an AI-system minimum, required threshold, guaranteed trigger, or industry standard unless the supplied evidence contains a credible source establishing that exact threshold.\n'
@@ -487,10 +487,11 @@ function buildPrompt(evidence) {
     + 'Trust finding: [one short phrase, max 6 words, no punctuation]\n'
     + 'Difference finding: [one short phrase, max 6 words, no punctuation]\n'
     + 'Ease finding: [one short phrase, max 6 words, no punctuation]\n\n'
-    + 'PILLAR ANALYSIS — exactly 2 sentences each:\n'
+    + 'PILLAR ANALYSIS — exactly 3 sentences each:\n'
     + 'Sentence 1: Quote or directly reference the specific evidence. Name exact numbers, platforms, signals found or missing.\n'
     + 'Sentence 2: State the exact selection consequence — what a buyer experiences because of this score.\n'
-    + 'Each sentence must contain no more than 24 words.\n'
+    + 'Sentence 3: Name the single most specific change to this business — the exact page, field, platform, or file to change — that would raise this pillar score. Make it impossible to apply to a different business.\n'
+    + 'Each sentence must contain no more than 30 words.\n'
     + 'NEVER write generic analysis. Every sentence must be impossible to apply to a different business.\n\n'
     + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone. Must name the primary gap found in this specific run: a discovery gap (AI not mentioning this business), a comparison loss (a named competitor winning the buyer), a trust gap (no independent verification found), or a clarity problem (offer not clearly defined). Must be impossible to apply to a different business. '
     + 'AVOID AMBIGUOUS NEGATION: never write "not consistently [positive thing]" or "not always [positive thing]" \u2014 a reader can misparse this as mostly-positive-with-exceptions when the true meaning is the opposite. BANNED EXAMPLE: "Not consistently the obvious choice" (reads as usually chosen, sometimes not \u2014 backwards for a weak/absent tier). Instead state the gap plainly and unambiguously: "Overlooked when it matters most", "Not the default choice yet", "Invisible at the moment of comparison".\n\n'
@@ -542,8 +543,7 @@ function buildPrompt(evidence) {
     + '- Avoid vague words such as improve, optimize, strengthen, enhance, establish, leverage, visibility, authority, positioning, or trust unless the same sentence states the exact object, location, and proof required.\n'
     + '- Every action body must state: what must change, where it must change, and what observable evidence proves completion.\n'
     + '- Never promise selection, revenue, rankings, a future score, or a platform response.\n'
-    + '- Keep summaryParagraph, businessUnderstanding, and evidenceNarrative to a maximum of 120 words each. Keep findings to 24 words and action bodies to 70 words.\n'
-    + '- Write for a business owner without technical training. Define technical terms in the sentence where they first appear.\n\n'
+    + '- Keep summaryParagraph to a maximum of 80 words. Keep each businessUnderstanding paragraph to 70 words. Keep evidenceNarrative to 130 words. Keep pillar findings to 10 words. Keep action bodies to 100–150 words, explanation to 50–80 words, if_nothing to 40–60 words.\n'    + '- Write for a business owner without technical training. Define technical terms in the sentence where they first appear.\n\n'
     + 'SIGNAL AUDIT — populate signalAudit with EXACTLY the signals below per pillar. Use ONLY these three status values: "pass", "fail", "partial".\n'
     + 'For each signal, detail must be a short specific phrase (max 12 words) — name the exact value found, or state exactly what was missing.\n'
     + 'NEVER leave detail blank on a "pass". NEVER write "N/A" or "none". NEVER invent data not in the evidence.\n\n'
@@ -570,6 +570,9 @@ function buildPrompt(evidence) {
     + 'READY-TO-USE ASSETS — write business-specific copy using ONLY facts explicitly present in the owner input or collected evidence.\n'
     + 'Create 2 or 3 homepage H1 options. Each must plainly name the offer/category and intended buyer or use case; include the service market only when relevant. Keep each between 45 and 115 characters. At least one option must incorporate the clearest differentiation from the Difference pillar finding. Every option must be impossible to use without change for a competitor in the same category — name what is specific about this business: its method, buyer type, location, delivery model, or the outcome it focuses on.\n'
     + 'Also return structured llmsFacts: a factual one-sentence summary, concrete offers, intended audiences, service area, and published distinctions. The summary must state exactly what this business does and for whom in one sentence, using only confirmed facts. Each distinction must be a specific verifiable fact — a named method, documented credential, specific service area, or stated specialization found in the evidence. Empty arrays are correct when evidence is missing.\n'
+    + 'Also return llmsDraft: write the complete text of an llms.txt file for this business, ready to copy-paste. Use this format exactly: line 1 is "# [Business Name]", line 2 is blank, line 3 is "> [one-sentence summary from llmsFacts]", then blank line, then "## What We Do" followed by bullet lines of confirmed offers (one per line, starting with "- "), then blank line, then "## Who We Serve" with confirmed audience lines, then blank line, then "## Where We Operate" with the confirmed service area. Omit any section where evidence is missing. Return the full file as a plain string with \\n newline characters.\n'
+    + 'Also return schemaDraft: write the JSON-LD schema object for this business as a plain string, ready to paste inside a <script type="application/ld+json"> tag. Choose the most specific type the evidence supports: LocalBusiness, Organization, Product, Person, or a named subtype such as Restaurant or LegalService. Include only properties confirmed by the evidence: name (required), url, description, address (city only if confirmed), sameAs (confirmed social profile URLs only). Do not include telephone, email, openingHours, priceRange, or aggregateRating unless the evidence explicitly confirms those values. Return the raw JSON object only — no script tags. Return an empty string if the evidence does not support any schema type with confidence.\n'
+    + 'Also return pitchSentence: one sentence under 35 words that states what this business does, who it serves, and the clearest differentiator confirmed by evidence. Ready to paste into an About page, press bio, or email signature. No invented claims. No vague words.\n'
     + 'Never invent or imply leadership, quality, popularity, trust, awards, certifications, outcomes, clients, availability, or locations. Avoid vague phrases such as "built for results", "where every detail matters", "solutions that stand out", "teams trust", "expert", "professional", "best", or any word that cannot be confirmed from the collected evidence.\n\n'
     + 'Respond with ONLY the following JSON object. No prose. No markdown. Start with { and end with }.\n\n';
 
@@ -589,7 +592,10 @@ function buildPrompt(evidence) {
     + '  "recommendedPlatform": { "name": "", "url": "", "reason": "" },\n'
     + '  "readyToUseAssets": {\n'
     + '    "h1Options": ["", ""],\n'
-    + '    "llmsFacts": { "summary": "", "offers": [], "audiences": [], "serviceArea": "", "distinctions": [] }\n'
+    + '    "llmsFacts": { "summary": "", "offers": [], "audiences": [], "serviceArea": "", "distinctions": [] },\n'
+    + '    "llmsDraft": "",\n'
+    + '    "schemaDraft": "",\n'
+    + '    "pitchSentence": ""\n'
     + '  },\n'
     + '  "pillars": {\n'
     + '    "clarity":    { "score": 0, "finding": "", "analysis": "", "evidence": "" },\n'
@@ -611,6 +617,8 @@ function buildPrompt(evidence) {
     + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
     + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
     + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
+    + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
+    + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
     + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" }\n'
     + '  ]\n'
     + '}';
