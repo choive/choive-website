@@ -154,6 +154,8 @@ function buildConfirmedSignals(websiteSignals) {
 
   if (s.trustpilotReviewCount !== undefined) {
     lines.push('Trustpilot reviews (live): ' + s.trustpilotReviewCount + (s.trustpilotRating ? ' — rating ' + s.trustpilotRating : ''));
+  } else {
+    lines.push('Trustpilot: could not be verified this run (live fetch returned no result — profile may exist or may not; do not state it as confirmed absent)');
   }
   if (s.googleReviewCount !== undefined) {
     lines.push('Google reviews (live): ' + s.googleReviewCount + (s.googleRating ? ' — rating ' + s.googleRating : ''));
@@ -275,7 +277,8 @@ function buildPrompt(evidence) {
             ? ' The ground truth names no true same-category player \u2014 the category answer is UNOWNED; state this as an opportunity in the competitor narrative.'
             : '')
         : '')
-    + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category and location, in the market\u2019s own language where applicable. The businesses named below are who AI ACTUALLY recommends today:\n' + simGroundTruth : '')
+    + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category...\n' + simGroundTruth : '')
+    + (simBefore && simBefore.before && typeof simBefore.before.appearedCount !== 'undefined' ? '\n\nAUTHORITATIVE PROBE RESULT (use ONLY this number — do not count from the texts above): ' + (evidence.name || 'This business') + ' appeared in ' + simBefore.before.appearedCount + ' of ' + (simBefore.before.totalQueries || 3) + ' AI queries.' : '')
     + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
     + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
