@@ -51,7 +51,7 @@ function removeOffTopicReddit(text, category) {
 }
 
 // ── Fast category inference ───────────────────────────────────────────────────
-async function inferCategory(name, category, websiteText, searchText) {
+async function inferCategory(name, category, websiteText, searchText, subjectType) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 30000);
   subjectType = String(subjectType || 'business').trim();
@@ -612,6 +612,7 @@ function buildPrompt(evidence) {
     + '    { "priority": "critical", "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
     + '    { "priority": "high",     "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" },\n'
     + '    { "priority": "medium",   "title": "", "body": "", "explanation": "", "if_nothing": "", "verification": "" }\n'
+    + '  ]\n'
     + '}';
 
   var competitorReminder = (evidence.competitorDecision && evidence.competitorDecision.realCompetitor)
