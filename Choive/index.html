@@ -3741,7 +3741,7 @@ function showResults(r, jobId) {
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Business evidence score</div>'
-    + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">Businesses that consistently appear in AI answers score above 62 on the CHOIVE Index.</div>'
+    + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">This score measures how visible, trustworthy, and distinct this business appears to AI systems and buyers.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand what this business does, check its claims, see what makes it different, and find its information online. The recorded AI answers are shown separately and do not change this score.'
@@ -3937,6 +3937,31 @@ function showResults(r, jobId) {
     return '';
   }
 
+  function buildPlatformCoverageSection() {
+    var pc = r.platformCoverage;
+    if (!pc) return '';
+    var platforms = [
+      {key:'chatgpt', label:'ChatGPT'},
+      {key:'perplexity', label:'Perplexity'},
+      {key:'gemini', label:'Gemini'},
+      {key:'claude', label:'Claude'}
+    ];
+    var cells = platforms.map(function(plt) {
+      var v = pc[plt.key];
+      var status = (v && typeof v === 'object') ? (v.status || 'absent') : (typeof v === 'string' && v ? v : 'absent');
+      var detail = (v && typeof v === 'object') ? (v.detail || '') : '';
+      var verdictText = status === 'present' ? 'Recommended' : (status === 'weak' || status === 'partial') ? 'Partially Found' : 'Not Found';
+      return '<div class="platform-cell">'
+        + '<div class="platform-name">' + esc(plt.label) + '</div>'
+        + '<div class="platform-verdict ' + esc(status) + '">' + verdictText + '</div>'
+        + (detail ? '<div class="platform-detail">' + esc(detail) + '</div>' : '')
+        + '</div>';
+    }).join('');
+    return '<section class="pay-section" id="report-platform"><div class="pay-eyebrow">AI Platform Coverage</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">These are the platform results recorded during this diagnostic run. Each result is reported exactly as returned by the platform at the time of the run.</div>'
+      + '<div class="platform-row">' + cells + '</div></section>';
+  }
+
   function buildConsumerVerificationBlock() {
     var laneQuestion = (Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [])
       .map(function(lane) { return lane && lane.query ? String(lane.query).trim() : ''; })
@@ -4106,7 +4131,6 @@ function showResults(r, jobId) {
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
       + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:16px;line-height:1.4;color:var(--ink);margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--rule);">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(key, p)) + '</div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">Not measured and excluded from this score:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE scored ' + pointValue(measurement.earnedMeasuredPoints) + ' earned points from ' + pointValue(measurement.measuredPoints) + ' available points, then converted that result to the standard 25-point pillar scale.</div>' : '')
       + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
       + (p.evidence ? '<details class="report-details"><summary>View raw evidence</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(p.evidence) + '</div></div></details>' : '')
@@ -4931,10 +4955,11 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</section>'
       + competitorComparisonBlock
       + dualArenaBlock
-      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
-        + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This diagnosis comes from website checks, public sources, and AI answers recorded during this run.</div>'
-        + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildPaidPillarEvidence()
+      + buildPlatformCoverageSection()
+      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This diagnosis comes from website checks, public sources, and AI answers recorded during this run.</div>'
+      + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('') + '</div></section>'
