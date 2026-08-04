@@ -3636,14 +3636,27 @@ function showResults(r, jobId) {
       + '</div>';
   }
   function buildMarketCompetitorRow() {
-    if (!widerMarketDecision || !widerMarketDecision.name) return '';
-    if (String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
-        === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) return '';
-    return '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
-      + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
-      + '</div>';
+    var _norm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+    var _topNorm = _norm(topComp || '');
+    var marketHtml = '';
+    if (widerMarketDecision && widerMarketDecision.name
+        && _norm(widerMarketDecision.name) !== _topNorm) {
+      marketHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
+        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
+        + '</div>';
+    }
+    var _onlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
+    var onlineHtml = '';
+    if (_onlineComp && _norm(_onlineComp) !== _topNorm
+        && (!widerMarketDecision || _norm(_onlineComp) !== _norm(widerMarketDecision.name || ''))) {
+      onlineHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Online arena competitor</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(_onlineComp) + '</div>'
+        + '</div>';
+    }
+    return marketHtml + onlineHtml;
   }
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
@@ -4299,7 +4312,7 @@ function showResults(r, jobId) {
       completed += results.length;
       appeared += results.filter(function(result) { return result.appeared; }).length;
     });
-    var _cs = Number(r.overallScore) || 0;
+    var _cs = Math.round(Number(r.overallScore) || 0);
     var statement = completed
       ? esc(name || 'This business') + ' scored ' + _cs + ' on the CHOIVE Index and appeared in '
         + appeared + ' of ' + completed + ' recorded buying answers without its name being given. '
