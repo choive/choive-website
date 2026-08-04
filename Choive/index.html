@@ -5040,6 +5040,7 @@ function showResults(r, jobId) {
 function buildAssetsFromReadyToUse(assets) {
   if (!assets) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Prepared items not available for this diagnostic.</div>';
   var html = '';
+  // pitchSentence — always shown as a standalone block above tabs
   if (assets.pitchSentence) {
     html += '<div style="margin-bottom:24px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your pitch sentence</div>'
@@ -5086,7 +5087,14 @@ function buildDeliverables(r) {
   var d = r.deliverables;
   if (!d && r.readyToUseAssets) return buildAssetsFromReadyToUse(r.readyToUseAssets);
   if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available for this diagnostic.</div>';
-
+  // Inject pitchSentence from readyToUseAssets above the deliverables tabs when both exist
+  var pitchHtml = '';
+  if (r.readyToUseAssets && r.readyToUseAssets.pitchSentence) {
+    pitchHtml = '<div style="margin-bottom:24px;padding:16px 20px;border:1px solid var(--brd);border-radius:6px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--tm);margin-bottom:8px;">YOUR ONE-SENTENCE DESCRIPTION — CLICK TO COPY</div>'
+      + '<div style="font-size:15px;line-height:1.6;cursor:pointer;" onclick="navigator.clipboard.writeText(this.dataset.v);this.style.opacity=\'.5\';setTimeout(()=>this.style.opacity=\'1\',600);" data-v="' + r.readyToUseAssets.pitchSentence.replace(/"/g,'&quot;') + '">' + r.readyToUseAssets.pitchSentence + '</div>'
+      + '</div>';
+  }
   function ownerTag() {
     return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);background:rgba(194,240,212,0.1);border:1px solid var(--ac);padding:2px 7px;margin-left:8px;">You can do this</span>';
   }
