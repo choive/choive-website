@@ -5037,8 +5037,54 @@ function showResults(r, jobId) {
 }
 
 
+function buildAssetsFromReadyToUse(assets) {
+  if (!assets) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Prepared items not available for this diagnostic.</div>';
+  var html = '';
+  if (assets.pitchSentence) {
+    html += '<div style="margin-bottom:24px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your pitch sentence</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">One sentence — ready to use in your About page, email signature, or press bio.</div>'
+      + '<div class="deliv-option" onclick="copyText(' + JSON.stringify(assets.pitchSentence) + ', this)">'
+      + '<div class="deliv-option-text">' + esc(assets.pitchSentence) + '</div>'
+      + '<div class="deliv-option-note">Click to copy</div></div>'
+      + '</div>';
+  }
+  var h1Arr = Array.isArray(assets.h1Options) ? assets.h1Options.filter(Boolean) : [];
+  if (h1Arr.length > 0) {
+    html += '<div style="margin-bottom:24px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Homepage headline options</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">Click any option to copy it. Test one at a time on your homepage.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;">';
+    h1Arr.forEach(function(opt) {
+      html += '<div class="deliv-option" onclick="copyText(' + JSON.stringify(opt) + ', this)">'
+        + '<div class="deliv-option-text">' + esc(opt) + '</div>'
+        + '<div class="deliv-option-note">Click to copy</div></div>';
+    });
+    html += '</div></div>';
+  }
+  if (assets.llmsDraft) {
+    html += '<div style="margin-bottom:24px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt draft</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">Review every line. Save as <strong>llms.txt</strong> and upload it to your domain root — <strong>yourdomain.com/llms.txt</strong>.</div>'
+      + '<div class="deliv-code" id="dLlmsDraftCode">' + esc(assets.llmsDraft) + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsDraftCode\')">Copy llms.txt</button>'
+      + '</div>';
+  }
+  if (assets.schemaDraft) {
+    html += '<div style="margin-bottom:24px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Schema markup draft <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span></div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">Paste this inside a <code style="font-size:12px;background:var(--paper-2);padding:1px 5px;">&lt;script type="application/ld+json"&gt;</code> tag on your homepage. Your developer must review and test it before it goes live.</div>'
+      + '<div class="deliv-code" id="dSchemaDraftCode">' + esc(assets.schemaDraft) + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dSchemaDraftCode\')">Copy Schema Markup</button>'
+      + '</div>';
+  }
+  if (!html) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Prepared items not available for this diagnostic.</div>';
+  return html;
+}
+
 function buildDeliverables(r) {
   var d = r.deliverables;
+  if (!d && r.readyToUseAssets) return buildAssetsFromReadyToUse(r.readyToUseAssets);
   if (!d) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Deliverables not available for this diagnostic.</div>';
 
   function ownerTag() {
