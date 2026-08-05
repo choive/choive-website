@@ -425,7 +425,7 @@ function buildQRDataURL(url) {
 
 // ── SCORE GAUGE SVG ───────────────────────────────────────────────────────────
 function buildScoreGauge(score) {
-  var s = Math.min(100, Math.max(0, Number(score) || 0));
+  var s = Math.round(Math.min(100, Math.max(0, Number(score) || 0)));
   var cx = 150, cy = 144, outerR = 112, innerR = 86;
   function arc(v1, v2, col, w) {
     var a1 = Math.PI * (1 - v1/100), a2 = Math.PI * (1 - v2/100);
@@ -459,7 +459,7 @@ function buildScoreGauge(score) {
 
 // ── PILLAR RING SVG ───────────────────────────────────────────────────────────
 function buildPillarRing(score, label) {
-  var s = Math.min(25, Math.max(0, Number(score) || 0));
+  var s = Math.round(Math.min(25, Math.max(0, Number(score) || 0)));
   var r = 44, cx = 56, cy = 58, circ = 2 * Math.PI * r;
   var dash = (s / 25) * circ, gap = circ - dash;
   var col = s >= 20 ? '#2A7A48' : s >= 12 ? '#C9A86A' : s >= 6 ? '#9A6A14' : '#B83232';
@@ -899,7 +899,7 @@ var CSS = [
     var dividers = [30, 55, 75].map(function(s) {
       return '<line x1="' + tx(s) + '" y1="0" x2="' + tx(s) + '" y2="48" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>';
     }).join('');
-    var compPin = (compScore && compScore !== score) ? (function() {
+    var compPin = (compScore !== null && compScore !== undefined && compScore !== 0 && compScore !== score) ? (function() {
       var cx = tx(compScore);
       return '<circle cx="' + cx + '" cy="24" r="8" fill="#B83232" stroke="white" stroke-width="2"/>'
         + '<text x="' + cx + '" y="28" font-size="8.5" font-weight="700" font-family="Inter,sans-serif" fill="white" text-anchor="middle">' + compScore + '</text>';
@@ -1020,7 +1020,7 @@ var CSS = [
   var website  = safeStr(input.website,  '');
 
   // Scores
-  var score  = safeNum(r.overallScore, 0);
+  var score  = Math.round(safeNum(r.overallScore, 0));
   var cl     = pillarScore(r, 'clarity');
   var tr     = pillarScore(r, 'trust');
   var di     = pillarScore(r, 'difference');
@@ -1126,7 +1126,7 @@ var CSS = [
   // 30-day plan
   var actionPlan = safeArr(
     r.actionPlan ||
-    (deliverables.actionPlan && deliverables.actionPlan.weeks) ||
+    (Array.isArray(deliverables.actionPlan) ? deliverables.actionPlan : (deliverables.actionPlan && deliverables.actionPlan.weeks)) ||
     []
   );
   
@@ -1273,7 +1273,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     ['Difference', pillarScore(r, 'difference')],
     ['Ease',       pillarScore(r, 'ease')]
   ].sort(function(a, b) { return a[1] - b[1]; });
-  var weakest = { label: pillarPairs[0][0], score: pillarPairs[0][1] };
+  var weakest = { label: pillarPairs[0][0], score: Math.round(pillarPairs[0][1]) };
   var measuredTotal = safeNum(simBefore.totalQueries, simBeforeResults.length);
   var measuredAppeared = safeNum(simBefore.appearedCount, simBeforeResults.filter(function(item) {
     return safeObj(item).appeared === true;
@@ -1394,7 +1394,7 @@ function buildExecutiveBrief(r, input, bizName, score, compName, date, qrDataUrl
     + '<div class="evidence-key-item"><div class="evidence-key-name" style="color:#B83232;">Not established</div><div class="evidence-key-copy">The available evidence did not support a firm conclusion.</div></div>'
     + '</div>');
   // Position map SVG replaces the flat score bar — shows zone spectrum with pin
-  var compOverallScore = (compCl || compTr || compDi || compEa) ? Math.round((compCl + compTr + compDi + compEa) * 4) : 0;
+  var compOverallScore = (compCl || compTr || compDi || compEa) ? Math.round(compCl + compTr + compDi + compEa) : 0;
   H.push('<div class="diag-wrap"><div class="diag-label">Decision zone position</div>');
   H.push(buildPositionMapSVG(score, compOverallScore));
   H.push('</div>');
@@ -2063,27 +2063,33 @@ async function generatePDF(html) {
   var executablePath = await chromium.executablePath(
     'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
   );
-  var browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: { width: 1240, height: 1754 },
-    executablePath: executablePath,
-    headless: true,
-  });
-  try {
-    var page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
-    var pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
-      preferCSSPageSize: true,
+  var lastErr;
+  for (var attempt = 0; attempt < 2; attempt++) {
+    var browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: { width: 1240, height: 1754 },
+      executablePath: executablePath,
+      headless: true,
     });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
+    try {
+      var page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
+      var pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
+        preferCSSPageSize: true,
+      });
+      return Buffer.from(pdf);
+    } catch (err) {
+      lastErr = err;
+      console.warn('[generate-report] PDF attempt ' + (attempt + 1) + ' failed:', err.message);
+    } finally {
+      await browser.close().catch(function() {});
+    }
   }
+  throw lastErr;
 }
-
 // ── SEND EMAIL ────────────────────────────────────────────────────────────────
 async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) {
   var resendKey = process.env.RESEND_API_KEY;
@@ -2130,7 +2136,7 @@ async function sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score) 
   ].join('');
   
   var controller = new AbortController();
-  var abortTimer = setTimeout(function() { controller.abort(); }, 15000);
+  var abortTimer = setTimeout(function() { controller.abort(); }, 30000);
   var res;
   try {
     res = await fetch('https://api.resend.com/emails', {
@@ -2170,10 +2176,9 @@ exports.handler = async function(event) {
   
   // Internal auth — only stripe-webhook may call this
   var internalToken = process.env.INTERNAL_REPORT_SECRET
-    || process.env.INTERNAL_DIAGNOSTIC_SECRET
-    || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    || process.env.INTERNAL_DIAGNOSTIC_SECRET;
   if (!internalToken) {
-    console.error('[generate-report] no internal service credential is configured');
+    console.error('[generate-report] no internal service credential is configured — set INTERNAL_REPORT_SECRET');
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Report service is not configured' }) };
   }
   if (event.headers['x-internal-token'] !== internalToken) {
@@ -2241,7 +2246,7 @@ exports.handler = async function(event) {
 
   // 3. Email report
   var bizName = safeStr(safeObj(diagnostic.input).name, 'Your Business');
-  var score   = safeNum(safeObj(diagnostic.result).overallScore, 0);
+  var score   = Math.round(safeNum(safeObj(diagnostic.result).overallScore, 0));
   try {
     await sendReportEmail(customerEmail, bizName, pdfBuffer, jobId, score);
     console.log('[generate-report] emailed to', customerEmail);
