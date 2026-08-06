@@ -663,6 +663,20 @@ function generateActionPlan(evidence, result) {
   return { name: name, weeks: weeks };
 }
 
+function inferPillarTarget(action) {
+  var text = ((action.title || '') + ' ' + (action.body || '') + ' ' + (action.explanation || '')).toLowerCase();
+  if (/llms\.txt|schema|structured data|schema\.org|meta|sitemap|friction|checkout|load time|page speed|contact form|navigation|upload|deploy/i.test(text)) return 'ease';
+  if (/review|testimonial|trustpilot|google|case study|credential|proof|verify|evidence|credibility|independent|certification|accredit/i.test(text)) return 'trust';
+  if (/differ|unique|stand out|distinct|competitive advantage|competitor|specializ|niche|exclusive|proprietary/i.test(text)) return 'difference';
+  if (/headline|h1|offer|message|homepage|describe|clarity|clear|explain|communicate|promise|pitch|copy|landing/i.test(text)) return 'clarity';
+  return null;
+}
+
+function estimatePillarGain(priority, gap) {
+  var base = priority === 'critical' ? 9 : priority === 'high' ? 5 : 2;
+  return Math.min(base, Math.max(1, gap));
+}
+
 function generateDeliverables(evidence, result) {
   var delivs = {
     llmsTxt:      generateLlmsTxt(evidence, result),
@@ -672,7 +686,21 @@ function generateDeliverables(evidence, result) {
     reviewAction: generateReviewAction(evidence, result)
   };
   delivs.actionPlan = generateActionPlan(evidence, Object.assign({}, result, { deliverables: delivs }));
+  // Score projections — infer pillar target and estimate gain for each action
+  var pillars = result.pillars || {};
+  if (Array.isArray(result.actions)) {
+    result.actions.forEach(function(action) {
+      if (!action || typeof action !== 'object') return;
+      var target = inferPillarTarget(action);
+      if (!target) return;
+      var current = Number((pillars[target] && pillars[target].score) || 0);
+      var gap = Math.max(0, 25 - current);
+      action.pillarTarget = target;
+      action.estimatedGain = estimatePillarGain(action.priority, gap);
+    });
+  }
+  // llms.txt verification flag — true when at least one confirmed independent source is available
+  delivs.llmsSourcesVerified = sourceLinks(evidence, result).length > 0;
   return delivs;
 }
-
 module.exports = { generateDeliverables: generateDeliverables };
