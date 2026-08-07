@@ -4184,8 +4184,11 @@ function showResults(r, jobId) {
     var arenaTagHtml = a.arenaTag
       ? '<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);border:1px solid var(--ac);padding:2px 7px;margin-left:8px;vertical-align:middle;opacity:0.8;">' + esc(a.arenaTag) + '</span>'
       : '';
+    var gainBadge = (a.estimatedGain && a.pillarTarget)
+      ? '<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:rgba(194,240,212,0.12);color:var(--ac);border:1px solid rgba(194,240,212,0.45);padding:2px 7px;margin-left:8px;vertical-align:middle;">+' + Number(a.estimatedGain) + ' ' + a.pillarTarget + ' pts</span>'
+      : '';
     return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
-      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + '</div>'
+      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + gainBadge + '</div>'
       + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
       + '<div class="paid-action-body">' + readableText(a.body, 1) + '</div>'
       + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
@@ -5117,7 +5120,9 @@ function buildDeliverables(r) {
 
   var llmsHtml = '<div style="margin-bottom:16px;">'
     + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.11em;text-transform:uppercase;color:var(--void);background:var(--ac);padding:5px 8px;margin-bottom:10px;">Deploy today · no developer needed if you can upload a root file</div>'
-    + '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#9d352f;border:1px solid rgba(157,53,47,0.35);background:rgba(157,53,47,0.06);padding:9px 11px;margin-bottom:12px;">Publication status: Draft · confirm every claim before publishing</div>'
+    + (d.llmsSourcesVerified
+      ? '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--ac);border:1px solid rgba(194,240,212,0.5);background:rgba(194,240,212,0.08);padding:9px 11px;margin-bottom:12px;">Publication status: Ready to deploy · independent sources confirmed</div>'
+      : '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#9d352f;border:1px solid rgba(157,53,47,0.35);background:rgba(157,53,47,0.06);padding:9px 11px;margin-bottom:12px;">Publication status: Draft · confirm every claim before publishing</div>')    
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Review the facts below. Then save the approved content as <strong>llms.txt</strong> at <strong>yourdomain.com/llms.txt</strong>. Your website provider or developer can confirm whether root-level file uploads are supported.</div>'
     + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your llms.txt content</div>'
