@@ -6,14 +6,12 @@ function firstSentence(s) {
   var m = t.match(/^[^.!?]*[.!?]/);
   return m ? m[0].trim() : t.slice(0, 140);
 }
-
 function capitaliseCity(city) {
   if (!city) return '';
   return city.split(' ').map(function(w) {
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
 }
-
 function cleanAssetText(value, maxLength) {
   var text = String(value || '')
     .replace(/\s+/g, ' ')
@@ -27,7 +25,6 @@ function cleanAssetText(value, maxLength) {
   if (boundary < Math.floor(limit * 0.55)) boundary = shortened.lastIndexOf(' ');
   return shortened.slice(0, boundary > 0 ? boundary : limit).replace(/[\s:;,.-]+$/, '').trim();
 }
-
 function removeNameIntroduction(text, name) {
   var escaped = String(name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (!escaped) return String(text || '').trim();
@@ -36,7 +33,6 @@ function removeNameIntroduction(text, name) {
     .replace(new RegExp('^' + escaped + '\\s*[-–—:|]\\s*', 'i'), '')
     .trim();
 }
-
 function factualSummary(evidence, result, maxLength) {
   var signals = (evidence && evidence.websiteSignals) || {};
   var choices = [
@@ -51,16 +47,13 @@ function factualSummary(evidence, result, maxLength) {
   }
   return '';
 }
-
 function sentenceCase(value) {
   var text = String(value || '').trim();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
-
 function normalizeForAsset(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
-
 function intendedAudience(evidence, result, fallback) {
   var source = [
     evidence && evidence.description,
@@ -71,14 +64,12 @@ function intendedAudience(evidence, result, fallback) {
   if (!match) return fallback;
   return cleanAssetText(match[1].replace(/\s+(?:serving|across|worldwide|globally)\b.*$/i, ''), 100) || fallback;
 }
-
 function safeDifferentiator(evidence, result) {
   var pillars = (result && result.pillars) || {};
   var raw = String((pillars.difference && pillars.difference.evidence) || '').trim();
   if (!raw || /search query|site:|confirmed:|schema|homepage content|no competitor|not detected|not established|score|points?/i.test(raw)) return '';
   return cleanAssetText(raw.replace(/["']/g, ''), 180);
 }
-
 function marketLabel(evidence) {
   var reach = String((evidence && evidence.marketReach) || '').toLowerCase();
   var place = capitaliseCity(String((evidence && evidence.city) || '').trim());
@@ -90,7 +81,6 @@ function marketLabel(evidence) {
   if (reach === 'regional') return place ? 'Region around ' + place : 'Regional';
   return place;
 }
-
 function sourceLinks(evidence, result) {
   var audits = result && result.scoreMethod && result.scoreMethod.audits;
   var trust = audits && Array.isArray(audits.trust) ? audits.trust : [];
@@ -122,14 +112,11 @@ function sourceLinks(evidence, result) {
   });
   return links.slice(0, 5);
 }
-
 var ASSET_STOP_WORDS = new Set(('the a an and or for with from into this that these those your our their its is are was were be to of in on at by as it we you they business company organization product service services solutions platform providing provides offers based').split(' '));
 var UNSUPPORTED_ASSET_CLAIMS = /\b(best|leading|leader|market-leading|premium|trusted|award[- ]winning|number one|#1|top-rated|world-class|proven results?|guaranteed|teams trust|built for results|stands out|every detail matters|every screen|all screens|works everywhere|always available)\b/i;
-
 function assetWords(value) {
   return String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g) || [];
 }
-
 function evidenceCorpus(evidence, result) {
   var signals = (evidence && evidence.websiteSignals) || {};
   return [evidence && evidence.name, evidence && evidence.category, evidence && evidence.description,
@@ -137,7 +124,6 @@ function evidenceCorpus(evidence, result) {
     signals.titleText, signals.h1Text, signals.metaDescriptionText, result && result.inferredCategory]
     .filter(Boolean).join(' ').toLowerCase();
 }
-
 function supportedAssetText(value, evidence, result, minLength, maxLength) {
   var text = cleanAssetText(value, maxLength);
   if (!text || text.length < minLength || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
@@ -149,7 +135,6 @@ function supportedAssetText(value, evidence, result, minLength, maxLength) {
   if (supported.length < Math.max(2, Math.ceil(meaningful.length * 0.55))) return '';
   return text;
 }
-
 function supportedAudienceText(value, evidence, result) {
   var text = cleanAssetText(value, 100);
   if (!text || text.length < 3 || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
@@ -158,7 +143,6 @@ function supportedAudienceText(value, evidence, result) {
   if (!meaningful.length || !meaningful.every(function(word) { return corpus.indexOf(word) !== -1; })) return '';
   return text;
 }
-
 function verifiedReadyAssets(evidence, result) {
   var proposed = result && result.readyToUseAssets;
   if (!proposed || typeof proposed !== 'object') return { h1Options: [], llmsFacts: null };
@@ -178,7 +162,6 @@ function verifiedReadyAssets(evidence, result) {
     }
   };
 }
-
 function subjectProfile(evidence) {
   var type = String((evidence && evidence.subjectType) || 'business').trim();
   if (type === 'creator') return { type: type, noun: 'creator', audience: 'people in the intended audience', proof: 'independent authority proof' };
@@ -190,7 +173,6 @@ function subjectProfile(evidence) {
 // CHOIVE™ Deliverables Generator
 // Produces owner-safe, actionable assets — no code that could be misimplemented
 // Returns: llmsTxt, h1Options, metaDescription, schemaBrief, reviewAction
-
 function generateLlmsTxt(evidence, result) {
   var profile        = subjectProfile(evidence);
   var name           = (evidence.name || '').trim();
@@ -251,7 +233,6 @@ function generateLlmsTxt(evidence, result) {
   lines.push('Use the official sources above for current facts. Do not infer prices, availability, certifications, locations, results, or customer relationships that those sources do not state.');
   return lines.join('\n');
 }
-
 function generateH1Options(evidence, result) {
   var signals  = (evidence && evidence.websiteSignals) || {};
   var name     = String((evidence && evidence.name) || '').trim();
@@ -262,7 +243,6 @@ function generateH1Options(evidence, result) {
   var place    = marketLabel(evidence);
   var options  = [];
   var verified = verifiedReadyAssets(evidence, result);
-
   function add(value) {
     var headline = cleanAssetText(String(value || '').replace(/[.!?]+$/, ''), 115);
     var key = headline.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -271,7 +251,6 @@ function generateH1Options(evidence, result) {
     })) return;
     options.push(headline);
   }
-
   verified.h1Options.forEach(add);
   // Fallback options are assembled only from facts already supplied or collected.
   // No unsupported words such as "leading", "best", "premium", or "trusted".
@@ -280,10 +259,8 @@ function generateH1Options(evidence, result) {
     ? (place === 'Worldwide' ? ' — Worldwide' : ' in ' + place) : '') + ' | ' + name);
   if (diff) add(name + ' — ' + diff);
   else if (normalizeForAsset(summary).indexOf(normalizeForAsset(name)) !== 0) add(name + ' — ' + (summary || category));
-
   return { current: current, options: options.slice(0, 3) };
 }
-
 function generateMetaDescription(evidence, result) {
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
@@ -292,31 +269,25 @@ function generateMetaDescription(evidence, result) {
   var signals  = evidence.websiteSignals || {};
   var pillars  = result.pillars           || {};
   var cityDisplay = capitaliseCity(city);
-  
+
   var clarityEvidence = (pillars.clarity    && pillars.clarity.evidence)    || '';
   var diffEvidence    = (pillars.difference && pillars.difference.evidence) || '';
   var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
-
   // Extract current meta
   var current = cleanAssetText(signals.metaDescriptionText || '', 180);
-
   // Filter raw evidence noise before using in meta
   var diffIsNoise   = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(diffEvidence);
   var trustIsNoise  = /search query|site:trustpilot|site:g2|site:glassdoor|returned Choice|Zero results|WEBSITE VISIBLE/i.test(trustEvidence);
-
   var diff  = diffIsNoise  ? '' : diffEvidence.replace(/["']/g, '').split('.')[0].trim();
   var trust = trustIsNoise ? '' : trustEvidence.replace(/["']/g, '').split('.')[0].trim();
-
   // Discard diff or trust that echoes the business name back into the meta
   if (diff  && name && diff.toLowerCase().startsWith(name.toLowerCase()))  diff  = '';
   if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
   if (diff  && diff.length  < 15) diff  = '';
-
   // Discard diff or trust that echoes the business name back into the meta
   if (diff  && name && diff.toLowerCase().startsWith(name.toLowerCase()))  diff  = '';
   if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
   if (diff  && diff.length  < 15) diff  = '';
-
   var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135);
   var improved = name + (groundedSummary ? ' — ' + groundedSummary : ' — ' + category);
   if (city && ['local','regional','national'].indexOf(reach) !== -1
@@ -335,10 +306,8 @@ function generateMetaDescription(evidence, result) {
     improved = improved.slice(0, cutAt).replace(/[,;:\s]+$/, '');
     if (!/[.!?]$/.test(improved)) improved += '.';
   }
-
   return { current: current, improved: improved };
 }
-
 function generateSchemaBrief(evidence, result) {
   var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
@@ -348,7 +317,6 @@ function generateSchemaBrief(evidence, result) {
   var website  = (evidence.website        || evidence.inferredOfficialSite || '').trim();
   var websiteSignals  = (evidence && evidence.websiteSignals) || {};
   var schemaConfirmed = websiteSignals.hasSchema === true;
-
   // Determine schema types needed
   var catLower    = category.toLowerCase();
   var schemaTypes = profile.type === 'creator' || profile.type === 'personal_brand'
@@ -356,7 +324,6 @@ function generateSchemaBrief(evidence, result) {
     : profile.type === 'product'
       ? ['Product']
       : ['Organization'];
-
   if      (profile.type === 'creator' || profile.type === 'personal_brand' || profile.type === 'product') {}
   else if (/restaurant|cafe|dining/i.test(catLower))           schemaTypes.push('Restaurant');
   else if (/software|saas|platform|crm/i.test(catLower))       schemaTypes.push('SoftwareApplication');
@@ -372,11 +339,9 @@ function generateSchemaBrief(evidence, result) {
   else if (/gym|fitness|sports club|wellness/i.test(catLower)) schemaTypes.push('SportsActivityLocation');
   else if (/car dealer|auto dealer|automotive retail/i.test(catLower)) schemaTypes.push('AutoDealer');
   else if (/real estate|estate agent|property agency|realtor/i.test(catLower)) schemaTypes.push('RealEstateAgent');
-
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
     : 'your website URL';
-
   var serviceArea = marketLabel(evidence);
   var schemaObject = {
     '@context': 'https://schema.org',
@@ -389,7 +354,6 @@ function generateSchemaBrief(evidence, result) {
   var jsonLd = '<script type="application/ld+json">\n'
     + JSON.stringify(schemaObject, null, 2)
     + '\n</script>';
-
   var fields = [
     'name: ' + name,
     'url: ' + siteUrl,
@@ -398,7 +362,6 @@ function generateSchemaBrief(evidence, result) {
     'base schema type: ' + (schemaTypes[0] || 'Organization'),
     schemaTypes.length > 1 ? 'additional type to review with the developer: ' + schemaTypes.slice(1).join(' + ') : null
   ].filter(Boolean);
-
   return {
     alreadyHasSchema: schemaConfirmed,
     schemaTypes:      schemaTypes,
@@ -411,7 +374,6 @@ function generateSchemaBrief(evidence, result) {
       : 'CHOIVE did not detect schema markup. Forward the factual base example below to your developer. They must review it against the live website and test the final code before publishing it.'
   };
 }
-
 function generateReviewAction(evidence, result) {
   var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
@@ -421,7 +383,6 @@ function generateReviewAction(evidence, result) {
   var pillars  = result.pillars           || {};
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
   var trustEvidence = (pillars.trust && pillars.trust.evidence) || '';
-
   // Determine target platform and count by category
   var catLower = category.toLowerCase();
   var platform, secondaryPlatform, targetCount, secondaryTargetCount, platformUrl, instruction;
@@ -429,7 +390,6 @@ function generateReviewAction(evidence, result) {
   var enterpriseProcurement = /enterprise|pay[ -]?tv|telco|telecom|operator|middleware|automotive oem|carmaker|broadcast platform/i.test(catLower);
   var realEstate = /real[ -]?estate|estate agenc|estate agent|property (?:broker|agency|sales)|residential brokerage/i.test(catLower);
   var internationalRealEstate = realEstate && /international|luxury|expat|foreign|global|costa del sol|marbella|investment/i.test(catLower + ' ' + String((evidence && evidence.description) || ''));
-
   // Use a named platform only when this diagnostic established that buyers or
   // close competitors in the category use it. Category words alone are not
   // evidence that a particular directory matters.
@@ -476,7 +436,6 @@ function generateReviewAction(evidence, result) {
       ? 'Publish three verifiable user examples or independent reviews that identify the use case, explain the result, and state where the claim can be checked. Use a review platform only when evidence confirms that users in this category rely on it.'
       : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
   }
-
   // Counts are platform-specific. Never reuse an employee-review count from
   // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
   var signals = (evidence && evidence.websiteSignals) || {};
@@ -486,10 +445,8 @@ function generateReviewAction(evidence, result) {
   } else if (/trustpilot/i.test(platform || '') && Number(signals.trustpilotReviewCount) > 0) {
     currentCount = Number(signals.trustpilotReviewCount);
   }
-
   targetCount = targetCount || 25;
   var gap = Math.max(0, targetCount - currentCount);
-
   return {
     platform:     platform,
     secondaryPlatform: secondaryPlatform || '',
@@ -503,19 +460,15 @@ function generateReviewAction(evidence, result) {
     urgency:      trustScore < 8 ? 'critical' : trustScore < 14 ? 'high' : 'medium'
   };
 }
-
-
 function generateActionPlan(evidence, result) {
   var profile  = subjectProfile(evidence);
   var name     = (evidence.name || '').trim();
   var actions  = result.actions || [];
   var pillars  = result.pillars || {};
   var delivs   = result.deliverables || {};
-
   var critical = actions.filter(function(a) { return a.priority === 'critical'; });
   var high     = actions.filter(function(a) { return a.priority === 'high'; });
   var medium   = actions.filter(function(a) { return a.priority === 'medium'; });
-
   // ── Dedupe across weeks — the same action must never appear in two weeks
   var usedTitles = {};
   function normTitle(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -532,12 +485,9 @@ function generateActionPlan(evidence, result) {
     var text = (a.title || '') + ' ' + (a.body || '');
     return /schema|llms\.txt|markup|structured data|json-ld|sitemap|robots\.txt|meta tag|canonical|redirect|H1 tag|code|deploy/i.test(text) ? 'developer' : 'you';
   }
-
   var easeScore  = (pillars.ease  && pillars.ease.score)  || 0;
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
-
   var weeks = [];
-
   // Week 1 — owner can do today, no developer needed
   var week1 = { week: 1, title: 'Do today — no developer needed', tasks: [] };
   if (easeScore < 18) {
@@ -563,7 +513,6 @@ function generateActionPlan(evidence, result) {
     owner:  'you'
   });
   weeks.push(week1);
-
   // Week 2 — trust building
   var week2 = { week: 2, title: 'Build independent proof — start this week', tasks: [] };
   if (trustScore < 12) {
@@ -610,7 +559,6 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week2);
-
   // Week 3 — developer tasks
   var week3 = { week: 3, title: 'Forward to your developer', tasks: [] };
   if (easeScore < 14) {
@@ -639,7 +587,6 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week3);
-
   // Week 4 — measure
   var week4 = { week: 4, title: 'Measure your progress', tasks: [] };
   week4.tasks.push({
@@ -659,24 +606,20 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week4);
-
   return { name: name, weeks: weeks };
 }
-
 function inferPillarTarget(action) {
   var text = ((action.title || '') + ' ' + (action.body || '') + ' ' + (action.explanation || '')).toLowerCase();
-  if (/llms\.txt|schema|structured data|schema\.org|meta|sitemap|friction|checkout|load time|page speed|contact form|navigation|upload|deploy/i.test(text)) return 'ease';
+  if (/llms\.txt|schema\.org|json-?ld|structured data|sitemap|robots\.txt|friction|checkout|load time|page speed|contact form|navigation|upload|deploy/i.test(text)) return 'ease';
   if (/review|testimonial|trustpilot|google|case study|credential|proof|verify|evidence|credibility|independent|certification|accredit/i.test(text)) return 'trust';
   if (/differ|unique|stand out|distinct|competitive advantage|competitor|specializ|niche|exclusive|proprietary/i.test(text)) return 'difference';
   if (/headline|h1|offer|message|homepage|describe|clarity|clear|explain|communicate|promise|pitch|copy|landing/i.test(text)) return 'clarity';
   return null;
 }
-
 function estimatePillarGain(priority, gap) {
   var base = priority === 'critical' ? 9 : priority === 'high' ? 5 : 2;
   return Math.min(base, Math.max(1, gap));
 }
-
 function generateDeliverables(evidence, result) {
   var delivs = {
     llmsTxt:      generateLlmsTxt(evidence, result),
