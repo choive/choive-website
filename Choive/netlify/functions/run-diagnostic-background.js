@@ -1985,7 +1985,7 @@ exports.handler = async function (event) {
             score: scoreResult && scoreResult.status === 'fulfilled' ? (scoreResult.value || null) : null
           };
         }),
-        selectionRule: 'Only the separately verified head-to-head and market competitor roles are charted. API-named alternatives remain in the technical probe appendix.'
+        selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
       };
     } catch (comparisonErr) {
       console.warn('[' + jobId + '] Universal competitor comparison failed (non-critical):', comparisonErr.message);
