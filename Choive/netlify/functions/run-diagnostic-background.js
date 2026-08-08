@@ -1852,12 +1852,6 @@ exports.handler = async function (event) {
       // Only fully completed provider runs can support a present/absent headline.
       // A partial run remains visible as partial coverage, but missing answers
       // must never be interpreted as evidence that the subject was absent.
-      var completedPlatformRuns = completedProviderRuns([
-        measuredClaude, measuredOpenAI, measuredPerplexity, measuredGemini
-      ]);
-      var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
-        return Number(run.appearedCount || 0) > 0;
-      });
       if (completedPlatformRuns.length > 0) {
         finalResult['verdictHeadline'] = platformsWithVisibility.length === 0
           ? 'Not found in unbranded buyer answers from any measured AI platform'
@@ -1865,6 +1859,39 @@ exports.handler = async function (event) {
             ? 'Found in unbranded buyer answers from all ' + completedPlatformRuns.length + ' measured AI platforms'
             : 'Found in unbranded buyer answers from ' + platformsWithVisibility.length + ' of ' + completedPlatformRuns.length + ' measured AI platforms';
       }
+      // Overwrite the first paragraph of businessUnderstanding with accurate
+      // per-platform data from the stored provider measurements.
+      var completedProviderLanes = platformLanes.filter(function(lane) {
+        return lane && (lane.status === 'recommended' || lane.status === 'no_recommendation');
+      });
+      var providerLanesNamingSubject = completedProviderLanes.filter(function(lane) {
+        return lane.subjectAppeared === true;
+      });
+      var recordedRecommendations = completedProviderLanes
+        .filter(function(lane) { return lane.recommendation; })
+        .map(function(lane) { return lane.platform + ' recommended ' + lane.recommendation; });
+      var currentUnderstanding = completedProviderLanes.length
+        ? completedProviderLanes.length +
+          ' of 4 AI providers completed the recorded tests. ' +
+          name +
+          ' appeared in unbranded buyer answers from ' +
+          providerLanesNamingSubject.length +
+          ' of those ' +
+          completedProviderLanes.length +
+          ' providers.' +
+          (recordedRecommendations.length
+            ? ' In the separate replacement question, ' + recordedRecommendations.join('; ') + '.'
+            : ' No completed provider established a named replacement recommendation.')
+        : 'No AI provider completed enough recorded tests to support a current AI-discovery conclusion.';
+      var previousUnderstandingParts = String(finalResult['businessUnderstanding'] || '')
+        .split(/\n\s*\n/)
+        .map(function(part) { return part.trim(); })
+        .filter(Boolean);
+      finalResult['businessUnderstanding'] =
+        currentUnderstanding +
+        (previousUnderstandingParts.length > 1
+          ? '\n\n' + previousUnderstandingParts.slice(1).join('\n\n')
+          : '');
     }
     // The dedicated category pass is authoritative for business-model fidelity.
     // Later prose generation must not downgrade a producer into a retailer or
