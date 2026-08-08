@@ -1962,11 +1962,19 @@ exports.handler = async function (event) {
           reason: String(widerDecision.reason || '').trim()
         });
       }
+      var secondAiName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].secondAiCompetitor || '').trim();
+      if (secondAiName
+          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(directName)
+          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(widerName)
+          && !isSubjectRecommendation(secondAiName) && !isPlatformName(secondAiName)) {
+        roleCandidates.push({
+          role: 'competitor',
+          roleLabel: 'AI-named competitor',
+          name: secondAiName,
+          reason: ''
+        });
+      }
       var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
-        return scoreArena(evidence, finalResult, candidate.name, candidate.role);
-      }));
-      finalResult['competitorComparison'] = {
-        entries: roleCandidates.map(function(candidate, index) {
           var scoreResult = roleScores[index];
           return {
             role: candidate.role,
