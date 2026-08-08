@@ -1852,6 +1852,12 @@ exports.handler = async function (event) {
       // Only fully completed provider runs can support a present/absent headline.
       // A partial run remains visible as partial coverage, but missing answers
       // must never be interpreted as evidence that the subject was absent.
+      var completedPlatformRuns = platformLanes.filter(function(lane) {
+        return lane.status === 'recommended' || lane.status === 'no_recommendation';
+      });
+      var platformsWithVisibility = platformLanes.filter(function(lane) {
+        return lane.subjectAppeared === true;
+      });
       if (completedPlatformRuns.length > 0) {
         finalResult['verdictHeadline'] = platformsWithVisibility.length === 0
           ? 'Not found in unbranded buyer answers from any measured AI platform'
