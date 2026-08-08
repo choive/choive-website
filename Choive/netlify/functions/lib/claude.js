@@ -278,7 +278,28 @@ function buildPrompt(evidence) {
             : '')
         : '')
     + (simGroundTruth ? '\n\nAI SELECTION GROUND TRUTH — three real AI recommendation queries were run for this business\u2019s category...\n' + simGroundTruth : '')
-    + (simBefore && simBefore.before && typeof simBefore.before.appearedCount !== 'undefined' ? '\n\nAUTHORITATIVE PROBE RESULT (use ONLY this number — do not count from the texts above): ' + (evidence.name || 'This business') + ' appeared in ' + simBefore.before.appearedCount + ' of ' + (simBefore.before.totalQueries || 3) + ' AI queries.' : '')
+   + (simBefore && simBefore.before && typeof simBefore.before.appearedCount !== 'undefined' ? '\n\nAUTHORITATIVE PROBE RESULT (use ONLY this number — do not count from the texts above): ' + (evidence.name || 'This business') + ' appeared in ' + simBefore.before.appearedCount + ' of ' + (simBefore.before.totalQueries || 3) + ' Claude queries.' : '')
+    + (function() {
+        var _ps = evidence.platformSimulations || {};
+        var _keys = ['claude', 'openai', 'gemini', 'perplexity'];
+        var _labels = { claude: 'Claude', openai: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity' };
+        var _lines = [];
+        var _totalApp = 0, _totalQ = 0;
+        var _named = [];
+        _keys.forEach(function(k) {
+          var s = _ps[k];
+          if (!s || s.status !== 'complete') return;
+          var app = s.appearedCount || 0;
+          var tot = s.totalQueries || 3;
+          _totalApp += app; _totalQ += tot;
+          if (app > 0) _named.push(_labels[k]);
+          _lines.push('- ' + _labels[k] + ': named in ' + app + ' of ' + tot + ' unbranded queries' + (s.topRecommendation ? '; top recommendation in that platform: ' + s.topRecommendation : '; top recommendation: not this business'));
+        });
+        if (!_lines.length) return '';
+        return '\n\nMULTI-PLATFORM APPEARED RESULTS — use these for all platform-specific statements:\n'
+          + _lines.join('\n')
+          + '\nTotal: ' + (evidence.name || 'this business') + ' named in ' + _totalApp + ' of ' + _totalQ + ' completed unbranded queries across all platforms. Platforms that named it: ' + (_named.length ? _named.join(', ') : 'none');
+      })()
     + '\n\nSOCIAL PRESENCE DETECTED:\n' + socialDisplay
     + '\n\nSOCIAL MEDIA PAGE CONTENT:\n' + socialText
     + '\n\nREVIEW PLATFORM CONTENT:\n' + reviewText
@@ -495,7 +516,7 @@ function buildPrompt(evidence) {
     + 'NEVER write generic analysis. Every sentence must be impossible to apply to a different business.\n\n'
     + 'VERDICT HEADLINE \u2014 max 10 words, no punctuation, strategic advisor tone. Must name the primary gap found in this specific run: a discovery gap (AI not mentioning this business), a comparison loss (a named competitor winning the buyer), a trust gap (no independent verification found), or a clarity problem (offer not clearly defined). Must be impossible to apply to a different business. '
     + 'AVOID AMBIGUOUS NEGATION: never write "not consistently [positive thing]" or "not always [positive thing]" \u2014 a reader can misparse this as mostly-positive-with-exceptions when the true meaning is the opposite. BANNED EXAMPLE: "Not consistently the obvious choice" (reads as usually chosen, sometimes not \u2014 backwards for a weak/absent tier). Instead state the gap plainly and unambiguously: "Overlooked when it matters most", "Not the default choice yet", "Invisible at the moment of comparison".\n\n'
-    + 'SIGNATURE LINE \u2014 one sentence, maximum 18 words. Must contain a specific number: the CHOIVE score, the AI platform count, or both. Use "mentioned" or "recommended". Never use "chosen", "choice", "present", or vague descriptors. Example: "[Name] scored [N] and was mentioned in [X] of [Y] AI answers tested without its name."\n'
+    + 'SIGNATURE LINE \u2014 one sentence, maximum 18 words. Must contain a specific number: the CHOIVE score, the AI platform count, or both. Use "mentioned" or "recommended". Never use "chosen", "choice", "present", or vague descriptors. Use the MULTI-PLATFORM APPEARED RESULTS total for [X] of [Y] — not the Claude-only AUTHORITATIVE PROBE RESULT. Example: "[Name] scored [N] and was named in [X] of [Y] recorded unbranded AI queries across all platforms."\n'
     + 'MARKET POSITION \u2014 return tier, a plain-language label, and one evidence-based explanation. The label must state the position directly; never return "Unknown position" when a tier was established.\n\n'
     + 'Use only these values: verdictLevel = absent, weak, or present; decisionState = not_seen, seen_not_considered, considered_not_chosen, trusted_not_chosen, or chosen_by_default; decisionEnvironment = discovery_driven, comparison_driven, authority_driven, or default_driven. These are internal codes only and must not appear in reader-facing prose.\n\n'
     + 'SUMMARY PARAGRAPH — exactly 3 sentences, no more than 65 words total:\n'
@@ -510,7 +531,7 @@ function buildPrompt(evidence) {
     + 'SUBJECT UNDERSTANDING — what AI currently thinks this subject is:\n'
     + 'Write exactly two paragraphs separated by a blank line.\n'
     + 'Each paragraph must contain no more than 55 words. Use sentences of no more than 22 words.\n'
-    + 'Paragraph 1 — BEFORE: Write EXACTLY what a language model would output TODAY if someone asked "What is [business name]?" or "Which [category] should I buy in [location]?" — this is a simulation of current AI output, NOT a business description. Use ONLY signals from the evidence. CRITICAL: if the AI SELECTION GROUND TRUTH shows this business was NOT named when buyers asked about its category, the paragraph MUST start with that fact: "[Business] is not a business AI currently names when asked about [category] in [location]." If the knowledge graph is empty, write what AI would say when it has minimal data — it will be vague, hedged, or possibly confused with similar businesses. Do not write a flattering summary. Write what AI actually outputs.\n'
+    + 'Paragraph 1 — BEFORE: Write EXACTLY what a language model would output TODAY if someone asked "What is [business name]?" or "Which [category] should I buy in [location]?" — this is a simulation of current AI output, NOT a business description. Use ONLY signals from the evidence. CRITICAL: check the MULTI-PLATFORM APPEARED RESULTS section. If the business was named by NO platform in any unbranded query, the paragraph MUST start: "[Business] is not a business AI currently names when asked about [category] in [location]." If the business was named by SOME platforms but not others, do NOT use that negative opening — instead start with the specific platforms that named it, e.g. "Perplexity names [Business] as its top pick for [category] in [location], while Claude and Gemini do not mention it." If the knowledge graph is empty, write what AI would say when it has minimal data — it will be vague, hedged, or possibly confused with similar businesses. Do not write a flattering summary. Write what AI actually outputs.\n'
     + 'Paragraph 2 — AFTER: Write what that same AI paragraph would say after the top fixes are implemented.\n'
     + '  Start with the business name. Reference ONLY the concrete fixes from your own actions list\n'
     + '  (e.g. verified reviews on the named platform, llms.txt present, schema confirmed).\n'
