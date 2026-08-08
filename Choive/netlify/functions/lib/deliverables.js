@@ -493,6 +493,7 @@ function generateReviewAction(evidence, result) {
         : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
     }
   }
+}
   // Counts are platform-specific. Never reuse an employee-review count from
   // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
   var signals = (evidence && evidence.websiteSignals) || {};
