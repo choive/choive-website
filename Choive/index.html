@@ -4757,63 +4757,140 @@ function showResults(r, jobId) {
       ? r.competitorComparison.entries : [];
     if (comparisonEntries.length) {
       function comparisonCard(entry, index) {
-        var scoreData = entry && entry.score;
-        var platformLabel = (entry && entry.roleLabel) || (entry && entry.platform) || ('Competitor ' + (index + 1));
-        var emptyState = {
-          not_configured: 'API not configured',
-          failed: 'Measurement failed',
-          no_recommendation: 'No consistent answer across the recorded tests'
-        };
-        if (!entry || !entry.name || !scoreData || !scoreData.pillars) {
-          return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;min-height:190px;">'
-            + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(platformLabel) + '</div>'
-            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:18px;font-weight:700;line-height:1.45;color:var(--muted);overflow-wrap:anywhere;">'
-            + esc((entry && entry.name) || emptyState[entry && entry.status] || 'Comparison score unavailable') + '</div>'
-            + (entry && entry.name ? '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px;">Recommendation measured; comparison scoring was unavailable for this lane.</div>' : '')
-            + '</div>';
-        }
-        var largestDeficit = { key: '', value: 0 };
-        var rows = ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
-          var p = scoreData.pillars[key] || {};
-          var you = Math.round(Math.max(0, Math.min(25, Number(p.you) || 0)));
-          var competitor = Math.round(Math.max(0, Math.min(25, Number(p.competitor) || 0)));
-          var gap = you - competitor;
-          var deficit = competitor - you;
-          if (deficit > largestDeficit.value) largestDeficit = { key:key, value:deficit };
-          var statusClass = gap > 0 ? 'arena-status-ahead' : (gap < 0 ? 'arena-status-behind' : 'arena-status-equal');
-          var statusText = gap > 0 ? 'Ahead by ' + gap : (gap < 0 ? 'Behind by ' + Math.abs(gap) : 'Equal');
-          return '<div style="margin-bottom:16px;">'
-            + '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">'
-            + '<span>' + esc(key) + '</span><span class="' + statusClass + '">' + statusText + '</span></div>'
-            + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--body);margin-bottom:3px;"><strong>Your business · ' + you + '</strong><span style="color:var(--ac-d);">solid gold bar</span></div>'
-            + '<div style="height:5px;background:var(--rule);position:relative;margin-bottom:7px;"><span style="position:absolute;height:100%;left:0;top:0;background:var(--ac);width:' + Math.round(you / 25 * 100) + '%;"></span></div>'
-            + '<div style="display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--body);margin-bottom:3px;"><strong>' + esc(entry.name || 'Competitor') + ' · ' + competitor + '</strong><span style="color:var(--muted);">striped grey bar</span></div>'
-            + '<div style="height:5px;background:var(--rule);position:relative;"><span style="position:absolute;height:100%;left:0;top:0;background:repeating-linear-gradient(90deg,rgba(12,12,14,0.52) 0,rgba(12,12,14,0.52) 6px,transparent 6px,transparent 10px);width:' + Math.round(competitor / 25 * 100) + '%;"></span></div></div>';
-        }).join('');
-        return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
-          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(platformLabel) + '</div>'
-          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;margin-bottom:17px;">' + esc(entry.name || '') + '</div>'
-          + rows
-          + (function() {
-              var closableInternally = { clarity: true, ease: true, difference: false, trust: false };
-              var pillarLabel = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
-              var closable = largestDeficit.key ? closableInternally[largestDeficit.key] : null;
-              if (largestDeficit.value > 0) {
-                var closeNote = closable
-                  ? 'This gap can be closed with a website change — no external publication or third-party source required.'
-                  : 'This gap requires external evidence — a press mention, review record, or independently verifiable proof — not a website change alone.';
-                return '<div style="margin-top:18px;padding:14px 16px;border-top:2px solid var(--rule);background:var(--paper-3);">'
-                  + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Largest gap · ' + esc(pillarLabel[largestDeficit.key] || largestDeficit.key) + ' (' + largestDeficit.value + ' points)</div>'
-                  + '<div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;">' + closeNote + '</div>'
-                  + '<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.55;">Competitor values are estimates from public evidence, not audited CHOIVE scores.</div>'
-                  + '</div>';
-              }
-              return '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);">No pillar deficit: you lead or equal this competitor across all four measured pillars.</div>';
-            })()
-    
-              + '<div style="font-size:12px;line-height:1.65;color:var(--body);margin-top:8px;">This comparison shows where the difference in publicly available evidence is largest. Competitor values are estimates from public sources and are not part of the audited CHOIVE score.</div>'
-          + '</div>';
-      }
+  var scoreData = entry && entry.score;
+  var roleLabel = (entry && entry.roleLabel) ||
+    ('Competitor ' + (index + 1));
+
+  if (!entry || !entry.name || !scoreData || !scoreData.pillars) {
+    return '<div style="background:var(--paper-2);padding:24px 20px;min-height:190px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;'
+      + 'text-transform:uppercase;color:var(--ac);margin-bottom:12px;">'
+      + esc(roleLabel) + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:18px;'
+      + 'font-weight:700;line-height:1.45;color:var(--muted);">'
+      + esc(entry && entry.name ? entry.name : 'Comparison unavailable')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);line-height:1.6;'
+      + 'margin-top:12px;">CHOIVE verified this competitor, but could not '
+      + 'complete its public-evidence score.</div>'
+      + '</div>';
+  }
+
+  var labels = {
+    clarity: 'Clarity',
+    trust: 'Trust',
+    difference: 'Difference',
+    ease: 'Ease'
+  };
+
+  var pillarData = ['clarity', 'trust', 'difference', 'ease'].map(
+    function(key) {
+      var pillar = scoreData.pillars[key] || {};
+      var you = Math.round(
+        Math.max(0, Math.min(25, Number(pillar.you) || 0))
+      );
+      var competitor = Math.round(
+        Math.max(0, Math.min(25, Number(pillar.competitor) || 0))
+      );
+
+      return {
+        key: key,
+        label: labels[key],
+        you: you,
+        competitor: competitor,
+        gap: you - competitor,
+        deficit: competitor - you
+      };
+    }
+  );
+
+  var largestGap = pillarData.reduce(function(current, pillar) {
+    return pillar.deficit > current.deficit ? pillar : current;
+  }, {
+    key: '',
+    label: '',
+    you: 0,
+    competitor: 0,
+    gap: 0,
+    deficit: 0
+  });
+
+  var gapSummary = largestGap.deficit > 0
+    ? '<div style="padding:16px 18px;background:var(--ink);color:var(--paper);'
+      + 'margin-bottom:20px;border-left:4px solid var(--ac);">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;'
+      + 'text-transform:uppercase;color:var(--ac);margin-bottom:7px;">'
+      + 'Largest gap</div>'
+      + '<div style="font-size:17px;font-weight:700;line-height:1.45;">'
+      + esc(largestGap.label) + ': your business is '
+      + largestGap.deficit + ' points behind.</div>'
+      + '</div>'
+    : '<div style="padding:16px 18px;background:var(--paper-3);'
+      + 'margin-bottom:20px;border-left:4px solid var(--ac);font-size:13px;'
+      + 'font-weight:700;line-height:1.55;color:var(--ink);">'
+      + 'Your business leads or matches this competitor across all four pillars.'
+      + '</div>';
+
+  var rows = pillarData.map(function(pillar) {
+    var statusText = pillar.gap > 0
+      ? 'Ahead by ' + pillar.gap
+      : pillar.gap < 0
+        ? 'Behind by ' + Math.abs(pillar.gap)
+        : 'Equal';
+
+    var statusColor = pillar.gap > 0
+      ? '#237A57'
+      : pillar.gap < 0
+        ? '#A4443E'
+        : 'var(--muted)';
+
+    return '<div style="margin-bottom:18px;">'
+      + '<div style="display:flex;justify-content:space-between;gap:12px;'
+      + 'margin-bottom:8px;">'
+      + '<strong style="font-size:12px;color:var(--ink);">'
+      + esc(pillar.label) + '</strong>'
+      + '<strong style="font-size:11px;color:' + statusColor + ';">'
+      + statusText + '</strong>'
+      + '</div>'
+
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;'
+      + 'margin-bottom:4px;color:var(--body);">'
+      + '<strong>Your business: ' + pillar.you + ' / 25</strong>'
+      + '<span>Solid gold</span></div>'
+      + '<div style="height:6px;background:var(--rule);margin-bottom:9px;">'
+      + '<div style="height:100%;background:var(--ac);width:'
+      + Math.round(pillar.you / 25 * 100) + '%;"></div></div>'
+
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;'
+      + 'margin-bottom:4px;color:var(--body);">'
+      + '<strong>' + esc(entry.name) + ': '
+      + pillar.competitor + ' / 25</strong>'
+      + '<span>Striped grey</span></div>'
+      + '<div style="height:6px;background:var(--rule);">'
+      + '<div style="height:100%;width:'
+      + Math.round(pillar.competitor / 25 * 100) + '%;'
+      + 'background:repeating-linear-gradient(90deg,'
+      + 'rgba(12,12,14,0.55) 0,rgba(12,12,14,0.55) 6px,'
+      + 'transparent 6px,transparent 10px);"></div></div>'
+      + '</div>';
+  }).join('');
+
+  return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;'
+    + 'text-transform:uppercase;color:var(--ac);margin-bottom:7px;">'
+    + esc(roleLabel) + '</div>'
+    + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;'
+    + 'font-weight:700;color:var(--ink);margin-bottom:18px;'
+    + 'overflow-wrap:anywhere;">' + esc(entry.name) + '</div>'
+    + gapSummary
+    + rows
+    + '<div style="font-size:11px;color:var(--muted);line-height:1.6;'
+    + 'padding-top:13px;border-top:1px solid var(--rule);">'
+    + 'Your scores follow CHOIVE’s evidence rules. The competitor scores are '
+    + 'estimates based on public evidence and are not audited CHOIVE scores.'
+    + '</div>'
+    + '</div>';
+}
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Verified Competitor Comparison</div>'
         '<div style="font-size:13px;color:var(--tm);margin-bottom:12px;line-height:1.7;">This chart includes the verified head-to-head competitor, the separately verified market competitor, and the second AI-named competitor where confirmed across multiple queries. Other businesses named in recorded AI answers remain in the detailed AI answers section. Competitor values are estimates from public evidence, not audited CHOIVE scores.</div>'
         + '<div style="font-size:12px;color:var(--tb);padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:20px;"><strong>How to read every chart:</strong> the solid gold bar is your business. The striped grey bar is the named competitor. The exact values and the difference are written above each pair of bars.</div>'
