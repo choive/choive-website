@@ -624,6 +624,8 @@ function generateGBPDescription(evidence, result) {
     parts.push(name + ' is a ' + category.toLowerCase() + '.');
   }
   var summaryClean = summary ? sentenceCase(cleanAssetText(summary, 220)) : '';
+  // Strip any "Meta description:" label that was scraped with the page content
+  summaryClean = summaryClean.replace(/^meta\s+description\s*:\s*/i, '');
   if (summaryClean && summaryClean.toLowerCase().indexOf(name.toLowerCase()) === -1) {
     if (!summaryClean.endsWith('.')) summaryClean += '.';
     parts.push(summaryClean);
@@ -643,7 +645,18 @@ function generateGBPDescription(evidence, result) {
 }
 function generateReviewEmailTemplate(evidence, result, reviewAction) {
   var ra = reviewAction || {};
-  if (!ra.isReviewPlatform) return null;
+  if (!ra.isReviewPlatform) {
+    var _rProfile = subjectProfile(evidence);
+    // Creators, personal brands, organizations, and enterprise types
+    // have their own proof systems — no review email applies.
+    if (_rProfile.type !== 'product' && _rProfile.type !== 'business') return null;
+    // Product and standard businesses still need customer proof.
+    // Generate the email with a generic platform reference.
+    ra = Object.assign({}, ra, {
+      platform: 'a review platform such as Trustpilot or Google',
+      platformUrl: ''
+    });
+  }
   var name = (evidence.name || '').trim();
   var category = cleanAssetText(result.inferredCategory || evidence.category || '', 60);
   var platform = ra.platform || 'Google';
