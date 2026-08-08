@@ -5131,8 +5131,7 @@ function showResults(r, jobId) {
       + buildPaidPillarEvidence()
       + buildPlatformCoverageSection()
       + buildQueryCoverageMap()
-      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence">
-      <div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
+      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
       + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This diagnosis comes from website checks, public sources, and AI answers recorded during this run.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
