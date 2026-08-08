@@ -3946,24 +3946,184 @@ function showResults(r, jobId) {
     return '';
   }
 
+  function buildEvidenceGapSummary() {
+    var entries = r.competitorComparison && Array.isArray(r.competitorComparison.entries)
+      ? r.competitorComparison.entries : [];
+    var validEntries = entries.filter(function(e) { return e && e.score && e.score.pillars && e.name; });
+    if (!validEntries.length) return '';
+    var pillars = ['clarity', 'trust', 'difference', 'ease'];
+    var pillarLabel = { clarity: 'Clarity', trust: 'Trust', difference: 'Difference', ease: 'Ease' };
+    var closableInternally = { clarity: true, ease: true, difference: false, trust: false };
+    var totalDeficit = { clarity: 0, trust: 0, difference: 0, ease: 0 };
+    var competitorsAhead = 0;
+    validEntries.forEach(function(entry) {
+      var anyAhead = false;
+      pillars.forEach(function(key) {
+        var p = entry.score.pillars[key] || {};
+        var gap = (Number(p.you) || 0) - (Number(p.competitor) || 0);
+        if (gap < 0) { totalDeficit[key] += Math.abs(gap); anyAhead = true; }
+      });
+      if (anyAhead) competitorsAhead++;
+    });
+    var worstPillar = null; var worstValue = 0;
+    pillars.forEach(function(key) { if (totalDeficit[key] > worstValue) { worstValue = totalDeficit[key]; worstPillar = key; } });
+    if (!worstPillar || worstValue === 0) return '';
+    var isCloseable = closableInternally[worstPillar];
+    var bizName = (bizData && bizData.name) ? esc(bizData.name) : 'This business';
+    var headline = competitorsAhead + ' of ' + validEntries.length + ' measured competitor' + (validEntries.length > 1 ? 's lead' : ' leads') + ' ' + bizName + ' across at least one pillar.';
+    var gapStatement = esc(pillarLabel[worstPillar]) + ' is the largest aggregate gap — ' + worstValue + ' combined point' + (worstValue > 1 ? 's' : '') + ' behind across all measured competitors.';
+    var closeStatement = isCloseable
+      ? 'This gap can be closed with a website or positioning change. No external publication or third-party review is required.'
+      : 'Closing this gap requires independently verifiable external evidence — a review record, a press mention, or a third-party publication. A website change alone will not close it.';
+    var pillarContext = {
+      clarity: 'Clarity deficits occur when a competitor\'s offer, category, or location is more explicitly stated. AI systems pass over businesses they cannot quickly categorize.',
+      trust: 'Trust deficits occur when a competitor has more independently verifiable proof — reviews, press mentions, third-party listings, or cited sources. AI systems favour businesses with external confirmation.',
+      difference: 'Difference deficits occur when a competitor has a clearer or more specific reason to be chosen. Businesses that state what makes them distinct are more likely to be recommended.',
+      ease: 'Ease deficits occur when a competitor\'s digital footprint — schema markup, structured data, or an llms.txt file — makes it simpler for AI systems to extract and recommend them.'
+    };
+    var compRows = validEntries.map(function(entry) {
+      var totalGap = pillars.reduce(function(acc, key) {
+        var p = entry.score.pillars[key] || {};
+        var gap = (Number(p.you) || 0) - (Number(p.competitor) || 0);
+        return acc + (gap < 0 ? Math.abs(gap) : 0);
+      }, 0);
+      var worstForThis = null; var worstForThisVal = 0;
+      pillars.forEach(function(key) {
+        var p = entry.score.pillars[key] || {};
+        var deficit = (Number(p.competitor) || 0) - (Number(p.you) || 0);
+        if (deficit > worstForThisVal) { worstForThisVal = deficit; worstForThis = key; }
+      });
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--rule);flex-wrap:wrap;gap:8px;">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--ink);">' + esc(entry.name) + '</div>'
+        + '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">'
+        + (totalGap > 0
+          ? '<span style="font-size:11px;color:#C97A6A;font-weight:700;">Behind by ' + totalGap + ' pts</span>'
+            + (worstForThis ? '<span style="font-size:11px;color:var(--muted);">Largest gap: ' + esc(pillarLabel[worstForThis]) + '</span>' : '')
+          : '<span style="font-size:11px;color:var(--ac);font-weight:700;">No deficit measured</span>')
+        + '</div></div>';
+    }).join('');
+    return '<section class="pay-section" id="report-evidence-gap">'
+      + '<div class="pay-eyebrow">Evidence Gap Summary</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">' + headline + ' ' + gapStatement + '</div>'
+      + compRows
+      + '<div style="margin-top:20px;padding:16px 18px;background:var(--paper-2);border-left:3px solid ' + (isCloseable ? 'var(--ac)' : '#C97A6A') + ';">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">How to close the ' + esc(pillarLabel[worstPillar]) + ' gap</div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--ink);line-height:1.6;margin-bottom:8px;">' + closeStatement + '</div>'
+      + '<div style="font-size:12px;color:var(--body);line-height:1.65;">' + esc(pillarContext[worstPillar]) + '</div>'
+      + '</div></section>';
+  }
+
+  function buildQueryCoverageMap() {
+    var sims = r.platformSimulations || {};
+    var platforms = [
+      { key: 'claude', label: 'Claude' },
+      { key: 'openai', label: 'ChatGPT' },
+      { key: 'gemini', label: 'Gemini' },
+      { key: 'perplexity', label: 'Perplexity' }
+    ];
+    var querySource = null;
+    for (var _pi = 0; _pi < platforms.length; _pi++) {
+      var _ps = sims[platforms[_pi].key];
+      if (_ps && Array.isArray(_ps.results) && _ps.results.length > 0) { querySource = _ps.results; break; }
+    }
+    if (!querySource || !querySource.length) return '';
+    var visQueries = querySource.filter(function(item) {
+      var lbl = String(item && item.label || '').toLowerCase();
+      return lbl.indexOf('branded replacement') === -1 && lbl.indexOf('replacement') === -1;
+    });
+    if (!visQueries.length) return '';
+    var activePlatforms = platforms.filter(function(plt) {
+      var sim = sims[plt.key];
+      return sim && (sim.status === 'complete' || sim.status === 'partial' || sim.available);
+    });
+    if (!activePlatforms.length) return '';
+    var platformMaps = {};
+    activePlatforms.forEach(function(plt) {
+      var sim = sims[plt.key]; var map = {};
+      if (sim && Array.isArray(sim.results)) {
+        sim.results.forEach(function(res) { if (res && res.query) map[String(res.query)] = !!res.appeared; });
+      }
+      platformMaps[plt.key] = map;
+    });
+    var thBase = 'font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--rule);';
+    var header = '<thead><tr>'
+      + '<th style="text-align:left;' + thBase + 'width:50%;">Buyer Query</th>'
+      + activePlatforms.map(function(plt) { return '<th style="text-align:center;' + thBase + '">' + esc(plt.label) + '</th>'; }).join('')
+      + '</tr></thead>';
+    var rows = visQueries.map(function(q, idx) {
+      var cells = activePlatforms.map(function(plt) {
+        var map = platformMaps[plt.key]; var qKey = String(q.query || '');
+        if (!map.hasOwnProperty(qKey)) return '<td style="text-align:center;padding:11px 12px;color:var(--muted);font-size:13px;">—</td>';
+        return map[qKey]
+          ? '<td style="text-align:center;padding:11px 12px;"><span style="color:var(--ac);font-size:15px;font-weight:700;">\u2713</span></td>'
+          : '<td style="text-align:center;padding:11px 12px;"><span style="color:#C97A6A;font-size:15px;font-weight:700;">\u2717</span></td>';
+      }).join('');
+      return '<tr style="border-bottom:1px solid var(--rule);' + (idx % 2 ? 'background:var(--paper-2);' : '') + '">'
+        + '<td style="padding:11px 14px;font-size:12px;color:var(--body);line-height:1.5;">' + esc(q.query || q.label || '') + '</td>'
+        + cells + '</tr>';
+    }).join('');
+    var summaryCells = activePlatforms.map(function(plt) {
+      var sim = sims[plt.key];
+      var appeared = Number(sim && sim.appearedCount || 0);
+      var total = Number(sim && sim.totalQueries || visQueries.length);
+      var pct = total > 0 ? Math.round(appeared / total * 100) : 0;
+      var color = pct >= 67 ? 'var(--ac)' : (pct >= 34 ? 'var(--body)' : '#C97A6A');
+      return '<td style="text-align:center;padding:11px 12px;"><span style="font-size:14px;font-weight:700;color:' + color + ';">' + appeared + '/' + total + '</span></td>';
+    }).join('');
+    var namedCells = activePlatforms.map(function(plt) {
+      var sim = sims[plt.key]; var named = sim && String(sim.topRecommendation || '').trim();
+      return '<td style="text-align:center;padding:11px 12px;font-size:12px;color:' + (named ? 'var(--ink)' : 'var(--muted)') + ';font-weight:' + (named ? '600' : '400') + ';">'
+        + (named ? esc(named) : '\u2014') + '</td>';
+    }).join('');
+    return '<section class="pay-section" id="report-query-map">'
+      + '<div class="pay-eyebrow">Buyer Query Coverage Map</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">\u2713 means your business appeared in the recorded answer for that query on that platform. \u2717 means it did not. The coverage row shows how many queries you were present for. The bottom row names who was recommended instead.</div>'
+      + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:380px;">'
+      + header
+      + '<tbody>' + rows
+      + '<tr style="background:var(--paper-3);border-top:2px solid var(--rule);"><td style="padding:11px 14px;font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Coverage Rate</td>' + summaryCells + '</tr>'
+      + '<tr style="background:var(--paper-3);border-top:1px solid var(--rule);"><td style="padding:11px 14px;font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">Named Instead</td>' + namedCells + '</tr>'
+      + '</tbody></table></div>'
+      + '</section>';
+  }
+
   function buildPlatformCoverageSection() {
     var pc = r.platformCoverage;
     if (!pc) return '';
+    var sims = r.platformSimulations || {};
+    var bizName = (bizData && bizData.name) ? esc(bizData.name) : 'This business';
     var platforms = [
-      {key:'chatgpt', label:'ChatGPT'},
-      {key:'perplexity', label:'Perplexity'},
-      {key:'gemini', label:'Gemini'},
-      {key:'claude', label:'Claude'}
+      {key:'chatgpt', label:'ChatGPT', simKey:'openai'},
+      {key:'perplexity', label:'Perplexity', simKey:'perplexity'},
+      {key:'gemini', label:'Gemini', simKey:'gemini'},
+      {key:'claude', label:'Claude', simKey:'claude'}
     ];
     var cells = platforms.map(function(plt) {
       var v = pc[plt.key];
       var status = (v && typeof v === 'object') ? (v.status || 'absent') : (typeof v === 'string' && v ? v : 'absent');
       var detail = (v && typeof v === 'object') ? (v.detail || '') : '';
       var verdictText = status === 'present' ? 'Recommended' : (status === 'weak' || status === 'partial') ? 'Partially Found' : 'Not Found';
+      var sim = sims[plt.simKey];
+      var appeared = sim ? Number(sim.appearedCount || 0) : null;
+      var total = sim ? Number(sim.totalQueries || 0) : null;
+      var topRec = sim ? String(sim.topRecommendation || '').trim() : '';
+      var simAvailable = sim && (sim.status === 'complete' || sim.status === 'partial' || sim.available);
+      var verdict = '';
+      if (simAvailable && appeared !== null && total !== null && total > 0) {
+        if (appeared === total) {
+          verdict = bizName + ' appeared in every recorded buyer query on ' + plt.label + '.';
+        } else if (appeared === 0) {
+          verdict = plt.label + ' did not include ' + bizName + ' in any of the ' + total + ' recorded buyer queries.'
+            + (topRec ? ' ' + esc(topRec) + ' was named instead.' : '');
+        } else {
+          verdict = bizName + ' appeared in ' + appeared + ' of ' + total + ' recorded queries on ' + plt.label + '.'
+            + (topRec ? ' ' + esc(topRec) + ' was the most frequently named alternative.' : '');
+        }
+      }
       return '<div class="platform-cell">'
         + '<div class="platform-name">' + esc(plt.label) + '</div>'
         + '<div class="platform-verdict ' + esc(status) + '">' + verdictText + '</div>'
-        + (detail ? '<div class="platform-detail">' + esc(detail) + '</div>' : '')
+        + (verdict ? '<div style="font-size:12px;color:var(--body);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);">' + verdict + '</div>' : (detail ? '<div class="platform-detail">' + esc(detail) + '</div>' : ''))
         + '</div>';
     }).join('');
     return '<section class="pay-section" id="report-platform"><div class="pay-eyebrow">AI Platform Coverage</div>'
@@ -4967,9 +5127,12 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</section>'
       + competitorComparisonBlock
       + dualArenaBlock
+      + buildEvidenceGapSummary()
       + buildPaidPillarEvidence()
       + buildPlatformCoverageSection()
-      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
+      + buildQueryCoverageMap()
+      + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence">
+      <div class="pay-eyebrow">The Evidence Behind Your CHOIVE Result</div>'
       + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This diagnosis comes from website checks, public sources, and AI answers recorded during this run.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
