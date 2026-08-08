@@ -1987,9 +1987,7 @@ exports.handler = async function (event) {
             reason: candidate.reason,
             status: scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value ? 'complete' : 'score_unavailable',
             score: scoreResult && scoreResult.status === 'fulfilled' ? (scoreResult.value || null) : null
-          };
-        }),
-        selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
+        
       };
         }),
         selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
