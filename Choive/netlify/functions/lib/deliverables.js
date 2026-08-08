@@ -428,13 +428,70 @@ function generateReviewAction(evidence, result) {
     instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
     targetCount = 25;
   } else {
-    platform = profile.proof.charAt(0).toUpperCase() + profile.proof.slice(1);
-    targetCount = 3;
-    platformUrl = '';
-    isReviewPlatform = false;
-    instruction = profile.type === 'product'
-      ? 'Publish three verifiable user examples or independent reviews that identify the use case, explain the result, and state where the claim can be checked. Use a review platform only when evidence confirms that users in this category rely on it.'
-      : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
+    // Before defaulting to generic proof, check whether Priority Actions already
+    // identified a specific review platform. If so, align with that — two sections
+    // on the same page must not contradict each other.
+    var _actionsList = Array.isArray(result.actions) ? result.actions : [];
+    var _actionPlatform = null;
+    for (var _ai = 0; _ai < _actionsList.length; _ai++) {
+      var _aText = [
+        (_actionsList[_ai] && _actionsList[_ai].title) || '',
+        (_actionsList[_ai] && _actionsList[_ai].body)  || ''
+      ].join(' ');
+      if (/\btrustpilot\b/i.test(_aText)) {
+        _actionPlatform = { name: 'Trustpilot', url: 'https://www.trustpilot.com' };
+        break;
+      }
+      if (/\bgoogle reviews?\b/i.test(_aText)) {
+        _actionPlatform = { name: 'Google Reviews', url: '' };
+        break;
+      }
+    }
+    if (_actionPlatform) {
+      platform          = _actionPlatform.name;
+      platformUrl       = _actionPlatform.url;
+      targetCount       = 25;
+      isReviewPlatform  = true;
+      instruction       = 'Your priority actions recommend building your ' + platform + ' presence. '
+        + (_actionPlatform.url ? 'Go to ' + _actionPlatform.url + ' and check whether a profile already exists for your business before creating one. ' : '')
+        + 'Ask recent customers for honest reviews. Do not manufacture or incentivise reviews.';
+    } else {
+    // Before defaulting to generic proof, check whether Priority Actions already
+    // identified a specific review platform. If so, align with that — two sections
+    // on the same page must not contradict each other.
+    var _actionsList = Array.isArray(result.actions) ? result.actions : [];
+    var _actionPlatform = null;
+    for (var _ai = 0; _ai < _actionsList.length; _ai++) {
+      var _aText = [
+        (_actionsList[_ai] && _actionsList[_ai].title) || '',
+        (_actionsList[_ai] && _actionsList[_ai].body)  || ''
+      ].join(' ');
+      if (/\btrustpilot\b/i.test(_aText)) {
+        _actionPlatform = { name: 'Trustpilot', url: 'https://www.trustpilot.com' };
+        break;
+      }
+      if (/\bgoogle reviews?\b/i.test(_aText)) {
+        _actionPlatform = { name: 'Google Reviews', url: '' };
+        break;
+      }
+    }
+    if (_actionPlatform) {
+      platform          = _actionPlatform.name;
+      platformUrl       = _actionPlatform.url;
+      targetCount       = 25;
+      isReviewPlatform  = true;
+      instruction       = 'Your priority actions recommend building your ' + platform + ' presence. '
+        + (_actionPlatform.url ? 'Go to ' + _actionPlatform.url + ' and check whether a profile already exists for your business before creating one. ' : '')
+        + 'Ask recent customers for honest reviews. Do not manufacture or incentivise reviews.';
+    } else {
+      platform = profile.proof.charAt(0).toUpperCase() + profile.proof.slice(1);
+      targetCount = 3;
+      platformUrl = '';
+      isReviewPlatform = false;
+      instruction = profile.type === 'product'
+        ? 'Publish three verifiable user examples or independent reviews that identify the use case, explain the result, and state where the claim can be checked. Use a review platform only when evidence confirms that users in this category rely on it.'
+        : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
+    }
   }
   // Counts are platform-specific. Never reuse an employee-review count from
   // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
