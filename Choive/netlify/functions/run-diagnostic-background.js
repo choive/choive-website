@@ -1974,8 +1974,24 @@ exports.handler = async function (event) {
           reason: ''
         });
       }
-      var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
-        return scoreArena(evidence, finalResult, candidate.name, candidate.role);
+     // Fetch each competitor's own page text so scoring is based on their actual evidence
+      var _rolePageTexts = await Promise.allSettled(roleCandidates.map(async function(candidate) {
+        // Head-to-head: page text may already be in evidence from the initial fetch
+        if (candidate.role === 'head_to_head' && evidence['competitorPageText']) {
+          return evidence['competitorPageText'];
+        }
+        // Try to resolve the competitor's domain from gathered competitor objects
+        var _existingComp = (evidence['competitors'] || []).find(function(c) {
+          return c && c.domain && normalizeRecommendationName(String(c.name || c.domain || '')) === normalizeRecommendationName(candidate.name);
+        });
+        var _compDomain = _existingComp && _existingComp.domain ? _existingComp.domain : '';
+        if (!_compDomain) return '';
+        try { return await fetchCompetitorText(_compDomain); } catch (_) { return ''; }
+      }));
+      var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate, _ri) {
+        var _pageTextResult = _rolePageTexts[_ri];
+        var _compPageText = (_pageTextResult && _pageTextResult.status === 'fulfilled') ? (_pageTextResult.value || '') : '';
+        return scoreArena(evidence, finalResult, candidate.name, candidate.role, _compPageText);
       }));
       finalResult['competitorComparison'] = {
         entries: roleCandidates.map(function(candidate, index) {
