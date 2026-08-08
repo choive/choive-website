@@ -1973,20 +1973,33 @@ exports.handler = async function (event) {
       // The competitive chart compares only verified competitor roles. Names
       // returned by individual provider APIs remain in their attributed probe
       // lanes and never become chart competitors by themselves.
-      var roleCandidates = [];
+     var roleCandidates = [];
       var directName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').trim();
+      var headToHeadName = '';
       if (directName && !isSubjectRecommendation(directName) && !isPlatformName(directName)) {
+        headToHeadName = directName;
         roleCandidates.push({
           role: 'head_to_head',
           roleLabel: 'Head-to-head competitor',
           name: directName,
           reason: String(finalResult['competitorDecision'].reason || '').trim()
         });
+      } else {
+        var _aiRec = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].aiRecommends || '').trim();
+        if (_aiRec && !isSubjectRecommendation(_aiRec) && !isPlatformName(_aiRec)) {
+          headToHeadName = _aiRec;
+          roleCandidates.push({
+            role: 'head_to_head',
+            roleLabel: 'AI-recommended competitor',
+            name: _aiRec,
+            reason: 'No verified head-to-head market rival was identified in this run. ' + _aiRec + ' is the business AI currently recommends when buyers search for this category.'
+          });
+        }
       }
       var widerDecision = finalResult['marketCompetitorDecision'] || {};
       var widerName = String(widerDecision.name || '').trim();
       if (widerName
-          && normalizeRecommendationName(widerName) !== normalizeRecommendationName(directName)
+          && normalizeRecommendationName(widerName) !== normalizeRecommendationName(headToHeadName)
           && !isSubjectRecommendation(widerName) && !isPlatformName(widerName)) {
         roleCandidates.push({
           role: 'market',
@@ -1997,7 +2010,7 @@ exports.handler = async function (event) {
       }
       var secondAiName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].secondAiCompetitor || '').trim();
       if (secondAiName
-          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(directName)
+          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(headToHeadName)
           && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(widerName)
           && !isSubjectRecommendation(secondAiName) && !isPlatformName(secondAiName)) {
         roleCandidates.push({
