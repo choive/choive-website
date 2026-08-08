@@ -5404,13 +5404,40 @@ function buildDeliverables(r) {
     }).join('');
   }
 
+  var gbpHtml = '';
+  if (d.gbpDesc) {
+    var gd = d.gbpDesc;
+    gbpHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy this description and paste it into your Google Business Profile. In your GBP dashboard: Edit profile \u2192 Business information \u2192 Description. Confirm every factual claim matches your live business before saving.</div>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your GBP description (' + gd.charCount + '\u202f/\u202f' + gd.maxChars + ' characters)</div>'
+      + '<div class="deliv-code" id="dGBPCode">' + esc(gd.text || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dGBPCode\')">Copy GBP Description</button>'
+      + '</div>';
+  }
+  var reviewEmailHtml = '';
+  if (d.reviewEmailTemplate) {
+    var re = d.reviewEmailTemplate;
+    reviewEmailHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Replace [Name] with the customer\'s name and [Your name] with yours. Send this within 24 hours of completing a job or purchase. Adjust the tone if your customer relationship is more formal or more casual.</div>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Subject line</div>'
+      + '<div class="deliv-code" id="dEmailSubject">' + esc(re.subject || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dEmailSubject\')">Copy Subject</button>'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin:14px 0 6px;">Email body</div>'
+      + '<div class="deliv-code" id="dEmailBody" style="white-space:pre-wrap;">' + esc(re.body || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dEmailBody\')">Copy Email Body</button>'
+      + '</div>';
+  }
   var tabs = [
     { id: 'dLlms',   label: 'llms.txt',   content: llmsHtml   },
     { id: 'dH1',     label: 'H1',         content: h1Html     },
     { id: 'dMeta',   label: 'Meta',       content: metaHtml   },
     { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer evidence' : 'Reviews', content: reviewHtml },
+    { id: 'dGBP',    label: 'GBP',        content: gbpHtml,   skip: !gbpHtml },
+    { id: 'dEmail',  label: 'Review email', content: reviewEmailHtml, skip: !reviewEmailHtml },
     { id: 'dSchema', label: 'Schema',     content: schemaHtml }
-  ];
+  ].filter(function(t) { return !t.skip; });
 
   var html = '<div class="deliv-tabs">';
   tabs.forEach(function(tab, i) {
