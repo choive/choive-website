@@ -1467,7 +1467,7 @@ async function selectChannelCompetitor(evidence, channelResults) {
 //            keyGap, priorityAction }
 // Each pillar: { you: <0-25>, competitor: <0-25>, gap: <signed int> }
 // Fails soft — caller catches and ignores.
-async function scoreArena(evidence, mainResult, competitorName, arenaType) {
+async function scoreArena(evidence, mainResult, competitorName, arenaType, competitorPageText) {
   if (!competitorName) return null;
   var name     = String(evidence.name || '').trim();
   var category = String(evidence.inferredCategory || evidence.category || '').trim();
@@ -1480,23 +1480,32 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
   var youDifference = s('difference');
   var youEase       = s('ease');
 
+  // Use competitor-specific page text where available; fall back to shared evidence
+  var _compText = competitorPageText || String(evidence.competitorPageText || '');
   var searchExcerpt = sanitizeExternal(
-    String(evidence.searchText || '').slice(0, 1500)
-    + '\n' + String(evidence.competitorPageText || '').slice(0, 1000)
+    String(evidence.searchText || '').slice(0, 800)
+    + '\n' + _compText.slice(0, 1800)
   );
 
   var arenaLabel = arenaType === 'online'
     ? 'online/DTC channel (ordering experience, delivery, online UX)'
     : arenaType === 'competitor'
     ? 'overall head-to-head purchasing decision'
+    : arenaType === 'head_to_head'
+    ? 'direct head-to-head competitor (same category, same buyer, same market)'
+    : arenaType === 'market'
+    ? 'market competitor (same category, potentially different buyer segment or channel)'
     : 'brand/product arena (specialty product quality, heritage, breed specificity)';
 
   var arenaContext = arenaType === 'online'
     ? 'In this arena, buyers decide based on: ease of ordering online, delivery reliability, website clarity, DTC trust signals (reviews, returns policy), and online brand presence.'
     : arenaType === 'competitor'
     ? 'Compare the two businesses for the same real buyer decision in the stated category and market. Evaluate category clarity, independently verifiable trust, meaningful differentiation, and how easily an AI system can understand and recommend each company. Do not assume a product, retail, or software business model beyond the supplied category evidence.'
+    : arenaType === 'head_to_head'
+    ? 'This is the direct competitor for the same buyer making the same purchase decision. Score based on which business a buyer would more likely choose when choosing between the two: messaging clarity, independently verifiable trust signals, distinctiveness of offer, and friction of choosing. Be specific — these two businesses compete for the exact same customer in the same market.'
+    : arenaType === 'market'
+    ? 'This competitor operates in the same category but may target a different buyer segment, price point, or distribution channel. Score based on how this competitor is positioned across the broader market — their category clarity, trust presence, product differentiation, and accessibility to buyers who might consider both options. Do not produce the same scores as a head-to-head competitor — market positioning differs from direct competition.'
     : 'In this arena, buyers decide based on: breed/product specificity, source transparency, production method, provenance claims, and specialty positioning.';
-
   var prompt = 'You compare two businesses on the CHOIVE four pillars within a specific competitive arena. '
     + 'Respond ONLY with valid JSON, no markdown, no text outside the JSON.\n\n'
     + 'SUBJECT BUSINESS: ' + name + '\n'
@@ -1511,11 +1520,15 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType) {
     + '  Difference: ' + youDifference + '/25\n'
     + '  Ease: ' + youEase + '/25\n\n'
     + 'AVAILABLE EVIDENCE (excerpts):\n' + searchExcerpt + '\n\n'
-    + 'TASK: Estimate ' + competitorName + '\'s pillar scores IN THIS SPECIFIC ARENA ONLY. '
-    + 'Use the same 0-25 scale per pillar. Base estimates on the evidence and your knowledge of this competitor. '
-    + 'Gap = your score minus competitor score (positive = you lead, negative = competitor leads).\n\n'
-    + 'Also identify the single biggest gap (the pillar where the subject is most behind in this arena) '
-    + 'and one specific priority action to close it.\n\n'
+    + 'TASK: Score ' + competitorName + ' on the four CHOIVE pillars using the same methodology applied to ' + name + '. '
+    + 'Use ONLY the evidence in the text above. Do not invent signals that are not present.\n'
+    + 'Clarity (0\u201325): how clearly their offer, category, and value are communicated on their page.\n'
+    + 'Trust (0\u201325): independently verifiable proof \u2014 reviews, certifications, named outcomes, press coverage.\n'
+    + 'Difference (0\u201325): specific, factual differentiation from others in this category \u2014 not vague claims.\n'
+    + 'Ease (0\u201325): how frictionless it is to understand and act \u2014 navigation clarity, contact access, AI-readability.\n'
+    + 'If evidence for a pillar is absent or thin, score conservatively. Do not assume quality that is not shown.\n'
+    + 'Gap = ' + name + ' score minus competitor score (positive = you lead, negative = competitor leads).\n\n'
+    + 'Identify the single pillar where ' + name + ' is most behind and one specific action to close it.\n\n'
     + 'Respond with exactly this JSON structure:\n'
     + '{\n'
     + '  "pillars": {\n'
