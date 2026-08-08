@@ -1975,6 +1975,10 @@ exports.handler = async function (event) {
         });
       }
       var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
+        return scoreArena(evidence, finalResult, candidate.name, candidate.role);
+      }));
+      finalResult['competitorComparison'] = {
+        entries: roleCandidates.map(function(candidate, index) {
           var scoreResult = roleScores[index];
           return {
             role: candidate.role,
@@ -1984,6 +1988,9 @@ exports.handler = async function (event) {
             status: scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value ? 'complete' : 'score_unavailable',
             score: scoreResult && scoreResult.status === 'fulfilled' ? (scoreResult.value || null) : null
           };
+        }),
+        selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
+      };
         }),
         selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
       };
