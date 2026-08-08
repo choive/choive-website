@@ -5117,42 +5117,60 @@ function showResults(r, jobId) {
   }
 
   function buildOperatingRoadmap() {
-    var ranked = mergedActions.filter(function(action) { return action && action.title; }).slice(0, 3);
-    function actionTitle(index, fallback) {
-      return ranked[index] && ranked[index].title ? ranked[index].title : fallback;
-    }
-    function actionInstruction(index, fallback) {
-      var action = ranked[index] || {};
-      return action.body || action.explanation || fallback;
-    }
-    function actionVerification(index, fallback) {
-      var action = ranked[index] || {};
-      return action.verification || action.successMeasure || fallback;
-    }
-    function actionConsequence(index) {
-      var action = ranked[index] || {};
-      return (action.if_nothing && String(action.if_nothing).trim()) ? String(action.if_nothing).trim() : '';
-    }
-    function roadmapPhase(dayLabel, actionIndex, titleFallback, instrFallback, verifyFallback) {
-      var consequence = actionConsequence(actionIndex);
+    var _allActions = mergedActions.filter(function(action) { return action && action.title; });
+    function _weekBlock(weekLabel, title, body, verify, consequence) {
       return '<div class="roadmap-phase">'
-        + '<div class="roadmap-day">' + dayLabel + '</div>'
-        + '<div class="roadmap-title">' + esc(actionTitle(actionIndex, titleFallback)) + '</div>'
-        + '<div class="roadmap-copy">' + esc(actionInstruction(actionIndex, instrFallback)) + '</div>'
-        + '<div class="roadmap-check">How to verify it: ' + esc(actionVerification(actionIndex, verifyFallback)) + '</div>'
+        + '<div class="roadmap-day">' + weekLabel + '</div>'
+        + '<div class="roadmap-title">' + esc(title) + '</div>'
+        + '<div class="roadmap-copy">' + esc(body) + '</div>'
+        + '<div class="roadmap-check">How to verify it: ' + esc(verify) + '</div>'
         + (consequence ? '<div style="margin-top:10px;padding:9px 11px;background:var(--paper-2);border-left:2px solid var(--amber);font-size:12px;color:var(--body);line-height:1.6;"><strong style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);display:block;margin-bottom:3px;">What you prevent by completing this</strong>' + esc(consequence) + '</div>' : '')
         + '</div>';
     }
+    function _actionBlock(weekRange, action) {
+      var consequence = (action.if_nothing && String(action.if_nothing).trim()) ? String(action.if_nothing).trim() : '';
+      return _weekBlock(
+        weekRange,
+        action.title,
+        action.body || action.explanation || 'Complete the steps described in this action.',
+        action.verification || action.successMeasure || 'Confirm the change is live and the evidence is publicly visible.',
+        consequence
+      );
+    }
+    var _rows = [];
+    // Week 1 — Deploy prepared assets (fastest signals, no decisions needed)
+    _rows.push(_weekBlock(
+      'Week 1 \u00b7 Deploy Assets',
+      'Publish the prepared assets from this report',
+      'Deploy the llms.txt file to your website root, update your Google Business Profile description with the text from this report, and confirm your schema markup is in place. These require no new content — only publication of work already done.',
+      'Confirm llms.txt is reachable at your domain root. Confirm the GBP description is updated and publicly visible on Google Maps.',
+      ''
+    ));
+    // Weeks 2–3 — First priority action
+    if (_allActions[0]) _rows.push(_actionBlock('Weeks 2\u20133 \u00b7 Priority 1', _allActions[0]));
+    // Weeks 4–5 — Second priority action
+    if (_allActions[1]) _rows.push(_actionBlock('Weeks 4\u20135 \u00b7 Priority 2', _allActions[1]));
+    // Weeks 6–7 — Third priority action
+    if (_allActions[2]) _rows.push(_actionBlock('Weeks 6\u20137 \u00b7 Priority 3', _allActions[2]));
+    // Weeks 8–9 — Fourth action if available
+    if (_allActions[3]) _rows.push(_actionBlock('Weeks 8\u20139 \u00b7 Priority 4', _allActions[3]));
+    // Weeks 10–11 — Fifth action if available
+    if (_allActions[4]) _rows.push(_actionBlock('Weeks 10\u201311 \u00b7 Priority 5', _allActions[4]));
+    // Week 12 — Rerun diagnostic
+    _rows.push(_weekBlock(
+      'Week 12 \u00b7 Recheck',
+      'Rerun the CHOIVE diagnostic',
+      'Run CHOIVE again using the same business name, website, and location. This is the only way to confirm which changes produced a result in the evidence record and which did not. Do this before making any further changes.',
+      'Compare the new CHOIVE Score, evidence checks, and AI provider answers directly against this recorded result. Note what changed, what held, and what remains to address.',
+      ''
+    ));
     return '<section class="pay-section" id="report-roadmap">'
-      + '<div class="pay-eyebrow">30 / 60 / 90-Day Operating Roadmap</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">A practical order for completing the work and checking the result again. This plan does not promise a future score.</div>'
+      + '<div class="pay-eyebrow">Week-by-Week Operating Plan</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">A practical sequence for completing the work in the right order and measuring what changed. Take one step at a time and verify each result before moving to the next. This plan does not promise a future score.</div>'
       + '<div class="roadmap">'
-      + roadmapPhase('Days 1–30 · Publish', 0, 'Complete the first priority action', 'Publish the exact change described in the first Priority Action.', 'Record the live URL and confirm that the required wording or evidence appears on the published page.')
-      + roadmapPhase('Days 31–60 · Confirm', 1, 'Complete the second priority action', 'Publish the exact change described in the second Priority Action.', 'Confirm the published evidence through the source or website check named in the Priority Action.')
-      + roadmapPhase('Days 61–90 · Measure', 2, 'Complete the third priority action and rerun the diagnostic', 'Publish the third Priority Action, then run CHOIVE again using the same business details.', 'Compare the new score, evidence checks, and provider API answers with this recorded result.')
+      + _rows.join('')
       + '</div></section>';
   }
-
   function hasCustomerQuestionResult() {
     var runs = r.platformSimulations || {};
     return ['claude','openai','perplexity','gemini'].some(function(key) {
