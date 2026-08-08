@@ -608,6 +608,56 @@ function generateActionPlan(evidence, result) {
   weeks.push(week4);
   return { name: name, weeks: weeks };
 }
+function generateGBPDescription(evidence, result) {
+  var profile = subjectProfile(evidence);
+  if (profile.type === 'creator' || profile.type === 'personal_brand') return null;
+  var name = (evidence.name || '').trim();
+  var category = cleanAssetText(result.inferredCategory || evidence.category || '', 80);
+  var cityDisplay = capitaliseCity((evidence.city || '').trim());
+  var differentiator = safeDifferentiator(evidence, result);
+  var summary = factualSummary(evidence, result, 220);
+  var reach = marketLabel(evidence);
+  var parts = [];
+  if (category && cityDisplay) {
+    parts.push(name + ' is a ' + category.toLowerCase() + ' based in ' + cityDisplay + '.');
+  } else if (category) {
+    parts.push(name + ' is a ' + category.toLowerCase() + '.');
+  }
+  var summaryClean = summary ? sentenceCase(cleanAssetText(summary, 220)) : '';
+  if (summaryClean && summaryClean.toLowerCase().indexOf(name.toLowerCase()) === -1) {
+    if (!summaryClean.endsWith('.')) summaryClean += '.';
+    parts.push(summaryClean);
+  }
+  if (differentiator) {
+    var diffClean = sentenceCase(differentiator);
+    if (!diffClean.endsWith('.')) diffClean += '.';
+    parts.push(diffClean);
+  }
+  if (reach && reach !== 'Local' && reach !== capitaliseCity(evidence.city || '')) {
+    parts.push('Serving customers ' + (reach === 'Worldwide' ? 'worldwide' : reach.toLowerCase()) + '.');
+  }
+  var text = parts.filter(Boolean).join(' ');
+  text = cleanAssetText(text, 740);
+  if (!text) return null;
+  return { text: text, charCount: text.length, maxChars: 750 };
+}
+function generateReviewEmailTemplate(evidence, result, reviewAction) {
+  var ra = reviewAction || {};
+  if (!ra.isReviewPlatform) return null;
+  var name = (evidence.name || '').trim();
+  var category = cleanAssetText(result.inferredCategory || evidence.category || '', 60);
+  var platform = ra.platform || 'Google';
+  var platformUrl = ra.platformUrl || '';
+  var subject = 'A quick favour \u2014 your honest review of ' + name;
+  var body = 'Hi [Name],\n\n'
+    + 'Thank you for choosing ' + name + '. We hope everything went well.\n\n'
+    + 'We would be grateful if you could take two minutes to leave an honest review on ' + platform + '. '
+    + 'Reviews help people making the same decision you made find the right ' + (category || 'option') + '.'
+    + (platformUrl ? '\n\nLeave your review here:\n' + platformUrl : '')
+    + '\n\nIf anything was less than expected, please reply to this email first \u2014 we would like the chance to make it right.\n\n'
+    + 'Thank you,\n[Your name]\n' + name;
+  return { subject: subject, body: body };
+}
 function inferPillarTarget(action) {
   var text = ((action.title || '') + ' ' + (action.body || '') + ' ' + (action.explanation || '')).toLowerCase();
   if (/llms\.txt|schema\.org|json-?ld|structured data|sitemap|robots\.txt|friction|checkout|load time|page speed|contact form|navigation|upload|deploy/i.test(text)) return 'ease';
@@ -642,6 +692,8 @@ function generateDeliverables(evidence, result) {
       action.estimatedGain = estimatePillarGain(action.priority, gap);
     });
   }
+  delivs.gbpDesc = generateGBPDescription(evidence, result);
+  delivs.reviewEmailTemplate = generateReviewEmailTemplate(evidence, result, delivs.reviewAction);
   // llms.txt verification flag — true when at least one confirmed independent source is available
   delivs.llmsSourcesVerified = sourceLinks(evidence, result).length > 0;
   return delivs;
