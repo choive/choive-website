@@ -1879,7 +1879,7 @@ exports.handler = async function (event) {
       var currentUnderstanding = completedProviderLanes.length
         ? completedProviderLanes.length +
           ' of 4 AI providers completed the recorded tests. ' +
-          name +
+          (name.charAt(0).toUpperCase() + name.slice(1)) +
           ' appeared in unbranded buyer answers from ' +
           providerLanesNamingSubject.length +
           ' of those ' +
