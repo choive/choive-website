@@ -3930,7 +3930,7 @@ function showResults(r, jobId) {
             + (String(cp.queryContext || '').toLowerCase() === 'head-to-head'
               ? 'Head-to-head competitor'
               : 'Market competitor') + '</div>'
-            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;">' + esc(cp.name) + '</div>'
+            + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:12px;filter:blur(5px);user-select:none;pointer-events:none;">' + esc(cp.name) + '</div>'
             + '<div style="position:relative;overflow:hidden;border-radius:3px;">'
             + '<div style="font-size:13px;color:var(--body);line-height:1.75;filter:blur(4px);user-select:none;pointer-events:none;opacity:0.6;">Why this company is the closest direct competitor, how the two businesses differ, and what proof would make your business easier for buyers and AI systems to understand and trust.</div>'
             + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
@@ -4216,7 +4216,7 @@ function showResults(r, jobId) {
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-body">' + (function() { var _s = Math.round(Number(r.overallScore) || 0); var _pl = r.pillars || {}; var _lk = ['clarity','trust','difference','ease'].reduce(function(m,k){ return (Number((_pl[k]||{}).score)||0) < (Number((_pl[m]||{}).score)||0) ? k : m; }, 'clarity'); var _ln = {clarity:'Clarity',trust:'Trust',difference:'Difference',ease:'Ease'}[_lk]; var _sp1 = ''; if (r.summaryParagraph && String(r.summaryParagraph).trim()) { var _spSentences = String(r.summaryParagraph).trim().replace(/([.!?])\s+(?=[A-Z])/g, '$1\n').split('\n').map(function(s) { return s.trim(); }).filter(Boolean); if (_spSentences.length) _sp1 = _spSentences[0]; } return (_sp1 ? _sp1 + ' ' : '') + 'This result shows a score of ' + _s + '/100, with ' + _ln + ' as the weakest pillar. The full analysis shows exactly what evidence is missing in each area, which competitor is winning buyers you should have, and what to publish first to close the gap.'; })() + '</div>'
+        + '<div class="paywall-body">' + (function() { var _s = Math.round(Number(r.overallScore) || 0); var _pl = r.pillars || {}; var _lk = ['clarity','trust','difference','ease'].reduce(function(m,k){ return (Number((_pl[k]||{}).score)||0) < (Number((_pl[m]||{}).score)||0) ? k : m; }, 'clarity'); var _ln = {clarity:'Clarity',trust:'Trust',difference:'Difference',ease:'Ease'}[_lk]; var _sp1 = ''; if (r.summaryParagraph && String(r.summaryParagraph).trim()) { var _spSentences = String(r.summaryParagraph).trim().replace(/([.!?])\s+(?=[A-Z])/g, '$1\n').split('\n').map(function(s) { return s.trim(); }).filter(Boolean); if (_spSentences.length) _sp1 = _spSentences[0]; } return (_sp1 ? _sp1 + ' ' : '') + 'The full analysis shows exactly what evidence is missing in each area, which competitor is winning buyers you should have, and what to change first to close the gap.'; })() + '</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
