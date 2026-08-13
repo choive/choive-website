@@ -3639,8 +3639,8 @@ function showResults(r, jobId) {
         && _norm(widerMarketDecision.name) !== _topNorm) {
       marketHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(widerMarketDecision.name) + '</div>'
-        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">' + esc(widerMarketDecision.reason) + '</div>' : '')
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
+        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>' : '')
         + '</div>';
     }
     var _onlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
@@ -3649,7 +3649,8 @@ function showResults(r, jobId) {
         && (!widerMarketDecision || _norm(_onlineComp) !== _norm(widerMarketDecision.name || ''))) {
       onlineHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Online arena competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;">' + esc(_onlineComp) + '</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
+        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>' : '')
         + '</div>';
     }
     return marketHtml + onlineHtml;
@@ -3687,7 +3688,7 @@ function showResults(r, jobId) {
     var secondCompRow = secondComp
       ? '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(245,242,238,0.12);">'
         + '<div style="font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(245,242,238,0.45);margin-bottom:5px;">Also named consistently by Claude</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:rgba(245,242,238,0.75);letter-spacing:0;">' + esc(secondComp) + '</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:rgba(245,242,238,0.75);letter-spacing:0;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(secondComp) + '</div>'
         + '</div>'
       : '';
 
@@ -3698,8 +3699,8 @@ function showResults(r, jobId) {
       // CONFIRMED: the alarm is true \u2014 full red urgency, no hedge.
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:0;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:0;margin-bottom:6px;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">A direct competitor in your market is being consistently recommended by AI instead of you. The full analysis names this company, explains why it is winning, and shows what to change.</div>'
         + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
@@ -3709,8 +3710,8 @@ function showResults(r, jobId) {
       // and undecided, not from a claim the evidence doesn't support.
       competitorBanner = bannerHead
         + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:0;margin-bottom:6px;">' + esc(topComp) + '</div>'
-        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">' + esc(topCompReasonSummary) + '</div>'
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);letter-spacing:0;margin-bottom:6px;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(topComp) + '</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">A direct competitor in your market is active in AI recommendations right now. The full analysis names this company, explains the contest, and shows what to change.</div>'
         + buildMarketCompetitorRow()
         + buildTopPlatformLanes()
         + '</div>';
@@ -3718,10 +3719,10 @@ function showResults(r, jobId) {
   } else if (cd.categoryUnowned) {
     competitorBanner = bannerHead
       + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'Category still open') + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(marketComp || 'Category still open') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? esc(marketComp) + ' is the closest direct competitor found in this run. No single company was the top recommendation across all measured platform answers.'
+        ? 'A competitor was found in your market. No single company dominated all AI platforms in this run. The full analysis identifies who is closest and what to do first.'
         : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
       + '</div>'
       + buildMarketCompetitorRow()
@@ -3730,10 +3731,10 @@ function showResults(r, jobId) {
   } else {
     competitorBanner = bannerHead
       + '<div style="font-size:12px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Head-to-head competitor</div>'
-      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;">' + esc(marketComp || 'No verified competitor') + '</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:32px;font-weight:700;color:var(--ghost);margin-bottom:6px;overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(marketComp || 'No verified competitor') + '</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
-        ? 'This company sells a similar offer in the same market. It was not the top recommendation across all measured platform answers.'
+        ? 'A competitor was found in your market. The full analysis explains how it differs from you and what to change first.'
         : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
       + '</div>'
       + buildMarketCompetitorRow()
