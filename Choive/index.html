@@ -4778,35 +4778,98 @@ function showResults(r, jobId) {
     var comparisonEntries = r.competitorComparison && Array.isArray(r.competitorComparison.entries)
       ? r.competitorComparison.entries : [];
     if (comparisonEntries.length) {
-     function comparisonCard(entry, index) {
-  var roleLabel = (entry && entry.roleLabel) || ('Competitor ' + (index + 1));
-  if (!entry || !entry.name) {
-    return '<div style="background:var(--paper-2);padding:24px 20px;">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(roleLabel) + '</div>'
-      + '<div style="font-size:14px;color:var(--muted);">Comparison unavailable.</div>'
-      + '</div>';
-  }
-  var _cn = entry.reason || '';
-  var _scoreData = entry.score || {};
-  var _priorityAction = _scoreData.priorityAction || '';
-  var _keyGap = _scoreData.keyGap ? (_scoreData.keyGap.charAt(0).toUpperCase() + _scoreData.keyGap.slice(1)) : '';
-  return '<div style="background:var(--paper-2);padding:24px 20px;min-width:0;">'
-    + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">' + esc(roleLabel) + '</div>'
-    + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:14px;overflow-wrap:anywhere;">' + esc(entry.name) + '</div>'
-    + (_cn ? '<div style="font-size:13px;color:var(--body);line-height:1.75;margin-bottom:16px;">' + readableText(_cn, 3) + '</div>' : '')
-    + (_priorityAction
-        ? '<div style="padding:14px 16px;background:var(--ink);border-left:4px solid var(--ac);margin-bottom:4px;">'
-          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">'
-          + (_keyGap ? _keyGap + ' \u00b7 ' : '') + 'Priority gap</div>'
-          + '<div style="font-size:13px;color:var(--paper);line-height:1.65;">' + esc(_priorityAction) + '</div>'
-          + '</div>'
-        : '')
-    + '</div>';
-}
+     var _bizName = (typeof bizData !== 'undefined' && bizData && bizData.name) ? String(bizData.name).trim() : 'Your business';
+      var _pillarKeys = ['clarity', 'trust', 'difference', 'ease'];
+      var _pillarLabels = { clarity: 'Clarity', trust: 'Trust', difference: 'Difference', ease: 'Ease' };
+
+      var _overviewRows = comparisonEntries.map(function(entry) {
+        if (!entry || !entry.name) return '';
+        var _sd = entry.score || {};
+        var _kg = _sd.keyGap || '';
+        var _kgLabel = _kg ? (_kg.charAt(0).toUpperCase() + _kg.slice(1)) : '';
+        var _kgVal = (_kg && _sd.pillars && _sd.pillars[_kg]) ? Math.abs(_sd.pillars[_kg].gap) : null;
+        var _gapCell = (_kgLabel && _kgVal != null) ? (_kgLabel + ': ' + _kgVal + ' pts') : 'Not measured';
+        var _pa = _sd.priorityAction || '';
+        var _priority = _pa ? (_pa.length > 44 ? _pa.slice(0, 44).replace(/\s\S+$/, '') + '\u2026' : _pa) : 'Not measured';
+        return '<tr>'
+          + '<td style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;border-bottom:1px solid var(--rule-d);">' + esc(entry.roleLabel || '') + '</td>'
+          + '<td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--tp);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(entry.name) + '</td>'
+          + '<td style="padding:10px 14px;font-size:13px;color:var(--tb);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(_gapCell) + '</td>'
+          + '<td style="padding:10px 14px;font-size:13px;color:var(--tb);line-height:1.5;border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(_priority) + '</td>'
+          + '</tr>';
+      }).join('');
+
+      function comparisonCard(entry, index) {
+        var roleLabel = (entry && entry.roleLabel) || ('Competitor ' + (index + 1));
+        if (!entry || !entry.name) {
+          return '<div style="background:var(--dk-2);border:1px solid var(--rule-d);padding:28px 24px;margin-bottom:2px;">'
+            + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(roleLabel) + '</div>'
+            + '<div style="font-size:14px;color:var(--muted);">Comparison unavailable.</div>'
+            + '</div>';
+        }
+        var _cn = entry.reason || '';
+        var _sd = entry.score || {};
+        var _pillars = _sd.pillars || {};
+        var _priorityAction = _sd.priorityAction || '';
+        var _keyGap = _sd.keyGap || '';
+        var _keyGapLabel = _keyGap ? (_keyGap.charAt(0).toUpperCase() + _keyGap.slice(1)) : '';
+        var _hasScore = entry.status === 'complete' && !!_sd.pillars;
+        var _pillarTable = '<div style="margin:20px 0;overflow-x:auto;">'
+          + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--rule-d);">'
+          + '<thead><tr>'
+          + '<th style="padding:8px 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);">Pillar</th>'
+          + '<th style="padding:8px 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(_bizName) + '</th>'
+          + '<th style="padding:8px 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(entry.name) + '</th>'
+          + '<th style="padding:8px 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Gap</th>'
+          + '</tr></thead><tbody>'
+          + _pillarKeys.map(function(k) {
+              var pd = _pillars[k] || {};
+              var isKey = k === _keyGap;
+              var rowBg = isKey ? 'background:rgba(201,168,106,0.07);' : '';
+              var youVal = (_hasScore && pd.you != null) ? (Math.round(pd.you) + '/25') : 'N/M';
+              var themVal = (_hasScore && pd.competitor != null) ? (Math.round(pd.competitor) + '/25') : 'N/M';
+              var gapNum = (_hasScore && pd.gap != null) ? Math.round(pd.gap) : null;
+              var gapVal = gapNum != null ? ((gapNum > 0 ? '+' : '') + gapNum) : '\u2014';
+              var gapColor = gapNum == null ? 'var(--tm)' : gapNum < 0 ? '#E05B5B' : gapNum > 0 ? '#6FCF97' : 'var(--tm)';
+              return '<tr>'
+                + '<td style="padding:10px 12px;font-size:12px;font-weight:' + (isKey ? '800' : '600') + ';color:' + (isKey ? 'var(--ac)' : 'var(--tp)') + ';border-bottom:1px solid var(--rule-d);' + rowBg + '">' + _pillarLabels[k] + '</td>'
+                + '<td style="padding:10px 12px;font-size:13px;color:var(--tb);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);' + rowBg + '">' + youVal + '</td>'
+                + '<td style="padding:10px 12px;font-size:13px;color:var(--tb);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);' + rowBg + '">' + themVal + '</td>'
+                + '<td style="padding:10px 12px;font-size:13px;font-weight:700;color:' + gapColor + ';border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);' + rowBg + '">' + gapVal + '</td>'
+                + '</tr>';
+            }).join('')
+          + '</tbody></table></div>';
+        return '<div style="background:var(--dk-2);border:1px solid var(--rule-d);padding:28px 24px;margin-bottom:2px;">'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">' + esc(roleLabel) + '</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;">'
+          + esc(_bizName) + ' <span style="color:var(--muted);font-weight:400;font-style:italic;">vs</span> ' + esc(entry.name) + '</div>'
+          + (_cn ? '<div style="font-size:13px;color:var(--tb);line-height:1.75;margin-top:12px;">' + readableText(_cn, 3) + '</div>' : '')
+          + _pillarTable
+          + (_priorityAction
+              ? '<div style="padding:16px 18px;background:var(--ink);border-left:4px solid var(--ac);">'
+                + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">'
+                + (_keyGapLabel ? _keyGapLabel + ' \u00b7 ' : '') + 'What to do</div>'
+                + '<div style="font-size:13px;color:var(--paper);line-height:1.65;">' + esc(_priorityAction) + '</div>'
+                + '</div>'
+              : '')
+          + '</div>';
+      }
+      var _overviewTable = _overviewRows
+        ? '<div style="margin-bottom:28px;overflow-x:auto;">'
+          + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--rule-d);">'
+          + '<thead><tr>'
+          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);">Role</th>'
+          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Competitor</th>'
+          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Largest gap</th>'
+          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Priority</th>'
+          + '</tr></thead>'
+          + '<tbody>' + _overviewRows + '</tbody>'
+          + '</table></div>'
+        : '';
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Verified Competitor Comparison</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">CHOIVE verified a direct competitor and a market competitor separately. Each was confirmed against the same buyer, category, and market as your business.</div>'
-        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;">'
-        + comparisonEntries.map(comparisonCard).join('') + '</div></section>';
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:24px;line-height:1.7;">Each competitor was verified against the same buyer, category, and market as your business. Scores are independently measured \u2014 not estimated.</div>'
+        + _overviewTable
+        + comparisonEntries.map(comparisonCard).join('') + '</section>';
     }
   } catch(e) { console.warn('[CHOIVE] competitor comparison display failed:', e.message); }
 
