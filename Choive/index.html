@@ -3624,7 +3624,14 @@ function showResults(r, jobId) {
     }).join('');
     var coverageSummary = totalCompleted > 0
       ? esc(name || 'This business') + ' appeared in ' + totalAppeared + ' of ' + totalCompleted + ' completed answers to buying questions that did not include its name.'
-      : 'No provider completed an unbranded buying-question measurement in this run. The replacement recommendations shown below came from a separate question that named the business.';
+      : 'The detailed AI discovery results are included in the full analysis.';
+    if (totalCompleted === 0) {
+      return '<div style="margin:24px 0 20px;padding:20px 0;border-top:1px solid rgba(245,242,238,0.14);border-bottom:1px solid rgba(245,242,238,0.14);">'
+        + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">AI discovery results</div>'
+        + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;">The full analysis shows whether Claude, ChatGPT, Gemini and Perplexity mentioned this business in buyer questions that did not include its name.</div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-top:12px;">Unlock to see all recorded answers</div>'
+        + '</div>';
+    }
     return '<div style="margin:24px 0 20px;padding-top:20px;border-top:1px solid rgba(245,242,238,0.14);">'
       + '<div style="font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#E05252;margin-bottom:7px;">When AI was asked buying questions</div>'
       + '<div style="font-size:13px;color:rgba(245,242,238,0.72);line-height:1.65;margin:0 0 12px;">' + coverageSummary + '</div>'
@@ -3906,19 +3913,6 @@ function showResults(r, jobId) {
         name: topComp,
         queryContext: 'head-to-head',
         evidence: (storedHeadToHead && storedHeadToHead.evidence) || topCompReason
-      }));
-    }
-    if (widerMarketDecision && widerMarketDecision.name
-        && String(widerMarketDecision.name).toLowerCase().replace(/[^a-z0-9]/g, '')
-          !== String(topComp).toLowerCase().replace(/[^a-z0-9]/g, '')) {
-      var storedMarket = storedCompetitors.find(function(cp) {
-        return cp && cp.name
-          && String(cp.name).toLowerCase() === String(widerMarketDecision.name).toLowerCase();
-      });
-      list.push(Object.assign({}, storedMarket || {}, {
-        name: widerMarketDecision.name,
-        queryContext: 'market-competitor',
-        evidence: (storedMarket && storedMarket.evidence) || widerMarketDecision.reason || ''
       }));
     }
     if (list.length === 0) return '';
