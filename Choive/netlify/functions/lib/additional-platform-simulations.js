@@ -279,8 +279,15 @@ async function runProvider(provider, input, requestFn, configured) {
     console.warn('[' + provider + '-simulation] ' + failureReasons.join(' | '));
   }
   if (replacement && replacement.sampleCount > 0 && !replacement.topRecommendation && !explicitNoRecommendation) {
-    console.warn('[' + provider + '-simulation] Branded replacement answer completed but no recommendation name could be extracted.');
-  }
+  var extractedNames = Object.keys(replacement.recommendationCounts || {});
+  console.warn(
+    '[' + provider + '-simulation] '
+    + (extractedNames.length
+      ? 'No single recommendation reached majority agreement across the recorded answers: '
+        + JSON.stringify(replacement.recommendationCounts)
+      : 'The provider answered, but no recommendation name could be extracted.')
+  );
+}
   return {
     available: completed > 0,
     configured: true,
