@@ -4776,7 +4776,16 @@ function showResults(r, jobId) {
   var competitorComparisonBlock = '';
   try {
     var comparisonEntries = r.competitorComparison && Array.isArray(r.competitorComparison.entries)
-      ? r.competitorComparison.entries : [];
+  ? r.competitorComparison.entries.filter(function(entry) {
+      if (!entry || entry.status !== 'complete' || !entry.score || !entry.score.pillars) {
+        return false;
+      }
+
+      return ['clarity', 'trust', 'difference', 'ease'].some(function(key) {
+        return Number(entry.score.pillars[key] && entry.score.pillars[key].competitor) > 0;
+      });
+    })
+  : [];
     if (comparisonEntries.length) {
      var _bizName = (typeof bizData !== 'undefined' && bizData && bizData.name) ? String(bizData.name).trim() : 'Your business';
       var _pillarKeys = ['clarity', 'trust', 'difference', 'ease'];
