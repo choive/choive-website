@@ -96,6 +96,12 @@ function sourceLinks(evidence, result) {
     values.forEach(function(value) {
       var link = String(value || '').trim();
       if (!/^https?:\/\//i.test(link) || links.indexOf(link) !== -1) return;
+      // Search pages, archive-result pages, and query URLs are not evidence.
+      // Only a direct article, profile, report, or publication page may appear.
+      if (
+        /\/search(?:\/|$)|\/search\/results|\/results(?:\/|$)/i.test(link) ||
+        /[?&](?:q|query|search|basicsearch)=/i.test(link)
+      ) return;
       var host = '';
       try { host = new URL(link).hostname.replace(/^www\./, ''); } catch (_) { return; }
       // An llms.txt file is an official publishing asset. Community posts,
@@ -106,6 +112,8 @@ function sourceLinks(evidence, result) {
       if (matched) {
         var text = (String(matched.title || '') + ' ' + String(matched.snippet || '')).toLowerCase();
         if (subjectName && text.indexOf(subjectName) === -1) return;
+      } else {
+        if (subjectName) return;
       }
       links.push(link);
     });
