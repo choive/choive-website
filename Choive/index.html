@@ -4124,14 +4124,38 @@ function showResults(r, jobId) {
             + (topRec ? ' ' + esc(topRec) + ' was the most frequently named alternative.' : '');
         }
       }
+      var simResults = (sim && Array.isArray(sim.results)) ? sim.results : [];
+      var simModel = (sim && sim.model) ? String(sim.model) : '';
+      var answersHtml = simResults.filter(function(res) {
+        return res && res.query && res.response && String(res.response).length > 10;
+      }).map(function(res, idx) {
+        var appearedLabel = res.appeared
+          ? '<span style="font-size:10px;font-weight:700;background:rgba(194,240,212,0.15);color:var(--ac);border:1px solid rgba(194,240,212,0.4);padding:2px 7px;display:inline-block;margin-bottom:8px;">Business appeared</span>'
+          : '<span style="font-size:10px;font-weight:700;background:rgba(201,122,106,0.1);color:#C97A6A;border:1px solid rgba(201,122,106,0.35);padding:2px 7px;display:inline-block;margin-bottom:8px;">Business not mentioned</span>';
+        return '<details style="margin-top:12px;border-top:1px solid var(--rule);padding-top:12px;">'
+          + '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--ac-d);list-style:none;display:flex;justify-content:space-between;align-items:center;">'
+          + '<span>Query ' + (idx + 1) + ' — Read the full recorded answer ↓</span>'
+          + (res.appeared ? '<span style="color:var(--ac);font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">✓ Appeared</span>' : '<span style="color:#C97A6A;font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">✗ Not mentioned</span>')
+          + '</summary>'
+          + '<div style="margin-top:12px;">'
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Exact question asked</div>'
+          + '<div style="font-size:13px;font-style:italic;color:var(--ink);line-height:1.6;margin-bottom:12px;padding:10px 14px;background:var(--paper-2);">' + esc(String(res.query)) + '</div>'
+          + appearedLabel
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Full recorded answer</div>'
+          + '<div style="font-size:12px;color:var(--body);line-height:1.75;white-space:pre-wrap;padding:12px 14px;background:var(--paper-2);max-height:400px;overflow-y:auto;">' + esc(String(res.response)) + '</div>'
+          + (simModel ? '<div style="font-size:10px;color:var(--muted);margin-top:8px;">Model: ' + esc(simModel) + '</div>' : '')
+          + '</div>'
+          + '</details>';
+      }).join('');
       return '<div class="platform-cell">'
         + '<div class="platform-name">' + esc(plt.label) + '</div>'
         + '<div class="platform-verdict ' + esc(status) + '">' + verdictText + '</div>'
         + (verdict ? '<div style="font-size:12px;color:var(--body);line-height:1.65;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);">' + verdict + '</div>' : (detail ? '<div class="platform-detail">' + esc(detail) + '</div>' : ''))
+        + answersHtml
         + '</div>';
     }).join('');
     return '<section class="pay-section" id="report-platform"><div class="pay-eyebrow">AI Platform Coverage</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">These are the platform results recorded during this diagnostic run. Each result is reported exactly as returned by the platform at the time of the run.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">These are the platform results recorded during this diagnostic run. Each result is reported exactly as returned by the platform at the time of the run. Answers are collapsed — click any query to read what the AI said.</div>'
       + '<div class="platform-row">' + cells + '</div></section>';
   }
 
