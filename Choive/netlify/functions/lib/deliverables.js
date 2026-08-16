@@ -435,34 +435,6 @@ function generateReviewAction(evidence, result) {
     platformUrl = modelPlatform.url || '';
     instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
     targetCount = 25;
-  } else {
-    // Before defaulting to generic proof, check whether Priority Actions already
-    // identified a specific review platform. If so, align with that — two sections
-    // on the same page must not contradict each other.
-    var _actionsList = Array.isArray(result.actions) ? result.actions : [];
-    var _actionPlatform = null;
-    for (var _ai = 0; _ai < _actionsList.length; _ai++) {
-      var _aText = [
-        (_actionsList[_ai] && _actionsList[_ai].title) || '',
-        (_actionsList[_ai] && _actionsList[_ai].body)  || ''
-      ].join(' ');
-      if (/\btrustpilot\b/i.test(_aText)) {
-        _actionPlatform = { name: 'Trustpilot', url: 'https://www.trustpilot.com' };
-        break;
-      }
-      if (/\bgoogle reviews?\b/i.test(_aText)) {
-        _actionPlatform = { name: 'Google Reviews', url: '' };
-        break;
-      }
-    }
-    if (_actionPlatform) {
-      platform          = _actionPlatform.name;
-      platformUrl       = _actionPlatform.url;
-      targetCount       = 25;
-      isReviewPlatform  = true;
-      instruction       = 'Your priority actions recommend building your ' + platform + ' presence. '
-        + (_actionPlatform.url ? 'Go to ' + _actionPlatform.url + ' and check whether a profile already exists for your business before creating one. ' : '')
-        + 'Ask recent customers for honest reviews. Do not manufacture or incentivise reviews.';
     } else {
     // Before defaulting to generic proof, check whether Priority Actions already
     // identified a specific review platform. If so, align with that — two sections
@@ -501,7 +473,6 @@ function generateReviewAction(evidence, result) {
         : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
     }
   }
-}
   // Counts are platform-specific. Never reuse an employee-review count from
   // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
   var signals = (evidence && evidence.websiteSignals) || {};
@@ -684,15 +655,25 @@ function generateGBPDescription(evidence, result) {
   var summary = factualSummary(evidence, result, 220);
   var reach = marketLabel(evidence);
   var parts = [];
+  // Full lowercase for mid-sentence category use. If the category does not already
+  // end with a business noun, append "business" so constructions like
+  // "is a direct mail based in Berlin" are avoided.
+  var _catPhrase = category ? category.toLowerCase() : '';
+  var _BUSINESS_NOUN = /\b(compan(?:y|ies)|firm|agenc(?:y|ies)|services?|studio|shop|store|business|organization|platform|provider|suppliers?|consultant(?:s|cy)?|group|practice|clinic|center|centre|restaurant|cafe|hotel|farm|butcher|dealers?|bureau|office)\b/i;
+  var _catNoun = (_catPhrase && !_BUSINESS_NOUN.test(_catPhrase)) ? _catPhrase + ' business' : _catPhrase;
   if (category && cityDisplay) {
-    parts.push(name + ' is a ' + category.toLowerCase() + ' based in ' + cityDisplay + '.');
+    parts.push(name + ' is a ' + _catNoun + ' based in ' + cityDisplay + '.');
   } else if (category) {
-    parts.push(name + ' is a ' + category.toLowerCase() + '.');
+    parts.push(name + ' is a ' + _catNoun + '.');
   }
   var summaryClean = summary ? sentenceCase(cleanAssetText(summary, 220)) : '';
   // Strip any "Meta description:" label that was scraped with the page content
   summaryClean = summaryClean.replace(/^meta\s+description\s*:\s*/i, '');
-  if (summaryClean && summaryClean.toLowerCase().indexOf(name.toLowerCase()) === -1) {
+  // Skip if the summary is just the category (already used in sentence 1)
+  var _summaryNorm = summaryClean.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  var _catNorm = category.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (summaryClean && summaryClean.toLowerCase().indexOf(name.toLowerCase()) === -1
+      && _summaryNorm !== _catNorm && !_summaryNorm.startsWith(_catNorm + ' ')) {
     if (!summaryClean.endsWith('.')) summaryClean += '.';
     parts.push(summaryClean);
   }
