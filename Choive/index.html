@@ -5765,6 +5765,23 @@ function exportPDF() {
 function animateNum(id, from, to, dur) {
   var el = document.getElementById(id);
   if (!el) return;
+  if (document.hidden) {
+    el.textContent = String(Math.round(to));
+    document.addEventListener('visibilitychange', function onShow() {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', onShow);
+        var start = performance.now();
+        function tick(now) {
+          var p = Math.min((now - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = String(Math.round(from + (to - from) * eased));
+          if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+    });
+    return;
+  }
   var start = performance.now();
   function tick(now) {
     var p = Math.min((now - start) / dur, 1);
