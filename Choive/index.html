@@ -4103,7 +4103,10 @@ function showResults(r, jobId) {
       var v = pc[plt.key];
       var status = (v && typeof v === 'object') ? (v.status || 'absent') : (typeof v === 'string' && v ? v : 'absent');
       var detail = (v && typeof v === 'object') ? (v.detail || '') : '';
-      var verdictText = status === 'present' ? 'Recommended' : (status === 'weak' || status === 'partial') ? 'Partially Found' : 'Not Found';
+      var simResults = (sim && Array.isArray(sim.results)) ? sim.results : [];
+      var hasRealResponse = simResults.some(function(res) { return res && res.response && String(res.response).length > 10; });
+      var effectiveStatus = (status === 'partial' && !hasRealResponse) ? 'failed' : status;
+      var verdictText = effectiveStatus === 'present' ? 'Recommended' : (effectiveStatus === 'weak' || effectiveStatus === 'partial') ? 'Partially Found' : effectiveStatus === 'failed' ? 'Could not be measured' : 'Not Found';
       var sim = sims[plt.simKey];
       var appeared = sim ? Number(sim.appearedCount || 0) : null;
       var total = sim ? Number(sim.totalQueries || 0) : null;
@@ -4545,10 +4548,10 @@ function showResults(r, jobId) {
       + '<div class="paid-section-header">What Reddit and independent communities say</div>'
       + (items.length
         ? '<div style="font-size:13px;color:var(--tm);line-height:1.7;max-width:760px;">CHOIVE separates posts about this business from posts about the wider type of business. A general discussion can show what people care about, but it is not a customer review.</div>'
-          + (!direct.length ? '<div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.65;padding:12px 14px;margin-top:14px;background:var(--paper-2);border-left:3px solid var(--ac);">No confirmed community posts specifically about this business were found in this run. The posts below discuss the wider market only.</div>' : '')
+          + (!direct.length ? '<div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.65;padding:12px 14px;margin-top:14px;background:var(--paper-2);border-left:3px solid var(--ac);">This business was not mentioned in any of the community posts found. The posts below show what buyers in this category are asking about — these are the conversations where the business is currently absent.</div>' : '')
           + rows(direct, 'Discussions that mention this business')
           + rows(category, 'Relevant category discussions')
-        : '<div style="font-size:13px;color:var(--body);line-height:1.7;max-width:760px;">CHOIVE did not find and confirm a useful Reddit or community discussion in this run. A discussion may still exist. CHOIVE is only saying that it did not confirm one.</div>')
+        : '<div style="font-size:13px;color:var(--body);line-height:1.7;max-width:760px;">No community mentions of this business were found in this run. This is an opportunity — community presence is one of the fastest ways to create independent mentions that AI systems can cite.</div>')
       + '</section>';
   }
 
@@ -4805,12 +4808,12 @@ function showResults(r, jobId) {
           var gapStr = (gap > 0 ? '+' : '') + gap;
           var gapColor = gap > 0 ? 'var(--ac)' : (gap < 0 ? '#C97A6A' : 'var(--muted)');
           var youPct  = Math.round((Math.min(25, Math.max(0, Number(pd.you) || 0)) / 25) * 100);
-          var compPct = Math.round((Math.min(25, Math.max(0, Number(pd.competitor) || 0)) / 25) * 100);
+          var compPct = _compHasData ? Math.round((Math.min(25, Math.max(0, Number(pd.competitor) || 0)) / 25) * 100) : 0;
           return '<div style="margin-bottom:14px;">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
             + '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">' + key + '</span>'
             + '<span style="color:var(--ink);font-weight:600;">Your business: ' + Math.round(Number(pd.you)||0) + '</span>'
-            + '<span style="color:var(--muted);"> · ' + esc(competitorName || 'Competitor') + ': ' + Math.round(Number(pd.competitor)||0) + '</span>'
+            + '<span style="color:var(--muted);"> · ' + esc(competitorName || 'Competitor') + ': ' + (_compHasData ? Math.round(Number(pd.competitor)||0) : 'Not measured') + '</span>'
             + '<span style="display:block;text-align:right;font-size:10px;font-weight:700;color:' + gapColor + ';margin-top:2px;">' + (gap > 0 ? 'Ahead by ' + gap : (gap < 0 ? 'Behind by ' + Math.abs(gap) : 'Equal')) + '</span></span>'
             + '</div>'
             + '<div style="font-size:9px;color:var(--ac-d);margin-bottom:2px;">Your business · solid gold</div>'
@@ -4826,9 +4829,10 @@ function showResults(r, jobId) {
         // Arena competitive position score: how much of the combined pillar weight you hold
         var _yourSum = _keys.reduce(function(acc, k) { return acc + (Number(_p[k] && _p[k].you) || 0); }, 0);
         var _compSum = _keys.reduce(function(acc, k) { return acc + (Number(_p[k] && _p[k].competitor) || 0); }, 0);
+        var _compHasData = _keys.some(function(k) { return Number(_p[k] && _p[k].competitor) > 0; });
         var _arenaScore = (_yourSum + _compSum) > 0 ? Math.round(_yourSum / (_yourSum + _compSum) * 100) : 50;
-        var _arenaScoreColor = _arenaScore >= 55 ? 'var(--ac)' : (_arenaScore <= 45 ? '#C97A6A' : 'var(--body)');
-        var _arenaScoreLabel = _arenaScore >= 55 ? 'Competitive advantage' : (_arenaScore <= 45 ? 'Competitive gap' : 'Competitive parity');
+        var _arenaScoreColor = !_compHasData ? 'var(--muted)' : (_arenaScore >= 55 ? 'var(--ac)' : (_arenaScore <= 45 ? '#C97A6A' : 'var(--body)'));
+        var _arenaScoreLabel = !_compHasData ? 'Competitor not yet measured' : (_arenaScore >= 55 ? 'Competitive advantage' : (_arenaScore <= 45 ? 'Competitive gap' : 'Competitive parity'));
 
         return '<div style="background:var(--paper-2);padding:24px 20px;">'
           + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
@@ -5121,7 +5125,19 @@ function showResults(r, jobId) {
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">Priority Actions</div><div class="paid-actions">'
-      + mergedActions.map(actionItem).join('') + '</div></section>'
+      + mergedActions.map(actionItem).join('')
+      + (function() {
+          var totalGain = (r.actions || []).reduce(function(sum, a) { return sum + (Number(a.estimatedGain) || 0); }, 0);
+          var currentScore = Math.round(Number(r.overallScore) || 0);
+          var potential = Math.min(100, currentScore + totalGain);
+          if (!totalGain) return '';
+          return '<div style="margin-top:24px;padding:18px 20px;background:var(--paper-2);border-left:3px solid var(--ac);">'
+            + '<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">If all actions are completed</div>'
+            + '<div style="font-size:22px;font-weight:700;font-family:\'Libre Baskerville\',serif;color:var(--ink);">Score could reach ' + potential + ' / 100</div>'
+            + '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Current score: ' + currentScore + ' · Total recoverable points: +' + totalGain + '</div>'
+            + '</div>';
+        })()
+      + '</div></section>'
       + '<section class="pay-section deliv-section" id="report-assets">'
       + '<div class="pay-eyebrow">Prepared for ' + esc(bizData.name || 'Your Business') + '</div>'
       + '<div class="paid-section-header">Work CHOIVE has already prepared for you</div>'
