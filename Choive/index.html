@@ -3131,7 +3131,7 @@ function buildShareBlock(jobId, topComp) {
   window.__choiveShareJobId = jobId;
   var _shareTopComp = (topComp !== undefined) ? topComp : window.__choiveTopComp;
   var comp = _shareTopComp ? ' — ' + _shareTopComp + ' is winning instead' : '';
-  var score = (window.__choiveLastResult && window.__choiveLastResult.overallScore) || '?';
+  var score = (window.__choiveLastResult && window.__choiveLastResult.overallScore) ? Math.round(window.__choiveLastResult.overallScore) : '?';
   var name = (bizData && bizData.name) ? bizData.name : 'my business';
   var shareText = 'I just ran a CHOIVE diagnostic for ' + name + '. Score: ' + score + '/100' + comp + '. Find out yours:';
   var shareUrl = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
@@ -3804,7 +3804,7 @@ function showResults(r, jobId) {
 
     var pillarNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
     var chips = Object.keys(d.pillars || {}).map(function(k) {
-      var v = Math.round((Number(d.pillars[k]) || 0) * 10) / 10;
+      var v = Math.round(Number(d.pillars[k]) || 0);
       var c = v > 0 ? 'var(--ac)' : (v < 0 ? '#E05252' : 'var(--tm)');
       return '<span style="font-size:12px;color:' + c + ';margin-right:16px;white-space:nowrap;">' + pillarNames[k] + ' ' + (v > 0 ? '+' : '') + v + ' <span aria-hidden="true" style="color:var(--rule);">·</span></span>';
     }).join('');
@@ -4263,7 +4263,7 @@ function showResults(r, jobId) {
     function pointValue(value) {
       var number = Number(value);
       if (!isFinite(number)) return '0';
-      var rounded = Math.round(number * 10) / 10;
+      var rounded = Math.round(number);
       return String(rounded);
     }
     var scoreRuleHtml = scoreRules.length ? '<details class="report-details"><summary>See every point and where it came from · ' + esc(confidenceSummary) + '</summary><div class="report-details-body">'
@@ -5638,7 +5638,7 @@ function exportPDF() {
   var pdfCustomerQuestionHtml = pdfQuestion
     ? '<div style="font-size:16px;font-weight:600;line-height:1.55;margin-bottom:16px;">“' + esc(pdfQuestion) + '”</div>' + pdfQuestionAnswers
     : '';
-  var pdfScore = Number(r.overallScore) || 0;
+  var pdfScore = Math.round(Number(r.overallScore) || 0);
   var _pdfSimAppeared = 0; var _pdfSimTotal = 0;
   var _pdfSims = r.platformSimulations || {};
   ['claude','openai','perplexity','gemini'].forEach(function(k) {
@@ -5851,7 +5851,7 @@ function resetDiagnostic() {
 function openForm(product) {
   var name    = bizData.name    || '';
   var subject = encodeURIComponent('CHOIVE ' + product + ' \u2014 ' + name);
-  var body    = encodeURIComponent('Hi,\n\nI just ran a CHOIVE diagnostic for ' + name + ' and scored ' + (window.__choiveLastResult && window.__choiveLastResult.overallScore || '?') + '/100.\n\nI am interested in ' + product + '.\n\nBest regards');
+  var body    = encodeURIComponent('Hi,\n\nI just ran a CHOIVE diagnostic for ' + name + ' and scored ' + (window.__choiveLastResult && window.__choiveLastResult.overallScore ? Math.round(window.__choiveLastResult.overallScore) : '?') + '/100.\n\nI am interested in ' + product + '.\n\nBest regards');
   window.location.href = 'mailto:hello@choive.com?subject=' + subject + '&body=' + body;
 }
 
