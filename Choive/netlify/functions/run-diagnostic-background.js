@@ -2028,17 +2028,34 @@ exports.handler = async function (event) {
       }));
       finalResult['competitorComparison'] = {
         entries: roleCandidates.map(function(candidate, index) {
-          var scoreResult = roleScores[index];
-          return {
-            role: candidate.role,
-            roleLabel: candidate.roleLabel,
-            name: candidate.name,
-            reason: candidate.reason,
-            status: scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value ? 'complete' : 'score_unavailable',
-            score: scoreResult && scoreResult.status === 'fulfilled' ? (scoreResult.value || null) : null
-        
-      };
-        }),
+  var scoreResult = roleScores[index];
+  var scoreValue = scoreResult && scoreResult.status === 'fulfilled'
+    ? scoreResult.value
+    : null;
+
+  var competitorValues = scoreValue && scoreValue.pillars
+    ? ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
+        return Number(scoreValue.pillars[key] && scoreValue.pillars[key].competitor);
+      })
+    : [];
+
+  var scoreIsUsable = competitorValues.length === 4
+    && competitorValues.every(function(value) {
+      return Number.isFinite(value);
+    })
+    && competitorValues.some(function(value) {
+      return value > 0;
+    });
+
+  return {
+    role: candidate.role,
+    roleLabel: candidate.roleLabel,
+    name: candidate.name,
+    reason: candidate.reason,
+    status: scoreIsUsable ? 'complete' : 'score_unavailable',
+    score: scoreIsUsable ? scoreValue : null
+  };
+}),
         selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
       };
     } catch (comparisonErr) {
