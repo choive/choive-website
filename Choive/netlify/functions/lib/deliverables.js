@@ -6,12 +6,14 @@ function firstSentence(s) {
   var m = t.match(/^[^.!?]*[.!?]/);
   return m ? m[0].trim() : t.slice(0, 140);
 }
+
 function capitaliseCity(city) {
   if (!city) return '';
   return city.split(' ').map(function(w) {
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
 }
+
 function cleanAssetText(value, maxLength) {
   var text = String(value || '')
     .replace(/\s+/g, ' ')
@@ -25,6 +27,7 @@ function cleanAssetText(value, maxLength) {
   if (boundary < Math.floor(limit * 0.55)) boundary = shortened.lastIndexOf(' ');
   return shortened.slice(0, boundary > 0 ? boundary : limit).replace(/[\s:;,.-]+$/, '').trim();
 }
+
 function removeNameIntroduction(text, name) {
   var escaped = String(name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (!escaped) return String(text || '').trim();
@@ -33,6 +36,7 @@ function removeNameIntroduction(text, name) {
     .replace(new RegExp('^' + escaped + '\\s*[-–—:|]\\s*', 'i'), '')
     .trim();
 }
+
 function factualSummary(evidence, result, maxLength) {
   var signals = (evidence && evidence.websiteSignals) || {};
   var choices = [
@@ -47,13 +51,16 @@ function factualSummary(evidence, result, maxLength) {
   }
   return '';
 }
+
 function sentenceCase(value) {
   var text = String(value || '').trim();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
+
 function normalizeForAsset(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
+
 function intendedAudience(evidence, result, fallback) {
   var source = [
     evidence && evidence.description,
@@ -64,12 +71,14 @@ function intendedAudience(evidence, result, fallback) {
   if (!match) return fallback;
   return cleanAssetText(match[1].replace(/\s+(?:serving|across|worldwide|globally)\b.*$/i, ''), 100) || fallback;
 }
+
 function safeDifferentiator(evidence, result) {
   var pillars = (result && result.pillars) || {};
   var raw = String((pillars.difference && pillars.difference.evidence) || '').trim();
   if (!raw || /search query|site:|confirmed:|schema|homepage content|no competitor|not detected|not established|score|points?/i.test(raw)) return '';
   return cleanAssetText(raw.replace(/["']/g, ''), 180);
 }
+
 function marketLabel(evidence) {
   var reach = String((evidence && evidence.marketReach) || '').toLowerCase();
   var place = capitaliseCity(String((evidence && evidence.city) || '').trim());
@@ -81,6 +90,7 @@ function marketLabel(evidence) {
   if (reach === 'regional') return place ? 'Region around ' + place : 'Regional';
   return place;
 }
+
 function sourceLinks(evidence, result) {
   var audits = result && result.scoreMethod && result.scoreMethod.audits;
   var trust = audits && Array.isArray(audits.trust) ? audits.trust : [];
@@ -96,12 +106,6 @@ function sourceLinks(evidence, result) {
     values.forEach(function(value) {
       var link = String(value || '').trim();
       if (!/^https?:\/\//i.test(link) || links.indexOf(link) !== -1) return;
-      // Search pages, archive-result pages, and query URLs are not evidence.
-      // Only a direct article, profile, report, or publication page may appear.
-      if (
-        /\/search(?:\/|$)|\/search\/results|\/results(?:\/|$)/i.test(link) ||
-        /[?&](?:q|query|search|basicsearch)=/i.test(link)
-      ) return;
       var host = '';
       try { host = new URL(link).hostname.replace(/^www\./, ''); } catch (_) { return; }
       // An llms.txt file is an official publishing asset. Community posts,
@@ -109,22 +113,25 @@ function sourceLinks(evidence, result) {
       // are not safe authority citations inside that file.
       if (!host || unsafeHosts.test(host) || (officialHost && host === officialHost)) return;
       var matched = searchResults.find(function(item) { return item && String(item.link || '') === link; });
-      if (matched) {
-        var text = (String(matched.title || '') + ' ' + String(matched.snippet || '')).toLowerCase();
-        if (subjectName && text.indexOf(subjectName) === -1) return;
-      } else {
-        if (subjectName) return;
-      }
+      // Never publish an independent source in llms.txt unless the collected
+      // search result itself names the diagnosed subject. A URL merely present
+      // in a model-generated audit is not sufficient evidence.
+      if (!matched) return;
+      var text = (String(matched.title || '') + ' ' + String(matched.snippet || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+      if (subjectName && text.indexOf(subjectName) === -1) return;
       links.push(link);
     });
   });
   return links.slice(0, 5);
 }
+
 var ASSET_STOP_WORDS = new Set(('the a an and or for with from into this that these those your our their its is are was were be to of in on at by as it we you they business company organization product service services solutions platform providing provides offers based').split(' '));
 var UNSUPPORTED_ASSET_CLAIMS = /\b(best|leading|leader|market-leading|premium|trusted|award[- ]winning|number one|#1|top-rated|world-class|proven results?|guaranteed|teams trust|built for results|stands out|every detail matters|every screen|all screens|works everywhere|always available)\b/i;
+
 function assetWords(value) {
   return String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g) || [];
 }
+
 function evidenceCorpus(evidence, result) {
   var signals = (evidence && evidence.websiteSignals) || {};
   return [evidence && evidence.name, evidence && evidence.category, evidence && evidence.description,
@@ -132,6 +139,7 @@ function evidenceCorpus(evidence, result) {
     signals.titleText, signals.h1Text, signals.metaDescriptionText, result && result.inferredCategory]
     .filter(Boolean).join(' ').toLowerCase();
 }
+
 function supportedAssetText(value, evidence, result, minLength, maxLength) {
   var text = cleanAssetText(value, maxLength);
   if (!text || text.length < minLength || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
@@ -143,6 +151,7 @@ function supportedAssetText(value, evidence, result, minLength, maxLength) {
   if (supported.length < Math.max(2, Math.ceil(meaningful.length * 0.55))) return '';
   return text;
 }
+
 function supportedAudienceText(value, evidence, result) {
   var text = cleanAssetText(value, 100);
   if (!text || text.length < 3 || UNSUPPORTED_ASSET_CLAIMS.test(text) || /[\[\]{}<>]/.test(text)) return '';
@@ -151,6 +160,7 @@ function supportedAudienceText(value, evidence, result) {
   if (!meaningful.length || !meaningful.every(function(word) { return corpus.indexOf(word) !== -1; })) return '';
   return text;
 }
+
 function verifiedReadyAssets(evidence, result) {
   var proposed = result && result.readyToUseAssets;
   if (!proposed || typeof proposed !== 'object') return { h1Options: [], llmsFacts: null };
@@ -170,6 +180,7 @@ function verifiedReadyAssets(evidence, result) {
     }
   };
 }
+
 function subjectProfile(evidence) {
   var type = String((evidence && evidence.subjectType) || 'business').trim();
   if (type === 'creator') return { type: type, noun: 'creator', audience: 'people in the intended audience', proof: 'independent authority proof' };
@@ -181,6 +192,7 @@ function subjectProfile(evidence) {
 // CHOIVE™ Deliverables Generator
 // Produces owner-safe, actionable assets — no code that could be misimplemented
 // Returns: llmsTxt, h1Options, metaDescription, schemaBrief, reviewAction
+
 function generateLlmsTxt(evidence, result) {
   var profile        = subjectProfile(evidence);
   var name           = (evidence.name || '').trim();
@@ -228,7 +240,7 @@ function generateLlmsTxt(evidence, result) {
   lines.push('## Official resources');
   if (siteUrl) lines.push('- [Official website](' + siteUrl + ')');
   if (siteUrl && signals.hasSitemap) lines.push('- [Sitemap](' + siteUrl.replace(/\/$/, '') + '/sitemap.xml)');
-  if (siteUrl && signals.hasRobots) lines.push('- [Crawler policy](' + siteUrl.replace(/\/$/, '') + '/robots.txt)');
+  if (siteUrl && signals.hasRobots) lines.push('- [Rules for search and AI tools](' + siteUrl.replace(/\/$/, '') + '/robots.txt)');
   lines.push('');
   if (independent.length) {
     lines.push('## Independently retrieved sources');
@@ -241,6 +253,7 @@ function generateLlmsTxt(evidence, result) {
   lines.push('Use the official sources above for current facts. Do not infer prices, availability, certifications, locations, results, or customer relationships that those sources do not state.');
   return lines.join('\n');
 }
+
 function generateH1Options(evidence, result) {
   var signals  = (evidence && evidence.websiteSignals) || {};
   var name     = String((evidence && evidence.name) || '').trim();
@@ -251,6 +264,7 @@ function generateH1Options(evidence, result) {
   var place    = marketLabel(evidence);
   var options  = [];
   var verified = verifiedReadyAssets(evidence, result);
+
   function add(value) {
     var headline = cleanAssetText(String(value || '').replace(/[.!?]+$/, ''), 115);
     var key = headline.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -259,52 +273,36 @@ function generateH1Options(evidence, result) {
     })) return;
     options.push(headline);
   }
+
   verified.h1Options.forEach(add);
   // Fallback options are assembled only from facts already supplied or collected.
   // No unsupported words such as "leading", "best", "premium", or "trusted".
-  add(summary + (place && summary.toLowerCase().indexOf(place.toLowerCase()) === -1 ? ' — ' + place : ''));
-  add(category + (place && category.toLowerCase().indexOf(place.toLowerCase()) === -1
-    ? (place === 'Worldwide' ? ' — Worldwide' : ' in ' + place) : '') + ' | ' + name);
+  if (summary) add(summary + (place && summary.toLowerCase().indexOf(place.toLowerCase()) === -1 ? ' — ' + place : ''));
+  if (category) add(category + (place && category.toLowerCase().indexOf(place.toLowerCase()) === -1
+    ? (place === 'Worldwide' ? ' — Worldwide' : ' in ' + place) : '') + (name ? ' | ' + name : ''));
   if (diff) add(name + ' — ' + diff);
   else if (normalizeForAsset(summary).indexOf(normalizeForAsset(name)) !== 0) add(name + ' — ' + (summary || category));
+
   return { current: current, options: options.slice(0, 3) };
 }
+
 function generateMetaDescription(evidence, result) {
   var name     = (evidence.name           || '').trim();
   var category = (result.inferredCategory || evidence.category || '').trim();
   var city     = (evidence.city           || '').trim();
   var reach    = String(evidence.marketReach || '').trim().toLowerCase();
   var signals  = evidence.websiteSignals || {};
-  var pillars  = result.pillars           || {};
   var cityDisplay = capitaliseCity(city);
 
-  var clarityEvidence = (pillars.clarity    && pillars.clarity.evidence)    || '';
-  var diffEvidence    = (pillars.difference && pillars.difference.evidence) || '';
-  var trustEvidence   = (pillars.trust      && pillars.trust.evidence)      || '';
   // Extract current meta
   var current = cleanAssetText(signals.metaDescriptionText || '', 180);
-  // Filter raw evidence noise before using in meta
-  var diffIsNoise   = /search query|site:|confirmed:|schema|homepage content|no competitor/i.test(diffEvidence);
-  var trustIsNoise  = /search query|site:trustpilot|site:g2|site:glassdoor|returned Choice|Zero results|WEBSITE VISIBLE/i.test(trustEvidence);
-  var diff  = diffIsNoise  ? '' : diffEvidence.replace(/["']/g, '').split('.')[0].trim();
-  var trust = trustIsNoise ? '' : trustEvidence.replace(/["']/g, '').split('.')[0].trim();
-  // Discard diff or trust that echoes the business name back into the meta
-  if (diff  && name && diff.toLowerCase().startsWith(name.toLowerCase()))  diff  = '';
-  if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
-  if (diff  && diff.length  < 15) diff  = '';
-  // Discard diff or trust that echoes the business name back into the meta
-  if (diff  && name && diff.toLowerCase().startsWith(name.toLowerCase()))  diff  = '';
-  if (trust && name && trust.toLowerCase().startsWith(name.toLowerCase())) trust = '';
-  if (diff  && diff.length  < 15) diff  = '';
-  var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135);
+
+  var groundedSummary = cleanAssetText(removeNameIntroduction(factualSummary(evidence, result, 145), name), 135).replace(/[.!?]+$/, '');
   var improved = name + (groundedSummary ? ' — ' + groundedSummary : ' — ' + category);
+  var primaryPlace = cityDisplay.split(',')[0].trim();
   if (city && ['local','regional','national'].indexOf(reach) !== -1
-      && improved.toLowerCase().indexOf(cityDisplay.toLowerCase()) === -1) improved += ' in ' + cityDisplay;
+      && (!primaryPlace || improved.toLowerCase().indexOf(primaryPlace.toLowerCase()) === -1)) improved += ' in ' + cityDisplay;
   improved = improved.replace(/[.!?]?$/, '.');
-  // Only append the trust sentence if the whole thing still fits in 155 chars
-  if (trust && trust.length < 100 && (improved.length + trust.length + 2) <= 155) {
-    improved += ' ' + trust + '.';
-  }
   // Never cut mid-word or mid-sentence — truncate at the last clean boundary
   if (improved.length > 155) {
     improved = improved.slice(0, 155);
@@ -314,8 +312,10 @@ function generateMetaDescription(evidence, result) {
     improved = improved.slice(0, cutAt).replace(/[,;:\s]+$/, '');
     if (!/[.!?]$/.test(improved)) improved += '.';
   }
+
   return { current: current, improved: improved };
 }
+
 function generateSchemaBrief(evidence, result) {
   var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
@@ -325,51 +325,63 @@ function generateSchemaBrief(evidence, result) {
   var website  = (evidence.website        || evidence.inferredOfficialSite || '').trim();
   var websiteSignals  = (evidence && evidence.websiteSignals) || {};
   var schemaConfirmed = websiteSignals.hasSchema === true;
-  // Determine schema types needed
-  var catLower    = category.toLowerCase();
-  var schemaTypes = profile.type === 'creator' || profile.type === 'personal_brand'
-    ? ['Person', 'ProfilePage']
+
+  // Use the most precise supported type as the primary type. A restaurant,
+  // real-estate agency, or software product must not be reduced to the vague
+  // generic type "Organization" when the collected category is clear.
+  var catLower = category.toLowerCase();
+  var primaryType = profile.type === 'creator' || profile.type === 'personal_brand'
+    ? 'Person'
     : profile.type === 'product'
-      ? ['Product']
-      : ['Organization'];
+      ? (/software|saas|app|platform|crm/i.test(catLower) ? 'SoftwareApplication' : 'Product')
+      : 'Organization';
+
   if      (profile.type === 'creator' || profile.type === 'personal_brand' || profile.type === 'product') {}
-  else if (/restaurant|cafe|dining/i.test(catLower))           schemaTypes.push('Restaurant');
-  else if (/software|saas|platform|crm/i.test(catLower))       schemaTypes.push('SoftwareApplication');
-  else if (/law firm|legal/i.test(catLower))                   schemaTypes.push('LegalService');
-  else if (/beef|meat|food|butcher|farm/i.test(catLower))      schemaTypes.push('FoodEstablishment');
-  else if (/shop|store|retail|fashion|clothing/i.test(catLower)) schemaTypes.push('Store');
-  else if (/hotel|resort/i.test(catLower))                     schemaTypes.push('Hotel');
-  else if (/dentist|dental/i.test(catLower))                   schemaTypes.push('Dentist');
-  else if (/clinic|medical|doctor|healthcare/i.test(catLower)) schemaTypes.push('MedicalOrganization');
-  else if (/bank|insurance|financial|wealth|mortgage/i.test(catLower)) schemaTypes.push('FinancialService');
-  else if (/school|university|college|education|academy/i.test(catLower)) schemaTypes.push('EducationalOrganization');
-  else if (/consulting|consultancy|accounting|accountant|architect|professional service/i.test(catLower)) schemaTypes.push('ProfessionalService');
-  else if (/gym|fitness|sports club|wellness/i.test(catLower)) schemaTypes.push('SportsActivityLocation');
-  else if (/car dealer|auto dealer|automotive retail/i.test(catLower)) schemaTypes.push('AutoDealer');
-  else if (/real estate|estate agent|property agency|realtor/i.test(catLower)) schemaTypes.push('RealEstateAgent');
+  else if (/restaurant|cafe|dining/i.test(catLower)) primaryType = 'Restaurant';
+  // A software company is still an Organization. SoftwareApplication is used
+  // only when the diagnosed subject itself is a product.
+  else if (/law firm|legal/i.test(catLower)) primaryType = 'LegalService';
+  else if (/butcher|beef|meat (?:delivery|shop|store)|online meat/i.test(catLower)) primaryType = 'Store';
+  else if (/food producer|food manufacturer|farm/i.test(catLower)) primaryType = 'Organization';
+  else if (/shop|store|retail|fashion|clothing/i.test(catLower)) primaryType = 'Store';
+  else if (/hotel|resort/i.test(catLower)) primaryType = 'Hotel';
+  else if (/dentist|dental/i.test(catLower)) primaryType = 'Dentist';
+  else if (/clinic|medical|doctor|healthcare/i.test(catLower)) primaryType = 'MedicalOrganization';
+  else if (/bank|insurance|financial|wealth|mortgage/i.test(catLower)) primaryType = 'FinancialService';
+  else if (/school|university|college|education|academy/i.test(catLower)) primaryType = 'EducationalOrganization';
+  else if (/consulting|consultancy|accounting|accountant|architect|professional service/i.test(catLower)) primaryType = 'ProfessionalService';
+  else if (/gym|fitness|sports club|wellness/i.test(catLower)) primaryType = 'SportsActivityLocation';
+  else if (/car dealer|auto dealer|automotive retail/i.test(catLower)) primaryType = 'AutoDealer';
+  else if (/real estate|estate agent|property agency|realtor/i.test(catLower)) primaryType = 'RealEstateAgent';
+
+  var schemaTypes = [primaryType];
+  if (primaryType === 'Person') schemaTypes.push('ProfilePage');
+
   var siteUrl = website
     ? (website.startsWith('http') ? website : 'https://' + website)
-    : 'your website URL';
+    : '';
+
   var serviceArea = marketLabel(evidence);
   var schemaObject = {
     '@context': 'https://schema.org',
-    '@type': schemaTypes[0] || 'Organization',
+    '@type': primaryType,
     name: name,
-    url: siteUrl,
     description: cleanAssetText(category, 220)
   };
+  if (siteUrl) schemaObject.url = siteUrl;
   if (serviceArea) schemaObject.areaServed = serviceArea;
   var jsonLd = '<script type="application/ld+json">\n'
     + JSON.stringify(schemaObject, null, 2)
     + '\n</script>';
+
   var fields = [
     'name: ' + name,
-    'url: ' + siteUrl,
+    siteUrl ? 'url: ' + siteUrl : null,
     'description: ' + category,
     serviceArea ? 'areaServed: ' + serviceArea : null,
-    'base schema type: ' + (schemaTypes[0] || 'Organization'),
-    schemaTypes.length > 1 ? 'additional type to review with the developer: ' + schemaTypes.slice(1).join(' + ') : null
+    'schema type: ' + primaryType
   ].filter(Boolean);
+
   return {
     alreadyHasSchema: schemaConfirmed,
     schemaTypes:      schemaTypes,
@@ -378,10 +390,11 @@ function generateSchemaBrief(evidence, result) {
     fields:           fields,
     jsonLd:           jsonLd,
     instruction:      schemaConfirmed
-      ? 'CHOIVE detected schema markup. Ask your developer to compare the existing markup with the factual base example below and test the final code before publishing it.'
-      : 'CHOIVE did not detect schema markup. Forward the factual base example below to your developer. They must review it against the live website and test the final code before publishing it.'
+      ? 'CHOIVE found website facts code already on the site. Send the example below to your developer. Ask them to compare both versions, check every fact, and test the code before publishing it.'
+      : 'CHOIVE did not find website facts code on the site. Send the example below to your developer. They must check every fact and test the code before publishing it.'
   };
 }
+
 function generateReviewAction(evidence, result) {
   var profile  = subjectProfile(evidence);
   var cityDisplay = capitaliseCity((evidence && evidence.city) || '');
@@ -391,6 +404,7 @@ function generateReviewAction(evidence, result) {
   var pillars  = result.pillars           || {};
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
   var trustEvidence = (pillars.trust && pillars.trust.evidence) || '';
+
   // Determine target platform and count by category
   var catLower = category.toLowerCase();
   var platform, secondaryPlatform, targetCount, secondaryTargetCount, platformUrl, instruction;
@@ -398,6 +412,8 @@ function generateReviewAction(evidence, result) {
   var enterpriseProcurement = /enterprise|pay[ -]?tv|telco|telecom|operator|middleware|automotive oem|carmaker|broadcast platform/i.test(catLower);
   var realEstate = /real[ -]?estate|estate agenc|estate agent|property (?:broker|agency|sales)|residential brokerage/i.test(catLower);
   var internationalRealEstate = realEstate && /international|luxury|expat|foreign|global|costa del sol|marbella|investment/i.test(catLower + ' ' + String((evidence && evidence.description) || ''));
+  var localCustomerBusiness = /restaurant|cafe|hotel|dentist|dental|clinic|doctor|salon|barber|spa|gym|fitness club|plumber|electrician|cleaning service|repair service|local shop|retail store/i.test(catLower);
+
   // Use a named platform only when this diagnostic established that buyers or
   // close competitors in the category use it. Category words alone are not
   // evidence that a particular directory matters.
@@ -407,19 +423,19 @@ function generateReviewAction(evidence, result) {
     targetCount = 3;
     platformUrl = '';
     isReviewPlatform = false;
-    instruction = 'Publish or link three independently verifiable signals of authority, such as credited press coverage, recognized appearances, documented collaborations, awards, or complete profiles on the platforms where this audience already discovers people in this field. Do not manufacture reviews.';
+    instruction = 'Publish three real examples that show why people should trust this person. Use named press stories, public appearances, awards, or work with named partners. Add a link so each example can be checked. Never create a fake review.';
   } else if (profile.type === 'organization') {
     platform = 'Verified organizational proof';
     targetCount = 3;
     platformUrl = '';
     isReviewPlatform = false;
-    instruction = 'Publish three verifiable proof points appropriate to this organization: named partners, registrations or accreditations, independently reported outcomes, or documented programs. State who benefited, what happened, and where the claim can be checked.';
+    instruction = 'Publish three real examples that show what this organization has done. Name the partner, registration, program, or result. Add a link so people can check each example.';
   } else if (enterpriseProcurement) {
     platform = 'Named customer results';
     targetCount = 3;
     platformUrl = '';
     isReviewPlatform = false;
-    instruction = 'Publish three approved, named customer case studies with the buyer, deployment scope, and measurable outcome. Support them with coverage or citations from the trade press, analyst firms, or industry associations used by buyers in this category. Do not create a generic review-platform profile unless category evidence shows that procurement teams actually use it.';
+    instruction = 'Publish three approved customer stories. Name the customer, explain what they bought, and show the result. Add a public source when one exists. Do not create a review profile unless buyers in this market use it.';
   } else if (realEstate) {
     platform = 'Google Reviews';
     secondaryPlatform = internationalRealEstate ? 'Trustpilot' : '';
@@ -430,49 +446,26 @@ function generateReviewAction(evidence, result) {
       + (secondaryPlatform
         ? 'Then check whether the agency already has a Trustpilot profile before creating one, and invite confirmed international clients to leave honest reviews there.'
         : 'Keep the business name, website, address, and contact details consistent on the profile.');
+  } else if (localCustomerBusiness) {
+    platform = 'Google Reviews';
+    targetCount = 10;
+    platformUrl = '';
+    instruction = 'Confirm the correct Google Business Profile. Check the business name, website, address, phone number, and opening hours. Then ask recent customers for honest Google reviews and send them the correct profile link.';
   } else if (modelPlatform && modelPlatform.name) {
     platform    = modelPlatform.name;
     platformUrl = modelPlatform.url || '';
     instruction = (modelPlatform.reason || '') + (platformUrl ? ' Go to ' + platformUrl + ' and get started.' : '');
     targetCount = 25;
-    } else {
-    // Before defaulting to generic proof, check whether Priority Actions already
-    // identified a specific review platform. If so, align with that — two sections
-    // on the same page must not contradict each other.
-    var _actionsList = Array.isArray(result.actions) ? result.actions : [];
-    var _actionPlatform = null;
-    for (var _ai = 0; _ai < _actionsList.length; _ai++) {
-      var _aText = [
-        (_actionsList[_ai] && _actionsList[_ai].title) || '',
-        (_actionsList[_ai] && _actionsList[_ai].body)  || ''
-      ].join(' ');
-      if (/\btrustpilot\b/i.test(_aText)) {
-        _actionPlatform = { name: 'Trustpilot', url: 'https://www.trustpilot.com' };
-        break;
-      }
-      if (/\bgoogle reviews?\b/i.test(_aText)) {
-        _actionPlatform = { name: 'Google Reviews', url: '' };
-        break;
-      }
-    }
-    if (_actionPlatform) {
-      platform          = _actionPlatform.name;
-      platformUrl       = _actionPlatform.url;
-      targetCount       = 25;
-      isReviewPlatform  = true;
-      instruction       = 'Your priority actions recommend building your ' + platform + ' presence. '
-        + (_actionPlatform.url ? 'Go to ' + _actionPlatform.url + ' and check whether a profile already exists for your business before creating one. ' : '')
-        + 'Ask recent customers for honest reviews. Do not manufacture or incentivise reviews.';
-    } else {
-      platform = profile.proof.charAt(0).toUpperCase() + profile.proof.slice(1);
-      targetCount = 3;
-      platformUrl = '';
-      isReviewPlatform = false;
-      instruction = profile.type === 'product'
-        ? 'Publish three verifiable user examples or independent reviews that identify the use case, explain the result, and state where the claim can be checked. Use a review platform only when evidence confirms that users in this category rely on it.'
-        : 'Publish three customer examples that name the customer or clearly identify the buyer type, explain what was purchased, and state a result that can be checked. Use a third-party review platform only after current evidence confirms that buyers in this exact category rely on it.';
-    }
+  } else {
+    platform = profile.proof.charAt(0).toUpperCase() + profile.proof.slice(1);
+    targetCount = 3;
+    platformUrl = '';
+    isReviewPlatform = false;
+    instruction = profile.type === 'product'
+      ? 'Publish three real user examples or honest reviews. Say who the product helps, what they used it for, and what happened. Add a link so people can check each example.'
+      : 'Publish three real customer examples. Name the customer when permission is given, or clearly name the kind of buyer. Say what they bought and what happened. Add a link so people can check each example.';
   }
+
   // Counts are platform-specific. Never reuse an employee-review count from
   // Glassdoor as the customer-review count for G2, Google, or Trustpilot.
   var signals = (evidence && evidence.websiteSignals) || {};
@@ -482,8 +475,10 @@ function generateReviewAction(evidence, result) {
   } else if (/trustpilot/i.test(platform || '') && Number(signals.trustpilotReviewCount) > 0) {
     currentCount = Number(signals.trustpilotReviewCount);
   }
+
   targetCount = targetCount || 25;
   var gap = Math.max(0, targetCount - currentCount);
+
   return {
     platform:     platform,
     secondaryPlatform: secondaryPlatform || '',
@@ -497,15 +492,19 @@ function generateReviewAction(evidence, result) {
     urgency:      trustScore < 8 ? 'critical' : trustScore < 14 ? 'high' : 'medium'
   };
 }
+
+
 function generateActionPlan(evidence, result) {
   var profile  = subjectProfile(evidence);
   var name     = (evidence.name || '').trim();
   var actions  = result.actions || [];
   var pillars  = result.pillars || {};
   var delivs   = result.deliverables || {};
+
   var critical = actions.filter(function(a) { return a.priority === 'critical'; });
   var high     = actions.filter(function(a) { return a.priority === 'high'; });
   var medium   = actions.filter(function(a) { return a.priority === 'medium'; });
+
   // ── Dedupe across weeks — the same action must never appear in two weeks
   var usedTitles = {};
   function normTitle(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -522,65 +521,66 @@ function generateActionPlan(evidence, result) {
     var text = (a.title || '') + ' ' + (a.body || '');
     return /schema|llms\.txt|markup|structured data|json-ld|sitemap|robots\.txt|meta tag|canonical|redirect|H1 tag|code|deploy/i.test(text) ? 'developer' : 'you';
   }
+
   var easeScore  = (pillars.ease  && pillars.ease.score)  || 0;
   var trustScore = (pillars.trust && pillars.trust.score) || 0;
+
   var weeks = [];
+
   // Week 1 — owner can do today, no developer needed
   var week1 = { week: 1, title: 'Do today — no developer needed', tasks: [] };
   if (easeScore < 18) {
     week1.tasks.push({
-      task:   'Upload llms.txt to your website root',
-      how:    'Copy the llms.txt from the Assets tab. Save as llms.txt. Upload to your website file manager.',
-      impact: 'Completion check: the published /llms.txt URL returns a 200 response and contains the approved facts',
+      task:   'Publish your AI facts file (llms.txt)',
+      how:    'Copy the AI facts file from the Assets tab. Check every fact. Save it as llms.txt. Ask your website manager to place it at yourdomain.com/llms.txt.',
+      impact: 'Completion check: yourdomain.com/llms.txt opens normally and shows only the approved facts',
       owner:  'you'
     });
   }
   if (pillars.clarity && pillars.clarity.score < 22) {
     week1.tasks.push({
       task:   'Update your homepage headline',
-      how:    'Copy one of the H1 options from the Assets tab. Update it in your website editor.',
-      impact: 'Completion check: the published H1 names the offer and intended buyer without an unsupported claim',
+      how:    'Copy one of the main homepage headline options from the Assets tab. Update it in your website editor.',
+      impact: 'Completion check: the live headline clearly names what you offer and who it is for',
       owner:  'you'
     });
   }
   week1.tasks.push({
-    task:   'Update your meta description',
-    how:    'Copy the improved meta description from the Assets tab. Paste into your website SEO settings.',
-    impact: 'Completion check: the published page source contains the approved meta description',
+    task:   'Update your search result description',
+    how:    'Copy the improved search result description from the Assets tab. Paste it into the matching field in your website settings.',
+    impact: 'Completion check: the approved description appears in the live page code',
     owner:  'you'
   });
   weeks.push(week1);
+
   // Week 2 — trust building
   var week2 = { week: 2, title: 'Build independent proof — start this week', tasks: [] };
   if (trustScore < 12) {
     var ra = delivs.reviewAction || {};
     if (ra.isReviewPlatform === false) {
       week2.tasks.push({
-        task:   'Publish ' + String(ra.platform || profile.proof).toLowerCase(),
-        how:    ra.instruction || 'Publish three independent, verifiable proof points appropriate to this subject.',
-        impact: 'Gives the relevant audience and AI systems evidence they can verify',
-        owner:  'you'
-      });
-      week2.tasks.push({
-        task:   'Secure three verifiable proof points',
-        how:    ra.instruction || 'Collect three independently checkable examples that match this subject type and audience.',
-        impact: 'Replaces unsupported claims with evidence people can check',
+        task:   'Publish three proof points people can check',
+        how:    ra.instruction || 'Publish three real examples. For each example, name what happened and show where a buyer can check it.',
+        impact: 'Completion check: all three examples are public and each one has a source a buyer can open',
         owner:  'you'
       });
     } else {
       var reviewPlatforms = ra.secondaryPlatform
         ? (ra.platform + ' and ' + ra.secondaryPlatform)
         : (ra.platform || 'a category-relevant review platform');
+      var reviewProfileLabel = ra.secondaryPlatform
+        ? (ra.platform + ' profile and ' + ra.secondaryPlatform + ' profile')
+        : ((ra.platform || 'review') + ' profile');
       week2.tasks.push({
-        task:   'Confirm your ' + reviewPlatforms + ' profiles',
+        task:   'Confirm your ' + reviewProfileLabel,
         how:    ra.instruction || 'Create the profile and confirm that buyers in this category actively use the platform.',
-        impact: 'Every verified customer review builds independent credibility',
+        impact: 'Completion check: each profile opens, names the correct business, and links to the correct website',
         owner:  'you'
       });
       week2.tasks.push({
         task:   'Email your 10 best customers asking for a review',
         how:    'Ask for honest feedback on ' + reviewPlatforms + ' and include the correct verified profile link.',
-        impact: 'Begins building independent customer evidence',
+        impact: 'Completion check: each customer receives the correct review link',
         owner:  'you'
       });
     }
@@ -596,13 +596,14 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week2);
+
   // Week 3 — developer tasks
   var week3 = { week: 3, title: 'Forward to your developer', tasks: [] };
   if (easeScore < 14) {
     week3.tasks.push({
-      task:   'Add the correct schema markup to the main page',
-      how:    'Forward the Schema asset to your developer. Ask them to review the factual base JSON-LD, adapt it to the website, and validate the final code before publishing it.',
-      impact: 'Completion check: the published JSON-LD passes a structured-data validation test and contains only verified facts',
+      task:   'Add the website facts code to the main page',
+      how:    'Send the website facts code to your developer. Ask them to check every fact, fit the code to the website, and test it before publishing it.',
+      impact: 'Completion check: the live code passes a code test and contains only facts you approved',
       owner:  'developer'
     });
   }
@@ -624,12 +625,13 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week3);
+
   // Week 4 — measure
   var week4 = { week: 4, title: 'Measure your progress', tasks: [] };
   week4.tasks.push({
     task:   'Run a new CHOIVE diagnostic',
-    how:    'Go to choive.com and run the diagnostic again for ' + name + '. The Verified Progress block will confirm — mechanically — exactly which fixes registered and how far the score moved.',
-    impact: 'See exactly what changed and what gaps remain',
+    how:    'Go to choive.com and run the same check again for ' + name + '. CHOIVE will show which changes are live and whether the score moved.',
+    impact: 'Completion check: the old and new results can be placed side by side',
     owner:  'you'
   });
   var w4act = firstUnused(medium);
@@ -643,93 +645,10 @@ function generateActionPlan(evidence, result) {
     });
   }
   weeks.push(week4);
+
   return { name: name, weeks: weeks };
 }
-function generateGBPDescription(evidence, result) {
-  var profile = subjectProfile(evidence);
-  if (profile.type === 'creator' || profile.type === 'personal_brand') return null;
-  var name = (evidence.name || '').trim();
-  var category = cleanAssetText(result.inferredCategory || evidence.category || '', 80);
-  var cityDisplay = capitaliseCity((evidence.city || '').trim());
-  var differentiator = safeDifferentiator(evidence, result);
-  var summary = factualSummary(evidence, result, 220);
-  var reach = marketLabel(evidence);
-  var parts = [];
-  // Full lowercase for mid-sentence category use. If the category does not already
-  // end with a business noun, append "business" so constructions like
-  // "is a direct mail based in Berlin" are avoided.
-  var _catPhrase = category ? category.toLowerCase() : '';
-  var _BUSINESS_NOUN = /\b(compan(?:y|ies)|firm|agenc(?:y|ies)|services?|studio|shop|store|business|organization|platform|provider|suppliers?|consultant(?:s|cy)?|group|practice|clinic|center|centre|restaurant|cafe|hotel|farm|butcher|dealers?|bureau|office)\b/i;
-  var _catNoun = (_catPhrase && !_BUSINESS_NOUN.test(_catPhrase)) ? _catPhrase + ' business' : _catPhrase;
-  if (category && cityDisplay) {
-    parts.push(name + ' is a ' + _catNoun + ' based in ' + cityDisplay + '.');
-  } else if (category) {
-    parts.push(name + ' is a ' + _catNoun + '.');
-  }
-  var summaryClean = summary ? sentenceCase(cleanAssetText(summary, 220)) : '';
-  // Strip any "Meta description:" label that was scraped with the page content
-  summaryClean = summaryClean.replace(/^meta\s+description\s*:\s*/i, '');
-  // Skip if the summary is just the category (already used in sentence 1)
-  var _summaryNorm = summaryClean.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  var _catNorm = category.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  if (summaryClean && summaryClean.toLowerCase().indexOf(name.toLowerCase()) === -1
-      && _summaryNorm !== _catNorm && !_summaryNorm.startsWith(_catNorm + ' ')) {
-    if (!summaryClean.endsWith('.')) summaryClean += '.';
-    parts.push(summaryClean);
-  }
-  if (differentiator) {
-    var diffClean = sentenceCase(differentiator);
-    if (!diffClean.endsWith('.')) diffClean += '.';
-    parts.push(diffClean);
-  }
-  if (reach && reach !== 'Local' && reach !== capitaliseCity(evidence.city || '')) {
-    parts.push('Serving customers ' + (reach === 'Worldwide' ? 'worldwide' : reach.toLowerCase()) + '.');
-  }
-  var text = parts.filter(Boolean).join(' ');
-  text = cleanAssetText(text, 740);
-  if (!text) return null;
-  return { text: text, charCount: text.length, maxChars: 750 };
-}
-function generateReviewEmailTemplate(evidence, result, reviewAction) {
-  var ra = reviewAction || {};
-  if (!ra.isReviewPlatform) {
-    var _rProfile = subjectProfile(evidence);
-    // Creators, personal brands, organizations, and enterprise types
-    // have their own proof systems — no review email applies.
-    if (_rProfile.type !== 'product' && _rProfile.type !== 'business') return null;
-    // Product and standard businesses still need customer proof.
-    // Generate the email with a generic platform reference.
-    ra = Object.assign({}, ra, {
-      platform: 'a review platform such as Trustpilot or Google',
-      platformUrl: ''
-    });
-  }
-  var name = (evidence.name || '').trim();
-  var category = cleanAssetText(result.inferredCategory || evidence.category || '', 60);
-  var platform = ra.platform || 'Google';
-  var platformUrl = ra.platformUrl || '';
-  var subject = 'A quick favour \u2014 your honest review of ' + name;
-  var body = 'Hi [Name],\n\n'
-    + 'Thank you for choosing ' + name + '. We hope everything went well.\n\n'
-    + 'We would be grateful if you could take two minutes to leave an honest review on ' + platform + '. '
-    + 'Reviews help people making the same decision you made find the right ' + (category || 'option') + '.'
-    + (platformUrl ? '\n\nLeave your review here:\n' + platformUrl : '')
-    + '\n\nIf anything was less than expected, please reply to this email first \u2014 we would like the chance to make it right.\n\n'
-    + 'Thank you,\n[Your name]\n' + name;
-  return { subject: subject, body: body };
-}
-function inferPillarTarget(action) {
-  var text = ((action.title || '') + ' ' + (action.body || '') + ' ' + (action.explanation || '')).toLowerCase();
-  if (/llms\.txt|schema\.org|json-?ld|structured data|sitemap|robots\.txt|friction|checkout|load time|page speed|contact form|navigation|upload|deploy/i.test(text)) return 'ease';
-  if (/review|testimonial|trustpilot|google|case study|credential|proof|verify|evidence|credibility|independent|certification|accredit/i.test(text)) return 'trust';
-  if (/differ|unique|stand out|distinct|competitive advantage|competitor|specializ|niche|exclusive|proprietary/i.test(text)) return 'difference';
-  if (/headline|h1|offer|message|homepage|describe|clarity|clear|explain|communicate|promise|pitch|copy|landing/i.test(text)) return 'clarity';
-  return null;
-}
-function estimatePillarGain(priority, gap) {
-  var base = priority === 'critical' ? 9 : priority === 'high' ? 5 : 2;
-  return Math.min(base, Math.max(1, gap));
-}
+
 function generateDeliverables(evidence, result) {
   var delivs = {
     llmsTxt:      generateLlmsTxt(evidence, result),
@@ -739,23 +658,7 @@ function generateDeliverables(evidence, result) {
     reviewAction: generateReviewAction(evidence, result)
   };
   delivs.actionPlan = generateActionPlan(evidence, Object.assign({}, result, { deliverables: delivs }));
-  // Score projections — infer pillar target and estimate gain for each action
-  var pillars = result.pillars || {};
-  if (Array.isArray(result.actions)) {
-    result.actions.forEach(function(action) {
-      if (!action || typeof action !== 'object') return;
-      var target = inferPillarTarget(action);
-      if (!target) return;
-      var current = Number((pillars[target] && pillars[target].score) || 0);
-      var gap = Math.max(0, 25 - current);
-      action.pillarTarget = target;
-      action.estimatedGain = estimatePillarGain(action.priority, gap);
-    });
-  }
-  delivs.gbpDesc = generateGBPDescription(evidence, result);
-  delivs.reviewEmailTemplate = generateReviewEmailTemplate(evidence, result, delivs.reviewAction);
-  // llms.txt verification flag — true when at least one confirmed independent source is available
-  delivs.llmsSourcesVerified = sourceLinks(evidence, result).length > 0;
   return delivs;
 }
+
 module.exports = { generateDeliverables: generateDeliverables };
