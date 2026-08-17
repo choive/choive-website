@@ -6,7 +6,8 @@
 const { updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl, verifyRecommendationEntity } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
-const { scoreWithClaude, inferCategory, selectChannelCompetitor, scoreArena, selectBestFitCompetitors } = require('./lib/claude');
+const { scoreWithClaude, inferCategory, selectChannelCompetitor, selectBestFitCompetitors } = require('./lib/claude');
+const { scoreCompetitor } = require('./lib/score-competitor');
 const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { runGeminiSimulation, runPerplexitySimulation } = require('./lib/additional-platform-simulations');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
@@ -32,6 +33,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 function safeStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+
 function serviceableMarketLabel(reach, city) {
   var parts = String(city || '').split(',').map(function(part) { return part.trim(); }).filter(Boolean);
   var country = parts.length ? parts[parts.length - 1] : String(city || '').trim();
@@ -398,7 +400,8 @@ exports.handler = async function (event) {
     if (!evidence) {
       await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
       // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
-      let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '' };
+      let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '',
+        measurement: { status: 'unavailable', totalQueries: 0, completedQueries: 0, failedQueries: 0 } };
       let websiteText    = '';
       let websiteSignals = {};   // ← structured ground truth from fetchWebsite
       let inferredSite   = '';
@@ -436,10 +439,18 @@ exports.handler = async function (event) {
       // If the primary website fetch failed, try the inferred site
       if (!websiteText && inferredSite && inferredSite !== website) {
         var fallbackResult = await fetchWebsiteText(inferredSite).catch(function() {
-          return { text: '', signals: {} };
+          return { text: '', signals: { fetchSucceeded: false, fetchFailed: true } };
         });
         websiteText    = fallbackResult.text    || '';
-        websiteSignals = fallbackResult.signals || {};
+        websiteSignals = fallbackResult.signals || { fetchSucceeded: false, fetchFailed: true };
+      }
+      // If neither the submitted nor the inferred site could be retrieved, mark
+      // the signal set as unmeasured. Every mechanical clarity and ease check
+      // reads from websiteSignals; without this marker an unreachable site is
+      // scored identically to a site with no title, no schema and no sitemap.
+      if (!websiteText) {
+        websiteSignals = Object.assign({}, websiteSignals, { fetchSucceeded: false, fetchFailed: true });
+        console.warn('[' + jobId + '] Website could not be retrieved — clarity and ease checks will be recorded as unmeasured');
       }
       // ── WEBSITE IDENTITY CHECK ────────────────────────────────────────────────
       // If the user submitted a website that fetched successfully but belongs to
@@ -481,6 +492,10 @@ exports.handler = async function (event) {
         websiteSignals:       websiteSignals,   // ← structured signals attached here
         searchText:           serperPayload.searchText   || 'No search results returned.',
         searchResults:        serperPayload.results      || [],
+        // Retrieval outcome for the independent-search leg. The scoring engine
+        // reads this to decide whether an empty result set is a finding or an
+        // absence of measurement.
+        searchMeasurement:    serperPayload.measurement  || { status: 'unavailable', totalQueries: 0, completedQueries: 0, failedQueries: 0 },
         knowledgeGraph:       serperPayload.knowledgeGraph || null,
         kgText:               serperPayload.kgText       || 'None',
         visibilityPosition:   visibilityPos,
@@ -580,9 +595,15 @@ exports.handler = async function (event) {
           }
         } catch (err) {
           console.warn('[' + jobId + '] Apify processing failed:', err.message);
+          evidence.reviewMeasurement = { trustpilot: 'unavailable', googleReviews: 'unavailable' };
         }
       } else {
         console.warn('[' + jobId + '] Apify failed:', (parallelResults[2].reason || {}).message || parallelResults[2].reason);
+        // A rejected review leg must be recorded as unavailable. Leaving
+        // reviewMeasurement unset made the scoring engine treat the hardest
+        // failure as a confirmed "this business has no reviews" — the softer
+        // 'unavailable' path was excused while the rejection was punished.
+        evidence.reviewMeasurement = { trustpilot: 'unavailable', googleReviews: 'unavailable' };
       }
       // ── [3] Competitor homepage fetch ─────────────────────────────────────────
       var competitorPageText = '';
@@ -1852,11 +1873,11 @@ exports.handler = async function (event) {
       // Only fully completed provider runs can support a present/absent headline.
       // A partial run remains visible as partial coverage, but missing answers
       // must never be interpreted as evidence that the subject was absent.
-      var completedPlatformRuns = platformLanes.filter(function(lane) {
-        return lane.status === 'recommended' || lane.status === 'no_recommendation';
-      });
-      var platformsWithVisibility = platformLanes.filter(function(lane) {
-        return lane.subjectAppeared === true;
+      var completedPlatformRuns = completedProviderRuns([
+        measuredClaude, measuredOpenAI, measuredPerplexity, measuredGemini
+      ]);
+      var platformsWithVisibility = completedPlatformRuns.filter(function(run) {
+        return Number(run.appearedCount || 0) > 0;
       });
       if (completedPlatformRuns.length > 0) {
         finalResult['verdictHeadline'] = platformsWithVisibility.length === 0
@@ -1865,39 +1886,33 @@ exports.handler = async function (event) {
             ? 'Found in unbranded buyer answers from all ' + completedPlatformRuns.length + ' measured AI platforms'
             : 'Found in unbranded buyer answers from ' + platformsWithVisibility.length + ' of ' + completedPlatformRuns.length + ' measured AI platforms';
       }
-      // Overwrite the first paragraph of businessUnderstanding with accurate
-      // per-platform data from the stored provider measurements.
+
+      // The current-understanding paragraph must be a receipt of the stored
+      // provider measurements, not fresh model prose. This prevents it from
+      // contradicting subjectAppeared or introducing an unrecorded company.
       var completedProviderLanes = platformLanes.filter(function(lane) {
         return lane && (lane.status === 'recommended' || lane.status === 'no_recommendation');
       });
       var providerLanesNamingSubject = completedProviderLanes.filter(function(lane) {
         return lane.subjectAppeared === true;
       });
-      var recordedRecommendations = completedProviderLanes
-        .filter(function(lane) { return lane.recommendation; })
-        .map(function(lane) { return lane.platform + ' recommended ' + lane.recommendation; });
+      var recordedRecommendations = completedProviderLanes.filter(function(lane) {
+        return lane.recommendation;
+      }).map(function(lane) {
+        return lane.platform + ' recommended ' + lane.recommendation;
+      });
       var currentUnderstanding = completedProviderLanes.length
-        ? completedProviderLanes.length +
-          ' of 4 AI providers completed the recorded tests. ' +
-          (name.charAt(0).toUpperCase() + name.slice(1)) +
-          ' appeared in unbranded buyer answers from ' +
-          providerLanesNamingSubject.length +
-          ' of those ' +
-          completedProviderLanes.length +
-          ' providers.' +
-          (recordedRecommendations.length
+        ? completedProviderLanes.length + ' of 4 AI providers completed the recorded tests. '
+          + name + ' appeared in unbranded buyer answers from '
+          + providerLanesNamingSubject.length + ' of those ' + completedProviderLanes.length + ' providers.'
+          + (recordedRecommendations.length
             ? ' In the separate replacement question, ' + recordedRecommendations.join('; ') + '.'
             : ' No completed provider established a named replacement recommendation.')
         : 'No AI provider completed enough recorded tests to support a current AI-discovery conclusion.';
       var previousUnderstandingParts = String(finalResult['businessUnderstanding'] || '')
-        .split(/\n\s*\n/)
-        .map(function(part) { return part.trim(); })
-        .filter(Boolean);
-      finalResult['businessUnderstanding'] =
-        currentUnderstanding +
-        (previousUnderstandingParts.length > 1
-          ? '\n\n' + previousUnderstandingParts.slice(1).join('\n\n')
-          : '');
+        .split(/\n\s*\n/).map(function(part) { return part.trim(); }).filter(Boolean);
+      finalResult['businessUnderstanding'] = currentUnderstanding
+        + (previousUnderstandingParts.length > 1 ? '\n\n' + previousUnderstandingParts.slice(1).join('\n\n') : '');
     }
     // The dedicated category pass is authoritative for business-model fidelity.
     // Later prose generation must not downgrade a producer into a retailer or
@@ -1973,13 +1988,24 @@ exports.handler = async function (event) {
       // The competitive chart compares only verified competitor roles. Names
       // returned by individual provider APIs remain in their attributed probe
       // lanes and never become chart competitors by themselves.
-     var roleCandidates = [];
+      var roleCandidates = [];
+      var roleCandidateKeys = {};
+      function addRoleCandidate(candidate) {
+        var key = normalizeRecommendationName(candidate && candidate.name);
+        if (!key || key === subjectComparisonKey || roleCandidateKeys[key]
+          || isSubjectRecommendation(candidate.name) || isPlatformName(candidate.name)) return;
+        roleCandidateKeys[key] = true;
+        roleCandidates.push(candidate);
+      }
       var directName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].realCompetitor || '').trim();
-      if (directName && !isSubjectRecommendation(directName) && !isPlatformName(directName)) {
-        roleCandidates.push({
+      if (directName
+          && finalResult['competitorDecision'].selectionVersion === 5
+          && !isSubjectRecommendation(directName) && !isPlatformName(directName)) {
+        addRoleCandidate({
           role: 'head_to_head',
           roleLabel: 'Head-to-head competitor',
           name: directName,
+          verified: finalResult['competitorDecision'].selectionVersion === 5,
           reason: String(finalResult['competitorDecision'].reason || '').trim()
         });
       }
@@ -1988,75 +2014,78 @@ exports.handler = async function (event) {
       if (widerName
           && normalizeRecommendationName(widerName) !== normalizeRecommendationName(directName)
           && !isSubjectRecommendation(widerName) && !isPlatformName(widerName)) {
-        roleCandidates.push({
+        addRoleCandidate({
           role: 'market',
           roleLabel: 'Market competitor',
           name: widerName,
+          verified: true,
           reason: String(widerDecision.reason || '').trim()
         });
       }
-      var secondAiName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].secondAiCompetitor || '').trim();
-      if (secondAiName
-          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(directName)
-          && normalizeRecommendationName(secondAiName) !== normalizeRecommendationName(widerName)
-          && !isSubjectRecommendation(secondAiName) && !isPlatformName(secondAiName)) {
-        roleCandidates.push({
-          role: 'competitor',
-          roleLabel: 'AI-named competitor',
-          name: secondAiName,
-          reason: ''
+      var onlineDecision = evidence['onlineCompetitor'] || {};
+      if (onlineDecision.name && (onlineDecision.verified === true || onlineDecision.sameBuyerAndNeed === true)) {
+        addRoleCandidate({
+          role: 'online_arena',
+          roleLabel: 'Online arena competitor',
+          name: onlineDecision.name,
+          domain: onlineDecision.domain || '',
+          verified: true,
+          reason: String(onlineDecision.reason || '').trim()
         });
       }
-     // Fetch each competitor's own page text so scoring is based on their actual evidence
-      var _rolePageTexts = await Promise.allSettled(roleCandidates.map(async function(candidate) {
-        // Head-to-head: page text may already be in evidence from the initial fetch
-        if (candidate.role === 'head_to_head' && evidence['competitorPageText']) {
-          return evidence['competitorPageText'];
-        }
-        // Try to resolve the competitor's domain from gathered competitor objects
-        var _existingComp = (evidence['competitors'] || []).find(function(c) {
-          return c && c.domain && normalizeRecommendationName(String(c.name || c.domain || '')) === normalizeRecommendationName(candidate.name);
+      var aiAlternativeAdded = false;
+      (finalResult['platformRecommendationLanes'] || []).forEach(function(lane) {
+        if (aiAlternativeAdded) return;
+        if (!lane || !lane.recommendation || !lane.verification || lane.verification.status !== 'verified') return;
+        var beforeCount = roleCandidates.length;
+        addRoleCandidate({
+          role: 'ai_recommended',
+          roleLabel: 'AI-recommended alternative',
+          name: lane.recommendation,
+          domain: lane.verification.domain || '',
+          verified: true,
+          reason: lane.platform + ' recommendation independently verified for category relevance.'
         });
-        var _compDomain = _existingComp && _existingComp.domain ? _existingComp.domain : '';
-        if (!_compDomain) return '';
-        try { return await fetchCompetitorText(_compDomain); } catch (_) { return ''; }
-      }));
-      var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate, _ri) {
-        var _pageTextResult = _rolePageTexts[_ri];
-        var _compPageText = (_pageTextResult && _pageTextResult.status === 'fulfilled') ? (_pageTextResult.value || '') : '';
-        return scoreArena(evidence, finalResult, candidate.name, candidate.role, _compPageText);
+        if (roleCandidates.length > beforeCount) aiAlternativeAdded = true;
+      });
+      var benchmarkName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].globalBenchmark || '').trim();
+      if (benchmarkName) {
+        addRoleCandidate({
+          role: 'global_benchmark',
+          roleLabel: 'Global benchmark',
+          name: benchmarkName,
+          verified: finalResult['competitorDecision'].selectionVersion === 5,
+          reason: 'Global benchmark identified by the verified competitor research stage.'
+        });
+      }
+      var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
+        return scoreCompetitor(candidate, {
+          category: evidence['inferredCategory'] || category,
+          city: city,
+          subjectType: subjectType,
+          marketReach: marketReach
+        }, finalResult);
       }));
       finalResult['competitorComparison'] = {
         entries: roleCandidates.map(function(candidate, index) {
-  var scoreResult = roleScores[index];
-  var scoreValue = scoreResult && scoreResult.status === 'fulfilled'
-    ? scoreResult.value
-    : null;
-
-  var competitorValues = scoreValue && scoreValue.pillars
-    ? ['clarity', 'trust', 'difference', 'ease'].map(function(key) {
-        return Number(scoreValue.pillars[key] && scoreValue.pillars[key].competitor);
-      })
-    : [];
-
-  var scoreIsUsable = competitorValues.length === 4
-    && competitorValues.every(function(value) {
-      return Number.isFinite(value);
-    })
-    && competitorValues.some(function(value) {
-      return value > 0;
-    });
-
-  return {
-    role: candidate.role,
-    roleLabel: candidate.roleLabel,
-    name: candidate.name,
-    reason: candidate.reason,
-    status: scoreIsUsable ? 'complete' : 'score_unavailable',
-    score: scoreIsUsable ? scoreValue : null
-  };
-}),
-        selectionRule: 'Up to three verified competitor roles are charted: head-to-head, market, and the second AI-named competitor where confirmed. API-named alternatives without a verified role remain in the technical probe appendix.'
+          var scoreResult = roleScores[index];
+          var measured = scoreResult && scoreResult.status === 'fulfilled' && scoreResult.value
+            ? scoreResult.value
+            : null;
+          return {
+            role: candidate.role,
+            roleLabel: candidate.roleLabel,
+            name: candidate.name,
+            reason: candidate.reason,
+            status: measured ? measured.status : 'score_unavailable',
+            message: measured
+              ? measured.reason
+              : 'No score calculated. CHOIVE could not collect enough public information for this competitor.',
+            website: measured ? measured.website : null,
+            score: measured
+          };
+        }),
+        selectionRule: 'Every verified, deduplicated competitor role is independently collected and scored with the same CHOIVE evidence rubric used for the diagnosed business.'
       };
     } catch (comparisonErr) {
       console.warn('[' + jobId + '] Universal competitor comparison failed (non-critical):', comparisonErr.message);
@@ -2089,13 +2118,19 @@ exports.handler = async function (event) {
         onlineComp = null;
       }
       if (da && da.dualArena && onlineComp && onlineComp.name && brandCompName) {
-        console.log('[' + jobId + '] Dual-arena scoring: brand=' + brandCompName + ' / online=' + onlineComp.name + ' (source:' + (onlineComp.source || 'channel-search') + ')');
-        var arenaResults = await Promise.allSettled([
-          scoreArena(evidence, finalResult, brandCompName, 'brand'),
-          scoreArena(evidence, finalResult, onlineComp.name, 'online')
-        ]);
-        var brandArena  = (arenaResults[0].status === 'fulfilled') ? arenaResults[0].value : null;
-        var onlineArena = (arenaResults[1].status === 'fulfilled') ? arenaResults[1].value : null;
+        console.log('[' + jobId + '] Dual-arena comparison: brand=' + brandCompName + ' / online=' + onlineComp.name + ' (source:' + (onlineComp.source || 'channel-search') + ')');
+        var comparisonEntries = finalResult['competitorComparison'] && Array.isArray(finalResult['competitorComparison'].entries)
+          ? finalResult['competitorComparison'].entries
+          : [];
+        function measuredArenaScore(competitorName) {
+          var wanted = normalizeRecommendationName(competitorName);
+          var entry = comparisonEntries.find(function(item) {
+            return normalizeRecommendationName(item && item.name) === wanted;
+          });
+          return entry && entry.score && entry.score.pillars ? entry.score : null;
+        }
+        var brandArena = measuredArenaScore(brandCompName);
+        var onlineArena = measuredArenaScore(onlineComp.name);
         if (brandArena || onlineArena) {
           finalResult['arenaScores'] = {
             brand:  brandArena  || null,
