@@ -77,10 +77,12 @@ exports.handler = async function(event) {
 
   var input = {
     name:        'CHOIVE',
-    category:    'AI selection diagnostic',
+    category:    'Business selection diagnostic engine',
     city:        'Global',
     website:     'https://choive.com',
-    description: 'A diagnostic that identifies why AI is not recommending your business and delivers an instant verdict on exactly what to fix'
+    description: 'CHOIVE shows why buyers may choose another business. It scores clarity, trust, difference, and ease. It then shows what the business needs to fix.',
+    marketReach: 'global',
+    subjectType: 'business'
   };
 
   try {
