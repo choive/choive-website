@@ -1508,6 +1508,14 @@ async function scoreArena(evidence, mainResult, competitorName, arenaType, compe
     + '\n' + _compText.slice(0, 1800)
   );
 
+  // LEDGER GATE — competitor-specific evidence is required. Without it the model
+  // scores conservatively (i.e. 0), which is indistinguishable from a real zero.
+  var _compEvidenceChars = String(_compText || '').trim().length;
+  if (_compEvidenceChars < 200) {
+    console.warn('[scoreArena] No competitor evidence for ' + competitorName + ' (' + _compEvidenceChars + ' chars) — not scored.');
+    return { arenaType: arenaType, competitorName: competitorName, ledger: 'unavailable', pillars: null };
+  }
+
   var arenaLabel = arenaType === 'online'
     ? 'online/DTC channel (ordering experience, delivery, online UX)'
     : arenaType === 'competitor'
