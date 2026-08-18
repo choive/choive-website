@@ -929,10 +929,24 @@ function normalizeSimInput(input) {
   var descLower = description.toLowerCase();
   var webLower  = websiteContext.toLowerCase();
   var combined = catLower + ' ' + descLower + ' ' + webLower;
-  var hasB2BSignal = /\b(b2b|wholesale|wholesaler|trade customers?|business customers?|business clients?|corporate clients?|enterprise customers?|distributor|supplier.*business|business.*supplier|for businesses|for operators?|for enterprises?|for broadcasters?|for carriers?|for telecoms?|for oems?|for manufacturers?|middleware|white.label|api platform|sdk|enterprise software)\b/i.test(combined);
+  var hasB2BSignal = /\b(b2b|wholesale|wholesaler|trade customers?|business customers?|business clients?|corporate clients?|enterprise customers?|distributor|supplier.*business|business.*supplier|for businesses|for operators?|for enterprises?|for broadcasters?|for carriers?|for telecoms?|for oems?|for manufacturers?|middleware|white.label|api platform|sdk|enterprise software|logistics|freight|shipping company|courier|supply chain|fulfillment|third.party logistics|3pl)\b/i.test(combined);
   var hasB2CSignal = /\b(b2c|direct.to.consumer|direct to consumer|dtc|individual customers?|individual buyers?|individual clients?|private clients?|for individuals|consumers?|retail customers?|consumer brand)\b/i.test(combined);
   var isLocalConsumerService = /restaurant|cafe|clinic|dental|salon|barber|gym|studio|hotel|bar|pub|bakery/i.test(catClean);
-  var isProfessionalService = /law firm|legal service|lawyer|attorney|solicitor|accountant|accounting|architect|consulting|consultancy|financial adviser|financial advisor|therapist|psychologist|medical practice|doctor|dentist/i.test(catClean);
+  // Professional/firm-based services — considered-choice offerings where a
+  // buyer evaluates expertise and track record before hiring. Covers classic
+  // professions (law, accounting, architecture, consulting, healthcare) plus
+  // financial services, creative agencies, construction/contractors, and
+  // education providers — all of which read naturally under the
+  // "which firms lead the market / would you recommend" query template.
+  var isProfessionalService = /law firm|legal service|lawyer|attorney|solicitor|accountant|accounting|architect|consulting|consultancy|therapist|psychologist|medical practice|doctor|dentist/i.test(catClean)
+    // Financial services: advisors, banks, fintech, wealth/investment, insurance
+    || /financial (adviser|advisor|service|planning|firm)|wealth management|investment (firm|advisor|management)|fintech|\bbank\b|insurance (broker|agency|firm)|tax (advisor|preparer|service)|accounting firm/i.test(catClean)
+    // Creative agencies: design, branding, marketing, advertising, web/digital
+    || /creative agency|design (studio|agency|firm)|branding (agency|studio)|marketing (agency|firm)|advertising (agency|firm)|digital agency|web design|graphic design|media production/i.test(catClean)
+    // Construction / contractors / builders (project-based hired firms)
+    || /construction (company|firm)?|general contractor|building contractor|contractor|home builder|renovation|remodel|architecture firm|civil engineer/i.test(catClean)
+    // Education / training providers (considered enrolment decision)
+    || /\bschool\b|\buniversity\b|\bcollege\b|\bacademy\b|bootcamp|online course|training (provider|company|program)|e-learning|coding school|language school|tutoring/i.test(catClean);
   var isFarmDirect = /vertically.integrat|owns.its.own|direct.from.farm|farm.to.consumer|farm.brand|farm.owned|own.herd|own.farm|own.production|own.ranch|eigene.farm|eigene.herde|direkt.vom.erzeuger|direkt.von.der.farm/i.test(combined)
     || (/farm|ranch|herd|pasture|weide|herde/i.test(combined) && /direct|brand|d2c|dtc|online|delivery|versand/i.test(combined));
   if (hasB2BSignal && hasB2CSignal) {
