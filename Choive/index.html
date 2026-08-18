@@ -4211,6 +4211,32 @@ function showResults(r, jobId) {
       + '</div>';
   }
 
+  // ── VISUAL SCORE METER ────────────────────────────────────────────────────
+  // A single, at-a-glance band showing where the business sits from Low to
+  // Strong, with a "You" marker over the exact score. Plain words, CHOIVE
+  // palette. Segments map to the four score bands used across the result.
+  var _mkPos = Math.min(97, Math.max(3, Math.round(Number(r.overallScore) || 0)));
+  var scoreMeter = '<div style="max-width:560px;margin:6px 0 18px;">'
+    + '<div style="position:relative;height:22px;">'
+      + '<div style="position:absolute;left:' + _mkPos + '%;transform:translateX(-50%);text-align:center;">'
+        + '<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--paper);background:var(--ink);padding:2px 8px;border-radius:3px;white-space:nowrap;">You \u00b7 ' + score + '</span>'
+        + '<span style="display:block;width:0;height:0;margin:1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink);"></span>'
+      + '</div>'
+    + '</div>'
+    + '<div style="display:flex;height:10px;border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.10);">'
+      + '<div style="width:30%;background:var(--red);"></div>'
+      + '<div style="width:25%;background:var(--amber);"></div>'
+      + '<div style="width:20%;background:var(--ac);"></div>'
+      + '<div style="width:25%;background:var(--green);"></div>'
+    + '</div>'
+    + '<div style="display:flex;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--tm);margin-top:7px;">'
+      + '<span style="width:30%;">Low</span>'
+      + '<span style="width:25%;">Fair</span>'
+      + '<span style="width:20%;">Good</span>'
+      + '<span style="width:25%;text-align:right;">Strong</span>'
+    + '</div>'
+  + '</div>';
+
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
     + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
     + (name ? '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--tp);margin:2px 0 8px;">' + esc(name) + '</div>' : '')
@@ -4221,6 +4247,7 @@ function showResults(r, jobId) {
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Your CHOIVE score</div>'
     + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
+    + scoreMeter
     + '<div id="categoryBenchmark" style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;"></div>'
     + (r.overallProvisional === true && r.overallNote
         ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
@@ -4704,11 +4731,32 @@ function showResults(r, jobId) {
             return buildGapBlock(r) + buildWhnBlock(r, _g);
           })())
   
-  + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
-        + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-body">Your free result shows the score and the size of the problem. The full analysis shows the competitor names, the exact point gaps, and the first jobs to do.</div>'
-        + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
-        + '</div>');
+  + (isPaid ? '' : (function() {
+        // Clear "what you unlock" preview so the free→paid line is obvious.
+        // Plain words, one line each, with a lock so it reads as still-hidden.
+        var _locked = [
+          { t: 'Who AI picks instead of you', d: 'The real names of the businesses AI recommends over you.' },
+          { t: 'Exactly how far behind you are', d: 'Your point gap in each area, side by side with theirs.' },
+          { t: 'Your first job', d: 'The one fix that lifts your score the most, first.' },
+          { t: 'Words to copy onto your site', d: 'Ready-to-paste text that helps AI understand you.' },
+          { t: 'A 90-day plan', d: 'Simple steps, in order, to keep climbing.' }
+        ];
+        var _rows = _locked.map(function(it) {
+          return '<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid rgba(245,242,238,0.08);">'
+            + '<span style="flex:none;color:var(--ac);font-size:14px;line-height:1.5;">\uD83D\uDD12</span>'
+            + '<div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">' + esc(it.t) + '</div>'
+            + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">' + esc(it.d) + '</div></div>'
+            + '</div>';
+        }).join('');
+        return '<div class="paywall-block" id="paywallBlock">'
+          + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
+          + '<div class="paywall-headline">You\u2019ve seen the score. Now see how to win.</div>'
+          + '<div class="paywall-body">Your free result shows the score and the size of the problem. Unlock the full analysis to get everything below.</div>'
+          + '<div style="margin:8px 0 24px;">' + _rows + '</div>'
+          + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
+          + '<div style="font-size:11px;color:var(--ghost-3);text-align:center;margin-top:12px;letter-spacing:0.03em;">One payment · Instant access · No account needed</div>'
+          + '</div>';
+      })());
 
 // Reveal pillar bars after rendering. The verified score is shown
   // immediately so a temporary animation value is never mistaken for it.
@@ -5231,12 +5279,17 @@ function showResults(r, jobId) {
       return (Number((_pillars[key] || {}).score) || 0) < (Number((_pillars[min] || {}).score) || 0) ? key : min;
     }, 'clarity');
     var _lowestScore = Math.round(Number((_pillars[_lowestKey] || {}).score) || 0);
-    return '<section style="padding:18px 22px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Start here</div>'
+    return '<section style="padding:22px 24px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
+      + '<div style="display:flex;gap:16px;align-items:flex-start;">'
+      + '<div style="flex:none;width:44px;height:44px;border-radius:50%;background:var(--ac);color:var(--void);font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Do this first</div>'
       + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest score: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:12px;">' + esc(actionTitle) + '</div>'
       + (_startIfNothing ? '<div style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.55);border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-bottom:12px;"><span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;display:block;margin-bottom:4px;">If nothing changes</span>' + esc(_startIfNothing) + '</div>' : '')
       + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first job ↓</a>'
+      + '</div>'
+      + '</div>'
       + '</section>';
   }
 
