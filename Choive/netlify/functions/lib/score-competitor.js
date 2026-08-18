@@ -99,6 +99,7 @@ function buildPillarComparison(scored, subjectResult) {
     var subjectScore = numberOrNull(subjectPillar.score);
 
     comparison[key] = {
+      you: subjectScore,
       business: subjectScore,
       competitor: competitorScore,
       gap: subjectScore !== null && competitorScore !== null
@@ -241,17 +242,30 @@ async function scoreCompetitor(candidate, context, subjectResult) {
   var measuredScores = PILLARS.map(function(key) { return pillars[key].competitor; })
     .filter(function(value) { return value !== null; });
   var completeScore = measuredScores.length === PILLARS.length;
+  var keyGap = '';
+  var largestDeficit = 0;
+  PILLARS.forEach(function(key) {
+    var gap = pillars[key].gap;
+    if (gap !== null && gap < largestDeficit) {
+      largestDeficit = gap;
+      keyGap = key;
+    }
+  });
 
   return {
     name: name,
     role: role,
     roleLabel: text(candidate.roleLabel) || role,
     website: officialWebsite,
-    status: completeScore ? 'measured' : 'partially_measured',
+    status: completeScore ? 'complete' : 'partially_measured',
     reason: completeScore
       ? 'Scored from the competitor’s own recorded evidence.'
       : 'Some pillars are not measured because CHOIVE did not collect enough evidence.',
     score: completeScore ? round(measuredScores.reduce(function(total, value) { return total + value; }, 0)) : null,
+    competitorOverallScore: completeScore
+      ? round(measuredScores.reduce(function(total, value) { return total + value; }, 0))
+      : null,
+    keyGap: keyGap,
     pillars: pillars,
     scoreMethod: scored.scoreMethod || null,
     priorityAction: scored.actions && scored.actions[0]
