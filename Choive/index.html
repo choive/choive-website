@@ -3253,6 +3253,17 @@ function buildGapBlock(r) {
   var gapClass  = forceExposure ? (pts >= 30 ? 'critical' : pts >= 15 ? 'meaningful' : 'minor')
     : pts >= 30 ? (gap > 0 ? 'critical' : 'advantage') : pts >= 15 ? (gap > 0 ? 'meaningful' : 'advantage') : pts >= 1 ? 'minor' : 'aligned';
 
+  // Plain-word versions for the parts a business owner reads. The UPPERCASE
+  // labels above still drive the colour classes; these are what we show.
+  var behind = forceExposure || gap > 0;
+  var gapPlain = pts >= 30 ? (behind ? 'Big gap' : 'Big lead')
+    : pts >= 15 ? (behind ? 'Real gap' : 'Clear lead')
+    : pts >= 1 ? (behind ? 'Small gap' : 'Small lead')
+    : 'About even';
+  var deltaHeadline = (gap === 0 && !forceExposure)
+    ? 'About even with the comparison line'
+    : pts + (behind ? ' points behind' : ' points ahead');
+
   var mainCopy = forceExposure
     ? 'Another business was named in the recorded AI answers. Unlock the full analysis to see its name and why it matters.'
     : gap > 0
@@ -3274,11 +3285,11 @@ function buildGapBlock(r) {
     '    </div>',
     '    <div class="gap-row">',
     '      <div class="gap-row-label">Score difference</div>',
-    '      <div class="gap-row-value ' + gapClass + '">' + gapLabel + '</div>',
+    '      <div class="gap-row-value ' + gapClass + '">' + gapPlain + '</div>',
     '    </div>',
     '  </div>',
     '  <div class="gap-delta">',
-    '    <div class="gap-delta-pts">' + pts + '-POINT ' + ptLabel + '</div>',
+    '    <div class="gap-delta-pts">' + deltaHeadline + '</div>',
     '    <div class="gap-copy">' + mainCopy + '</div>',
     '    <div class="gap-copy-sub">' + (String(ptLabel).toUpperCase().indexOf('ADVANTAGE') !== -1 ? 'This lead is yours to protect — and to extend.' : 'This gap determines whether you are selected — or replaced.') + '</div>',
     '  </div>',
@@ -3461,6 +3472,24 @@ function buildPillarCards(r, isPaid) {
   };
   var keys = ['clarity','trust','difference','ease'];
   var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
+
+  // Find the weakest score area so we can spotlight it as the thing to fix
+  // first. The lowest score is the wound the whole page should point to.
+  var lowestKey = keys.reduce(function(min, key) {
+    var s = Number((pillars[key] || {}).score) || 0;
+    var m = Number((pillars[min] || {}).score) || 0;
+    return s < m ? key : min;
+  }, 'clarity');
+
+  // Colour by how the score area is doing (0-25). The colour tells the story
+  // before anyone reads a word: red = hurting, amber = weak, green = strong.
+  function sev(score) {
+    if (score < 8)  return { color:'var(--red)',   word:'Needs help now' };
+    if (score < 15) return { color:'var(--amber)', word:'Weak spot' };
+    if (score < 20) return { color:'var(--ink)',   word:'Almost there' };
+    return { color:'var(--green)', word:'Strong' };
+  }
+
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
@@ -3474,15 +3503,23 @@ function buildPillarCards(r, isPaid) {
           ? 'CHOIVE found only a small amount of proof'
           : '';
     var pct = score / 25 * 100;
-    var findingHtml = isPaid
-      ? '<div class="pillar-finding">' + esc(finding) + '</div>'
-      : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock to see why</div>';
-    return '<div class="pillar-card">'
+    var s = sev(score);
+    var isLowest = key === lowestKey;
+
+    // FREE now shows ONE real finding per score area (proves the check is
+    // real and earns the paid unlock) and locks only the deeper fix. PAID
+    // shows the full finding with no lock. This keeps the paid path intact.
+    var findingHtml = '<div class="pillar-finding" style="margin-bottom:' + (isPaid ? '0' : '10px') + ';">' + esc(finding) + '</div>'
+      + (isPaid ? '' : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock the fix</div>');
+
+    return '<div class="pillar-card"' + (isLowest ? ' style="box-shadow:inset 4px 0 0 ' + s.color + ';"' : '') + '>'
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
-      + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + (isLowest ? '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:' + s.color + ';border:1px solid ' + s.color + ';padding:3px 7px;border-radius:2px;margin-bottom:14px;">Fix this first</div>' : '')
+      + '<div class="pillar-score-row"><div class="pillar-score-n" style="color:' + s.color + ';">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:' + s.color + ';margin-bottom:12px;">' + s.word + '</div>'
       + (isPaid && confidenceCopy ? '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">' + esc(confidenceCopy) + '</div>' : '')
-      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
+      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '" style="background:' + s.color + ';"></div></div>'
       + findingHtml
       + '</div>';
   }).join('');
@@ -3619,6 +3656,55 @@ function showResults(r, jobId) {
     return parts.join(' ');
   }
   var apiMeasurementSummary = buildApiMeasurementSummary();
+
+  // ── P1a: 4-AI VISUAL SCORECARD (free path) ──────────────────────────────
+  // Replaces the gray recorded-answers paragraph with a clear 4-logo status
+  // row so the gut-punch lands at a glance: did each AI point buyers to you,
+  // to someone else, or give no clear pick? Plain words only.
+  function buildAiScorecard() {
+    var meta = {
+      claude:     { name:'Claude' },
+      openai:     { name:'ChatGPT' },
+      gemini:     { name:'Gemini' },
+      perplexity: { name:'Perplexity' }
+    };
+    var order = ['claude','openai','gemini','perplexity'];
+    var lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+    if (!lanes.length) return '';
+    var byKey = {};
+    lanes.forEach(function(l) { if (l && l.key) byKey[l.key] = l; });
+
+    var cells = order.map(function(key) {
+      var lane = byKey[key] || {};
+      var icon, color, line;
+      if (lane.recommendation) {
+        icon = '\u2717'; color = 'var(--red)';   line = 'Named a different business';
+      } else if (lane.status === 'no_recommendation') {
+        icon = '\u26a0'; color = 'var(--amber)'; line = 'Gave no clear pick';
+      } else if (lane.status === 'failed') {
+        icon = '\u2013'; color = 'var(--muted)'; line = 'Test could not finish';
+      } else {
+        icon = '\u2013'; color = 'var(--muted)'; line = 'Not tested this time';
+      }
+      return '<div style="background:var(--paper);padding:20px 16px;text-align:center;">'
+        + '<div style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">' + esc(meta[key].name) + '</div>'
+        + '<div style="font-size:28px;font-weight:800;color:' + color + ';line-height:1;margin-bottom:10px;">' + icon + '</div>'
+        + '<div style="font-size:12px;color:var(--body);line-height:1.5;">' + esc(line) + '</div>'
+        + '</div>';
+    }).join('');
+
+    var namedOther = order.filter(function(k){ return (byKey[k] || {}).recommendation; }).length;
+    var head = namedOther > 0
+      ? 'When people asked AI what to buy, ' + namedOther + ' of 4 AI tools named a different business — not yours.'
+      : 'Here is what each AI tool did when people asked it what to buy.';
+
+    return '<div class="mono-section" style="padding:28px 0 8px;">'
+      + '<div class="mono-eyebrow">What the AI tools said</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--tp);line-height:1.45;margin:6px 0 16px;max-width:640px;">' + esc(head) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);">' + cells + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:12px;">These answers do not change your CHOIVE score. Your score below measures your website\u2019s own proof on its own.</div>'
+      + '</div>';
+  }
 
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
@@ -3857,16 +3943,17 @@ function showResults(r, jobId) {
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Your CHOIVE score</div>'
+    + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
     + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">This score shows how easy the business is to understand, trust, choose, and contact.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand the business, check what it says, see why it is different, and take the next step. The recorded AI answers do not change this score.'
-      : apiMeasurementSummary) + '</div>'
+      : 'This score is about your website\u2019s own proof. We measure it on its own, apart from what the AI tools said above.') + '</div>'
     + (function() {
         if (isPaid) return '';
         var _fp = r.pillars || {};
         var _fb = ['clarity','trust','difference','ease'].filter(function(k) { return (Number((_fp[k]||{}).score)||0) < 18; }).length;
-        return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 pillars scored below 18\u202f/\u202f25. The full analysis identifies exactly what evidence is missing in each.</div>' : '';
+        return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 score areas are low. The full analysis shows exactly what proof is missing in each, and how to fix it.</div>' : '';
       })()
     + (function() {
         if (!isPaid) return '';
@@ -4326,7 +4413,8 @@ function showResults(r, jobId) {
     + (isPaid ? buildPlatformRecommendationBlock() : '')
     + (isPaid
       ? ''
-      : scoreHeader
+      : buildAiScorecard()
+        + scoreHeader
         + [].concat(buildPillarCards(r, false)).join('')
         + buildFreeCompetitorBlock()
         + (function() {
