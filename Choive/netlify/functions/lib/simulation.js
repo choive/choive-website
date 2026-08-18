@@ -912,6 +912,21 @@ function normalizeSimInput(input) {
     throw new Error('Missing name or category');
   }
 
+  // Auto-detect subject type from evidence when not explicitly set.
+  // Content creators and non-profits need different query templates than
+  // typical businesses, so auto-detection ensures the fallback layer handles
+  // them correctly even if the user didn't set subjectType manually.
+  if (subjectType === 'business') {
+    var typeDetectionCorpus = (inferredCategory + ' ' + description + ' ' + websiteContext).toLowerCase();
+    // Content creators: YouTubers, podcasters, influencers, streamers
+    var isCreator = /\b(youtuber|youtube channel|podcaster|podcast host|influencer|content creator|streamer|twitch streamer|vlogger|social media creator|tiktoker|instagram influencer)\b/i.test(typeDetectionCorpus);
+    // Non-profits: charities, foundations, NGOs, social impact orgs
+    var isNonprofit = /\b(non-?profit|charity|charitable (organization|foundation)|foundation|ngo|social enterprise|philanthropic|501\(c\)\(3\)|social impact organization|humanitarian)\b/i.test(typeDetectionCorpus);
+    
+    if (isCreator) subjectType = 'creator';
+    else if (isNonprofit) subjectType = 'organization';
+  }
+
   // catClean: only remove the most generic platform/vendor/provider suffixes
   // that confuse AI query generation. Keep ALL niche qualifiers:
   // B2B, B2C, direct, delivery, local, premium, organic, breed names etc.
@@ -1396,7 +1411,8 @@ function classifyBusinessInput(input) {
     classificationBasis: n.classificationBasis,
     geographicScope: n.geoScope,
     queryMarket: n.marketStr,
-    category: n.catClean
+    category: n.catClean,
+    subjectType: n.subjectType
   };
 }
 
