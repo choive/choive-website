@@ -9,6 +9,7 @@ const { samplesForQuestion, strictMajorityThreshold, completedProviderRuns } = r
 const { generateDeliverables } = require('../netlify/functions/lib/deliverables');
 const { detectMarketLanguage } = require('../netlify/functions/lib/simulation');
 const { applySignalConstraints } = require('../netlify/functions/lib/claude');
+const { STANDARD_NAME, STANDARD_VERSION, RUBRIC_VERSION } = require('../netlify/functions/lib/measurement-standard');
 
 function modelResult() {
   const pillar = { score: 19, finding: 'Finding', analysis: 'Analysis', evidence: 'Evidence' };
@@ -37,6 +38,21 @@ test('strict result validation rejects non-finite and out-of-range scores', () =
   assert.equal(hasValidShape(result), false);
   result.pillars.trust.score = 26;
   assert.equal(hasValidShape(result), false);
+});
+
+test('deterministic scoring records the public standard and rubric versions', () => {
+  const measuredAt = '2026-08-18T10:00:00.000Z';
+  const scored = applyDeterministicScoring({
+    name: 'Fixture', website: 'fixture.test', collectedAt: measuredAt, websiteSignals: {}
+  }, modelResult());
+  assert.deepEqual(scored.measurementStandard, {
+    name: STANDARD_NAME,
+    version: STANDARD_VERSION,
+    rubricVersion: RUBRIC_VERSION,
+    methodologyUrl: 'https://choive.com/methodology',
+    measuredAt
+  });
+  assert.equal(scored.scoreMethod.version, RUBRIC_VERSION);
 });
 
 test('deterministic scores ignore model-proposed numeric scores', () => {
@@ -158,15 +174,69 @@ test('review-provider outages cannot become claims that profiles do not exist', 
   assert.doesNotMatch(text, /could not confirm any Trustpilot or Google review profile/i);
 });
 
-test('failed bot requests are recorded as unverified, not confirmed blocking', () => {
+test('failed bot requests are excluded from the score, not counted as confirmed blocking', () => {
   const scored = applyDeterministicScoring({
     name: 'Unknown', website: 'unknown.example',
-    websiteSignals: { botCrawlable: false, allBotsFailed: true, botEmptyShellDetected: false }
+    websiteSignals: { fetchSucceeded: true, botCrawlable: false, allBotsFailed: true, botEmptyShellDetected: false }
   }, modelResult());
   const crawler = scored.scoreMethod.audits.ease.find(rule => rule.ruleId === 'EA-06');
   assert.equal(crawler.points, 0);
-  assert.match(crawler.observed, /not verified/i);
+  // A crawl that never completed is an absence of measurement, so the check
+  // must leave the denominator rather than score as a verified zero.
+  assert.equal(crawler.verification, 'unmeasured');
+  assert.match(crawler.observed, /not measured|not verified/i);
   assert.doesNotMatch(crawler.observed, /site blocks|confirmed blocked/i);
+});
+
+test('an unreachable website is scored as unmeasured, not as a site with no title or schema', () => {
+  const down = applyDeterministicScoring({
+    name: 'Example', website: 'https://example.com',
+    websiteSignals: { fetchSucceeded: false, fetchFailed: true }
+  }, modelResult());
+  const title = down.scoreMethod.audits.clarity.find(rule => rule.ruleId === 'CL-01');
+  const schema = down.scoreMethod.audits.ease.find(rule => rule.ruleId === 'EA-01');
+  assert.equal(title.verification, 'unmeasured');
+  assert.equal(schema.verification, 'unmeasured');
+  assert.match(title.observed, /could not be retrieved/i);
+  // The pillar must not extrapolate full marks from the sliver of the rubric
+  // that survived, and must not report the failure as a perfect score.
+  assert.ok(down.pillars.ease.score < 25);
+  assert.ok(down.pillars.ease.measurement.unavailableChecks.length > 0);
+});
+
+test('a search provider that never ran does not become zero independent trust evidence', () => {
+  const base = {
+    name: 'Example', website: 'https://example.com',
+    websiteSignals: { fetchSucceeded: true },
+    searchResults: []
+  };
+  const ran = applyDeterministicScoring(
+    Object.assign({}, base, { searchMeasurement: { status: 'complete', completedQueries: 24, failedQueries: 0 } }),
+    modelResult());
+  const failed = applyDeterministicScoring(
+    Object.assign({}, base, { searchMeasurement: { status: 'unavailable', completedQueries: 0, failedQueries: 24 } }),
+    modelResult());
+  const ranAuthority = ran.scoreMethod.audits.trust.find(rule => rule.ruleId === 'TR-03');
+  const failedAuthority = failed.scoreMethod.audits.trust.find(rule => rule.ruleId === 'TR-03');
+  assert.equal(ranAuthority.verification, 'independent');
+  assert.equal(failedAuthority.verification, 'unmeasured');
+  assert.match(failedAuthority.observed, /not measured/i);
+});
+
+test('a legal suffix in the business name does not discard independent coverage', () => {
+  const scored = applyDeterministicScoring({
+    name: 'Taurbull GmbH', website: 'https://taurbull.de',
+    websiteSignals: { fetchSucceeded: true },
+    searchMeasurement: { status: 'complete', completedQueries: 24, failedQueries: 0 },
+    searchResults: [{
+      signalType: 'authority',
+      title: 'Taurbull raises funding round',
+      snippet: 'Taurbull announced a partnership this week.',
+      link: 'https://example-press.com/taurbull'
+    }]
+  }, modelResult());
+  const authority = scored.scoreMethod.audits.trust.find(rule => rule.ruleId === 'TR-03');
+  assert.ok(authority.points > 0, 'press coverage naming the brand must count for "Taurbull GmbH"');
 });
 
 test('official subdomains do not count as independent trust evidence', () => {
@@ -228,6 +298,43 @@ test('difference points remain labelled as interpreted evidence', () => {
   const scored = applyDeterministicScoring({ name: 'Example', website: 'example.com', websiteSignals: {} }, modelResult());
   assert.ok(scored.scoreMethod.audits.difference.every(rule => rule.verification === 'model_assessed'));
   assert.equal(scored.pillars.difference.confidence.level, 'low');
+});
+
+test('staff and agent names cannot earn named client or partner points', () => {
+  const result = modelResult();
+  result.signalAudit.difference = [
+    { name: 'Named differentiator', status: 'partial', detail: '40 years of experience' },
+    { name: 'Named client or partner referenced', status: 'partial', detail: 'Agent Aleksandra Nowak named in H2, buyer Bas mentioned in testimonial' },
+    { name: 'Niche or category ownership claim', status: 'fail', detail: 'Not found' },
+    { name: 'Proof of outcome stated', status: 'fail', detail: 'Not found' }
+  ];
+  const scored = applyDeterministicScoring({
+    name: 'Dallimore Marbella', website: 'https://example.test', websiteSignals: {}
+  }, result);
+  const namedProof = scored.scoreMethod.audits.difference.find(rule => rule.ruleId === 'DI-02');
+  assert.equal(namedProof.points, 0);
+  assert.match(namedProof.observed, /staff or agent name is not evidence/i);
+});
+
+test('ledger and customer-facing trust copy cannot contradict unavailable review checks', () => {
+  const result = modelResult();
+  result.pillars.trust.analysis = 'CHOIVE found one independently verified review.';
+  result.pillars.trust.evidence = 'One verified review exists.';
+  result.actions = [{
+    title: 'Build verified reviews',
+    body: 'CHOIVE found only one independently verified review. Create a Google profile.',
+    explanation: 'When this page exists with structured, verifiable content, AI systems have a factual basis to include this business.',
+    if_nothing: ''
+  }];
+  const scored = applyDeterministicScoring({
+    name: 'Example', website: 'https://example.test', websiteSignals: {},
+    reviewMeasurement: { trustpilot: 'unavailable', googleReviews: 'unavailable' }
+  }, result);
+  assert.match(scored.pillars.trust.analysis, /could not complete/i);
+  assert.doesNotMatch(scored.pillars.trust.analysis, /found (?:one|a|[0-9]+) independently verified review/i);
+  assert.match(scored.actions[0].body, /not proof that no reviews exist/i);
+  assert.match(scored.actions[0].explanation, /new diagnostic is required/i);
+  assert.doesNotMatch(scored.actions[0].explanation, /factual basis to include/i);
 });
 
 test('sampling repeats only the branded replacement question', () => {
