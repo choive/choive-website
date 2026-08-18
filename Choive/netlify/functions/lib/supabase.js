@@ -156,6 +156,32 @@ async function updateStatus(jobId, status, stage) {
     .eq('job_id', jobId);
   if (error) throw new Error('Supabase update failed: ' + error.message);
 }
+
+// Atomically move one queued job into evidence collection. Netlify or an
+// upstream caller may deliver the same background request more than once; the
+// status predicate ensures only one invocation can spend on provider calls.
+// The returned input is the immutable copy stored when the job was created.
+async function claimDiagnostic(jobId) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('diagnostics')
+    .update({ status: 'collecting_evidence', stage: 'collecting_evidence' })
+    .eq('job_id', jobId)
+    .eq('status', 'queued')
+    .select('job_id, status, input')
+    .maybeSingle();
+  if (error) throw new Error('Supabase diagnostic claim failed: ' + error.message);
+  if (data) return { claimed: true, status: data.status, input: data.input || {} };
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('diagnostics')
+    .select('job_id, status')
+    .eq('job_id', jobId)
+    .maybeSingle();
+  if (lookupError) throw new Error('Supabase diagnostic claim lookup failed: ' + lookupError.message);
+  if (!existing) throw new Error('Diagnostic job not found');
+  return { claimed: false, status: existing.status, input: null };
+}
 async function saveEvidence(jobId, evidence) {
   const supabase = getClient();
   const { error } = await supabase
@@ -318,6 +344,7 @@ module.exports = {
   createDiagnosticWithParent,
   getDiagnosticHistory,
   updateStatus,
+  claimDiagnostic,
   saveEvidence,
   saveResult,
   updateDiagnosticResult,
