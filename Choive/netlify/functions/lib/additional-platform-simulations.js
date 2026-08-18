@@ -21,6 +21,12 @@ const GEMINI_MODEL = currentGeminiModel(process.env.GEMINI_MODEL, 'gemini-3.5-fl
 // reliable fallback during a regional availability spike.
 const GEMINI_FALLBACK_MODEL = currentGeminiModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-3.5-flash-lite');
 const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
+// Perplexity's chat completions endpoint has NO "/v1/" prefix. The old
+// "https://api.perplexity.ai/v1/chat/completions" path returns HTTP 404 on
+// every call. The correct OpenAI-compatible path is "/chat/completions".
+// Kept configurable via env so the endpoint can be updated without a redeploy
+// if Perplexity changes it again.
+const PERPLEXITY_ENDPOINT = process.env.PERPLEXITY_ENDPOINT || 'https://api.perplexity.ai/chat/completions';
 const REQUEST_TIMEOUT_MS = 75000;
 const GEMINI_TIMEOUT_MS  = 120000;
 const { majorityRecommendation } = require('./recommendation-consensus');
@@ -178,7 +184,7 @@ async function requestPerplexity(source) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
   try {
-    var response = await fetch('https://api.perplexity.ai/v1/chat/completions', {
+    var response = await fetch(PERPLEXITY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.PERPLEXITY_API_KEY },
       body: JSON.stringify({
@@ -193,7 +199,13 @@ async function requestPerplexity(source) {
       signal: controller.signal
     });
     clearTimeout(timer);
-    if (!response.ok) throw new Error('Perplexity HTTP ' + response.status);
+    if (!response.ok) {
+      // Capture the response body so the real reason (e.g. "invalid model",
+      // "unauthorized") is visible in logs instead of a bare status code.
+      var errBody = '';
+      try { errBody = (await response.text() || '').slice(0, 300); } catch (_) {}
+      throw new Error('Perplexity HTTP ' + response.status + (errBody ? ' | ' + errBody : ''));
+    }
     var data = await response.json();
     return data.choices && data.choices[0] && data.choices[0].message
       ? String(data.choices[0].message.content || '').trim() : '';
