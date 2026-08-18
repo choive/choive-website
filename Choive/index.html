@@ -1142,6 +1142,16 @@ nav {
 .sim-answer-details summary::after { content:'+'; float:right; color:var(--muted); }
 .sim-answer-details[open] summary::after { content:'−'; }
 .sim-answer-body { padding:0 18px 18px; font-size:13px; line-height:1.7; color:var(--body); white-space:pre-line; }
+.ai-transcript-card { border-top:1px solid var(--rule); padding:20px 18px; background:var(--paper-2); }
+.ai-transcript-card:first-of-type { border-top:2px solid var(--rule-d); margin-top:16px; }
+.ai-transcript-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+.ai-transcript-label { font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--ac); }
+.ai-transcript-status { font-size:11px; font-weight:700; padding:4px 10px; border-radius:3px; }
+.ai-transcript-status.mentioned { background:#E8F5E9; color:#2E7D32; }
+.ai-transcript-status.not-mentioned { background:#FFEBEE; color:#C62828; }
+.ai-transcript-query { font-size:15px; font-weight:700; line-height:1.5; color:var(--ink); margin-bottom:14px; font-style:italic; }
+.ai-transcript-response { font-size:13px; line-height:1.75; color:var(--body); white-space:pre-line; padding:16px; background:var(--paper); border-left:3px solid var(--rule); }
+.ai-transcript-response mark { background:#FFF9C4; color:var(--ink); font-weight:600; padding:2px 4px; border-radius:2px; }
 .sim-method-note { font-size:12px; line-height:1.65; color:var(--muted); padding:14px 16px; border-left:2px solid var(--rule); background:var(--paper-3); }
 @media (max-width:760px) {
   .sim-provider-head { grid-template-columns:1fr; }
@@ -6840,10 +6850,53 @@ function buildDeliverables(r) {
       + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dEmailBody\')">Copy Email Body</button>'
       + '</div>';
   }
+  
+  // NEW: Done-for-you copy deliverables
+  var differencePageHtml = '';
+  if (d.differencePage) {
+    var dp = d.differencePage;
+    differencePageHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">This is a complete "What makes us different" page built from verified facts. Copy it, add your voice and story, then publish it on your website. ' + dp.wordCount + ' words.</div>'
+      + '<div class="deliv-code" id="dDiffPage" style="white-space:pre-wrap;max-height:500px;overflow-y:auto;">' + esc(dp.content || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dDiffPage\')">Copy full page</button>'
+      + '</div>';
+  }
+  
+  var socialPostsHtml = '';
+  if (d.socialPosts && d.socialPosts.length > 0) {
+    socialPostsHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">5 ready-to-post social media updates built from real facts. Copy, schedule, and post. No hype — just honest, clear messaging.</div>';
+    d.socialPosts.forEach(function(post, idx) {
+      var postId = 'dSocialPost' + idx;
+      socialPostsHtml += '<div style="margin-bottom:16px;">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Post ' + (idx + 1) + ' — ' + esc(post.type) + '</div>'
+        + '<div class="deliv-code" id="' + postId + '" style="white-space:pre-wrap;">' + esc(post.content || '') + '</div>'
+        + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'' + postId + '\')">Copy post ' + (idx + 1) + '</button>'
+        + '</div>';
+    });
+    socialPostsHtml += '</div>';
+  }
+  
+  var aboutSectionHtml = '';
+  if (d.aboutSection) {
+    var ab = d.aboutSection;
+    aboutSectionHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">A complete "About" section built from verified facts. Add your story, your team, and your voice before publishing. ' + ab.wordCount + ' words.</div>'
+      + '<div class="deliv-code" id="dAboutSection" style="white-space:pre-wrap;max-height:500px;overflow-y:auto;">' + esc(ab.content || '') + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dAboutSection\')">Copy About section</button>'
+      + '</div>';
+  }
+  
   var tabs = [
     { id: 'dLlms',   label: 'AI information file', content: llmsHtml },
     { id: 'dH1',     label: 'Homepage headline', content: h1Html },
     { id: 'dMeta',   label: 'Search result description', content: metaHtml },
+    { id: 'dDiff',   label: 'What makes us different', content: differencePageHtml, skip: !differencePageHtml },
+    { id: 'dSocial', label: 'Social posts', content: socialPostsHtml, skip: !socialPostsHtml },
+    { id: 'dAbout',  label: 'About page', content: aboutSectionHtml, skip: !aboutSectionHtml },
     { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer proof' : 'Customer reviews', content: reviewHtml },
     { id: 'dGBP',    label: 'Google profile', content: gbpHtml, skip: !gbpHtml },
     { id: 'dEmail',  label: 'Review email', content: reviewEmailHtml, skip: !reviewEmailHtml },
@@ -6993,8 +7046,25 @@ async function runAISimulation(r) {
           + '</div>';
       }).join('');
       var answers = measured.map(function(qr, index) {
-        return '<details class="sim-answer-details"><summary>See the recorded AI answer to: ' + esc(questionPurpose(qr)) + '</summary>'
-          + '<div class="sim-answer-body">' + esc(stripMd(qr.response || 'No recorded answer is available.')) + '</div></details>';
+        var responseText = stripMd(qr.response || 'No recorded answer is available.');
+        var businessMentioned = qr.appeared;
+        var highlightedResponse = responseText;
+        
+        // Highlight business name in the response if mentioned
+        if (businessMentioned && bizData.name) {
+          var businessRegex = new RegExp('(' + bizData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+          highlightedResponse = responseText.replace(businessRegex, '**$1**');
+        }
+        
+        return '<div class="ai-transcript-card">'
+          + '<div class="ai-transcript-header">'
+          + '<div class="ai-transcript-label">Actual AI Answer · Question ' + (index + 1) + '</div>'
+          + '<div class="ai-transcript-status ' + (businessMentioned ? 'mentioned' : 'not-mentioned') + '">'
+          + (businessMentioned ? '✓ ' + esc(bizData.name) + ' mentioned' : '✗ ' + esc(bizData.name) + ' NOT mentioned')
+          + '</div></div>'
+          + '<div class="ai-transcript-query">"' + esc(qr.query || '') + '"</div>'
+          + '<div class="ai-transcript-response">' + esc(highlightedResponse).replace(/\*\*([^*]+)\*\*/g, '<mark>$1</mark>') + '</div>'
+          + '</div>';
       }).join('');
       return '<div class="sim-provider">'
         + '<div class="sim-provider-head"><div><div class="sim-provider-name">' + esc(label) + ' discovery result</div>'
