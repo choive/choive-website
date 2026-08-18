@@ -576,6 +576,169 @@ function generateGbpDescription(evidence, result) {
   return { text: text, charCount: text.length, maxChars: MAX };
 }
 
+// Generate a full "What makes us different" page — grounded only in real evidence
+function generateDifferencePage(evidence, result) {
+  var name = (evidence && evidence.name || '').trim();
+  if (!name) return null;
+  
+  var category = cleanAssetText(result && result.inferredCategory || evidence && evidence.category || '', 120);
+  var differentiator = safeDifferentiator(evidence, result);
+  var summary = factualSummary(evidence, result, 200);
+  var place = marketLabel(evidence);
+  var verified = verifiedReadyAssets(evidence, result);
+  var modelFacts = verified.llmsFacts || {};
+  
+  // Only build this page when we have a real, verified differentiator
+  if (!differentiator) return null;
+  
+  var headline = sentenceCase(differentiator);
+  var intro = summary || (category ? name + ' provides ' + category.toLowerCase() + '.' : name + '.');
+  
+  var distinctionsSection = '';
+  if (modelFacts.distinctions && modelFacts.distinctions.length > 0) {
+    distinctionsSection = '\n\n## What sets ' + name + ' apart\n\n'
+      + modelFacts.distinctions.map(function(d) { return '- ' + sentenceCase(d); }).join('\n');
+  }
+  
+  var offersSection = '';
+  if (modelFacts.offers && modelFacts.offers.length > 0) {
+    offersSection = '\n\n## What we offer\n\n'
+      + modelFacts.offers.map(function(o) { return '- ' + sentenceCase(o); }).join('\n');
+  }
+  
+  var audienceSection = '';
+  if (modelFacts.audiences && modelFacts.audiences.length > 0) {
+    audienceSection = '\n\n## Who this is for\n\n'
+      + 'We serve ' + modelFacts.audiences.join(', ') + (place && place !== 'Worldwide' ? ' in ' + place : '') + '.';
+  }
+  
+  var content = '# ' + headline + '\n\n'
+    + intro
+    + distinctionsSection
+    + offersSection
+    + audienceSection
+    + '\n\n---\n\n'
+    + '*This page is built from verified facts collected by CHOIVE. Edit to match your voice before publishing.*';
+  
+  return {
+    headline: headline,
+    content: content,
+    wordCount: content.split(/\s+/).length
+  };
+}
+
+// Generate 5 ready-to-post social media posts — factual, no hype
+function generateSocialPosts(evidence, result) {
+  var name = (evidence && evidence.name || '').trim();
+  if (!name) return [];
+  
+  var category = cleanAssetText(result && result.inferredCategory || evidence && evidence.category || '', 100);
+  var differentiator = safeDifferentiator(evidence, result);
+  var place = marketLabel(evidence);
+  var verified = verifiedReadyAssets(evidence, result);
+  var modelFacts = verified.llmsFacts || {};
+  var website = (evidence && evidence.website || evidence && evidence.inferredOfficialSite || '').trim();
+  var siteUrl = website ? (website.startsWith('http') ? website : 'https://' + website) : '';
+  
+  var posts = [];
+  
+  // Post 1: Introduction
+  if (category) {
+    var post1 = name + ' provides ' + category.toLowerCase() + (place ? ' in ' + place : '') + '.';
+    if (differentiator) {
+      post1 += ' ' + sentenceCase(differentiator) + '.';
+    }
+    if (siteUrl) post1 += '\n\nLearn more: ' + siteUrl;
+    posts.push({ type: 'Introduction', content: post1 });
+  }
+  
+  // Post 2: What we offer (if available)
+  if (modelFacts.offers && modelFacts.offers.length > 0) {
+    var post2 = 'What ' + name + ' offers:\n\n';
+    post2 += modelFacts.offers.slice(0, 3).map(function(o, i) { return (i + 1) + '. ' + sentenceCase(o); }).join('\n');
+    if (siteUrl) post2 += '\n\n' + siteUrl;
+    posts.push({ type: 'What we offer', content: post2 });
+  }
+  
+  // Post 3: Differentiator (if available)
+  if (differentiator) {
+    var post3 = sentenceCase(differentiator) + '.';
+    if (category) {
+      post3 += '\n\nThat matters when choosing ' + category.toLowerCase() + '.';
+    }
+    if (siteUrl) post3 += '\n\n' + siteUrl;
+    posts.push({ type: 'What makes us different', content: post3 });
+  }
+  
+  // Post 4: Who we serve (if available)
+  if (modelFacts.audiences && modelFacts.audiences.length > 0) {
+    var post4 = name + ' serves ' + modelFacts.audiences.slice(0, 2).join(' and ') + '.';
+    if (place && place !== 'Worldwide') {
+      post4 += ' We work with clients in ' + place + '.';
+    }
+    if (siteUrl) post4 += '\n\nGet in touch: ' + siteUrl;
+    posts.push({ type: 'Who we serve', content: post4 });
+  }
+  
+  // Post 5: Call to action
+  if (category) {
+    var post5 = 'Looking for ' + category.toLowerCase() + (place && place !== 'Worldwide' ? ' in ' + place : '') + '?';
+    post5 += '\n\n' + name + ' can help.';
+    if (siteUrl) post5 += '\n\n' + siteUrl;
+    posts.push({ type: 'Call to action', content: post5 });
+  }
+  
+  return posts.slice(0, 5);
+}
+
+// Generate an "About" page section — factual company/organization description
+function generateAboutSection(evidence, result) {
+  var name = (evidence && evidence.name || '').trim();
+  if (!name) return null;
+  
+  var category = cleanAssetText(result && result.inferredCategory || evidence && evidence.category || '', 120);
+  var summary = factualSummary(evidence, result, 250);
+  var differentiator = safeDifferentiator(evidence, result);
+  var place = marketLabel(evidence);
+  var verified = verifiedReadyAssets(evidence, result);
+  var modelFacts = verified.llmsFacts || {};
+  
+  var headline = 'About ' + name;
+  
+  var intro = summary || (category ? name + ' is a ' + category.toLowerCase() + (place ? ' based in ' + place : '') + '.' : '');
+  
+  var whatWeDo = '';
+  if (modelFacts.offers && modelFacts.offers.length > 0) {
+    whatWeDo = '\n\n## What we do\n\n' + modelFacts.offers.map(function(o) { return '- ' + sentenceCase(o); }).join('\n');
+  }
+  
+  var whyChooseUs = '';
+  if (differentiator) {
+    whyChooseUs = '\n\n## Why choose ' + name + '\n\n' + sentenceCase(differentiator) + '.';
+  }
+  
+  var whoWeServe = '';
+  if (modelFacts.audiences && modelFacts.audiences.length > 0) {
+    whoWeServe = '\n\n## Who we serve\n\n'
+      + 'We work with ' + modelFacts.audiences.join(', ')
+      + (place && place !== 'Worldwide' ? ' in ' + place : '') + '.';
+  }
+  
+  var content = '# ' + headline + '\n\n'
+    + intro
+    + whatWeDo
+    + whyChooseUs
+    + whoWeServe
+    + '\n\n---\n\n'
+    + '*This section is built from verified facts. Edit to add your story and voice before publishing.*';
+  
+  return {
+    headline: headline,
+    content: content,
+    wordCount: content.split(/\s+/).length
+  };
+}
+
 function generateActionPlan(evidence, result) {
   var profile  = subjectProfile(evidence);
   var name     = (evidence.name || '').trim();
@@ -743,6 +906,12 @@ function generateDeliverables(evidence, result) {
   // Each returns null when it does not apply, so the matching tab simply hides.
   delivs.reviewEmailTemplate = generateReviewEmailTemplate(evidence, result, delivs.reviewAction);
   delivs.gbpDesc             = generateGbpDescription(evidence, result);
+  
+  // NEW: Done-for-you copy (full pages and social posts)
+  delivs.differencePage = generateDifferencePage(evidence, result);
+  delivs.socialPosts    = generateSocialPosts(evidence, result);
+  delivs.aboutSection   = generateAboutSection(evidence, result);
+  
   delivs.actionPlan = generateActionPlan(evidence, Object.assign({}, result, { deliverables: delivs }));
   return delivs;
 }
