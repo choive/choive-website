@@ -16,7 +16,7 @@
   "@type": "TechArticle",
   "headline": "How CHOIVE Measures AI Recommendations",
   "description": "The public methodology and limitations for the CHOIVE AI recommendation diagnostic.",
-  "dateModified": "2026-07-23",
+  "dateModified": "2026-08-18",
   "author": {
     "@type": "Organization",
     "name": "CHOIVE",
@@ -67,7 +67,7 @@ footer a{color:#ddd}
   </div>
 </header>
 <main>
-  <div class="eyebrow">Public methodology · Version 2.1 · 23 July 2026</div>
+  <div class="eyebrow">Public methodology · Version 2.2 · 18 August 2026</div>
   <h1>How CHOIVE measures an AI recommendation.</h1>
   <p class="lede">This page explains what CHOIVE measures, what the score means, how competitors are selected, and where the product has limits. The method applies to every business, including CHOIVE itself.</p>
 
@@ -112,7 +112,30 @@ footer a{color:#ddd}
   </section>
 
   <section>
-    <h2>5. Competitor roles</h2>
+    <h2>5. How CHOIVE protects the measurement</h2>
+    <p>A recommendation diagnostic is only as trustworthy as the discipline behind it. CHOIVE applies the same safeguards to every run — including its own — so a score reflects evidence, not noise, guesswork, or manipulation.</p>
+
+    <h3>Evidence-first hard limits, not model opinion</h3>
+    <p>Some points are decided by mechanical rules the language model cannot override. For example, if the Ease pillar is being scored and the site has no structured data, Ease is capped low; if verified structured data is present, Ease has a guaranteed floor; a published <strong>llms.txt</strong> file raises that floor further; and if the page is an empty shell that AI crawlers cannot actually read, Ease is capped near the bottom regardless of any metadata claim. Code enforces these limits after the model responds, so no assessment can quietly inflate a weak signal.</p>
+
+    <h3>Consensus before a name is shown</h3>
+    <p>The branded replacement question records several independent responses. A company is only shown when at least two responses completed and one name received a strict majority of them. A single lucky mention is not treated as a recommendation, and failed calls stay failures rather than being filled in.</p>
+
+    <h3>Ground truth versus projection</h3>
+    <p>Signals that are mechanically verified are labelled as confirmed ground truth. Where CHOIVE illustrates how stronger evidence <em>could</em> change an answer, that paragraph is clearly marked as a projection — never presented as a recorded provider response.</p>
+
+    <h3>Protection against manipulated inputs</h3>
+    <p>Text pulled from a website or search results is sanitized before it reaches the model, so instructions hidden inside a page ("ignore previous instructions", injected prompts) cannot steer the diagnostic. Off-topic community chatter — entertainment, gaming, and hobby forums unrelated to the business category — is stripped out and can never be counted as a trust signal.</p>
+
+    <h3>No manufactured superlatives</h3>
+    <p>Every ready-to-use asset and written finding is checked against a banned-claims filter. Words like "best", "leading", "market-leading", "trusted", "award-winning", or "number one" are not allowed unless a credible independent source in the collected evidence proves that exact claim. CHOIVE describes an evidenced difference precisely instead of inventing one.</p>
+
+    <h3>Buyer questions matched to the business model</h3>
+    <p>The recommendation questions are generated to match how a real buyer of that specific type of business would ask — the phrasing for a local service differs from a SaaS product or a marketplace — so the measured answer reflects a realistic selection moment rather than a generic query.</p>
+  </section>
+
+  <section>
+    <h2>6. Competitor roles</h2>
     <h3>AI recommendation</h3>
     <p>The company a named AI provider recommended during the recorded query. Each provider can return a different company.</p>
     <h3>Head-to-head competitor</h3>
@@ -123,7 +146,7 @@ footer a{color:#ddd}
   </section>
 
   <section>
-    <h2>6. What the three products contain</h2>
+    <h2>7. What the three products contain</h2>
     <ul>
       <li><strong>Free Diagnostic, $0:</strong> headline verdict, CHOIVE Index, four pillar scores, platform recommendations when successfully measured, and competitor exposure.</li>
       <li><strong>CHOIVE Analysis, $99 once:</strong> the full online evidence breakdown, platform coverage, competitor comparison, prioritized actions, and ready-to-use assets.</li>
@@ -132,13 +155,13 @@ footer a{color:#ddd}
   </section>
 
   <section>
-    <h2>7. Failures, uncertainty, and missing evidence</h2>
+    <h2>8. Failures, uncertainty, and missing evidence</h2>
     <p>If a provider request fails or an answer cannot support a reliable company name, CHOIVE should show the measurement as unavailable, partial, or not established. It should not silently invent a recommendation.</p>
     <p>A low-confidence competitor must not be presented as a confirmed recommendation leader. A missing public trust signal means CHOIVE did not verify that signal during the run; it does not prove the signal can never exist.</p>
   </section>
 
   <section>
-    <h2>8. What CHOIVE does not promise</h2>
+    <h2>9. What CHOIVE does not promise</h2>
     <ul>
       <li>It does not guarantee that an AI platform will recommend a business in the future.</li>
       <li>It does not guarantee an API response will match every consumer-app conversation.</li>
@@ -150,6 +173,6 @@ footer a{color:#ddd}
 
   <p class="stamp">Method owner: CHOIVE · Founder: Blessing Ashionye Ebogu · Questions or corrections: <a href="mailto:hello@choive.com">hello@choive.com</a></p>
 </main>
-<footer>CHOIVE· · <a href="/">Home</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
+<footer>CHOIVE· · <a href="/">Home</a> · <a href="/standard">The Standard</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
 </body>
 </html>

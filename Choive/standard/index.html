@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The CHOIVE AI Selection Standard — How AI Recommendation Should Be Measured</title>
+<meta name="description" content="The CHOIVE AI Selection Standard defines what an honest AI recommendation measurement must do: attribute each platform separately, score public evidence, require consensus, stay auditable, and state its limits. The open standard for measuring which business AI selects.">
+<link rel="canonical" href="https://choive.com/standard">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The CHOIVE AI Selection Standard">
+<meta property="og:description" content="The open standard for measuring which business AI recommends — separately attributed platforms, evidence-first scoring, consensus, auditability, and honest limits.">
+<meta property="og:url" content="https://choive.com/standard">
+<meta property="og:image" content="https://choive.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The CHOIVE AI Selection Standard">
+<meta name="twitter:description" content="The open standard for measuring which business AI recommends.">
+<meta name="twitter:image" content="https://choive.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "The CHOIVE AI Selection Standard",
+  "description": "The open standard for measuring which business AI recommends: separately attributed platforms, evidence-first scoring, consensus, auditability, and honest limits.",
+  "dateModified": "2026-08-18",
+  "author": { "@type": "Organization", "name": "CHOIVE", "url": "https://choive.com" },
+  "publisher": { "@type": "Organization", "name": "CHOIVE", "url": "https://choive.com" }
+}
+</script>
+<style>
+:root{--ink:#101012;--muted:#68686f;--paper:#f5f2ee;--paper2:#e9e5df;--void:#0c0c0e;--gold:#c9a86a;--rule:#d6d1c9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:var(--paper);color:var(--ink);line-height:1.75}
+header{background:var(--void);color:#f5f2ee;padding:20px 32px;position:sticky;top:0;z-index:2}
+.nav{max-width:1040px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{color:#f5f2ee;text-decoration:none;font-weight:700;letter-spacing:.08em}.brand span{color:var(--gold)}
+.nav a:last-child{color:var(--gold);font-size:13px;text-decoration:none}
+main{max-width:880px;margin:auto;padding:88px 28px 112px}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:#8b6d38;margin-bottom:18px;letter-spacing:.14em}
+h1{font-family:"Libre Baskerville",serif;font-size:clamp(38px,6vw,68px);line-height:1.08;margin-bottom:28px}
+.lede{font-size:19px;color:#4f4f56;max-width:760px;margin-bottom:56px}
+.plain{background:var(--void);color:#f5f2ee;padding:30px;margin:0 0 64px}
+.plain strong{color:var(--gold)}
+section{padding:40px 0;border-top:1px solid var(--rule)}
+h2{font-family:"Libre Baskerville",serif;font-size:28px;line-height:1.25;margin-bottom:18px}
+h3{font-size:15px;margin:24px 0 8px}
+p{margin-bottom:16px;color:#424248}
+ol,ul{padding-left:22px;color:#424248}
+li{margin:9px 0}
+.principle{border:1px solid var(--rule);padding:26px;background:#faf8f5;margin:16px 0}
+.principle .pnum{font-family:"Libre Baskerville",serif;font-size:13px;color:#8b6d38;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+.principle strong{display:block;font-size:19px;font-family:"Libre Baskerville",serif;margin-bottom:8px}
+.note{border-left:3px solid var(--gold);padding:4px 0 4px 20px;margin:24px 0;color:#424248}
+.cta-band{background:var(--void);color:#f5f2ee;padding:52px 30px;margin:64px 0 0;text-align:center}
+.cta-band h2{color:#f5f2ee;margin-bottom:12px}
+.cta-band p{color:rgba(245,242,238,.72);max-width:560px;margin:0 auto 22px}
+.cta-btn{display:inline-block;background:var(--gold);color:var(--void);font-weight:700;text-decoration:none;padding:15px 34px;font-size:15px}
+.stamp{font-size:12px;color:var(--muted);margin-top:42px}
+footer{background:var(--void);color:#aaa;padding:32px;text-align:center;font-size:12px}
+footer a{color:#ddd}
+@media(max-width:640px){header{padding:18px 20px}main{padding:64px 20px 88px}.plain{padding:24px}.cta-band{padding:40px 22px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a class="brand" href="/">CHOIVE<span>·</span></a>
+    <a href="/#diagnostic">Run free diagnostic</a>
+  </div>
+</header>
+<main>
+  <div class="eyebrow">The standard · Version 1.0 · 18 August 2026</div>
+  <h1>The CHOIVE AI&nbsp;Selection Standard.</h1>
+  <p class="lede">Search engines rank many results. AI assistants do something different — when a buyer asks Claude, ChatGPT, Perplexity, or Gemini who to use, they increasingly return <em>one</em> answer. Measuring that moment honestly needs its own standard. This is ours, and it is public.</p>
+
+  <div class="plain"><strong>In one line:</strong> a trustworthy AI selection measurement must attribute each platform separately, score public evidence rather than opinion, require consensus before naming a winner, stay fully auditable, and state exactly where it is uncertain.</div>
+
+  <section>
+    <h2>Why "selection" is not "ranking"</h2>
+    <p>SEO tools were built for a world of ten blue links, where being on page one was the goal. AI assistants collapse that list. They read the open web, weigh what they find, and hand the buyer a single recommendation — often with no visible list to climb. The relevant question is no longer "where do I rank?" It is "when AI is asked to choose, does it choose me — and if not, why not?"</p>
+    <p>That is a selection question, not a ranking question. It needs a measurement designed around how AI actually decides, what evidence it can see, and how confident any single answer really is. Borrowing ranking metrics understates the problem and hides the fix.</p>
+  </section>
+
+  <section>
+    <h2>The five principles</h2>
+    <p>Any credible AI selection measurement — CHOIVE's or anyone else's — should hold to these five principles. We publish them so the standard can be checked, challenged, and improved.</p>
+
+    <div class="principle">
+      <div class="pnum">Principle 01</div>
+      <strong>Attribute every platform separately</strong>
+      <p>Claude, ChatGPT, Perplexity, and Gemini are different systems with different training, search context, and behaviour. A measurement must record each one's answer on its own and never blend them into a single averaged "AI says" verdict. A business can be recommended by one and invisible to another; that difference is the signal.</p>
+    </div>
+
+    <div class="principle">
+      <div class="pnum">Principle 02</div>
+      <strong>Score public evidence, not model mood</strong>
+      <p>The score must describe the business's own observable evidence — clarity of what it does, independent trust signals, a specific reason to choose it, and how easily people and machines can act on its information. Whether a model happened to name the business on a given day must not silently inflate or deflate that score. Evidence is stable and improvable; a single generation is neither.</p>
+    </div>
+
+    <div class="principle">
+      <div class="pnum">Principle 03</div>
+      <strong>Require consensus before naming a winner</strong>
+      <p>One lucky mention is not a recommendation. A name should only be reported when multiple independent responses complete and one company earns a strict majority of them. Failed calls stay failures. This is what separates a measurement from an anecdote.</p>
+    </div>
+
+    <div class="principle">
+      <div class="pnum">Principle 04</div>
+      <strong>Stay auditable end to end</strong>
+      <p>Every point should trace to a rule, an observed piece of evidence, and a verification type — mechanical, independent, or model-assessed. Hard limits that code enforces after the model responds should be documented, so no assessment can quietly overrule the evidence. If a result cannot be explained line by line, it cannot be trusted.</p>
+    </div>
+
+    <div class="principle">
+      <div class="pnum">Principle 05</div>
+      <strong>State the limits out loud</strong>
+      <p>An official API response is a real measurement of that run — not a promise about every consumer-app session, which can differ by model, search context, settings, history, location, or personalization. The standard forbids inventing a recommendation when evidence is missing, dressing a projection up as a recorded answer, or manufacturing superlatives the evidence does not support.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How CHOIVE holds itself to the standard</h2>
+    <p>CHOIVE runs against its own principles on every diagnostic, including CHOIVE itself. Platforms are measured and reported separately. The CHOIVE Index is built from four evidence pillars — Clarity, Trust, Difference, and Ease — with mechanical hard limits the model cannot override. Names appear only on consensus. Every paid Analysis and Report ships with a point ledger. External text is sanitized against injection, off-topic communities are excluded from trust, and unsupported superlatives are filtered out.</p>
+    <p class="note">The full mechanics, rubric, and limitations are documented in the <a href="/methodology">CHOIVE methodology</a>. The standard is the "what and why"; the methodology is the "exactly how".</p>
+  </section>
+
+  <section>
+    <h2>An open invitation</h2>
+    <p>A standard improves by being examined. If you can point to a way any of these five principles could be measured more honestly, we want to hear it — the method page carries a version number for exactly that reason. Corrections and challenges go to <a href="mailto:hello@choive.com">hello@choive.com</a>.</p>
+  </section>
+
+  <p class="stamp">Standard owner: CHOIVE · Founder: Blessing Ashionye Ebogu · Questions or corrections: <a href="mailto:hello@choive.com">hello@choive.com</a></p>
+</main>
+
+<div class="cta-band">
+  <h2>See where you stand against the standard.</h2>
+  <p>Run the free diagnostic and get four separately attributed AI measurements and one evidence-based score — in about 45 seconds.</p>
+  <a class="cta-btn" href="/#diagnostic">Run the free diagnostic →</a>
+</div>
+
+<footer>CHOIVE· · <a href="/">Home</a> · <a href="/methodology">Methodology</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
+</body>
+</html>
