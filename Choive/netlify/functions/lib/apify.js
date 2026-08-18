@@ -10,12 +10,13 @@
 //     (easyapify~trustpilot-scraper) was removed — it 404'd because it does not
 //     exist in this account. Both actors return a FLAT list of review objects,
 //     normalised by normalizeTrustpilot() below.
-//   - Google Maps reviews: powerai~google-map-reviews-scraper — CONFIRMED
-//     2026-07-07 directly from this actor's own generated API endpoint docs.
-//     Two prior IDs were tried and both 404’d because the Apify Store page
-//     displays "Crafted by Compass" as a maintainer/brand label — the actual
-//     API owner username is "powerai", an entirely different string that no
-//     amount of reading the Store page's URL or copy-icon could have revealed.
+//   - Google Maps reviews: compass~Google-Maps-Reviews-Scraper — VERIFIED live
+//     (2026-08). Takes a Maps place OR search URL in "startUrls" and returns a
+//     FLAT list of review objects that ALSO carry place identity (title,
+//     totalScore, reviewsCount, address, categoryName). Replaced the previous
+//     powerai~google-map-reviews-scraper, which returned raw reviews with NO
+//     place name/rating/count (nothing verifiable) and resolved to unrelated
+//     businesses in testing.
 // Identity guard: results that do not verifiably match the diagnosed business
 // are discarded — wrong-business reviews must never enter the evidence.
 // ENV: APIFY_API_KEY
@@ -222,10 +223,20 @@ async function fetchTrustpilot(businessName, website) {
 async function fetchGoogleReviews(businessName, city) {
   var query = businessName + (city ? ' ' + city : '');
 
-  // Confirmed working actor \u2014 the raw-ID fallback that used to sit here
-  // 404'd on every single test today; removed as dead weight, not a safety net.
+  // compass/Google-Maps-Reviews-Scraper — VERIFIED live (2026-08). It takes a
+  // Google Maps place OR search URL under "startUrls" and returns a FLAT list
+  // of review objects, each of which also carries the place's identity fields:
+  //   title (place name), totalScore (place rating), reviewsCount (place total),
+  //   address, categoryName, plus per-review stars + text.
+  // A Maps SEARCH url ("/maps/search/{query}") resolves to the top matching
+  // place, so a place URL/placeId is NOT required up front — the identity guard
+  // below then confirms the resolved place actually matches the business.
+  // The previously configured powerai/google-map-reviews-scraper was replaced:
+  // it returned raw reviews with NO place name/rating/count (so nothing could be
+  // verified) and in testing resolved to an unrelated business entirely.
+  var searchUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(query);
   var actors = [
-    { id: 'powerai~google-map-reviews-scraper', input: { searchStringsArray: [query], maxReviews: 10, language: 'en', maxCrawledPlaces: 1 } }
+    { id: 'compass~Google-Maps-Reviews-Scraper', input: { startUrls: [{ url: searchUrl }], maxReviews: 10, language: 'en' } }
   ];
 
   var items = null;
@@ -242,26 +253,32 @@ async function fetchGoogleReviews(businessName, city) {
     return { data: null, status: measured ? 'no_verified_match' : 'unavailable' };
   }
 
-  var place = items[0];
-  if (!place) return { data: null, status: 'no_verified_match' };
-
-  if (!looksLikeSameBusiness(place.title, place.website, businessName, '')) {
-    console.warn('[apify] Google result "' + (place.title || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
+  // Place identity lives on each review item (flat list), not a separate header.
+  var head = items[0] || {};
+  var placeName = head.title || head.placeName || head.name || '';
+  // Identity guard: the search URL returns whatever Google ranked first, so we
+  // must confirm it is actually this business before trusting its reviews.
+  // There is no website field on this actor's output — match on the place name.
+  if (!looksLikeSameBusiness(placeName, '', businessName, '')) {
+    console.warn('[apify] Google result "' + (placeName || 'unknown') + '" does not match "' + businessName + '" — discarded to keep evidence authentic');
     return { data: null, status: 'no_verified_match' };
   }
 
-  var reviews = (place.reviews || []).slice(0, 5).map(function(r) {
-    return (r.stars ? r.stars + '/5: ' : '') + (r.text || '').slice(0, 200);
+  var reviews = items.filter(function(r) {
+    return r && r.text;
+  }).slice(0, 5).map(function(r) {
+    var stars = r.stars != null ? r.stars : r.rating;
+    return (stars != null ? stars + '/5: ' : '') + String(r.text || '').slice(0, 200);
   });
 
   return { data: {
     platform:    'google_reviews',
-    name:        place.title          || businessName,
-    rating:      place.totalScore     || null,
-    reviewCount: place.reviewsCount   || 0,
-    address:     place.address        || '',
-    category:    place.categoryName   || '',
-    website:     place.website        || '',
+    name:        placeName          || businessName,
+    rating:      head.totalScore != null ? Number(head.totalScore) : null,
+    reviewCount: Number(head.reviewsCount || 0) || 0,
+    address:     head.address        || '',
+    category:    head.categoryName   || '',
+    website:     head.website        || '',
     reviews:     reviews,
     source:      'apify'
   }, status: 'available' };
