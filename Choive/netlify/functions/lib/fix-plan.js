@@ -58,9 +58,9 @@ var RULE_CLOSABILITY = {
 // including a dedicated "What makes us different" page — instead of a generic
 // "improve your differentiation" line.
 var DEFAULT_HOW = {
-  'DI-01': 'Write one clear sentence that says what you do that other businesses in your space do not. Put it near the top of your homepage and on its own "What makes us different" page, in plain words a first-time visitor understands.',
-  'DI-03': 'Say plainly which niche or type of customer you focus on best. Add it to your homepage and your "What makes us different" page so both people and AI can see the exact space you own.',
-  'DI-04': 'Show one real, checkable result you have delivered — a number, a before-and-after, or a named outcome. Put it on your "What makes us different" page as proof, not just a claim.',
+  'DI-01': 'Write one clear sentence that says what you do that other businesses in your space do not. Put it near the top of your homepage, on its own "What makes us different" page, and in your social media bios — in plain words a first-time visitor understands. Then make a few short posts that teach people why this makes you the better choice.',
+  'DI-03': 'Say plainly which niche or type of customer you focus on best, and why people should pick you over others. Add it to your homepage and your "What makes us different" page, and repeat it in your social media so both people and AI can see the exact space you own.',
+  'DI-04': 'Show one real, checkable result you have delivered — a number, a before-and-after, or a named outcome. Put it on your "What makes us different" page and share it as a post, so people and AI can see the proof, not just a claim.',
   'DI-02': 'Name a real client or partner you have worked with (with their permission) and link to something that confirms it. A named, checkable client is far stronger proof than "trusted by many".'
 };
 
@@ -86,14 +86,25 @@ var PRIORITY_RANK = { critical: 3, high: 2, medium: 1, low: 0 };
 
 // Try to find the model-authored action that best matches a fix. We match on
 // pillar keyword presence in the action text, falling back to priority order.
-function matchAction(actions, pillar, ruleLabel) {
+//
+// `used` (optional array) collects the actions already attached to earlier
+// cards so the SAME action is never reused on two different cards. Without this
+// a review-heavy action (which mentions both "reviews" and "category rivals")
+// could attach to BOTH the Trust card AND the Difference card, printing
+// identical "What to do" text on two cards about different things. Pillars are
+// processed in a fixed order (clarity, trust, difference, ease), so the pillar
+// an action fits best claims it first and later pillars fall back to their own
+// concrete DEFAULT_HOW copy.
+function matchAction(actions, pillar, ruleLabel, used) {
   if (!Array.isArray(actions) || !actions.length) return null;
+  used = Array.isArray(used) ? used : [];
   var needlePillar = pillar.toLowerCase();
   var needleLabel = String(ruleLabel || '').toLowerCase();
   var best = null;
   var bestScore = -1;
   actions.forEach(function (a) {
     if (!a || typeof a !== 'object') return;
+    if (used.indexOf(a) !== -1) return; // already used on another card
     var hay = (String(a.title || '') + ' ' + String(a.body || '') + ' ' +
       String(a.explanation || '')).toLowerCase();
     var score = 0;
@@ -106,7 +117,12 @@ function matchAction(actions, pillar, ruleLabel) {
     if (score > bestScore) { bestScore = score; best = a; }
   });
   // Only attach if there is a real signal of relevance, not just priority.
-  return bestScore >= 1 ? best : null;
+  // De-duplication (via `used`) is what stops the mislabelled-card bug: the
+  // pillar an action fits best is processed first and claims it, so a later
+  // pillar can no longer print the same action's text — it falls back to its own
+  // concrete DEFAULT_HOW copy instead.
+  if (bestScore >= 1 && best) { used.push(best); return best; }
+  return null;
 }
 
 function actionFields(action) {
@@ -119,7 +135,9 @@ function actionFields(action) {
 }
 
 // Build fixes from the deterministic audit ledger for one pillar.
-function fixesFromAudits(pillar, rules, actions) {
+// `used` accumulates model actions already attached to earlier cards so none is
+// reused across two cards (see matchAction).
+function fixesFromAudits(pillar, rules, actions, used) {
   var out = [];
   (Array.isArray(rules) ? rules : []).forEach(function (rule) {
     if (!rule || typeof rule !== 'object') return;
@@ -131,7 +149,7 @@ function fixesFromAudits(pillar, rules, actions) {
     var gap = max - got;
     if (!(gap > 0)) return; // already at full credit for this rule
     var label = clean(rule.label || rule.ruleId || 'Missing proof', 120);
-    var action = matchAction(actions, pillar, label);
+    var action = matchAction(actions, pillar, label, used);
     var af = actionFields(action);
     var closability = RULE_CLOSABILITY[rule.ruleId] || CLOSABILITY[pillar];
     out.push({
@@ -157,7 +175,7 @@ function fixesFromAudits(pillar, rules, actions) {
 
 // Fallback when the audit ledger is missing: one fix per pillar that lost
 // points, using the pillar gap and the failed signal-audit checks as detail.
-function fixFromPillarGap(pillar, pillarObj, signalRows, actions) {
+function fixFromPillarGap(pillar, pillarObj, signalRows, actions, used) {
   // Only build a fallback fix when the pillar was actually measured. An absent
   // pillar (no object / no numeric score) is missing data, not a 25-point gap,
   // and must never be fabricated into a fix.
@@ -175,7 +193,7 @@ function fixFromPillarGap(pillar, pillarObj, signalRows, actions) {
   var title = missing.length
     ? 'Close the ' + PILLAR_LABEL[pillar] + ' gap: ' + missing.slice(0, 3).join(', ')
     : 'Raise your ' + PILLAR_LABEL[pillar] + ' score';
-  var action = matchAction(actions, pillar, missing.join(' '));
+  var action = matchAction(actions, pillar, missing.join(' '), used);
   var af = actionFields(action);
   var observed = fails.length
     ? fails.slice(0, 3).map(function (s) { return clean(s.name + ': ' + (s.detail || ''), 120); }).join(' · ')
@@ -232,13 +250,19 @@ function buildFixPlan(result) {
   var actions = Array.isArray(r.actions) ? r.actions : [];
 
   var fixes = [];
+  // Shared across every pillar so one model action is attached to at most one
+  // card. Pillars run in a fixed order (clarity, trust, difference, ease); the
+  // pillar an action fits best claims it first, so e.g. a review action lands on
+  // Trust and the Difference card falls back to its own "what makes you
+  // different" copy instead of repeating the same text.
+  var used = [];
   PILLARS.forEach(function (pillar) {
     var ledgerRules = audits && Array.isArray(audits[pillar]) ? audits[pillar] : null;
-    var fromLedger = ledgerRules ? fixesFromAudits(pillar, ledgerRules, actions) : [];
+    var fromLedger = ledgerRules ? fixesFromAudits(pillar, ledgerRules, actions, used) : [];
     if (fromLedger.length) {
       fixes = fixes.concat(fromLedger);
     } else {
-      var gapFix = fixFromPillarGap(pillar, pillars[pillar], signalAudit[pillar], actions);
+      var gapFix = fixFromPillarGap(pillar, pillars[pillar], signalAudit[pillar], actions, used);
       if (gapFix) fixes.push(gapFix);
     }
   });
