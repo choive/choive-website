@@ -4244,7 +4244,7 @@ function showResults(r, jobId) {
 
   zone.innerHTML =
     (isPaid
-      ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildStartHere() + buildBusinessIntelligence()
+      ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildBusinessProfile() + buildStartHere() + buildBusinessIntelligence()
       : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
       + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-actions">Actions</a>'
@@ -4348,11 +4348,13 @@ function showResults(r, jobId) {
       + '<span class="paid-pillar-score">' + score + '<span> / 25</span></span></div>'
       + '<div style="height:3px;background:var(--rule);margin-bottom:16px;border-radius:2px;">'
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
+      + '<div style="font-size:13px;line-height:1.65;color:var(--ink);padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:12px;"><strong>What CHOIVE found:</strong> ' + esc(simpleWords(p.finding || plainPillarFinding(key, p))) + '</div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">These checks did not work and did not lower the score:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE used only the checks that worked.</div>' : '')
-      + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
+      + (p.analysis ? '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;">Why this matters</div><div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
       + (p.evidence ? '<details class="report-details"><summary>See the proof CHOIVE found</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(simpleWords(p.evidence)) + '</div></div></details>' : '')
       + scoreRuleHtml
       + auditHtml
+      + '<div style="margin-top:14px;"><a href="#report-actions" style="font-size:12px;font-weight:800;color:var(--ac-d);">See what to do and how to know it is done ↓</a></div>'
       + '</div>';
   }
 
@@ -4567,6 +4569,32 @@ function showResults(r, jobId) {
         + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This example can be used only after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
         + '</div>' : '')
       + '</section>';
+  }
+
+  function buildBusinessProfile() {
+    var profile = r.businessProfile && typeof r.businessProfile === 'object' ? r.businessProfile : {};
+    var facts = r.readyToUseAssets && r.readyToUseAssets.llmsFacts && typeof r.readyToUseAssets.llmsFacts === 'object'
+      ? r.readyToUseAssets.llmsFacts : {};
+    var offers = Array.isArray(facts.offers) ? facts.offers.filter(Boolean).slice(0, 3).join(', ') : '';
+    var audiences = Array.isArray(facts.audiences) ? facts.audiences.filter(Boolean).slice(0, 3).join(', ') : '';
+    var rows = [
+      { label:'What it is', value:profile.whatItIs || r.inferredCategory || '' },
+      { label:'What it offers', value:profile.whatItOffers || offers },
+      { label:'Who it is for', value:profile.whoItIsFor || audiences },
+      { label:'Where it works', value:profile.whereItWorks || facts.serviceArea || (bizData && bizData.city) || '' }
+    ];
+    return '<section class="pay-section" id="report-business-profile">'
+      + '<div class="pay-eyebrow">About This Business</div>'
+      + '<div class="paid-section-header">The basic facts CHOIVE found</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:18px;max-width:760px;">These words come from the website, the details entered, and public pages CHOIVE checked. CHOIVE does not fill a missing fact by guessing.</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px;">'
+      + rows.map(function(row) {
+          return '<div style="background:var(--paper-2);padding:18px 20px;border:1px solid var(--rule);">'
+            + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + row.label + '</div>'
+            + '<div style="font-size:14px;font-weight:700;line-height:1.55;color:var(--ink);">' + esc(row.value ? simpleWords(row.value) : 'CHOIVE could not check this.') + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div></section>';
   }
 
   function buildCommunityEvidence() {
