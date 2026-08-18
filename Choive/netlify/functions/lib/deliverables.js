@@ -589,22 +589,30 @@ function classifyBusiness(evidence, result) {
 
   // Archetype detection — order matters (most specific first)
   var archetype = 'general';
-  if (/restaurant|cafe|café|bistro|dining|eatery|food truck|bakery|coffee shop|bar |pub\b/i.test(corpus)) archetype = 'restaurant';
+  if (/youtuber|influencer|content creator|podcast|streamer|channel|creator|vlog|newsletter|subscriber|audience building/i.test(corpus)) archetype = 'contentcreator';
+  else if (/education|school|university|college|course|training|bootcamp|academy|e-learning|tutor|instructor|learning platform|online learning/i.test(corpus)) archetype = 'education';
+  else if (/non-profit|nonprofit|ngo|charity|foundation|social impact|mission|cause|donate|volunteer|humanitarian/i.test(corpus)) archetype = 'nonprofit';
+  else if (/bank|fintech|financial service|investment|wealth|advisor|finance|credit|loan|insurance|payment|accounting firm|tax preparer/i.test(corpus)) archetype = 'financial';
+  else if (/law firm|lawyer|attorney|legal service|accountant|cpa|tax service|audit|hr consulting|recruitment agency|staffing/i.test(corpus)) archetype = 'professional';
+  else if (/creative agency|design studio|branding|marketing agency|advertising|digital agency|web design|graphic design|media production/i.test(corpus)) archetype = 'creative';
+  else if (/construction|contractor|builder|building|renovation|remodel|architecture firm|civil engineer|general contractor/i.test(corpus)) archetype = 'construction';
+  else if (/logistics|shipping|delivery|freight|transport|courier|warehouse|supply chain|fulfillment/i.test(corpus)) archetype = 'logistics';
+  else if (/restaurant|cafe|café|bistro|dining|eatery|food truck|bakery|coffee shop|bar |pub\b/i.test(corpus)) archetype = 'restaurant';
   else if (/hotel|resort|inn\b|hostel|bed and breakfast|b&b|guesthouse|lodge|hospitality|vacation rental/i.test(corpus)) archetype = 'hospitality';
   else if (/software|saas|app\b|platform|crm|api|cloud|developer tool|analytics|dashboard|automation software|tech startup|technology company/i.test(corpus)) archetype = 'software';
-  else if (/consult|advisory|agency|professional service|accounting|accountant|legal|law firm|architect|marketing firm|strategy/i.test(corpus)) archetype = 'consulting';
+  else if (/consult|advisory|strategy firm|business consulting|management consulting/i.test(corpus)) archetype = 'consulting';
   else if (/e-commerce|ecommerce|online store|online shop|retail|boutique|fashion|clothing|apparel|shop\b|store\b|marketplace/i.test(corpus)) archetype = 'retail';
   else if (/dentist|dental|clinic|medical|doctor|healthcare|therapist|physio|wellness|spa\b|salon|barber/i.test(corpus)) archetype = 'healthcare';
   else if (/real estate|estate agent|property|realtor|brokerage/i.test(corpus)) archetype = 'realestate';
-  else if (/plumber|electrician|cleaning|repair|contractor|handyman|landscaping|hvac|roofing|local service|tradesperson/i.test(corpus)) archetype = 'localservice';
-  else if (/manufacturer|manufacturing|supplier|wholesale|industrial|logistics|distributor/i.test(corpus)) archetype = 'manufacturing';
+  else if (/plumber|electrician|cleaning|repair|handyman|landscaping|hvac|roofing|local service|tradesperson/i.test(corpus)) archetype = 'localservice';
+  else if (/manufacturer|manufacturing|supplier|wholesale|industrial|distributor/i.test(corpus)) archetype = 'manufacturing';
 
   // B2B vs B2C orientation
   var b2bSignals = /b2b|enterprise|business|saas|crm|api|wholesale|supplier|consult|agency|professional service|manufacturer|logistics|procurement|clients|organizations|companies|teams/i.test(corpus);
-  var b2cSignals = /b2c|consumer|restaurant|cafe|hotel|retail|boutique|shop|salon|dining|guest|customer experience/i.test(corpus);
+  var b2cSignals = /b2c|consumer|restaurant|cafe|hotel|retail|boutique|shop|salon|dining|guest|customer experience|followers|subscribers|students|learners/i.test(corpus);
   var orientation = 'mixed';
-  if (archetype === 'restaurant' || archetype === 'hospitality' || archetype === 'retail' || archetype === 'healthcare' || archetype === 'localservice') orientation = 'b2c';
-  else if (archetype === 'software' || archetype === 'consulting' || archetype === 'manufacturing') orientation = 'b2b';
+  if (archetype === 'restaurant' || archetype === 'hospitality' || archetype === 'retail' || archetype === 'healthcare' || archetype === 'localservice' || archetype === 'contentcreator' || archetype === 'education') orientation = 'b2c';
+  else if (archetype === 'software' || archetype === 'consulting' || archetype === 'manufacturing' || archetype === 'professional' || archetype === 'creative' || archetype === 'construction' || archetype === 'logistics' || archetype === 'financial') orientation = 'b2b';
   else if (b2bSignals && !b2cSignals) orientation = 'b2b';
   else if (b2cSignals && !b2bSignals) orientation = 'b2c';
 
@@ -660,6 +668,38 @@ function copyStyleFor(profile, name, siteUrl) {
     manufacturing: {
       verb: 'supplies', ctaLabel: 'Request a quote', ctaLine: 'Request a quote' + (siteUrl ? ' — ' + siteUrl : '.'),
       introVerb: 'supplies', closer: 'Contact us to discuss your requirements.'
+    },
+    contentcreator: {
+      verb: 'creates content about', ctaLabel: 'Subscribe', ctaLine: 'Subscribe to stay updated' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'creates', closer: 'Subscribe and join the community.'
+    },
+    education: {
+      verb: 'teaches', ctaLabel: 'Enroll today', ctaLine: 'Start learning today' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'teaches', closer: 'Enroll now to get started.'
+    },
+    nonprofit: {
+      verb: 'supports', ctaLabel: 'Get involved', ctaLine: 'Join our mission' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'serves', closer: 'Support our mission today.'
+    },
+    financial: {
+      verb: 'helps clients with', ctaLabel: 'Speak to an advisor', ctaLine: 'Talk to an advisor' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'helps', closer: 'Speak to an advisor to learn more.'
+    },
+    professional: {
+      verb: 'advises clients on', ctaLabel: 'Schedule a consultation', ctaLine: 'Book a consultation' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'advises', closer: 'Schedule a consultation with our team.'
+    },
+    creative: {
+      verb: 'creates', ctaLabel: 'See our work', ctaLine: 'See what we can create for you' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'creates', closer: 'Let\'s create something great together.'
+    },
+    construction: {
+      verb: 'builds', ctaLabel: 'Request an estimate', ctaLine: 'Get a free estimate' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'builds', closer: 'Request an estimate for your project.'
+    },
+    logistics: {
+      verb: 'delivers', ctaLabel: 'Get a quote', ctaLine: 'Get a shipping quote' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'delivers', closer: 'Contact us for a quote.'
     },
     general: {
       verb: 'provides', ctaLabel: 'Learn more', ctaLine: 'Learn more' + (siteUrl ? ' — ' + siteUrl : '.'),
@@ -767,6 +807,20 @@ function generateSocialPosts(evidence, result) {
       post1 = name + ' helps teams with ' + catLower + '.';
     } else if (bp.archetype === 'consulting') {
       post1 = name + ' partners with clients on ' + catLower + placeSuffix + '.';
+    } else if (bp.archetype === 'contentcreator') {
+      post1 = name + ' creates content about ' + catLower + '.';
+    } else if (bp.archetype === 'education') {
+      post1 = name + ' teaches ' + catLower + '.';
+    } else if (bp.archetype === 'nonprofit') {
+      post1 = name + ' supports ' + catLower + '.';
+    } else if (bp.archetype === 'professional' || bp.archetype === 'financial') {
+      post1 = name + ' advises clients on ' + catLower + '.';
+    } else if (bp.archetype === 'creative') {
+      post1 = name + ' creates ' + catLower + ' for clients.';
+    } else if (bp.archetype === 'construction') {
+      post1 = name + ' builds ' + catLower + placeSuffix + '.';
+    } else if (bp.archetype === 'logistics') {
+      post1 = name + ' delivers ' + catLower + '.';
     } else {
       post1 = name + ' ' + style.verb + ' ' + catLower + placeSuffix + '.';
     }
@@ -781,11 +835,22 @@ function generateSocialPosts(evidence, result) {
       : bp.archetype === 'software' ? 'What ' + name + ' does for your team:'
       : bp.archetype === 'consulting' ? 'How ' + name + ' helps clients:'
       : bp.archetype === 'retail' ? 'What you\'ll find at ' + name + ':'
+      : bp.archetype === 'contentcreator' ? 'What you\'ll find on ' + name + ':'
+      : bp.archetype === 'education' ? 'What you\'ll learn:'
+      : bp.archetype === 'nonprofit' ? 'What ' + name + ' does:'
+      : bp.archetype === 'professional' || bp.archetype === 'financial' ? 'How ' + name + ' helps:'
+      : bp.archetype === 'creative' ? 'What ' + name + ' creates:'
+      : bp.archetype === 'construction' ? 'What ' + name + ' builds:'
+      : bp.archetype === 'logistics' ? 'Services from ' + name + ':'
       : 'What ' + name + ' offers:';
     var post2 = offerLabel + '\n\n'
       + modelFacts.offers.slice(0, 3).map(function(o, i) { return (i + 1) + '. ' + sentenceCase(o); }).join('\n');
     if (style.ctaLine) post2 += '\n\n' + style.ctaLine;
-    posts.push({ type: bp.archetype === 'restaurant' ? 'Menu highlight' : 'What we offer', content: post2 });
+    var postType = bp.archetype === 'restaurant' ? 'Menu highlight'
+      : bp.archetype === 'contentcreator' ? 'Content topics'
+      : bp.archetype === 'education' ? 'What you\'ll learn'
+      : 'What we offer';
+    posts.push({ type: postType, content: post2 });
   }
   
   // Post 3: Differentiator
@@ -819,6 +884,20 @@ function generateSocialPosts(evidence, result) {
       post5 = 'Hungry?\n\nVisit ' + name + placeSuffix + '. ' + style.closer;
     } else if (bp.archetype === 'hospitality') {
       post5 = 'Planning a trip' + placeSuffix + '?\n\n' + name + '. ' + style.closer;
+    } else if (bp.archetype === 'contentcreator') {
+      post5 = 'Interested in ' + catLower + '?\n\n' + style.closer;
+    } else if (bp.archetype === 'education') {
+      post5 = 'Want to learn ' + catLower + '?\n\n' + style.closer;
+    } else if (bp.archetype === 'nonprofit') {
+      post5 = 'Want to support ' + catLower + '?\n\n' + style.closer;
+    } else if (bp.archetype === 'professional' || bp.archetype === 'financial') {
+      post5 = 'Need help with ' + catLower + '?\n\n' + style.closer;
+    } else if (bp.archetype === 'creative') {
+      post5 = 'Need ' + catLower + '?\n\n' + style.closer;
+    } else if (bp.archetype === 'construction') {
+      post5 = 'Planning a ' + catLower + ' project?\n\n' + style.closer;
+    } else if (bp.archetype === 'logistics') {
+      post5 = 'Need ' + catLower + '?\n\n' + style.closer;
     } else if (bp.orientation === 'b2b') {
       post5 = 'Looking for ' + catLower + '?\n\n' + name + ' can help. ' + style.closer;
     } else {
