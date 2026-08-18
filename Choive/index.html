@@ -3148,15 +3148,39 @@ function buildShareBlock(jobId, topComp) {
   var shareText = 'I just ran a CHOIVE diagnostic for ' + name + '. Score: ' + score + '/100' + comp + '. Find out yours:';
   var shareUrl = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
   var linkedInUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
+  var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(shareUrl);
   return [
     '<div class="share-block" id="shareBlock">',
     '  <div class="share-label">Share your result</div>',
     '  <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">',
     '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy link</button>',
     '    <button class="share-btn" onclick="window.open(\'' + linkedInUrl + '\', \'_blank\')">Share on LinkedIn</button>',
+    '    <button class="share-btn" onclick="window.open(\'' + xUrl + '\', \'_blank\')">Share on X</button>',
     '    <button class="share-btn" onclick="copyShareText(\'' + shareText.replace(/'/g, "\\'").replace(/\n/g, ' ') + '\', \'' + shareUrl + '\')">Copy post text</button>',
     '  </div>',
     '</div>'
+  ].join('\n');
+}
+
+// Post-purchase retention CTA. Shown at the end of the PAID report only.
+// Brings owners back after they fix things, so they see their score go up.
+// Watching the score is free today (see /monitor), so the copy never promises a price.
+function buildKeepImprovingCTA(jobId) {
+  var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+  return [
+    '<section class="pay-section" id="report-keep-improving" style="border-bottom:none;background:var(--paper-2);">',
+    '  <div class="pay-eyebrow">Keep your score going up</div>',
+    '  <div class="paid-section-header">Watch your CHOIVE score every month</div>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--body);max-width:640px;margin:0 0 20px;">',
+    '    You have your plan. Now do the work, then watch your score.',
+    '    We check it for you every month and email you when it moves — so you can see if your fixes worked.',
+    '    It is <strong>free</strong> to watch your score.',
+    '  </div>',
+    '  <div style="display:flex;gap:12px;flex-wrap:wrap;">',
+    '    <a href="' + monitorUrl + '" class="pay-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score →</a>',
+    '    <button class="pay-btn-secondary" onclick="resetDiagnostic()">Run the check again now →</button>',
+    '  </div>',
+    '</section>'
   ].join('\n');
 }
 
@@ -3782,7 +3806,8 @@ function showResults(r, jobId) {
       + '<div class="mono-eyebrow">What the AI tools said</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--tp);line-height:1.45;margin:6px 0 16px;max-width:640px;">' + esc(head) + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);">' + cells + '</div>'
-      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:12px;">These answers do not change your CHOIVE score. Your score below measures your website\u2019s own proof on its own.</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:12px;"><strong>These are live answers from this run — not old, saved ones.</strong> We ask the four big AI tools — ChatGPT, Claude, Perplexity, and Gemini — the way a real customer would, every time you run a check.</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:8px;">These answers do not change your CHOIVE score. Your score below measures your website\u2019s own proof on its own.</div>'
       + '</div>';
   }
 
@@ -5643,6 +5668,7 @@ function showResults(r, jobId) {
   })() : '';
 
   zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId, topComp)).join('') : '')
+    + (isPaid && paidSections ? buildKeepImprovingCTA(jobId) : '')
     + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
