@@ -2882,6 +2882,40 @@ const GET_API   = '/.netlify/functions/get-diagnostic';
 let bizData   = {};
 let pollTimer = null;
 
+// ── SOCIAL PROOF ────────────────────────────────────────────────────────────
+// Paste REAL customer quotes here to show them at the moment of payment.
+// NEVER invent one — an empty list simply shows an honest trust strip instead.
+// Each item: { quote: 'what they said', name: 'First name, business type, city' }
+const CHOIVE_TESTIMONIALS = [
+  // Example (remove the // and edit with a real quote once you have one):
+  // { quote: 'I found out ChatGPT was recommending a rival with 200 more reviews than me. I ran a review push and six weeks later ChatGPT started naming us.', name: 'Sarah, cafe owner, Leeds' }
+];
+function buildSocialProof() {
+  var real = (Array.isArray(CHOIVE_TESTIMONIALS) ? CHOIVE_TESTIMONIALS : [])
+    .filter(function(t){ return t && t.quote && String(t.quote).trim(); });
+  if (real.length) {
+    var t = real[0];
+    return '<div style="margin:8px 0 20px;padding:18px 20px;background:rgba(245,242,238,0.05);border-left:3px solid var(--ac);">'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-style:italic;font-size:15px;color:var(--ghost);line-height:1.6;">\u201C' + esc(String(t.quote)) + '\u201D</div>'
+      + (t.name ? '<div style="font-size:12px;font-weight:700;color:var(--ghost-2);margin-top:10px;">' + esc(String(t.name)) + '</div>' : '')
+      + '</div>';
+  }
+  // Honest fallback — every claim here is true, no invented quote.
+  var items = [
+    ['Real AI runs', 'Answers recorded from ChatGPT, Claude, Perplexity and Gemini — not guesses.'],
+    ['Evidence-checked', 'Every finding is tied to something CHOIVE actually saw. No made-up facts.'],
+    ['Instant access', 'Your full analysis opens the moment you pay. No account, no waiting.']
+  ];
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;margin:8px 0 20px;">'
+    + items.map(function(it){
+        return '<div style="padding:14px 16px;background:rgba(245,242,238,0.04);">'
+          + '<div style="font-size:12px;font-weight:800;color:var(--ac);margin-bottom:5px;">' + esc(it[0]) + '</div>'
+          + '<div style="font-size:11.5px;color:var(--ghost-2);line-height:1.55;">' + esc(it[1]) + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
 // ── STAGE UI ──────────────────────────────────────────────────────────────────
 function updateEngineStage(status) {
   const stageA = document.getElementById('stageA');
@@ -3117,15 +3151,50 @@ function buildScoreLabels(r) {
   </div>`;
 }
 
+// FREE-RESULT "one damning fact": names the competitor AI chose, the real
+// reason, and — when the run measured it — the exact point gap. The FIX is
+// locked, so the buyer knows precisely what $99 buys. Uses only recorded data;
+// no numbers are shown unless competitorComparison actually measured them.
 function buildDisplacementBlock(r) {
   const d = r.displacement;
   if (!d || !d.competitorName) return '';
+
+  // Real, measured point gap vs this exact competitor (never invented).
+  var gapHtml = '';
+  try {
+    var entries = (r.competitorComparison && Array.isArray(r.competitorComparison.entries))
+      ? r.competitorComparison.entries : [];
+    var norm = function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); };
+    var match = entries.find(function(e){ return e && e.name && norm(e.name) === norm(d.competitorName); });
+    if (match && match.score && match.score.pillars) {
+      var pk = ['clarity','trust','difference','ease'];
+      var behind = 0;
+      pk.forEach(function(k){
+        var p = match.score.pillars[k] || {};
+        var g = (Number(p.you)||0) - (Number(p.competitor)||0);
+        if (g < 0) behind += Math.abs(g);
+      });
+      if (behind > 0) {
+        gapHtml = '<div style="margin-top:16px;padding:12px 16px;background:rgba(184,50,50,0.08);border-left:3px solid var(--red);">'
+          + '<div style="font-size:22px;font-weight:800;color:var(--red);line-height:1;">' + behind + ' point' + (behind === 1 ? '' : 's') + ' behind</div>'
+          + '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-top:4px;">This is how far ahead of you they are, across the four things AI looks at.</div>'
+          + '</div>';
+      }
+    }
+  } catch (e) {}
+
   return [
     '<div class="disp-block">',
-    '  <div class="disp-query">When someone asks: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-query">When someone asks AI: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-label">AI picks this business — not yours</div>',
     '  <div class="disp-name">' + esc(d.competitorName || '') + '</div>',
-    '  <div class="disp-label">Named in the recorded answer for this query</div>',
-    '  <div class="disp-why"><strong>Why:</strong> ' + esc(d.competitorWhy || '') + '</div>',
+    '  <div class="disp-why"><strong>Why AI picks them:</strong> ' + esc(d.competitorWhy || '') + '</div>',
+    gapHtml,
+    '  <div onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})" style="margin-top:18px;display:flex;align-items:center;gap:10px;cursor:pointer;padding:14px 16px;background:var(--void);border:1px solid rgba(245,242,238,0.12);">',
+    '    <span style="flex:none;color:var(--ac);font-size:14px;">\uD83D\uDD12</span>',
+    '    <div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">See exactly what closes this gap →</div>',
+    '    <div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">The full analysis shows the fixes that get AI to pick you instead.</div></div>',
+    '  </div>',
     '</div>'
   ].join('\n');
 }
@@ -3192,6 +3261,50 @@ function buildKeepImprovingCTA(jobId) {
     '  </div>',
     '</section>'
   ].join('\n');
+}
+
+// Verified badge CTA — shown at the end of the PAID report, only when the score
+// is high enough to be worth showing off (>=65). Every badge a business embeds
+// is a live, verified link back to CHOIVE — so this doubles as free distribution.
+// The score in the badge is read live from the real diagnostic; nothing is typed
+// or faked, so this never fabricates a number.
+function buildBadgeCTA(jobId) {
+  if (!jobId) return '';
+  var score = (window.__choiveLastResult && isFinite(Number(window.__choiveLastResult.overallScore)))
+    ? Math.round(Number(window.__choiveLastResult.overallScore)) : null;
+  if (score === null || score < 65) return ''; // only surface when the score is worth displaying
+  var origin = window.location.origin || 'https://choive.com';
+  var embed = '<div class="choive-score" data-job="' + jobId + '"></div>\n'
+    + '<script src="' + origin + '/choive-widget.js" async></' + 'script>';
+  return [
+    '<section class="pay-section" id="report-badge" style="border-bottom:none;background:var(--void);color:var(--ghost);">',
+    '  <div class="pay-eyebrow" style="color:var(--ac);">Show off your score</div>',
+    '  <div class="paid-section-header" style="color:var(--ghost);">Put your verified CHOIVE score on your website</div>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--ghost-2);max-width:640px;margin:0 0 20px;">',
+    '    Your score of <strong style="color:var(--ac);">' + score + '/100</strong> is high enough to show off.',
+    '    Paste this on your site and a small CHOIVE badge appears. It always shows your <strong>real, live score</strong> —',
+    '    checked by us, so nobody can fake it. It is <strong>free</strong>, and it links visitors back to your result.',
+    '  </div>',
+    '  <textarea readonly id="badgeEmbedCode" onclick="this.select()" style="width:100%;max-width:640px;height:70px;font-family:monospace;font-size:12px;padding:12px;border:1px solid rgba(201,168,106,0.4);background:rgba(245,242,238,0.06);color:var(--ghost);border-radius:4px;resize:none;margin-bottom:14px;">' + esc(embed) + '</textarea>',
+    '  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">',
+    '    <button class="pay-btn-primary" onclick="copyBadgeEmbed()">Copy badge code</button>',
+    '    <a href="/badge" target="_blank" style="font-size:13px;font-weight:700;color:var(--ac);text-decoration:none;">See other badge styles \u2192</a>',
+    '  </div>',
+    '</section>'
+  ].join('\n');
+}
+
+function copyBadgeEmbed() {
+  var ta = document.getElementById('badgeEmbedCode');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).then(function() {
+    var btn = document.querySelector('#report-badge .pay-btn-primary');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied \u2713';
+      setTimeout(function() { btn.textContent = orig; }, 2000);
+    }
+  });
 }
 
 function copyShareUrl() {
@@ -4766,8 +4879,26 @@ function showResults(r, jobId) {
       ? ''
       : buildAiScorecard()
         + scoreHeader
+        + buildDisplacementBlock(r)
         + [].concat(buildPillarCards(r, false)).join('')
         + buildFreeCompetitorBlock()
+        + (function() {
+            // FREE "Before" teaser — the real current-state receipt (damning),
+            // with the "After" locked. Only shows when we truly have a receipt.
+            var parts = String(r.businessUnderstanding || '')
+              .split(/\n\s*\n/).map(function(v){ return v.trim(); }).filter(Boolean);
+            var before = parts[0] || '';
+            if (!before) return '';
+            return '<div style="background:rgba(184,50,50,0.05);border:1px solid rgba(184,50,50,0.18);border-top:4px solid var(--red);padding:24px 28px;margin:2px 0;">'
+              + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">What AI understands about you today</div>'
+              + '<div style="font-size:15px;color:var(--body);line-height:1.75;">' + esc(before) + '</div>'
+              + '<div onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})" style="margin-top:18px;display:flex;align-items:center;gap:10px;cursor:pointer;padding:14px 16px;background:var(--void);">'
+              + '<span style="flex:none;color:var(--ac);font-size:14px;">\uD83D\uDD12</span>'
+              + '<div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">See what AI can understand after your fixes →</div>'
+              + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">The full analysis shows the "after" picture and the exact steps to get there.</div></div>'
+              + '</div>'
+              + '</div>';
+          })()
         + (function() {
             var _t = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
             var _g = (_t[(r.marketPosition && r.marketPosition.tier) || 'unknown'] || 0) - (Number(r.overallScore) || 0);
@@ -4796,8 +4927,21 @@ function showResults(r, jobId) {
           + '<div class="paywall-headline">You\u2019ve seen the score. Now see how to win.</div>'
           + '<div class="paywall-body">Your free result shows the score and the size of the problem. Unlock the full analysis to get everything below.</div>'
           + '<div style="margin:8px 0 24px;">' + _rows + '</div>'
+          + buildSocialProof()
           + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
           + '<div style="font-size:11px;color:var(--ghost-3);text-align:center;margin-top:12px;letter-spacing:0.03em;">One payment · Instant access · No account needed</div>'
+          + '</div>';
+      })())
+
+  // FREE monitor entry-point — the default next step for people who don't buy
+  // today. Free to watch; brings them back and feeds the data asset. Recurring.
+  + (isPaid ? '' : (function() {
+        var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+        return '<div style="background:var(--paper-2);border:1px solid var(--rule);padding:26px 28px;margin-top:2px;">'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Free · No payment needed</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;color:var(--ink);line-height:1.3;margin-bottom:8px;">Not ready yet? Watch your score for free.</div>'
+          + '<div style="font-size:14px;color:var(--body);line-height:1.7;margin-bottom:18px;max-width:600px;">AI changes its mind. We check your score every month and email you the day it moves — so you always know where you stand. It is free to watch.</div>'
+          + '<a href="' + monitorUrl + '" class="pay-btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score every month — free →</a>'
           + '</div>';
       })());
 
@@ -5143,22 +5287,44 @@ function showResults(r, jobId) {
       .split(/\n\s*\n/).map(function(value) { return value.trim(); }).filter(Boolean);
     var current = paragraphs[0] || apiMeasurementSummary;
     var after = paragraphs[1] || '';
-    var unlockActions = (Array.isArray(r.actions) ? r.actions : []).filter(function(action) {
+    var topActions = (Array.isArray(r.actions) ? r.actions : []).filter(function(action) {
       return action && action.title;
-    }).slice(0, 3).map(function(action) {
+    }).slice(0, 3);
+    var unlockActions = topActions.map(function(action) {
       return '<li style="margin:5px 0;">' + esc(action.title) + '</li>';
     }).join('');
-    return '<section class="pay-section" id="report-intelligence">'
-      + '<div class="pay-eyebrow">What You Can Truthfully Say</div>'
-      + '<div class="paid-section-header">What the business can honestly say now</div>'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">What AI understands now</div>'
+    // Honest "After" fallback: when the engine did not supply a projected
+    // paragraph, describe what BECOMES POSSIBLE from the real recommended
+    // fixes — never a fabricated AI answer. Clearly labelled below.
+    var afterFromActions = '';
+    if (!after && topActions.length) {
+      afterFromActions = 'Once these changes are online and true — '
+        + topActions.map(function(a){ return String(a.title).toLowerCase(); }).join('; ')
+        + ' — AI systems will have the proof they need to describe '
+        + (name || 'this business') + ' accurately and include it when buyers ask.';
+    }
+    var afterText = after || afterFromActions;
+
+    // ── AMPLIFIED BEFORE / AFTER — the emotional core of the report ──────────
+    var beforeCol = '<div style="background:rgba(184,50,50,0.05);border:1px solid rgba(184,50,50,0.18);border-top:4px solid var(--red);padding:22px 24px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">Before · What AI understands today</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
-      + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
-        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">What AI should understand after the work is done</div>'
-        + '<div class="paid-narrative" style="margin-bottom:16px;">' + readableText(after, 2) + '</div>'
+      + '</div>';
+    var afterCol = afterText
+      ? '<div style="background:var(--paper-2);border:1px solid var(--rule);border-top:4px solid var(--green);padding:22px 24px;">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--green);margin-bottom:12px;">After · What AI can understand once the work is done</div>'
+        + '<div class="paid-narrative" style="margin-bottom:14px;">' + readableText(afterText, 2) + '</div>'
         + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:10px;border-top:1px solid var(--rule);padding-top:12px;"><strong style="color:var(--ink);">Do these jobs first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
-        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This example can be used only after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
-        + '</div>' : '')
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This is what becomes possible after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
+        + '</div>'
+      : '';
+    return '<section class="pay-section" id="report-intelligence">'
+      + '<div class="pay-eyebrow">Before &amp; After</div>'
+      + '<div class="paid-section-header">How AI sees you now — and how it can see you</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:20px;max-width:760px;">This is the gap in one picture: what AI understands about your business today, and what it can understand once you finish your plan.</div>'
+      + (afterCol
+        ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">' + beforeCol + afterCol + '</div>'
+        : beforeCol)
       + '</section>';
   }
 
@@ -5933,6 +6099,7 @@ function showResults(r, jobId) {
   })() : '';
 
   zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId, topComp)).join('') : '')
+    + (isPaid && paidSections ? buildBadgeCTA(jobId) : '')
     + (isPaid && paidSections ? buildKeepImprovingCTA(jobId) : '')
     + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
