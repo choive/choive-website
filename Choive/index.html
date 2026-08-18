@@ -2825,7 +2825,10 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
         <a href="/standard" class="footer-link">The AI Selection Standard</a>
         <a href="/badge" class="footer-link">Badge & Widget</a>
         <a href="/index-benchmark" class="footer-link">CHOIVE Index</a>
+        <a href="/leaderboard" class="footer-link">Leaderboard</a>
+        <a href="/benchmark-report" class="footer-link">Yearly benchmark report</a>
         <a href="/monitor" class="footer-link">Score Monitoring</a>
+        <a href="/api" class="footer-link">API for developers</a>
         <a href="/#why-not-seo" class="footer-link">Why not SEO</a>
         <a href="/report" class="footer-link">CHOIVE Report™</a>
       </div>
@@ -3255,12 +3258,80 @@ function buildKeepImprovingCTA(jobId) {
     '    We check it for you every month and email you when it moves — so you can see if your fixes worked.',
     '    It is <strong>free</strong> to watch your score.',
     '  </div>',
-    '  <div style="display:flex;gap:12px;flex-wrap:wrap;">',
-    '    <a href="' + monitorUrl + '" class="pay-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score →</a>',
-    '    <button class="pay-btn-secondary" onclick="resetDiagnostic()">Run the check again now →</button>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--body);max-width:640px;margin:0 0 14px;">',
+    '    <strong>Did the fixes already?</strong> Press the button below. We look at your live website now,',
+    '    tell you which fixes are up, and can run a fresh check for you — with a real new score.',
     '  </div>',
+    '  <div style="display:flex;gap:12px;flex-wrap:wrap;">',
+    '    <button class="pay-btn-primary" id="checkFixesBtn" onclick="checkMyFixes(\'' + (jobId || '') + '\')">I did my fixes — check them →</button>',
+    '    <a href="' + monitorUrl + '" class="pay-btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score →</a>',
+    '  </div>',
+    '  <div id="checkFixesResult" style="display:none;margin-top:18px;max-width:640px;"></div>',
     '</section>'
   ].join('\n');
+}
+
+// Feature 4: "I did my fixes — check them" flow. Reads the live site via the
+// verify-fix endpoint, shows which fixes are now up in plain words, and (when
+// something is newly live) offers a real re-run. No progress is ever faked —
+// every line comes straight from the live website check.
+async function checkMyFixes(jobId) {
+  var btn = document.getElementById('checkFixesBtn');
+  var out = document.getElementById('checkFixesResult');
+  if (!jobId) { if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;">We could not find your check. Please reload the page.</div>'; } return; }
+  var token = '';
+  try { token = localStorage.getItem('choive-verification-' + jobId) || ''; } catch (e) {}
+  if (!token) {
+    if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;line-height:1.6;">Only the same browser that ran the check can do this. Please open this on the device you first used.</div>'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Looking at your website…'; }
+  try {
+    var resp = await fetch('/.netlify/functions/verify-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentJobId: jobId, verificationToken: token, triggerRerun: true })
+    });
+    var data = await resp.json();
+    if (!resp.ok || !data.available) {
+      throw new Error((data && data.error) || 'We could not read your website just now. Please try again in a minute.');
+    }
+    renderFixCheck(data, jobId);
+  } catch (err) {
+    if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;line-height:1.6;">' + esc(err.message || 'Something went wrong.') + '</div>'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Check again →'; }
+  }
+}
+
+function renderFixCheck(data, jobId) {
+  var out = document.getElementById('checkFixesResult');
+  if (!out) return;
+  var rows = (data.checks || []).map(function (c) {
+    var icon, color, note;
+    if (c.newlyFixed) { icon = '✓'; color = 'var(--green)'; note = 'New — this is now live!'; }
+    else if (c.now)  { icon = '✓'; color = 'var(--green)'; note = 'Live'; }
+    else             { icon = '✕'; color = 'var(--red)';   note = 'Not up yet'; }
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);">'
+      + '<span style="color:' + color + ';font-weight:800;font-size:15px;">' + icon + '</span>'
+      + '<div style="flex:1;"><div style="font-size:14px;color:var(--body);line-height:1.5;">' + esc(c.label) + '</div>'
+      + '<div style="font-size:12px;color:' + color + ';font-weight:700;margin-top:1px;">' + note + '</div></div>'
+      + '</div>';
+  }).join('');
+  var head = data.newlyFixedCount > 0
+    ? '<div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:4px;">Nice work — ' + data.newlyFixedCount + ' new fix' + (data.newlyFixedCount === 1 ? '' : 'es') + ' ' + (data.newlyFixedCount === 1 ? 'is' : 'are') + ' now live!</div>'
+    : '<div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:4px;">No new fixes are live yet.</div>';
+  var sub = data.newlyFixedCount > 0
+    ? (data.rerunStarted
+        ? '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">We started a fresh check for you. Your new score is being worked out now — it takes a couple of minutes.</div>'
+        : '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">' + esc(data.rerunError || 'Your fixes are live. Run the check again to see your new score.') + '</div>')
+    : '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">Publish your fixes, wait a few minutes for your website to update, then press the button again.</div>';
+  var goBtn = (data.rerunStarted && data.newJobId)
+    ? '<div style="margin-top:14px;"><button class="pay-btn-primary" onclick="pollDiagnostic(\'' + esc(data.newJobId) + '\');window.scrollTo({top:0,behavior:\'smooth\'});">See my new score →</button></div>'
+    : '';
+  out.style.display = 'block';
+  out.innerHTML = '<div style="border:1px solid var(--rule);border-radius:8px;padding:18px 20px;background:var(--paper);">'
+    + head + sub + rows + goBtn + '</div>';
 }
 
 // Verified badge CTA — shown at the end of the PAID report, only when the score
@@ -4362,6 +4433,7 @@ function showResults(r, jobId) {
     + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
     + scoreMeter
     + '<div id="categoryBenchmark" style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;"></div>'
+    + '<div id="scoreHistory" style="display:none;margin-bottom:12px;"></div>'
     + (r.overallProvisional === true && r.overallNote
         ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
         : '')
@@ -6133,6 +6205,9 @@ function showResults(r, jobId) {
   // Fetch and display category benchmark
   loadCategoryBenchmark(r);
 
+  // Paid report only: fetch and draw the score-over-time graph
+  if (isPaid) { loadScoreHistory(jobId); }
+
   // ── COPY GENERATION (Implementation Help) ──────────────────────────────────
   async function generateFixCopy(actionTitle, fixType, actionId) {
     var btn = document.getElementById('genBtn-' + actionId);
@@ -6237,6 +6312,77 @@ function showResults(r, jobId) {
       console.warn('Category benchmark load failed:', err);
       el.style.display = 'none';
     }
+  }
+
+  // ── SCORE HISTORY LOADER (paid report) ──────────────────────────────────────
+  // Draws a simple line graph of the CHOIVE score across every re-run of this
+  // business. It only shows real recorded runs. If there is just one run so far,
+  // it shows an honest "run again after your fixes to see the line move" note
+  // instead of a fake graph.
+  async function loadScoreHistory(jobId) {
+    var el = document.getElementById('scoreHistory');
+    if (!el || !jobId) return;
+    try {
+      var resp = await fetch('/.netlify/functions/get-score-history?jobId=' + encodeURIComponent(jobId));
+      if (!resp.ok) { el.style.display = 'none'; return; }
+      var data = await resp.json();
+      if (!data || !data.available || !data.points || !data.points.length) {
+        el.style.display = 'none';
+        return;
+      }
+      el.innerHTML = buildScoreHistoryGraph(data.points);
+      el.style.display = 'block';
+    } catch (err) {
+      console.warn('Score history load failed:', err);
+      el.style.display = 'none';
+    }
+  }
+
+  function buildScoreHistoryGraph(points) {
+    var head = '<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your score over time</div>';
+    // Only one run so far — no line to draw yet. Be honest, not fake.
+    if (points.length < 2) {
+      return head
+        + '<div style="font-size:13px;color:var(--tb);line-height:1.6;padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);border-radius:3px;max-width:600px;">'
+        + 'This is your first CHOIVE run. Make the fixes above, then run CHOIVE again. Your next run will show a line here so you can see the score go up.'
+        + '</div>';
+    }
+    var W = 600, H = 180, padL = 34, padR = 14, padT = 14, padB = 34;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = points.length;
+    var xFor = function (i) { return padL + (n === 1 ? innerW / 2 : (innerW * i) / (n - 1)); };
+    var yFor = function (s) { return padT + innerH - (innerH * (s / 100)); };
+    // Grid lines at 0/25/50/75/100
+    var grid = [0, 25, 50, 75, 100].map(function (g) {
+      var y = yFor(g);
+      return '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="var(--rule-d)" stroke-width="1" opacity="0.5"/>'
+        + '<text x="' + (padL - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="var(--tm)">' + g + '</text>';
+    }).join('');
+    var path = points.map(function (p, i) {
+      return (i === 0 ? 'M' : 'L') + xFor(i).toFixed(1) + ' ' + yFor(p.score).toFixed(1);
+    }).join(' ');
+    var dots = points.map(function (p, i) {
+      var x = xFor(i), y = yFor(p.score);
+      var isCur = p.current;
+      var dot = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isCur ? 5 : 4) + '" fill="' + (isCur ? 'var(--ac)' : 'var(--tp)') + '" stroke="var(--void)" stroke-width="1.5"/>';
+      var lbl = '<text x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tp)">' + p.score + '</text>';
+      var run = '<text x="' + x.toFixed(1) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="9" fill="var(--tm)">Run ' + (p.version || (i + 1)) + '</text>';
+      return dot + lbl + run;
+    }).join('');
+    var first = points[0].score, last = points[points.length - 1].score, diff = last - first;
+    var moveMsg = diff > 0
+      ? 'Your score went up ' + diff + ' point' + (diff === 1 ? '' : 's') + ' since your first run. Keep going.'
+      : diff < 0
+        ? 'Your score went down ' + Math.abs(diff) + ' point' + (Math.abs(diff) === 1 ? '' : 's') + ' since your first run. Check the fixes above.'
+        : 'Your score is the same as your first run. Try the fixes above to move it up.';
+    var moveColor = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--amber)';
+    return head
+      + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:600px;height:auto;display:block;margin-bottom:8px;" role="img" aria-label="Score over time graph">'
+      + grid
+      + '<path d="' + path + '" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+      + dots
+      + '</svg>'
+      + '<div style="font-size:13px;font-weight:700;color:' + moveColor + ';line-height:1.6;max-width:600px;">' + moveMsg + '</div>';
   }
 
   // If returning from Report payment — show confirmation banner at top of result
@@ -6466,6 +6612,66 @@ function buildDeliverables(r) {
   function devTag() {
     return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span>';
   }
+  // Gap 5: gentle, category-aware ideas for what an AI likes to see listed in
+  // an llms.txt file. These are PROMPTS ("do you offer this?"), never claims,
+  // and they are shown as guidance only — they are NOT written into the actual
+  // llms.txt file text. The owner keeps only the lines that are true for them.
+  function categoryExampleHints(category) {
+    var c = String(category || '').toLowerCase();
+    var has = function(list) { return list.some(function(w) { return c.indexOf(w) !== -1; }); };
+    if (has(['restaurant', 'cafe', 'coffee', 'food', 'bakery', 'bar', 'diner', 'catering']))
+      return ['The kind of food or drink you serve', 'Your opening days and hours', 'How people book a table or order', 'Any special diets you handle (for example gluten-free)', 'Where you are and how to find you'];
+    if (has(['dental', 'dentist', 'clinic', 'medical', 'health', 'doctor', 'therapy', 'wellness', 'physio']))
+      return ['The treatments or services you offer', 'Which insurance or payment you accept', 'Your opening days and hours', 'How people book an appointment', 'Your address and parking'];
+    if (has(['law', 'legal', 'attorney', 'solicitor', 'accountant', 'consult', 'agency', 'financial']))
+      return ['The areas of work you help with', 'Whether the first talk is free', 'How your fees work', 'How people book a meeting', 'Who you usually help'];
+    if (has(['shop', 'store', 'retail', 'ecommerce', 'e-commerce', 'boutique', 'clothing', 'product']))
+      return ['The main things you sell', 'Your delivery and return rules', 'Any sizes, colours or options', 'How people buy or contact you', 'Your opening hours if you have a shop'];
+    if (has(['salon', 'spa', 'beauty', 'hair', 'barber', 'nail', 'gym', 'fitness', 'trainer']))
+      return ['The treatments or classes you offer', 'Your prices or price range', 'Your opening days and hours', 'How people book', 'Where you are'];
+    if (has(['plumb', 'electric', 'builder', 'repair', 'trade', 'contractor', 'cleaning', 'garage', 'roofing', 'landscap']))
+      return ['The jobs you take on', 'The areas you cover', 'Whether call-out or quotes are free', 'How fast you can come out', 'How people book you'];
+    return ['The main services or products you offer', 'Your prices or price range', 'Your opening days and hours', 'The area or people you serve', 'How people book or contact you'];
+  }
+  function buildCategoryHints(r) {
+    var cat = (r && (r.inferredCategory || r.category)) || '';
+    var hints = categoryExampleHints(cat);
+    var items = hints.map(function(h) {
+      return '<li style="font-size:13px;color:var(--tb);line-height:1.6;margin-bottom:5px;">' + esc(h) + '</li>';
+    }).join('');
+    return '<div style="margin-top:18px;padding:14px 16px;border:1px dashed var(--rule-d);border-radius:6px;background:var(--dk-3);">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Ideas of what to include</div>'
+      + '<div style="font-size:13px;color:var(--amber);font-weight:700;line-height:1.6;margin-bottom:10px;">Only keep a line if it is true for your business. Delete anything you do not offer — never add something you do not really do.</div>'
+      + '<ul style="margin:0;padding-left:18px;">' + items + '</ul>'
+      + '</div>';
+  }
+  // Gap 4: teach the owner what makes a headline weak vs strong, using fixed
+  // teaching examples. These are NOT claims about the business and NOT the
+  // words to copy — they only show the shape of a good headline. Deterministic.
+  function buildHeadlineExamples() {
+    var pairs = [
+      { bad: 'Welcome to our website', badWhy: 'It says nothing about what you do.', good: 'We do [the thing you do] for [the people you help]', goodWhy: 'It names the job and the customer.' },
+      { bad: 'The best in town', badWhy: 'Anyone can say this, so no one believes it.', good: 'Same-day service, no call-out fee', goodWhy: 'It makes one clear, checkable promise.' },
+      { bad: 'Quality you can trust', badWhy: 'These are empty words with no meaning.', good: 'Fixed in 24 hours or it is free', goodWhy: 'It is specific, so it feels real.' }
+    ];
+    var rows = pairs.map(function(p) {
+      return '<div style="border:1px solid var(--rule-d);border-radius:6px;padding:12px 14px;margin-bottom:10px;background:var(--dk-3);">'
+        + '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+        + '<span style="color:var(--red);font-weight:800;font-size:14px;line-height:1.4;">✕</span>'
+        + '<div><div style="font-size:14px;color:var(--tp);font-style:italic;line-height:1.4;">"' + esc(p.bad) + '"</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:2px;">Weak — ' + esc(p.badWhy) + '</div></div></div>'
+        + '<div style="display:flex;align-items:flex-start;gap:8px;">'
+        + '<span style="color:var(--green);font-weight:800;font-size:14px;line-height:1.4;">✓</span>'
+        + '<div><div style="font-size:14px;color:var(--tp);font-weight:700;line-height:1.4;">"' + esc(p.good) + '"</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:2px;">Strong — ' + esc(p.goodWhy) + '</div></div></div>'
+        + '</div>';
+    }).join('');
+    return '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--rule-d);">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Learn the idea — good vs weak headlines</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.6;margin-bottom:12px;">These are teaching examples, not your words. They show the shape of a headline that works. Use the same idea to write your own.</div>'
+      + rows
+      + '</div>';
+  }
 
   var llmsHtml = '<div style="margin-bottom:16px;">'
     + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.11em;text-transform:uppercase;color:var(--void);background:var(--ac);padding:5px 8px;margin-bottom:10px;">Deploy today · no developer needed if you can upload a root file</div>'
@@ -6486,6 +6692,7 @@ function buildDeliverables(r) {
           + '<button class="deliv-copy-btn" onclick="downloadDeliv(\'dLlmsCode\', \'llms.txt\')">Download llms.txt</button>'
           + '</div>';
       })()
+    + buildCategoryHints(r)
     + buildVerifyBlock('llms', r)
     + '</div>';
 
@@ -6509,6 +6716,7 @@ function buildDeliverables(r) {
       });
       h1Html += '</div>';
     }
+    h1Html += buildHeadlineExamples();
     h1Html += '</div>';
   }
 
