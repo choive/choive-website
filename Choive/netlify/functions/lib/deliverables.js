@@ -576,6 +576,99 @@ function generateGbpDescription(evidence, result) {
   return { text: text, charCount: text.length, maxChars: MAX };
 }
 
+// ── BUSINESS-TYPE CLASSIFIER ────────────────────────────────────────────────
+// Sorts each subject into an archetype so done-for-you copy fits the business.
+// A restaurant post must not read like a SaaS post. Everything is still built
+// from real facts — only the tone, format, and call-to-action change per type.
+function classifyBusiness(evidence, result) {
+  var category = String((result && result.inferredCategory) || (evidence && evidence.category) || '').toLowerCase();
+  var desc = String((evidence && evidence.description) || '').toLowerCase();
+  var reach = String((evidence && evidence.marketReach) || '').toLowerCase();
+  var subjectType = String((evidence && evidence.subjectType) || 'business').trim();
+  var corpus = category + ' ' + desc;
+
+  // Archetype detection — order matters (most specific first)
+  var archetype = 'general';
+  if (/restaurant|cafe|café|bistro|dining|eatery|food truck|bakery|coffee shop|bar |pub\b/i.test(corpus)) archetype = 'restaurant';
+  else if (/hotel|resort|inn\b|hostel|bed and breakfast|b&b|guesthouse|lodge|hospitality|vacation rental/i.test(corpus)) archetype = 'hospitality';
+  else if (/software|saas|app\b|platform|crm|api|cloud|developer tool|analytics|dashboard|automation software|tech startup|technology company/i.test(corpus)) archetype = 'software';
+  else if (/consult|advisory|agency|professional service|accounting|accountant|legal|law firm|architect|marketing firm|strategy/i.test(corpus)) archetype = 'consulting';
+  else if (/e-commerce|ecommerce|online store|online shop|retail|boutique|fashion|clothing|apparel|shop\b|store\b|marketplace/i.test(corpus)) archetype = 'retail';
+  else if (/dentist|dental|clinic|medical|doctor|healthcare|therapist|physio|wellness|spa\b|salon|barber/i.test(corpus)) archetype = 'healthcare';
+  else if (/real estate|estate agent|property|realtor|brokerage/i.test(corpus)) archetype = 'realestate';
+  else if (/plumber|electrician|cleaning|repair|contractor|handyman|landscaping|hvac|roofing|local service|tradesperson/i.test(corpus)) archetype = 'localservice';
+  else if (/manufacturer|manufacturing|supplier|wholesale|industrial|logistics|distributor/i.test(corpus)) archetype = 'manufacturing';
+
+  // B2B vs B2C orientation
+  var b2bSignals = /b2b|enterprise|business|saas|crm|api|wholesale|supplier|consult|agency|professional service|manufacturer|logistics|procurement|clients|organizations|companies|teams/i.test(corpus);
+  var b2cSignals = /b2c|consumer|restaurant|cafe|hotel|retail|boutique|shop|salon|dining|guest|customer experience/i.test(corpus);
+  var orientation = 'mixed';
+  if (archetype === 'restaurant' || archetype === 'hospitality' || archetype === 'retail' || archetype === 'healthcare' || archetype === 'localservice') orientation = 'b2c';
+  else if (archetype === 'software' || archetype === 'consulting' || archetype === 'manufacturing') orientation = 'b2b';
+  else if (b2bSignals && !b2cSignals) orientation = 'b2b';
+  else if (b2cSignals && !b2bSignals) orientation = 'b2c';
+
+  // Is this a local, place-based business? (affects "visit us" vs "book a demo")
+  var isLocal = ['local', 'regional'].indexOf(reach) !== -1
+    || ['restaurant', 'hospitality', 'healthcare', 'localservice', 'realestate'].indexOf(archetype) !== -1;
+
+  return {
+    archetype: archetype,
+    orientation: orientation,
+    isLocal: isLocal,
+    subjectType: subjectType,
+    reach: reach
+  };
+}
+
+// Returns a tone/CTA pack for the detected archetype — used across all copy.
+function copyStyleFor(profile, name, siteUrl) {
+  var cta = siteUrl ? siteUrl : 'Get in touch';
+  var packs = {
+    restaurant: {
+      verb: 'serves', ctaLabel: 'Visit us', ctaLine: 'Come and see us' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'welcomes', closer: 'We would love to welcome you.'
+    },
+    hospitality: {
+      verb: 'welcomes guests to', ctaLabel: 'Book your stay', ctaLine: 'Plan your stay' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'welcomes', closer: 'We look forward to hosting you.'
+    },
+    software: {
+      verb: 'helps teams with', ctaLabel: 'Book a demo', ctaLine: 'See how it works' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'helps', closer: 'Book a demo to see it in action.'
+    },
+    consulting: {
+      verb: 'advises clients on', ctaLabel: "Let's talk", ctaLine: "Let's talk about your goals" + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'partners with', closer: "Let's talk about how we can help."
+    },
+    retail: {
+      verb: 'offers', ctaLabel: 'Shop now', ctaLine: 'Browse the collection' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'offers', closer: 'Shop the range today.'
+    },
+    healthcare: {
+      verb: 'provides care in', ctaLabel: 'Book an appointment', ctaLine: 'Book an appointment' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'cares for', closer: 'Book your appointment today.'
+    },
+    realestate: {
+      verb: 'helps clients with', ctaLabel: 'Get in touch', ctaLine: 'Talk to our team' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'helps', closer: 'Get in touch to start your search.'
+    },
+    localservice: {
+      verb: 'provides', ctaLabel: 'Get a quote', ctaLine: 'Get a free quote' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'serves', closer: 'Call us for a quote.'
+    },
+    manufacturing: {
+      verb: 'supplies', ctaLabel: 'Request a quote', ctaLine: 'Request a quote' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'supplies', closer: 'Contact us to discuss your requirements.'
+    },
+    general: {
+      verb: 'provides', ctaLabel: 'Learn more', ctaLine: 'Learn more' + (siteUrl ? ' — ' + siteUrl : '.'),
+      introVerb: 'helps', closer: 'Get in touch to learn more.'
+    }
+  };
+  return packs[profile.archetype] || packs.general;
+}
+
 // Generate a full "What makes us different" page — grounded only in real evidence
 function generateDifferencePage(evidence, result) {
   var name = (evidence && evidence.name || '').trim();
@@ -606,10 +699,16 @@ function generateDifferencePage(evidence, result) {
       + modelFacts.offers.map(function(o) { return '- ' + sentenceCase(o); }).join('\n');
   }
   
+  var bp = classifyBusiness(evidence, result);
+  var website = (evidence && evidence.website || evidence && evidence.inferredOfficialSite || '').trim();
+  var siteUrl = website ? (website.startsWith('http') ? website : 'https://' + website) : '';
+  var style = copyStyleFor(bp, name, siteUrl);
+  
   var audienceSection = '';
   if (modelFacts.audiences && modelFacts.audiences.length > 0) {
+    var serveVerb = bp.orientation === 'b2b' ? 'We work with ' : 'We serve ';
     audienceSection = '\n\n## Who this is for\n\n'
-      + 'We serve ' + modelFacts.audiences.join(', ') + (place && place !== 'Worldwide' ? ' in ' + place : '') + '.';
+      + serveVerb + modelFacts.audiences.join(', ') + (place && place !== 'Worldwide' ? ' in ' + place : '') + '.';
   }
   
   var content = '# ' + headline + '\n\n'
@@ -617,6 +716,7 @@ function generateDifferencePage(evidence, result) {
     + distinctionsSection
     + offersSection
     + audienceSection
+    + '\n\n## ' + style.ctaLabel + '\n\n' + style.closer
     + '\n\n---\n\n'
     + '*This page is built from verified facts collected by CHOIVE. Edit to match your voice before publishing.*';
   
@@ -627,7 +727,10 @@ function generateDifferencePage(evidence, result) {
   };
 }
 
-// Generate 5 ready-to-post social media posts — factual, no hype
+// Generate 5 ready-to-post social media posts — factual, no hype.
+// Copy is tailored to the business type (restaurant vs SaaS vs consulting, etc.)
+// via classifyBusiness + copyStyleFor. Only tone/format/CTA change; every fact
+// still comes from the collected evidence.
 function generateSocialPosts(evidence, result) {
   var name = (evidence && evidence.name || '').trim();
   if (!name) return [];
@@ -639,52 +742,89 @@ function generateSocialPosts(evidence, result) {
   var modelFacts = verified.llmsFacts || {};
   var website = (evidence && evidence.website || evidence && evidence.inferredOfficialSite || '').trim();
   var siteUrl = website ? (website.startsWith('http') ? website : 'https://' + website) : '';
+  var bp = classifyBusiness(evidence, result);
+  var style = copyStyleFor(bp, name, siteUrl);
+  var catLower = category ? category.toLowerCase() : '';
+  // Reduce marketLabel() to a plain locality so suffixes read naturally
+  // ("in Nice") instead of awkward composites ("in International, based in Nice").
+  var cleanPlace = '';
+  if (place && place !== 'Worldwide') {
+    cleanPlace = place.replace(/^International, based in /, '').replace(/^Region around /, '').trim();
+    if (cleanPlace === 'International' || cleanPlace === 'National' || cleanPlace === 'Regional') cleanPlace = '';
+  }
+  var placeSuffix = cleanPlace ? ' in ' + cleanPlace : '';
   
   var posts = [];
   
-  // Post 1: Introduction
+  // Post 1: Introduction — archetype-flavoured
   if (category) {
-    var post1 = name + ' provides ' + category.toLowerCase() + (place ? ' in ' + place : '') + '.';
-    if (differentiator) {
-      post1 += ' ' + sentenceCase(differentiator) + '.';
+    var post1;
+    if (bp.archetype === 'restaurant') {
+      post1 = name + ' — ' + sentenceCase(catLower) + placeSuffix + '.';
+    } else if (bp.archetype === 'hospitality') {
+      post1 = name + ' welcomes guests to ' + catLower + placeSuffix + '.';
+    } else if (bp.archetype === 'software') {
+      post1 = name + ' helps teams with ' + catLower + '.';
+    } else if (bp.archetype === 'consulting') {
+      post1 = name + ' partners with clients on ' + catLower + placeSuffix + '.';
+    } else {
+      post1 = name + ' ' + style.verb + ' ' + catLower + placeSuffix + '.';
     }
-    if (siteUrl) post1 += '\n\nLearn more: ' + siteUrl;
+    if (differentiator) post1 += ' ' + sentenceCase(differentiator) + '.';
+    if (style.ctaLine) post1 += '\n\n' + style.ctaLine;
     posts.push({ type: 'Introduction', content: post1 });
   }
   
-  // Post 2: What we offer (if available)
+  // Post 2: What we offer / menu / services (label adapts to type)
   if (modelFacts.offers && modelFacts.offers.length > 0) {
-    var post2 = 'What ' + name + ' offers:\n\n';
-    post2 += modelFacts.offers.slice(0, 3).map(function(o, i) { return (i + 1) + '. ' + sentenceCase(o); }).join('\n');
-    if (siteUrl) post2 += '\n\n' + siteUrl;
-    posts.push({ type: 'What we offer', content: post2 });
+    var offerLabel = bp.archetype === 'restaurant' ? 'On the menu at ' + name + ':'
+      : bp.archetype === 'software' ? 'What ' + name + ' does for your team:'
+      : bp.archetype === 'consulting' ? 'How ' + name + ' helps clients:'
+      : bp.archetype === 'retail' ? 'What you\'ll find at ' + name + ':'
+      : 'What ' + name + ' offers:';
+    var post2 = offerLabel + '\n\n'
+      + modelFacts.offers.slice(0, 3).map(function(o, i) { return (i + 1) + '. ' + sentenceCase(o); }).join('\n');
+    if (style.ctaLine) post2 += '\n\n' + style.ctaLine;
+    posts.push({ type: bp.archetype === 'restaurant' ? 'Menu highlight' : 'What we offer', content: post2 });
   }
   
-  // Post 3: Differentiator (if available)
+  // Post 3: Differentiator
   if (differentiator) {
     var post3 = sentenceCase(differentiator) + '.';
     if (category) {
-      post3 += '\n\nThat matters when choosing ' + category.toLowerCase() + '.';
+      post3 += bp.orientation === 'b2b'
+        ? '\n\nThat is what sets ' + name + ' apart in ' + catLower + '.'
+        : '\n\nThat is why people choose ' + name + '.';
     }
-    if (siteUrl) post3 += '\n\n' + siteUrl;
+    if (style.ctaLine) post3 += '\n\n' + style.ctaLine;
     posts.push({ type: 'What makes us different', content: post3 });
   }
   
-  // Post 4: Who we serve (if available)
+  // Post 4: Who we serve
   if (modelFacts.audiences && modelFacts.audiences.length > 0) {
-    var post4 = name + ' serves ' + modelFacts.audiences.slice(0, 2).join(' and ') + '.';
+    var post4 = bp.orientation === 'b2b'
+      ? name + ' works with ' + modelFacts.audiences.slice(0, 2).join(' and ') + '.'
+      : name + ' is for ' + modelFacts.audiences.slice(0, 2).join(' and ') + '.';
     if (place && place !== 'Worldwide') {
-      post4 += ' We work with clients in ' + place + '.';
+      post4 += bp.isLocal ? ' Based ' + (bp.reach === 'regional' ? 'in the region around ' : 'in ') + place + '.' : ' Working with clients in ' + place + '.';
     }
-    if (siteUrl) post4 += '\n\nGet in touch: ' + siteUrl;
+    if (style.ctaLine) post4 += '\n\n' + style.ctaLine;
     posts.push({ type: 'Who we serve', content: post4 });
   }
   
-  // Post 5: Call to action
+  // Post 5: Call to action — archetype-specific
   if (category) {
-    var post5 = 'Looking for ' + category.toLowerCase() + (place && place !== 'Worldwide' ? ' in ' + place : '') + '?';
-    post5 += '\n\n' + name + ' can help.';
-    if (siteUrl) post5 += '\n\n' + siteUrl;
+    var post5;
+    if (bp.archetype === 'restaurant') {
+      post5 = 'Hungry?\n\nVisit ' + name + placeSuffix + '. ' + style.closer;
+    } else if (bp.archetype === 'hospitality') {
+      post5 = 'Planning a trip' + placeSuffix + '?\n\n' + name + '. ' + style.closer;
+    } else if (bp.orientation === 'b2b') {
+      post5 = 'Looking for ' + catLower + '?\n\n' + name + ' can help. ' + style.closer;
+    } else {
+      post5 = 'Looking for ' + catLower + placeSuffix + '?\n\n' + name + '. ' + style.closer;
+    }
+    if (siteUrl && post5.indexOf(siteUrl) === -1) post5 += '\n\n' + siteUrl;
     posts.push({ type: 'Call to action', content: post5 });
   }
   
@@ -717,10 +857,16 @@ function generateAboutSection(evidence, result) {
     whyChooseUs = '\n\n## Why choose ' + name + '\n\n' + sentenceCase(differentiator) + '.';
   }
   
+  var bp = classifyBusiness(evidence, result);
+  var website = (evidence && evidence.website || evidence && evidence.inferredOfficialSite || '').trim();
+  var siteUrl = website ? (website.startsWith('http') ? website : 'https://' + website) : '';
+  var style = copyStyleFor(bp, name, siteUrl);
+  
   var whoWeServe = '';
   if (modelFacts.audiences && modelFacts.audiences.length > 0) {
+    var serveVerb = bp.orientation === 'b2b' ? 'We work with ' : 'We serve ';
     whoWeServe = '\n\n## Who we serve\n\n'
-      + 'We work with ' + modelFacts.audiences.join(', ')
+      + serveVerb + modelFacts.audiences.join(', ')
       + (place && place !== 'Worldwide' ? ' in ' + place : '') + '.';
   }
   
@@ -729,6 +875,7 @@ function generateAboutSection(evidence, result) {
     + whatWeDo
     + whyChooseUs
     + whoWeServe
+    + '\n\n## ' + style.ctaLabel + '\n\n' + style.closer
     + '\n\n---\n\n'
     + '*This section is built from verified facts. Edit to add your story and voice before publishing.*';
   
