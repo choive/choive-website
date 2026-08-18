@@ -3149,6 +3149,7 @@ function buildShareBlock(jobId, topComp) {
   var shareUrl = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
   var linkedInUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
   var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(shareUrl);
+  var referralUrl = window.location.origin + '/?ref=' + encodeURIComponent(jobId);
   return [
     '<div class="share-block" id="shareBlock">',
     '  <div class="share-label">Share your result</div>',
@@ -3157,6 +3158,15 @@ function buildShareBlock(jobId, topComp) {
     '    <button class="share-btn" onclick="window.open(\'' + linkedInUrl + '\', \'_blank\')">Share on LinkedIn</button>',
     '    <button class="share-btn" onclick="window.open(\'' + xUrl + '\', \'_blank\')">Share on X</button>',
     '    <button class="share-btn" onclick="copyShareText(\'' + shareText.replace(/'/g, "\\'").replace(/\n/g, ' ') + '\', \'' + shareUrl + '\')">Copy post text</button>',
+    '    <button class="share-btn" onclick="downloadScorecard()">Download scorecard image</button>',
+    '  </div>',
+    '  <div style="margin-top:16px;padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);">',
+    '    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Refer others, get rewards</div>',
+    '    <div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:8px;">Share this link. When 3 businesses pay for their analysis through it, your next diagnostic is free.</div>',
+    '    <div style="display:flex;gap:8px;align-items:center;">',
+    '      <input type="text" readonly value="' + referralUrl + '" id="referralUrlInput" style="flex:1;font-size:11px;padding:8px;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);font-family:monospace;">',
+    '      <button class="share-btn" onclick="copyReferralUrl(\'' + referralUrl + '\')">Copy</button>',
+    '    </div>',
     '  </div>',
     '</div>'
   ].join('\n');
@@ -3217,9 +3227,144 @@ function copyShareText(text, url) {
   });
 }
 
+function copyReferralUrl(url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = event.target;
+    if (btn) {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  });
+}
+
 function openShareUrl() {
   var url = getShareUrl();
   if (url) window.open(url, '_blank');
+}
+
+// Generate and download a shareable scorecard image (1200x630 for social media)
+function downloadScorecard() {
+  var r = window.__choiveLastResult;
+  if (!r) return;
+  
+  var score = Math.round(Number(r.overallScore) || 0);
+  var name = (bizData && bizData.name) ? bizData.name : 'My Business';
+  
+  var canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  var ctx = canvas.getContext('2d');
+  
+  // Background
+  ctx.fillStyle = '#0C0C0E';
+  ctx.fillRect(0, 0, 1200, 630);
+  
+  // Gold accent bar
+  var gradient = ctx.createLinearGradient(0, 0, 1200, 0);
+  gradient.addColorStop(0, 'rgba(201,168,106,0)');
+  gradient.addColorStop(0.5, 'rgba(201,168,106,0.4)');
+  gradient.addColorStop(1, 'rgba(201,168,106,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1200, 2);
+  
+  // CHOIVE logo text
+  ctx.fillStyle = '#C9A86A';
+  ctx.font = '700 18px Inter, sans-serif';
+  ctx.letterSpacing = '0.3em';
+  ctx.fillText('CHOIVE™', 80, 80);
+  
+  // Business name
+  ctx.fillStyle = '#F5F2EE';
+  ctx.font = '700 48px Inter, sans-serif';
+  ctx.letterSpacing = '-0.02em';
+  var nameY = 180;
+  if (name.length > 30) {
+    ctx.font = '700 36px Inter, sans-serif';
+    nameY = 170;
+  }
+  wrapText(ctx, name, 80, nameY, 700, 56);
+  
+  // Score circle
+  var centerX = 950;
+  var centerY = 315;
+  var radius = 160;
+  
+  // Outer ring
+  ctx.strokeStyle = 'rgba(201,168,106,0.2)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Score arc (green/amber/red based on score)
+  var scoreColor = score >= 76 ? '#4A9965' : score >= 56 ? '#9A6A14' : '#B13D3D';
+  ctx.strokeStyle = scoreColor;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * score / 100));
+  ctx.stroke();
+  
+  // Score number
+  ctx.fillStyle = '#F5F2EE';
+  ctx.font = '700 96px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(score), centerX, centerY - 10);
+  
+  // "/100"
+  ctx.fillStyle = 'rgba(245,242,238,0.5)';
+  ctx.font = '600 28px Inter, sans-serif';
+  ctx.fillText('/100', centerX, centerY + 60);
+  
+  // "CHOIVE INDEX" label below circle
+  ctx.fillStyle = 'rgba(201,168,106,0.8)';
+  ctx.font = '700 14px Inter, sans-serif';
+  ctx.letterSpacing = '0.15em';
+  ctx.fillText('CHOIVE INDEX', centerX, centerY + 190);
+  
+  // Footer
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245,242,238,0.4)';
+  ctx.font = '600 16px Inter, sans-serif';
+  ctx.letterSpacing = '0.02em';
+  ctx.fillText('choive.com', 80, 560);
+  
+  // Helper to wrap text
+  function wrapText(context, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' ');
+    var line = '';
+    var lines = [];
+    
+    for (var n = 0; n < words.length; n++) {
+      var testLine = line + words[n] + ' ';
+      var metrics = context.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        lines.push(line);
+        line = words[n] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+    
+    lines.forEach(function(l, i) {
+      context.fillText(l.trim(), x, y + (i * lineHeight));
+    });
+  }
+  
+  // Download
+  canvas.toBlob(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'choive-scorecard-' + (name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
 }
 
 
@@ -4076,6 +4221,7 @@ function showResults(r, jobId) {
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Your CHOIVE score</div>'
     + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
+    + '<div id="categoryBenchmark" style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;"></div>'
     + (r.overallProvisional === true && r.overallNote
         ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
         : '')
@@ -4744,6 +4890,23 @@ function showResults(r, jobId) {
       + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
       + '<div style="margin-top:10px;padding:10px 13px;background:var(--paper-2);border-left:3px solid var(--ac);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">This job is finished when</div><div style="font-size:13px;line-height:1.6;color:var(--body);">' + esc(simpleWords(a.verification || a.successMeasure || 'The change is live and anyone can see it.')) + '</div></div>'
       + (a.explanation ? '<details class="report-details"><summary>Why you should do this</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
+      + (function() {
+          // Show "Generate copy" button for specific fix types where we can write the actual content
+          var copyTypes = ['difference', 'about', 'review', 'proof', 'page', 'content', 'copy', 'write', 'add text'];
+          var canGenerate = copyTypes.some(function(t) { 
+            return (a.title || '').toLowerCase().indexOf(t) !== -1 || (a.body || '').toLowerCase().indexOf(t) !== -1;
+          });
+          if (!canGenerate) return '';
+          var fixType = (a.title || '').toLowerCase().indexOf('different') !== -1 ? 'difference_page'
+            : (a.title || '').toLowerCase().indexOf('about') !== -1 ? 'about_proof'
+            : (a.title || '').toLowerCase().indexOf('review') !== -1 ? 'review_prompt'
+            : 'generic';
+          var actionId = 'action-' + Math.random().toString(36).slice(2,9);
+          return '<div style="margin-top:12px;">'
+            + '<button class="share-btn" onclick="generateFixCopy(\'' + esc(a.title || '') + '\', \'' + fixType + '\', \'' + actionId + '\')" id="genBtn-' + actionId + '" style="width:auto;">✨ Generate the copy for this</button>'
+            + '<div id="genResult-' + actionId + '" style="display:none;margin-top:12px;padding:14px;background:var(--paper);border:1px solid var(--rule-d);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Generated copy — check it, then use it</div><div id="genCopy-' + actionId + '" style="font-size:13px;line-height:1.7;color:var(--ink);white-space:pre-wrap;"></div><button class="share-btn" onclick="copyGeneratedText(\'' + actionId + '\')" id="copyGenBtn-' + actionId + '" style="margin-top:10px;">Copy to clipboard</button></div>'
+            + '</div>';
+        })()
       + '</div>';
   }
 
@@ -5696,6 +5859,115 @@ function showResults(r, jobId) {
       paidNavCta.setAttribute('href', '#report-download');
     }
     runAISimulation(r);
+  }
+  
+  // Fetch and display category benchmark
+  loadCategoryBenchmark(r);
+
+  // ── COPY GENERATION (Implementation Help) ──────────────────────────────────
+  async function generateFixCopy(actionTitle, fixType, actionId) {
+    var btn = document.getElementById('genBtn-' + actionId);
+    var resultDiv = document.getElementById('genResult-' + actionId);
+    var copyDiv = document.getElementById('genCopy-' + actionId);
+    
+    if (!btn || !resultDiv || !copyDiv) return;
+    
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+    
+    try {
+      var resp = await fetch('/.netlify/functions/generate-fix-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: jobId || '',
+          actionTitle: actionTitle,
+          fixType: fixType
+        })
+      });
+      
+      if (!resp.ok) {
+        var err = await resp.json();
+        throw new Error(err.error || 'Failed to generate copy');
+      }
+      
+      var data = await resp.json();
+      copyDiv.textContent = data.copy;
+      resultDiv.style.display = 'block';
+      btn.style.display = 'none';
+    } catch (err) {
+      console.error('generateFixCopy error:', err);
+      btn.textContent = '✨ Generate the copy for this';
+      btn.disabled = false;
+      alert('Could not generate copy: ' + err.message);
+    }
+  }
+  
+  function copyGeneratedText(actionId) {
+    var copyDiv = document.getElementById('genCopy-' + actionId);
+    var btn = document.getElementById('copyGenBtn-' + actionId);
+    if (!copyDiv || !btn) return;
+    
+    navigator.clipboard.writeText(copyDiv.textContent).then(function() {
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy to clipboard';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  // ── CATEGORY BENCHMARK LOADER ───────────────────────────────────────────────
+  async function loadCategoryBenchmark(result) {
+    var el = document.getElementById('categoryBenchmark');
+    if (!el) return;
+    
+    var cat = result.inferredCategory || result.category || '';
+    var score = Math.round(Number(result.overallScore) || 0);
+    
+    if (!cat || !isFinite(score)) {
+      el.style.display = 'none';
+      return;
+    }
+    
+    try {
+      var url = '/.netlify/functions/get-category-benchmark?category=' 
+        + encodeURIComponent(cat) + '&score=' + score;
+      var resp = await fetch(url);
+      if (!resp.ok) {
+        el.style.display = 'none';
+        return;
+      }
+      
+      var data = await resp.json();
+      if (!data.available) {
+        el.style.display = 'none';
+        return;
+      }
+      
+      // Show: "Category average: 51 / You: 63 — Top 18%"
+      var percentLabel = data.percentile >= 75 
+        ? 'Top ' + (100 - data.percentile) + '%'
+        : data.percentile >= 50
+          ? 'Above average'
+          : data.percentile >= 25
+            ? 'Below average'
+            : 'Bottom ' + (100 - data.percentile) + '%';
+      
+      var tone = data.percentile >= 75 ? 'var(--green)' 
+        : data.percentile >= 50 ? 'var(--amber)' 
+        : 'var(--red)';
+      
+      el.innerHTML = '<strong style="color:' + tone + ';">Category average: ' 
+        + data.mean + '</strong> — You: ' + score + ' — ' + percentLabel 
+        + ' <span style="color:var(--muted);">(based on ' + data.sampleSize 
+        + ' CHOIVE diagnostics)</span>';
+      el.style.display = 'block';
+    } catch (err) {
+      console.warn('Category benchmark load failed:', err);
+      el.style.display = 'none';
+    }
   }
 
   // If returning from Report payment — show confirmation banner at top of result
