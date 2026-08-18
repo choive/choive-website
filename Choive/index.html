@@ -4259,7 +4259,7 @@ function showResults(r, jobId) {
       ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildBusinessProfile() + buildStartHere() + buildBusinessIntelligence()
       : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-actions">Actions</a>'
+      + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-fixplan">Fix plan</a><a href="#report-actions">Actions</a>'
       + '<a href="#report-assets">Prepared assets</a><a href="#report-roadmap">90-day plan</a><a href="#report-organic-gap">AI answers</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
     + (isPaid ? buildPlatformRecommendationBlock() : '')
@@ -4368,6 +4368,47 @@ function showResults(r, jobId) {
       + auditHtml
       + '<div style="margin-top:14px;"><a href="#report-actions" style="font-size:12px;font-weight:800;color:var(--ac-d);">See what to do and how to know it is done ↓</a></div>'
       + '</div>';
+  }
+
+  function buildPriorityFixPlan() {
+    var plan = r.fixPlan;
+    if (!plan || !plan.available || !Array.isArray(plan.fixes) || !plan.fixes.length) return '';
+    var s = plan.summary || {};
+    var closeLabel = { 'self-serve': 'You can do this yourself', 'external-evidence': 'Needs outside proof' };
+    var closeColor = { 'self-serve': 'var(--ac)', 'external-evidence': '#C98B42' };
+
+    var summaryLine = 'Your score is ' + plan.overallScore + ' / 100. '
+      + 'Across the checks that cost you points, there are about <strong>' + s.totalRecoverable + ' points</strong> you could recover'
+      + (s.quickWinPoints > 0
+          ? ', including <strong>' + s.quickWinPoints + ' point' + (s.quickWinPoints === 1 ? '' : 's') + '</strong> from ' + s.quickWinCount + ' change' + (s.quickWinCount === 1 ? '' : 's') + ' you can make on your own website.'
+          : '.');
+
+    var rows = plan.fixes.map(function(f) {
+      var color = closeColor[f.closability] || 'var(--muted)';
+      var impact = '+' + f.pointImpact + ' pt' + (f.pointImpact === 1 ? '' : 's');
+      return '<div style="border:1px solid var(--rule);border-left:4px solid ' + color + ';padding:16px 18px;margin-bottom:12px;background:var(--paper-2);border-radius:2px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">'
+        + '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">'
+        + '<span style="font-size:12px;font-weight:800;color:var(--muted);">#' + f.rank + '</span>'
+        + '<span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:' + color + ';border:1px solid ' + color + ';padding:2px 7px;border-radius:2px;">' + esc(f.pillarLabel) + '</span>'
+        + '<span style="font-size:15px;font-weight:700;color:var(--ink);">' + esc(simpleWords(f.title)) + '</span>'
+        + '</div>'
+        + '<span style="font-size:15px;font-weight:800;color:var(--ac-d);white-space:nowrap;" title="Estimated points you could recover if this check passes on re-measurement">' + impact + '</span>'
+        + '</div>'
+        + (f.observed ? '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px;"><strong style="color:var(--tb);">Why you lost points:</strong> ' + esc(simpleWords(f.observed)) + '</div>' : '')
+        + (f.how ? '<div style="font-size:13px;color:var(--ink);line-height:1.65;margin-top:8px;"><strong>What to do:</strong> ' + esc(simpleWords(f.how)) + '</div>' : '')
+        + (f.verify ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-top:6px;"><strong style="color:var(--tb);">How you\u2019ll know it\u2019s done:</strong> ' + esc(simpleWords(f.verify)) + '</div>' : '')
+        + '<div style="font-size:11px;color:' + color + ';font-weight:700;margin-top:10px;">' + esc(closeLabel[f.closability] || '') + ' \u00b7 ' + esc(f.effort) + '</div>'
+        + '</div>';
+    }).join('');
+
+    return '<section class="pay-section" id="report-fixplan"><div class="pay-eyebrow">Your Priority Fix Plan</div>'
+      + '<div class="paid-section-header">The fastest points first</div>'
+      + '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:8px;max-width:800px;">' + summaryLine + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:20px;max-width:800px;">Point impact is an <em>estimate</em> based on the checks that reduced your score. It shows the most you could recover if that check passes when CHOIVE re-measures. It is not a guarantee \u2014 actual movement depends on the new evidence being publicly verifiable.</div>'
+      + rows
+      + '<div style="margin-top:14px;"><a href="#report-actions" style="font-size:12px;font-weight:800;color:var(--ac-d);">See the full step-by-step actions \u2193</a></div>'
+      + '</section>';
   }
 
   function buildPaidPillarEvidence() {
@@ -5259,6 +5300,7 @@ function showResults(r, jobId) {
       + dualArenaBlock
       + buildEvidenceGapSummary()
       + buildPaidPillarEvidence()
+      + buildPriorityFixPlan()
       + buildPlatformCoverageSection()
       + buildQueryCoverageMap()
       + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Proof Behind Your CHOIVE Result</div>'
