@@ -77,15 +77,30 @@ function extractTopRecommendation(response, subjectName) {
   // explicit recommendation but before printing the requested marker. Accept
   // only clear recommendation wording in that case; never infer from a list.
   if (!matches) {
-    matches = text.match(/\b(?:I|we)\s+(?:would\s+)?(?:highly\s+|strongly\s+)?recommend\s+(?:the\s+)?(?:company\s+)?(?:\*\*)?([A-Z0-9][A-Za-z0-9&.'’+\- ]{1,80})/);
+    matches = text.match(/\b(?:I|we)\s+(?:would\s+)?(?:highly\s+|strongly\s+)?recommend\s+(?:the\s+)?(?:company\s+)?(?:\*\*)?([A-Z0-9][A-Za-z0-9&.''"+\- ]{1,80})/);
   }
   if (!matches) {
-    matches = text.match(/\b(?:top|first|strongest|best)\s+(?:single\s+)?(?:recommendation|alternative|choice|option)\s*(?:is|would be|:)\s*([A-Z0-9][A-Za-z0-9&.'’+\- ]{1,80})/i);
+    matches = text.match(/\b(?:top|first|strongest|best)\s+(?:single\s+)?(?:recommendation|alternative|choice|option)\s+(?:is|would be)\s*:?\s*(?:\*\*)?([A-Z0-9][A-Za-z0-9&.''"+\- ]{1,80})/i);
+  }
+  // Catch "consider X", "try X", "use X", "go with X" (case-insensitive, handle "going with")
+  if (!matches) {
+    matches = text.match(/\b(?:consider|try|use)(?:\s+going)?\s+(?:with\s+)?(?:\*\*)?([A-Z][A-Za-z0-9&.''"+\- ]{2,80})/i);
+  }
+  if (!matches) {
+    matches = text.match(/\b(?:go|going)\s+with\s+(?:\*\*)?([A-Z][A-Za-z0-9&.''"+\- ]{2,80})/i);
+  }
+  if (!matches) {
+    matches = text.match(/\b(?:a|an)\s+(?:strong|solid|good|excellent|top)\s+(?:option|alternative|choice|pick)\s+(?:is|would be)\s+(?:\*\*)?([A-Z][A-Za-z0-9&.''"+\- ]{2,80})/i);
+  }
+  // Final fallback: look for the first capitalized multi-word phrase after common lead-ins
+  if (!matches) {
+    matches = text.match(/\b(?:such as|like|including|namely)\s+(?:\*\*)?([A-Z][A-Za-z0-9&.''"+\- ]{2,80})/);
   }
   if (!matches) return null;
   var candidate = matches[1]
-    .split(/\s+(?:as|because|for|instead|over|which|whose|that)\b/i)[0]
-    .replace(/\[[^\]]*\]/g, '').replace(/\*+/g, '').replace(/[,:;.!?]+$/, '').trim().slice(0, 100);
+    .split(/[.]/)[0]
+    .split(/\s+(?:as|because|for|instead|over|which|whose|that|offers|provides)\b/i)[0]
+    .replace(/\[[^\]]*\]/g, '').replace(/\*+/g, '').replace(/[,:;!?]+$/, '').trim().slice(0, 100);
   if (!candidate || /^(none|no named recommendation|not established)$/i.test(candidate)) return null;
   return candidate;
 }
