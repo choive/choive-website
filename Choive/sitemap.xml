@@ -19,6 +19,24 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://choive.com/badge</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://choive.com/index-benchmark</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://choive.com/monitor</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://choive.com/report</loc>
     <lastmod>2026-07-17</lastmod>
     <changefreq>monthly</changefreq>

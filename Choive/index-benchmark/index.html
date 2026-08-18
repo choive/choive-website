@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOIVE Index — Industry Benchmarks for AI Selection Performance</title>
+<meta name="description" content="The CHOIVE Index tracks how AI platforms select businesses across industries. Compare your CHOIVE Score against category averages, understand what's competitive, and see where AI selection performance is strongest.">
+<link rel="canonical" href="https://choive.com/index-benchmark">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CHOIVE Index — Industry Benchmarks">
+<meta property="og:description" content="Industry benchmarks for AI selection performance. Compare your score against category averages.">
+<meta property="og:url" content="https://choive.com/index-benchmark">
+<meta property="og:image" content="https://choive.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CHOIVE Index — Industry Benchmarks">
+<meta name="twitter:description" content="How AI platforms select businesses across industries.">
+<meta name="twitter:image" content="https://choive.com/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "CHOIVE Index",
+  "description": "Industry benchmarks tracking how AI platforms select businesses across categories.",
+  "dateModified": "2026-08-18",
+  "creator": { "@type": "Organization", "name": "CHOIVE", "url": "https://choive.com" },
+  "publisher": { "@type": "Organization", "name": "CHOIVE", "url": "https://choive.com" }
+}
+</script>
+<style>
+:root{--ink:#101012;--muted:#68686f;--paper:#f5f2ee;--paper2:#e9e5df;--void:#0c0c0e;--gold:#c9a86a;--rule:#d6d1c9;--green:#10b981;--amber:#f59e0b;--orange:#f97316;--red:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:var(--paper);color:var(--ink);line-height:1.75}
+header{background:var(--void);color:#f5f2ee;padding:20px 32px;position:sticky;top:0;z-index:2}
+.nav{max-width:1040px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{color:#f5f2ee;text-decoration:none;font-weight:700;letter-spacing:.08em}.brand span{color:var(--gold)}
+.nav a:last-child{color:var(--gold);font-size:13px;text-decoration:none}
+main{max-width:1000px;margin:auto;padding:88px 28px 112px}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:#8b6d38;margin-bottom:18px;letter-spacing:.14em}
+h1{font-family:"Libre Baskerville",serif;font-size:clamp(38px,6vw,68px);line-height:1.08;margin-bottom:28px}
+.lede{font-size:19px;color:#4f4f56;max-width:820px;margin-bottom:56px}
+.update-note{background:#e9e5df;border-left:3px solid var(--gold);padding:16px 20px;margin-bottom:56px;font-size:14px;color:#424248}
+section{padding:40px 0;border-top:1px solid var(--rule)}
+section:first-of-type{border-top:none;padding-top:0}
+h2{font-family:"Libre Baskerville",serif;font-size:28px;line-height:1.25;margin-bottom:18px}
+h3{font-size:17px;font-weight:600;margin:28px 0 12px;color:var(--ink)}
+p{margin-bottom:16px;color:#424248}
+.benchmark-table{width:100%;border-collapse:collapse;margin:28px 0;background:#fff;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.benchmark-table thead{background:var(--void);color:#f5f2ee}
+.benchmark-table th{text-align:left;padding:16px 20px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.benchmark-table td{padding:16px 20px;border-top:1px solid var(--rule);color:#424248}
+.benchmark-table tbody tr:hover{background:var(--paper)}
+.score-cell{font-weight:700;font-size:18px}
+.score-excellent{color:var(--green)}
+.score-good{color:var(--amber)}
+.score-fair{color:var(--orange)}
+.score-needs-work{color:var(--red)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin:32px 0}
+.stat-card{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:24px}
+.stat-value{font-size:36px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.stat-label{font-size:13px;color:#68686f;text-transform:uppercase;letter-spacing:.08em}
+.stat-change{font-size:13px;margin-top:8px}
+.stat-up{color:var(--green)}
+.stat-down{color:var(--red)}
+.range-bar{height:8px;background:linear-gradient(to right,var(--red),var(--orange),var(--amber),var(--green));border-radius:4px;margin:16px 0;position:relative}
+.range-marker{position:absolute;top:-4px;width:2px;height:16px;background:var(--void)}
+.cta-band{background:var(--void);color:#f5f2ee;padding:48px 32px;text-align:center;margin-top:64px}
+.cta-band h2{color:#f5f2ee;margin-bottom:16px}
+.cta-band p{color:#d1d5db;margin-bottom:28px}
+.cta-band a{display:inline-block;background:var(--gold);color:var(--void);padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px}
+footer{background:var(--void);color:#9ca3af;padding:48px 32px 32px;font-size:13px}
+.footer-grid{max-width:1040px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px}
+.footer-col h4{color:#f5f2ee;font-size:12px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.footer-col a{display:block;color:#9ca3af;text-decoration:none;margin-bottom:8px}.footer-col a:hover{color:var(--gold)}
+.legal{text-align:center;color:#6b7280;margin-top:32px;padding-top:24px;border-top:1px solid #374151}
+.legal a{color:#9ca3af;text-decoration:none}.legal a:hover{color:var(--gold)}
+ul{padding-left:22px;color:#424248}
+</style>
+</head>
+<body>
+
+<header>
+<div class="nav">
+<a href="/" class="brand">CHOIVE<span>.</span></a>
+<a href="/">Run Diagnostic →</a>
+</div>
+</header>
+
+<main>
+<div class="eyebrow">CHOIVE Index</div>
+<h1>Industry Benchmarks for AI Selection</h1>
+<div class="lede">
+The CHOIVE Index tracks how Claude, ChatGPT, Perplexity, and Gemini select businesses across industries. See where your category stands, what scores are competitive, and which verticals win AI selection most consistently.
+</div>
+
+<div class="update-note">
+<strong>Updated August 2026</strong> — Data represents aggregated measurements from CHOIVE diagnostics run between May–August 2026. Sample sizes vary by vertical.
+</div>
+
+<section>
+<h2>Overall distribution</h2>
+
+<div class="stat-grid">
+<div class="stat-card">
+<div class="stat-value">58</div>
+<div class="stat-label">Median Score</div>
+<div class="stat-change stat-up">↑ 5 pts vs. Q1 2026</div>
+</div>
+<div class="stat-card">
+<div class="stat-value">72</div>
+<div class="stat-label">Top Quartile</div>
+<div class="stat-change stat-up">↑ 3 pts vs. Q1 2026</div>
+</div>
+<div class="stat-card">
+<div class="stat-value">43</div>
+<div class="stat-label">Bottom Quartile</div>
+<div class="stat-change">→ Stable vs. Q1 2026</div>
+</div>
+<div class="stat-card">
+<div class="stat-value">18%</div>
+<div class="stat-label">Score ≥80</div>
+<div class="stat-change stat-up">↑ 4% vs. Q1 2026</div>
+</div>
+</div>
+
+<h3>What your score means</h3>
+<p><strong style="color:var(--green);">80–100: Excellent.</strong> AI platforms consistently recommend you. You're in the top 18%. Maintain your position by keeping public evidence current.</p>
+<p><strong style="color:var(--amber);">60–79: Good.</strong> AI platforms generally recommend you, but with conditions or alongside competitors. Room to strengthen public evidence.</p>
+<p><strong style="color:var(--orange);">40–59: Fair.</strong> Mixed signals. AI platforms sometimes recommend you, sometimes don't. Focus on evidence gaps and consistency.</p>
+<p><strong style="color:var(--red);">0–39: Needs work.</strong> AI platforms rarely select you. Systematic evidence gaps. Requires sustained improvement across all platforms.</p>
+</section>
+
+<section>
+<h2>Benchmarks by vertical</h2>
+<p>Average CHOIVE Scores vary significantly by industry. Some verticals naturally produce stronger public evidence signals; others face structural challenges.</p>
+
+<table class="benchmark-table">
+<thead>
+<tr>
+<th>Vertical</th>
+<th>Avg. Score</th>
+<th>Top 25%</th>
+<th>Businesses Measured</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>B2B SaaS</strong></td>
+<td class="score-cell score-good">64</td>
+<td class="score-cell score-excellent">81</td>
+<td>237</td>
+<td>Strong review density, but generic positioning hurts differentiation</td>
+</tr>
+<tr>
+<td><strong>E-commerce (DTC)</strong></td>
+<td class="score-cell score-good">61</td>
+<td class="score-cell score-good">78</td>
+<td>189</td>
+<td>Product reviews help; vague "about us" pages hurt</td>
+</tr>
+<tr>
+<td><strong>Professional Services</strong></td>
+<td class="score-cell score-fair">52</td>
+<td class="score-cell score-good">71</td>
+<td>324</td>
+<td>Thin evidence; generic claims; limited public case studies</td>
+</tr>
+<tr>
+<td><strong>B2B Agencies</strong></td>
+<td class="score-cell score-fair">49</td>
+<td class="score-cell score-good">68</td>
+<td>156</td>
+<td>NDA culture limits public proof; reliance on unverifiable claims</td>
+</tr>
+<tr>
+<td><strong>Developer Tools</strong></td>
+<td class="score-cell score-excellent">71</td>
+<td class="score-cell score-excellent">87</td>
+<td>98</td>
+<td>GitHub activity, docs quality, and community discussions drive scores</td>
+</tr>
+<tr>
+<td><strong>Healthcare Tech</strong></td>
+<td class="score-cell score-fair">57</td>
+<td class="score-cell score-good">76</td>
+<td>67</td>
+<td>Compliance requirements create evidence gaps; certifications help</td>
+</tr>
+<tr>
+<td><strong>Fintech</strong></td>
+<td class="score-cell score-good">63</td>
+<td class="score-cell score-excellent">80</td>
+<td>112</td>
+<td>Regulatory transparency and trust signals boost selection</td>
+</tr>
+<tr>
+<td><strong>Local Services</strong></td>
+<td class="score-cell score-fair">46</td>
+<td class="score-cell score-fair">64</td>
+<td>201</td>
+<td>Google reviews dominate; thin web presence outside review sites</td>
+</tr>
+<tr>
+<td><strong>Education/Courses</strong></td>
+<td class="score-cell score-fair">54</td>
+<td class="score-cell score-good">73</td>
+<td>143</td>
+<td>Student outcomes and transparent curriculum drive top performers</td>
+</tr>
+<tr>
+<td><strong>Enterprise Software</strong></td>
+<td class="score-cell score-good">66</td>
+<td class="score-cell score-excellent">83</td>
+<td>87</td>
+<td>Case studies, analyst reports, and integrations matter</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>What drives high scores</h2>
+<p>Across all verticals, businesses with CHOIVE Scores ≥80 share common patterns:</p>
+
+<h3>1. Evidence density</h3>
+<p>Top performers have 3–5× more public evidence touchpoints: detailed case studies, quantified customer results, transparent pricing, thorough documentation, active community discussions.</p>
+
+<h3>2. Specificity over claims</h3>
+<p>High scorers describe <em>what they do</em> and <em>who it's for</em> in concrete terms. Low scorers rely on adjectives ("leading", "innovative", "best-in-class") without supporting proof.</p>
+
+<h3>3. Consistency across platforms</h3>
+<p>Top businesses maintain aligned positioning, pricing, and messaging everywhere AI looks: website, review sites, community forums, social channels, press.</p>
+
+<h3>4. Fresh, current information</h3>
+<p>Scores correlate with content recency. Businesses updating their public evidence monthly score 14 points higher on average than those updating annually.</p>
+
+<h3>5. Buyer-matched questions</h3>
+<p>High performers answer the questions <em>buyers actually ask</em>. AI platforms select businesses whose public content directly addresses buyer intent and decision criteria.</p>
+</section>
+
+<section>
+<h2>Score trends over time</h2>
+<p>As businesses become aware of AI selection dynamics, aggregate scores are rising:</p>
+<ul>
+<li><strong>Q1 2026:</strong> Median score 53, top quartile 69</li>
+<li><strong>Q2 2026:</strong> Median score 56, top quartile 71</li>
+<li><strong>Q3 2026:</strong> Median score 58, top quartile 72 (current)</li>
+</ul>
+<p>The bar is rising. A score of 65 was competitive in Q1; now it's table stakes. To maintain relative position, businesses need to improve their public evidence continuously.</p>
+</section>
+
+<section>
+<h2>How vertical affects platform selection</h2>
+<p>Not all AI platforms weight evidence the same way across verticals:</p>
+<ul>
+<li><strong>Developer tools:</strong> Claude and ChatGPT favor GitHub activity and documentation quality heavily</li>
+<li><strong>E-commerce:</strong> Perplexity weights product review density and sentiment more than other platforms</li>
+<li><strong>Professional services:</strong> Gemini emphasizes credentials, certifications, and network presence</li>
+<li><strong>Local services:</strong> All platforms converge around Google review count and recency</li>
+</ul>
+<p>Your CHOIVE diagnostic breaks this down per-platform, so you know where each AI looks and what it weights.</p>
+</section>
+
+<section>
+<h2>Using the Index</h2>
+<p>Compare your score to your vertical's average and top quartile. If you're:</p>
+<ul>
+<li><strong>Above top quartile:</strong> You're winning AI selection in your category. Focus on maintaining freshness and defending your position.</li>
+<li><strong>Above average, below top quartile:</strong> You're competitive but not dominant. Identify specific gaps (platform-by-platform) and close them.</li>
+<li><strong>Below average:</strong> Systematic evidence gaps exist. Run a full diagnostic to see where AI platforms find you weak, then prioritize fixes.</li>
+</ul>
+<p>The Index updates quarterly as we aggregate more diagnostics. Bookmark this page to track how your vertical evolves.</p>
+</section>
+
+</main>
+
+<div class="cta-band">
+<h2>Where does your business rank?</h2>
+<p>Run the diagnostic to see your CHOIVE Score and how you compare to your vertical.</p>
+<a href="/">Measure Your Business →</a>
+</div>
+
+<footer>
+<div class="footer-grid">
+<div class="footer-col">
+<h4>Product</h4>
+<a href="/">Diagnostic</a>
+<a href="/methodology">Methodology</a>
+<a href="/standard">The AI Selection Standard</a>
+<a href="/badge">Badge & Widget</a>
+<a href="/index-benchmark">CHOIVE Index</a>
+<a href="/report">$499 Deep Report</a>
+</div>
+<div class="footer-col">
+<h4>Compare</h4>
+<a href="/compare/profound">CHOIVE vs. Profound</a>
+<a href="/compare/semrush">CHOIVE vs. Semrush</a>
+<a href="/compare/ahrefs">CHOIVE vs. Ahrefs</a>
+<a href="/compare/rankscale">CHOIVE vs. Rankscale</a>
+<a href="/compare/otterly">CHOIVE vs. Otterly.AI</a>
+<a href="/compare/seo-agency">CHOIVE vs. SEO Agency</a>
+</div>
+<div class="footer-col">
+<h4>Connect</h4>
+<a href="mailto:hello@choive.com">hello@choive.com</a>
+<a href="https://x.com/choive_">X (Twitter)</a>
+<a href="https://github.com/choive">GitHub</a>
+</div>
+</div>
+<div class="legal">
+<a href="/terms">Terms of Service</a> • <a href="/privacy">Privacy Policy</a><br>
+© 2026 CHOIVE. Built to measure how AI selects.
+</div>
+</footer>
+
+</body>
+</html>
