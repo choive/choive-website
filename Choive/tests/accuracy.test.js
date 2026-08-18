@@ -470,6 +470,55 @@ test('meta description is assembled from the recorded offer instead of a generic
   assert.doesNotMatch(meta, /is a online meat retailer/i);
 });
 
+test('a pillar whose providers went down is provisional, not a real zero', () => {
+  const scored = applyDeterministicScoring({
+    name: 'Taurbull', website: 'https://taurbull.de',
+    websiteSignals: {
+      fetchSucceeded: true, hasTitle: true, titleText: 'Taurbull', hasH1: true, h1Text: 'Dry-aged beef',
+      hasMetaDescription: true, metaDescriptionText: 'Grass-fed beef', hasSchema: true, hasSpecificSchema: true,
+      schemaTypes: ['Organization'], hasLlmsTxt: true, hasSitemap: true, hasRobots: true, botCrawlable: true
+    },
+    reviewMeasurement: { trustpilot: 'unavailable', googleReviews: 'unavailable' },
+    searchMeasurement: { status: 'unavailable', completedQueries: 0, failedQueries: 24 }
+  }, modelResult());
+  // Trust had only the owned-proof check measured (4 of 25) — below the floor.
+  assert.equal(scored.pillars.trust.provisional, true);
+  assert.equal(scored.pillars.trust.measurement.complete, false);
+  assert.ok(scored.pillars.trust.measurement.measuredPoints < 25 * 0.5);
+  assert.match(scored.pillars.trust.finding, /could not be measured/i);
+  // The headline is rescaled from the pillars we could measure, not dragged to
+  // a near-zero by the broken trust leg.
+  assert.equal(scored.overallProvisional, true);
+  assert.equal(scored.scoredPillarCount, 3);
+  assert.deepEqual(scored.provisionalPillars, ['trust']);
+  const scoredSum = scored.pillars.clarity.score + scored.pillars.difference.score + scored.pillars.ease.score;
+  assert.equal(scored.overallScore, Math.round(scoredSum / 75 * 100 * 10) / 10);
+});
+
+test('a pillar that was fully checked but found nothing stays a genuine zero', () => {
+  // Search ran and returned nothing; reviews not recorded but search coverage
+  // keeps the pillar above the floor, so it is a real measured zero.
+  const scored = applyDeterministicScoring({
+    name: 'Unknown', website: 'https://unknown.example',
+    websiteSignals: { fetchSucceeded: true },
+    searchMeasurement: { status: 'complete', completedQueries: 24, failedQueries: 0 },
+    reviewMeasurement: { trustpilot: 'unavailable', googleReviews: 'unavailable' }
+  }, modelResult());
+  // Reviews unmeasured (8) but authority+reputation+proof measured (17/25 = 68%).
+  assert.equal(scored.pillars.trust.provisional, false);
+});
+
+test('overall equals the plain pillar sum when no pillar is provisional', () => {
+  const scored = applyDeterministicScoring({
+    name: 'Fixture', website: 'fixture.test',
+    websiteSignals: { fetchSucceeded: true, hasTitle: true, hasH1: true, botCrawlable: true }
+  }, modelResult());
+  assert.equal(scored.overallProvisional, false);
+  const sum = ['clarity', 'trust', 'difference', 'ease']
+    .reduce((total, key) => total + scored.pillars[key].score, 0);
+  assert.equal(scored.overallScore, Math.round(sum * 10) / 10);
+});
+
 test('market language detection recognizes major Indian locations as Hindi', () => {
   assert.equal(detectMarketLanguage('New Delhi, India'), 'hi');
   assert.equal(detectMarketLanguage('Mumbai'), 'hi');

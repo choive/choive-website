@@ -112,6 +112,32 @@ test('perfect score yields an empty, unavailable plan', () => {
   assert.strictEqual(plan.headroom, 0);
 });
 
+test('difference website checks are self-serve and get concrete "what makes us different" guidance', () => {
+  const plan = buildFixPlan({
+    overallScore: 40,
+    pillars: { clarity: { score: 20 }, trust: { score: 5 }, difference: { score: 10 }, ease: { score: 20 } },
+    scoreMethod: { audits: {
+      difference: [
+        { ruleId: 'DI-01', label: 'Specific differentiator stated', points: 0, maxPoints: 7, verification: 'model_assessed', observed: 'No supported evidence returned' },
+        { ruleId: 'DI-02', label: 'Named client or partner', points: 0, maxPoints: 6, verification: 'model_assessed', observed: 'No supported evidence returned' },
+        { ruleId: 'DI-03', label: 'Defined niche or category position', points: 0, maxPoints: 6, verification: 'model_assessed', observed: 'No supported evidence returned' }
+      ]
+    } },
+    actions: []
+  });
+  const di01 = plan.fixes.find(f => f.id === 'DI-01');
+  const di02 = plan.fixes.find(f => f.id === 'DI-02');
+  const di03 = plan.fixes.find(f => f.id === 'DI-03');
+  // Stating your own differentiator / niche is a change you make on your site.
+  assert.strictEqual(di01.closability, 'self-serve');
+  assert.strictEqual(di03.closability, 'self-serve');
+  // Naming a real client still needs outside confirmation.
+  assert.strictEqual(di02.closability, 'external-evidence');
+  // Concrete, plain fallback guidance points at a dedicated page.
+  assert.ok(/what makes us different/i.test(di01.how), 'DI-01 names the page');
+  assert.ok(/what makes us different/i.test(di03.how), 'DI-03 names the page');
+});
+
 test('handles empty/garbage input without throwing', () => {
   assert.doesNotThrow(() => buildFixPlan(null));
   assert.doesNotThrow(() => buildFixPlan({}));
