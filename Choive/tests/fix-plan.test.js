@@ -138,6 +138,46 @@ test('difference website checks are self-serve and get concrete "what makes us d
   assert.ok(/what makes us different/i.test(di03.how), 'DI-03 names the page');
 });
 
+test('the same model action is never attached to two different cards', () => {
+  // Regression for the reported bug: a Difference card (#7 "Defined niche") and
+  // a Trust card (#8 "Checked review volume") both printed the IDENTICAL review
+  // action as their "What to do". A review-heavy action mentions both "category
+  // rivals" (difference-ish) and "reviews" (trust), so it matched both cards.
+  const result = {
+    overallScore: 63,
+    pillars: { clarity: { score: 18 }, trust: { score: 3 }, difference: { score: 10 }, ease: { score: 24 } },
+    scoreMethod: {
+      audits: {
+        trust: [
+          { ruleId: 'TR-01', label: 'Checked review volume', maxPoints: 15, points: 3, verification: 'external', observed: '3 checked reviews' }
+        ],
+        difference: [
+          { ruleId: 'DI-03', label: 'Defined niche or category position', maxPoints: 6, points: 3, verification: 'website', observed: 'Farm-direct grass-fed Angus implied, not explicitly claimed' }
+        ]
+      }
+    },
+    actions: [
+      {
+        title: 'Get more Google reviews', priority: 'high',
+        body: "Business has exactly 3 Google reviews at 5 stars while category rivals cited by AI have substantially more public review proof. Send a post-purchase email with a direct link to your Google review page.",
+        verification: 'Confirm 20 or more reviews are publicly visible.'
+      }
+    ]
+  };
+  const plan = buildFixPlan(result);
+  const diff = plan.fixes.find(f => f.pillar === 'difference');
+  const trust = plan.fixes.find(f => f.pillar === 'trust');
+  assert.ok(diff && trust, 'both cards present');
+  // The two cards must not share the exact same how-to text.
+  assert.notStrictEqual(diff.how, trust.how, 'difference and trust cards must differ');
+  // The review action belongs to Trust (processed first), not Difference.
+  assert.ok(/review/i.test(trust.how), 'trust card keeps the review action');
+  // The Difference card falls back to real differentiation guidance.
+  assert.ok(/niche|differ|pick you|choose|makes us different/i.test(diff.how),
+    'difference card gives differentiation guidance, not review advice');
+  assert.ok(!/post-purchase email/i.test(diff.how), 'difference card is not the review action');
+});
+
 test('handles empty/garbage input without throwing', () => {
   assert.doesNotThrow(() => buildFixPlan(null));
   assert.doesNotThrow(() => buildFixPlan({}));
