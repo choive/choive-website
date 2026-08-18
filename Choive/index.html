@@ -3463,6 +3463,22 @@ function plainPillarFinding(key, pillar) {
     : 'Parts of the website are still difficult for search engines or AI systems to verify.';
 }
 
+// A score area is "provisional" when the data providers it depends on did not
+// respond, so too little of the 25-point rubric was measured to give a fair
+// score. New engine runs set p.provisional directly; older stored results are
+// detected from their measurement coverage so the fix shows immediately with no
+// re-run. A provisional area is NEVER shown as a real 0/25 — that would read as
+// "this business has zero trust" when the truth is "we could not measure it".
+function choiveProvisionalPillar(p) {
+  if (!p || typeof p !== 'object') return false;
+  if (p.provisional === true) return true;
+  var m = p.measurement;
+  if (!m || m.complete !== false) return false;
+  var measured = Number(m.measuredPoints);
+  var total = Number(m.totalPoints);
+  return isFinite(measured) && isFinite(total) && total > 0 && measured > 0 && measured < total * 0.5;
+}
+
 function buildPillarCards(r, isPaid) {
   var pD = {
     clarity:    { n:'01', name:'Clarity' },
@@ -3475,11 +3491,14 @@ function buildPillarCards(r, isPaid) {
 
   // Find the weakest score area so we can spotlight it as the thing to fix
   // first. The lowest score is the wound the whole page should point to.
-  var lowestKey = keys.reduce(function(min, key) {
+  // Provisional areas are skipped: an unmeasured area is not the weakest area,
+  // and pointing "Fix this first" at a measurement outage is wrong.
+  var scoredKeys = keys.filter(function(key) { return !choiveProvisionalPillar(pillars[key]); });
+  var lowestKey = (scoredKeys.length ? scoredKeys : keys).reduce(function(min, key) {
     var s = Number((pillars[key] || {}).score) || 0;
     var m = Number((pillars[min] || {}).score) || 0;
     return s < m ? key : min;
-  }, 'clarity');
+  }, (scoredKeys.length ? scoredKeys : keys)[0]);
 
   // Colour by how the score area is doing (0-25). The colour tells the story
   // before anyone reads a word: red = hurting, amber = weak, green = strong.
@@ -3493,6 +3512,25 @@ function buildPillarCards(r, isPaid) {
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
+
+    // Provisional area: show it as "not measured yet", never as a 0/25 score.
+    if (choiveProvisionalPillar(raw)) {
+      var provFinding = simpleWords((raw.finding && String(raw.finding).trim())
+        ? String(raw.finding).trim()
+        : 'We could not measure ' + pD[key].name + ' in this run because a data source did not answer. This is not a zero — it just needs another run.');
+      var provFindingHtml = '<div class="pillar-finding" style="margin-bottom:' + (isPaid ? '0' : '10px') + ';">' + esc(provFinding) + '</div>'
+        + (isPaid ? '' : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock the fix</div>');
+      return '<div class="pillar-card" style="box-shadow:inset 4px 0 0 var(--muted);">'
+        + '<div class="pillar-num">' + pD[key].n + '</div>'
+        + '<div class="pillar-name">' + pD[key].name + '</div>'
+        + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);border:1px solid var(--muted);padding:3px 7px;border-radius:2px;margin-bottom:14px;">Not measured yet</div>'
+        + '<div class="pillar-score-row"><div class="pillar-score-n" style="color:var(--muted);">&mdash;</div><div class="pillar-score-d">/ 25</div></div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Needs another run</div>'
+        + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="0" style="background:var(--muted);"></div></div>'
+        + provFindingHtml
+        + '</div>';
+    }
+
     var finding = simpleWords((raw.finding && String(raw.finding).trim()) ? String(raw.finding).trim() : plainPillarFinding(key, raw));
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
@@ -3563,6 +3601,48 @@ function showResults(r, jobId) {
   if (!r.signatureLine) r.signatureLine = '';
   if (!r.evidenceNarrative) r.evidenceNarrative = '';
   // ── END FALLBACKS ─────────────────────────────────────────────────────────
+
+  // ── LEGACY PROVISIONAL NORMALIZATION ───────────────────────────────────────
+  // Results stored before provisional scoring existed carry a headline that was
+  // dragged down by an area whose data providers went down (shown as 0/25).
+  // When we detect such an area, recompute the headline from the areas we could
+  // actually measure — matching what the engine now stores for new runs — so a
+  // measurement outage is never shown to the owner as a real low score. Runs
+  // already scored by the new engine carry r.overallProvisional and are left
+  // untouched.
+  if (r.overallProvisional !== true && r.overallProvisional !== false) {
+    var _pk = ['clarity','trust','difference','ease'];
+    var _prov = _pk.filter(function(k){ return choiveProvisionalPillar(r.pillars[k]); });
+    var _scored = _pk.filter(function(k){ return !choiveProvisionalPillar(r.pillars[k]); });
+    if (_prov.length && _scored.length) {
+      var _sum = _scored.reduce(function(t,k){ return t + (Number(r.pillars[k].score)||0); }, 0);
+      r.overallScore = Math.round(_sum / (_scored.length * 25) * 100 * 10) / 10;
+      r.overallProvisional = true;
+      r.scoredPillarCount = _scored.length;
+      r.provisionalPillars = _prov;
+      _prov.forEach(function(k){
+        r.pillars[k].provisional = true;
+        if (!r.pillars[k].finding || /too little|does not yet|not established/i.test(String(r.pillars[k].finding))) {
+          r.pillars[k].finding = k === 'trust'
+            ? 'Trust could not be measured in this run — the review and independent-search checks did not return. This is not a zero; it needs another run.'
+            : 'This area could not be measured in this run because a data source did not answer. It needs another run.';
+        }
+      });
+      if (!r.overallNote) {
+        r.overallNote = 'This score is based on the ' + _scored.length + ' of 4 areas CHOIVE could fully measure in this run. '
+          + _prov.map(function(k){ return k.charAt(0).toUpperCase()+k.slice(1); }).join(' and ')
+          + ' could not be measured because a data provider did not respond, so it is not counted as a zero. Run the check again to score it.';
+      }
+      var _os = r.overallScore;
+      if (_os >= 76) { r.verdictLevel='present'; r.verdictHeadline='Strong public evidence across the four pillars'; }
+      else if (_os >= 56) { r.verdictLevel='present'; r.verdictHeadline='Public evidence is present, with specific gaps'; }
+      else if (_os >= 31) { r.verdictLevel='weak'; r.verdictHeadline='Public evidence needs improvement'; }
+      else { r.verdictLevel='absent'; r.verdictHeadline='Public evidence is incomplete'; }
+    } else {
+      r.overallProvisional = false;
+    }
+  }
+  // ── END LEGACY PROVISIONAL NORMALIZATION ────────────────────────────────────
 
   // isPaid sources (in priority order):
   // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
@@ -3826,9 +3906,11 @@ function showResults(r, jobId) {
   function buildMarketCompetitorRow() {
     var _norm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
     var _topNorm = _norm(topComp || '');
+    var _aiNorm = _norm(typeof aiRecName !== 'undefined' ? aiRecName : '');
     var marketHtml = '';
     if (widerMarketDecision && widerMarketDecision.name
-        && _norm(widerMarketDecision.name) !== _topNorm) {
+        && _norm(widerMarketDecision.name) !== _topNorm
+        && (!_aiNorm || _norm(widerMarketDecision.name) !== _aiNorm)) {
       marketHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
@@ -3838,21 +3920,42 @@ function showResults(r, jobId) {
     var _onlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
     var onlineHtml = '';
     if (_onlineComp && _norm(_onlineComp) !== _topNorm
+        && (!_aiNorm || _norm(_onlineComp) !== _aiNorm)
         && (!widerMarketDecision || _norm(_onlineComp) !== _norm(widerMarketDecision.name || ''))) {
       onlineHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Online arena competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
-        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>' : '')
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(_onlineComp) + '</div>'
+        + '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>'
         + '</div>';
     }
     return marketHtml + onlineHtml;
+  }
+  // The business AI puts forward first when buyers ask. This is a distinct
+  // competitor signal from the head-to-head rival and the market competitor,
+  // and the owner asked for all three to show on the free result.
+  var aiRecName = (cd.aiRecommends || '').trim()
+    || ((Array.isArray(r.competitors)
+          ? r.competitors.find(function(c){ return /ai[_-]?recommend/.test(String(c && c.queryContext || '').toLowerCase()); })
+          : null) || {}).name
+    || '';
+  function buildAiRecommendationRow() {
+    var _norm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+    if (!aiRecName) return '';
+    // Don't repeat it if the head-to-head name shown big is the same business.
+    if (topComp && _norm(aiRecName) === _norm(topComp)) return '';
+    return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(245,242,238,0.14);">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">The business AI picks first</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(aiRecName) + '</div>'
+      + '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">When people ask AI to choose, this is the name it says first. Open the full report to see who it is and why.</div>'
+      + '</div>';
   }
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
         ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
           + '<h1 style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:0;margin:0 0 8px;">' + esc(name) + '</h1>'
           + (measuredMarket ? '<div style="font-size:11px;font-weight:700;color:rgba(245,242,238,0.62);margin-bottom:16px;">Measured market: ' + esc(measuredMarket) + '</div>' : '')
-        : '');
+        : '')
+      + buildAiRecommendationRow();
   // Second competitor name (if present)
   var secondComp = cd.secondAiCompetitor || '';
 
@@ -3915,7 +4018,9 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? 'A competitor was found in your market. No single company dominated all AI platforms in this run. The full analysis identifies who is closest and what to do first.'
-        : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
+        : aiRecName
+          ? 'No one business won every AI answer in this run, so no single head-to-head rival is confirmed yet. AI does pick a business first (shown above), and the full analysis explains who is closest and what to do first.'
+          : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3927,7 +4032,9 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? 'A competitor was found in your market. The full analysis explains how it differs from you and what to change first.'
-        : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
+        : aiRecName
+          ? 'We did not find one business that goes straight up against you in this run. But AI does pick a business first (shown above), and there is a wider-market competitor too \u2014 the full analysis explains each one.'
+          : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3944,6 +4051,9 @@ function showResults(r, jobId) {
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Your CHOIVE score</div>'
     + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
+    + (r.overallProvisional === true && r.overallNote
+        ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
+        : '')
     + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">This score shows how easy the business is to understand, trust, choose, and contact.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
@@ -4978,6 +5088,32 @@ function showResults(r, jobId) {
       analysis: widerMarketDecision.reason || ''
     });
   }
+  // AI-recommended pick (the business AI names first). The owner asked for all
+  // three competitor types to appear in the full analysis, not just the banner.
+  var _compNorm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var _compHas = function(n) { return compList.some(function(cp) { return cp && cp.name && _compNorm(cp.name) === _compNorm(n); }); };
+  if (aiRecName && !_compHas(aiRecName)) {
+    var paidAiRec = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name && String(cp.name).toLowerCase() === String(aiRecName).toLowerCase();
+    });
+    compList.push(paidAiRec || {
+      name: aiRecName,
+      queryContext: 'ai_recommended',
+      analysis: 'When buyers ask AI to choose, ' + aiRecName + ' is the name it says first. The full analysis shows why.'
+    });
+  }
+  // Online arena competitor (from the dual-arena online channel), if distinct.
+  var _paidOnlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
+  if (_paidOnlineComp && !_compHas(_paidOnlineComp)) {
+    var paidOnline = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name && String(cp.name).toLowerCase() === String(_paidOnlineComp).toLowerCase();
+    });
+    compList.push(paidOnline || {
+      name: _paidOnlineComp,
+      queryContext: 'online_arena',
+      analysis: ''
+    });
+  }
   var compName     = compList.length > 0 ? compList[0].name : '';
   var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
   compAnalysis = String(compAnalysis || '')
@@ -5023,7 +5159,14 @@ function showResults(r, jobId) {
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
     var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
-    var _extraLabel = 'Market competitor';
+    var _extraCtx = String(cp.queryContext || '').toLowerCase();
+    var _extraLabel = (_extraCtx === 'ai_recommended' || _extraCtx === 'ai-recommended')
+      ? 'The business AI picks first'
+      : (_extraCtx === 'online_arena' || _extraCtx === 'online-arena')
+        ? 'Online arena competitor'
+        : (_extraCtx === 'head-to-head')
+          ? 'Head-to-head competitor'
+          : 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
@@ -5046,12 +5189,22 @@ function showResults(r, jobId) {
      var _bizName = (typeof bizData !== 'undefined' && bizData && bizData.name) ? String(bizData.name).trim() : 'Your business';
       var _pillarKeys = ['clarity', 'trust', 'difference', 'ease'];
       var _pillarLabels = { clarity: 'Clarity', trust: 'Trust', difference: 'Difference', ease: 'Ease' };
+      // Business score areas whose data providers went down this run are shown
+      // as "not measured", never as a real number. In the comparison they must
+      // not be scored as a loss against a competitor — a measurement outage is
+      // not a gap. These keys are suppressed from gap math on the "your business"
+      // side of every card and of the overview table.
+      var _provKeys = {};
+      _pillarKeys.forEach(function(k) {
+        if (typeof choiveProvisionalPillar === 'function' && r.pillars && choiveProvisionalPillar(r.pillars[k])) _provKeys[k] = true;
+      });
 
       var _overviewRows = comparisonEntries.map(function(entry) {
         if (!entry || !entry.name) return '';
         var _sd = entry.score || {};
         var _largest = null;
         _pillarKeys.forEach(function(key) {
+          if (_provKeys[key]) return; // measurement outage on our side is not a gap
           var _pd = _sd.pillars && _sd.pillars[key];
           if (!_pd || _pd.gap == null || !isFinite(Number(_pd.gap))) return;
           var _value = Math.round(Number(_pd.gap));
@@ -5092,13 +5245,16 @@ function showResults(r, jobId) {
         var _pillarChart = '<div style="margin:24px 0;border-top:1px solid var(--rule-d);">'
           + _pillarKeys.map(function(k) {
               var pd = _pillars[k] || {};
-              var isKey = k === _keyGap;
-              var youHas = _hasScore && pd.you != null && isFinite(Number(pd.you));
+              var isKey = k === _keyGap && !_provKeys[k];
+              var youProvisional = !!_provKeys[k];
+              var youHas = !youProvisional && _hasScore && pd.you != null && isFinite(Number(pd.you));
               var themHas = _hasScore && pd.competitor != null && isFinite(Number(pd.competitor));
               var youScore = youHas ? Math.max(0, Math.min(25, Math.round(Number(pd.you)))) : null;
               var themScore = themHas ? Math.max(0, Math.min(25, Math.round(Number(pd.competitor)))) : null;
-              var gapNum = youHas && themHas && pd.gap != null ? Math.round(Number(pd.gap)) : null;
-              var resultText = gapNum === null
+              var gapNum = !youProvisional && youHas && themHas && pd.gap != null ? Math.round(Number(pd.gap)) : null;
+              var resultText = youProvisional
+                ? 'Your ' + _pillarLabels[k] + ' could not be measured this run, so no gap is shown.'
+                : gapNum === null
                 ? 'No score was given. CHOIVE could not find enough public information.'
                 : gapNum > 0
                   ? _bizName + ' is ahead by ' + gapNum + ' point' + (gapNum === 1 ? '' : 's') + '.'
