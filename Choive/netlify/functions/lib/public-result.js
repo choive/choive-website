@@ -18,15 +18,31 @@ function buildPublicResult(result) {
     'deliverables',
     'evidenceNarrative',
     'googleReviews',
+    'measurementManifest',
     'platformSimulations',
     'reviewText',
     'signalAudit',
+    'scoreMethod',
     'socialSignals',
     'summaries',
     'trustpilot'
   ].forEach(function(key) {
     delete publicResult[key];
   });
+
+  publicResult.platformRecommendationLanes = Array.isArray(source.platformRecommendationLanes)
+    ? source.platformRecommendationLanes.map(function(lane) {
+        return {
+          key: String(lane && lane.key || ''),
+          platform: String(lane && lane.platform || ''),
+          recommendation: lane && lane.recommendation ? String(lane.recommendation) : null,
+          status: String(lane && lane.status || 'unmeasured'),
+          subjectAppeared: Boolean(lane && lane.subjectAppeared),
+          visibilityAppearedCount: Number(lane && lane.visibilityAppearedCount || 0),
+          visibilityTotalQueries: Number(lane && lane.visibilityTotalQueries || 0)
+        };
+      })
+    : [];
 
   if (source.pillars && typeof source.pillars === 'object') {
     publicResult.pillars = {};
