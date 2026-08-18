@@ -2052,6 +2052,26 @@ exports.handler = async function (event) {
         });
         if (roleCandidates.length > beforeCount) aiAlternativeAdded = true;
       });
+      // Fallback: the reasoning stage's "the business AI picks first" name
+      // (competitorDecision.aiRecommends) is a distinct, owner-facing signal the
+      // owner sees on the free result. If no provider lane produced a verified
+      // ai_recommended candidate above, still surface the reasoning-stage pick so
+      // all three competitor types (head-to-head, market, AI-recommended) can
+      // appear in the comparison chart, not just in the banner.
+      if (!aiAlternativeAdded) {
+        var reasoningRec = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].aiRecommends || '').trim();
+        if (reasoningRec && !isSubjectRecommendation(reasoningRec) && !isPlatformName(reasoningRec)) {
+          var beforeReasoning = roleCandidates.length;
+          addRoleCandidate({
+            role: 'ai_recommended',
+            roleLabel: 'The business AI picks first',
+            name: reasoningRec,
+            verified: false,
+            reason: 'Named first by the AI reasoning stage when buyers ask this kind of question.'
+          });
+          if (roleCandidates.length > beforeReasoning) aiAlternativeAdded = true;
+        }
+      }
       var benchmarkName = String(finalResult['competitorDecision'] && finalResult['competitorDecision'].globalBenchmark || '').trim();
       if (benchmarkName) {
         addRoleCandidate({

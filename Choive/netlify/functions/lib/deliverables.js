@@ -494,6 +494,88 @@ function generateReviewAction(evidence, result) {
 }
 
 
+// Ready-to-send email that asks a happy customer for an honest review.
+// Only produced when the category actually uses a public review platform
+// (isReviewPlatform === true). Uses the real business name and the real,
+// category-matched platform; everything a person must personalise is a clearly
+// marked [placeholder]. It never writes a fake review or invents a customer.
+function generateReviewEmailTemplate(evidence, result, reviewAction) {
+  var ra = reviewAction || {};
+  if (ra.isReviewPlatform === false) return null; // creators/orgs/enterprise publish proof instead
+  var name = (evidence && evidence.name || '').trim();
+  if (!name) return null;
+  var platform = (ra.platform || 'Google Reviews').trim();
+  var secondary = (ra.secondaryPlatform || '').trim();
+  var where = secondary ? (platform + ' or ' + secondary) : platform;
+
+  var subject = 'Would you share a quick review of ' + name + '?';
+
+  var body = [
+    'Hi [Customer name],',
+    '',
+    'Thank you for choosing ' + name + '. It really means a lot to us.',
+    '',
+    'If you have two minutes, would you share an honest review of your experience on ' + where + '? '
+      + 'Your words help other people decide, and they help more people find us.',
+    '',
+    'Here is the link — it only takes a moment:',
+    '[Paste your ' + platform + ' review link here]',
+    '',
+    'Please say what you honestly think. Good or bad, real words help us most.',
+    '',
+    'Thank you so much,',
+    '[Your name]',
+    name
+  ].join('\n');
+
+  return { subject: subject, body: body, platform: platform };
+}
+
+// Google Business Profile description built ONLY from confirmed facts (name,
+// category, place, and a real published differentiator when one exists). Google
+// caps the description at 750 characters. Produced only for businesses with a
+// local/regional presence, where a Google Business Profile actually applies.
+function generateGbpDescription(evidence, result) {
+  var name = (evidence && evidence.name || '').trim();
+  if (!name) return null;
+  var reach = String((evidence && evidence.marketReach) || '').toLowerCase();
+  var place = capitaliseCity(String((evidence && evidence.city) || '').trim());
+  // A Google Business Profile is for a place-based business. Skip when there is
+  // no place, or the business is explicitly national/international/global/online.
+  if (!place) return null;
+  if (reach === 'national' || reach === 'international' || reach === 'global' || reach === 'online') return null;
+
+  var category = cleanAssetText(result && result.inferredCategory || evidence && evidence.category || '', 120);
+  var summary = factualSummary(evidence, result, 220);
+  var differentiator = safeDifferentiator(evidence, result);
+
+  var parts = [];
+  // Sentence 1 — who and where, from real facts.
+  if (category) {
+    parts.push(name + ' is a ' + category.toLowerCase().replace(/\.$/, '') + ' in ' + place + '.');
+  } else {
+    parts.push(name + ' is based in ' + place + '.');
+  }
+  // Sentence 2 — what we do, from the site's own summary (deduped against name).
+  if (summary) {
+    var cleaned = removeNameIntroduction(summary, name).replace(/\.$/, '');
+    if (cleaned) parts.push(sentenceCase(cleaned) + '.');
+  }
+  // Sentence 3 — a real, published distinction only.
+  if (differentiator) {
+    parts.push(sentenceCase(differentiator.replace(/\.$/, '')) + '.');
+  }
+  // Closing line — a safe, non-fabricated invitation.
+  parts.push('Get in touch to find out how ' + name + ' can help you.');
+
+  var MAX = 750;
+  var text = parts.join(' ').replace(/\s+/g, ' ').trim();
+  if (text.length > MAX) {
+    text = text.slice(0, MAX).replace(/\s+\S*$/, '').replace(/[\s,;:.-]+$/, '') + '.';
+  }
+  return { text: text, charCount: text.length, maxChars: MAX };
+}
+
 function generateActionPlan(evidence, result) {
   var profile  = subjectProfile(evidence);
   var name     = (evidence.name || '').trim();
@@ -657,6 +739,10 @@ function generateDeliverables(evidence, result) {
     schemaBrief:  generateSchemaBrief(evidence, result),
     reviewAction: generateReviewAction(evidence, result)
   };
+  // Ready-to-send review-request email + Google Business Profile description.
+  // Each returns null when it does not apply, so the matching tab simply hides.
+  delivs.reviewEmailTemplate = generateReviewEmailTemplate(evidence, result, delivs.reviewAction);
+  delivs.gbpDesc             = generateGbpDescription(evidence, result);
   delivs.actionPlan = generateActionPlan(evidence, Object.assign({}, result, { deliverables: delivs }));
   return delivs;
 }

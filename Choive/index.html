@@ -2825,7 +2825,10 @@ select.diag-input { grid-column:auto; background-position:right 16px center; }
         <a href="/standard" class="footer-link">The AI Selection Standard</a>
         <a href="/badge" class="footer-link">Badge & Widget</a>
         <a href="/index-benchmark" class="footer-link">CHOIVE Index</a>
+        <a href="/leaderboard" class="footer-link">Leaderboard</a>
+        <a href="/benchmark-report" class="footer-link">Yearly benchmark report</a>
         <a href="/monitor" class="footer-link">Score Monitoring</a>
+        <a href="/api" class="footer-link">API for developers</a>
         <a href="/#why-not-seo" class="footer-link">Why not SEO</a>
         <a href="/report" class="footer-link">CHOIVE Report™</a>
       </div>
@@ -2881,6 +2884,40 @@ const START_API = '/.netlify/functions/start-diagnostic';
 const GET_API   = '/.netlify/functions/get-diagnostic';
 let bizData   = {};
 let pollTimer = null;
+
+// ── SOCIAL PROOF ────────────────────────────────────────────────────────────
+// Paste REAL customer quotes here to show them at the moment of payment.
+// NEVER invent one — an empty list simply shows an honest trust strip instead.
+// Each item: { quote: 'what they said', name: 'First name, business type, city' }
+const CHOIVE_TESTIMONIALS = [
+  // Example (remove the // and edit with a real quote once you have one):
+  // { quote: 'I found out ChatGPT was recommending a rival with 200 more reviews than me. I ran a review push and six weeks later ChatGPT started naming us.', name: 'Sarah, cafe owner, Leeds' }
+];
+function buildSocialProof() {
+  var real = (Array.isArray(CHOIVE_TESTIMONIALS) ? CHOIVE_TESTIMONIALS : [])
+    .filter(function(t){ return t && t.quote && String(t.quote).trim(); });
+  if (real.length) {
+    var t = real[0];
+    return '<div style="margin:8px 0 20px;padding:18px 20px;background:rgba(245,242,238,0.05);border-left:3px solid var(--ac);">'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-style:italic;font-size:15px;color:var(--ghost);line-height:1.6;">\u201C' + esc(String(t.quote)) + '\u201D</div>'
+      + (t.name ? '<div style="font-size:12px;font-weight:700;color:var(--ghost-2);margin-top:10px;">' + esc(String(t.name)) + '</div>' : '')
+      + '</div>';
+  }
+  // Honest fallback — every claim here is true, no invented quote.
+  var items = [
+    ['Real AI runs', 'Answers recorded from ChatGPT, Claude, Perplexity and Gemini — not guesses.'],
+    ['Evidence-checked', 'Every finding is tied to something CHOIVE actually saw. No made-up facts.'],
+    ['Instant access', 'Your full analysis opens the moment you pay. No account, no waiting.']
+  ];
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px;margin:8px 0 20px;">'
+    + items.map(function(it){
+        return '<div style="padding:14px 16px;background:rgba(245,242,238,0.04);">'
+          + '<div style="font-size:12px;font-weight:800;color:var(--ac);margin-bottom:5px;">' + esc(it[0]) + '</div>'
+          + '<div style="font-size:11.5px;color:var(--ghost-2);line-height:1.55;">' + esc(it[1]) + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
 
 // ── STAGE UI ──────────────────────────────────────────────────────────────────
 function updateEngineStage(status) {
@@ -3117,15 +3154,50 @@ function buildScoreLabels(r) {
   </div>`;
 }
 
+// FREE-RESULT "one damning fact": names the competitor AI chose, the real
+// reason, and — when the run measured it — the exact point gap. The FIX is
+// locked, so the buyer knows precisely what $99 buys. Uses only recorded data;
+// no numbers are shown unless competitorComparison actually measured them.
 function buildDisplacementBlock(r) {
   const d = r.displacement;
   if (!d || !d.competitorName) return '';
+
+  // Real, measured point gap vs this exact competitor (never invented).
+  var gapHtml = '';
+  try {
+    var entries = (r.competitorComparison && Array.isArray(r.competitorComparison.entries))
+      ? r.competitorComparison.entries : [];
+    var norm = function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); };
+    var match = entries.find(function(e){ return e && e.name && norm(e.name) === norm(d.competitorName); });
+    if (match && match.score && match.score.pillars) {
+      var pk = ['clarity','trust','difference','ease'];
+      var behind = 0;
+      pk.forEach(function(k){
+        var p = match.score.pillars[k] || {};
+        var g = (Number(p.you)||0) - (Number(p.competitor)||0);
+        if (g < 0) behind += Math.abs(g);
+      });
+      if (behind > 0) {
+        gapHtml = '<div style="margin-top:16px;padding:12px 16px;background:rgba(184,50,50,0.08);border-left:3px solid var(--red);">'
+          + '<div style="font-size:22px;font-weight:800;color:var(--red);line-height:1;">' + behind + ' point' + (behind === 1 ? '' : 's') + ' behind</div>'
+          + '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-top:4px;">This is how far ahead of you they are, across the four things AI looks at.</div>'
+          + '</div>';
+      }
+    }
+  } catch (e) {}
+
   return [
     '<div class="disp-block">',
-    '  <div class="disp-query">When someone asks: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-query">When someone asks AI: <span>"' + esc(d.competitorQuery || '') + '"</span></div>',
+    '  <div class="disp-label">AI picks this business — not yours</div>',
     '  <div class="disp-name">' + esc(d.competitorName || '') + '</div>',
-    '  <div class="disp-label">Named in the recorded answer for this query</div>',
-    '  <div class="disp-why"><strong>Why:</strong> ' + esc(d.competitorWhy || '') + '</div>',
+    '  <div class="disp-why"><strong>Why AI picks them:</strong> ' + esc(d.competitorWhy || '') + '</div>',
+    gapHtml,
+    '  <div onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})" style="margin-top:18px;display:flex;align-items:center;gap:10px;cursor:pointer;padding:14px 16px;background:var(--void);border:1px solid rgba(245,242,238,0.12);">',
+    '    <span style="flex:none;color:var(--ac);font-size:14px;">\uD83D\uDD12</span>',
+    '    <div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">See exactly what closes this gap →</div>',
+    '    <div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">The full analysis shows the fixes that get AI to pick you instead.</div></div>',
+    '  </div>',
     '</div>'
   ].join('\n');
 }
@@ -3148,16 +3220,162 @@ function buildShareBlock(jobId, topComp) {
   var shareText = 'I just ran a CHOIVE diagnostic for ' + name + '. Score: ' + score + '/100' + comp + '. Find out yours:';
   var shareUrl = window.location.origin + '/?jobId=' + encodeURIComponent(jobId);
   var linkedInUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
+  var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(shareUrl);
+  var referralUrl = window.location.origin + '/?ref=' + encodeURIComponent(jobId);
   return [
     '<div class="share-block" id="shareBlock">',
     '  <div class="share-label">Share your result</div>',
     '  <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">',
     '    <button class="share-btn" id="shareBtn" onclick="copyShareUrl()">Copy link</button>',
     '    <button class="share-btn" onclick="window.open(\'' + linkedInUrl + '\', \'_blank\')">Share on LinkedIn</button>',
+    '    <button class="share-btn" onclick="window.open(\'' + xUrl + '\', \'_blank\')">Share on X</button>',
     '    <button class="share-btn" onclick="copyShareText(\'' + shareText.replace(/'/g, "\\'").replace(/\n/g, ' ') + '\', \'' + shareUrl + '\')">Copy post text</button>',
+    '    <button class="share-btn" onclick="downloadScorecard()">Download scorecard image</button>',
+    '  </div>',
+    '  <div style="margin-top:16px;padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);">',
+    '    <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Refer others, get rewards</div>',
+    '    <div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:8px;">Share this link. When 3 businesses pay for their analysis through it, your next diagnostic is free.</div>',
+    '    <div style="display:flex;gap:8px;align-items:center;">',
+    '      <input type="text" readonly value="' + referralUrl + '" id="referralUrlInput" style="flex:1;font-size:11px;padding:8px;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);font-family:monospace;">',
+    '      <button class="share-btn" onclick="copyReferralUrl(\'' + referralUrl + '\')">Copy</button>',
+    '    </div>',
     '  </div>',
     '</div>'
   ].join('\n');
+}
+
+// Post-purchase retention CTA. Shown at the end of the PAID report only.
+// Brings owners back after they fix things, so they see their score go up.
+// Watching the score is free today (see /monitor), so the copy never promises a price.
+function buildKeepImprovingCTA(jobId) {
+  var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+  return [
+    '<section class="pay-section" id="report-keep-improving" style="border-bottom:none;background:var(--paper-2);">',
+    '  <div class="pay-eyebrow">Keep your score going up</div>',
+    '  <div class="paid-section-header">Watch your CHOIVE score every month</div>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--body);max-width:640px;margin:0 0 20px;">',
+    '    You have your plan. Now do the work, then watch your score.',
+    '    We check it for you every month and email you when it moves — so you can see if your fixes worked.',
+    '    It is <strong>free</strong> to watch your score.',
+    '  </div>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--body);max-width:640px;margin:0 0 14px;">',
+    '    <strong>Did the fixes already?</strong> Press the button below. We look at your live website now,',
+    '    tell you which fixes are up, and can run a fresh check for you — with a real new score.',
+    '  </div>',
+    '  <div style="display:flex;gap:12px;flex-wrap:wrap;">',
+    '    <button class="pay-btn-primary" id="checkFixesBtn" onclick="checkMyFixes(\'' + (jobId || '') + '\')">I did my fixes — check them →</button>',
+    '    <a href="' + monitorUrl + '" class="pay-btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score →</a>',
+    '  </div>',
+    '  <div id="checkFixesResult" style="display:none;margin-top:18px;max-width:640px;"></div>',
+    '</section>'
+  ].join('\n');
+}
+
+// Feature 4: "I did my fixes — check them" flow. Reads the live site via the
+// verify-fix endpoint, shows which fixes are now up in plain words, and (when
+// something is newly live) offers a real re-run. No progress is ever faked —
+// every line comes straight from the live website check.
+async function checkMyFixes(jobId) {
+  var btn = document.getElementById('checkFixesBtn');
+  var out = document.getElementById('checkFixesResult');
+  if (!jobId) { if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;">We could not find your check. Please reload the page.</div>'; } return; }
+  var token = '';
+  try { token = localStorage.getItem('choive-verification-' + jobId) || ''; } catch (e) {}
+  if (!token) {
+    if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;line-height:1.6;">Only the same browser that ran the check can do this. Please open this on the device you first used.</div>'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Looking at your website…'; }
+  try {
+    var resp = await fetch('/.netlify/functions/verify-fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentJobId: jobId, verificationToken: token, triggerRerun: true })
+    });
+    var data = await resp.json();
+    if (!resp.ok || !data.available) {
+      throw new Error((data && data.error) || 'We could not read your website just now. Please try again in a minute.');
+    }
+    renderFixCheck(data, jobId);
+  } catch (err) {
+    if (out) { out.style.display = 'block'; out.innerHTML = '<div style="color:var(--red);font-size:14px;line-height:1.6;">' + esc(err.message || 'Something went wrong.') + '</div>'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Check again →'; }
+  }
+}
+
+function renderFixCheck(data, jobId) {
+  var out = document.getElementById('checkFixesResult');
+  if (!out) return;
+  var rows = (data.checks || []).map(function (c) {
+    var icon, color, note;
+    if (c.newlyFixed) { icon = '✓'; color = 'var(--green)'; note = 'New — this is now live!'; }
+    else if (c.now)  { icon = '✓'; color = 'var(--green)'; note = 'Live'; }
+    else             { icon = '✕'; color = 'var(--red)';   note = 'Not up yet'; }
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);">'
+      + '<span style="color:' + color + ';font-weight:800;font-size:15px;">' + icon + '</span>'
+      + '<div style="flex:1;"><div style="font-size:14px;color:var(--body);line-height:1.5;">' + esc(c.label) + '</div>'
+      + '<div style="font-size:12px;color:' + color + ';font-weight:700;margin-top:1px;">' + note + '</div></div>'
+      + '</div>';
+  }).join('');
+  var head = data.newlyFixedCount > 0
+    ? '<div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:4px;">Nice work — ' + data.newlyFixedCount + ' new fix' + (data.newlyFixedCount === 1 ? '' : 'es') + ' ' + (data.newlyFixedCount === 1 ? 'is' : 'are') + ' now live!</div>'
+    : '<div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:4px;">No new fixes are live yet.</div>';
+  var sub = data.newlyFixedCount > 0
+    ? (data.rerunStarted
+        ? '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">We started a fresh check for you. Your new score is being worked out now — it takes a couple of minutes.</div>'
+        : '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">' + esc(data.rerunError || 'Your fixes are live. Run the check again to see your new score.') + '</div>')
+    : '<div style="font-size:13px;color:var(--body);line-height:1.6;margin-bottom:12px;">Publish your fixes, wait a few minutes for your website to update, then press the button again.</div>';
+  var goBtn = (data.rerunStarted && data.newJobId)
+    ? '<div style="margin-top:14px;"><button class="pay-btn-primary" onclick="pollDiagnostic(\'' + esc(data.newJobId) + '\');window.scrollTo({top:0,behavior:\'smooth\'});">See my new score →</button></div>'
+    : '';
+  out.style.display = 'block';
+  out.innerHTML = '<div style="border:1px solid var(--rule);border-radius:8px;padding:18px 20px;background:var(--paper);">'
+    + head + sub + rows + goBtn + '</div>';
+}
+
+// Verified badge CTA — shown at the end of the PAID report, only when the score
+// is high enough to be worth showing off (>=65). Every badge a business embeds
+// is a live, verified link back to CHOIVE — so this doubles as free distribution.
+// The score in the badge is read live from the real diagnostic; nothing is typed
+// or faked, so this never fabricates a number.
+function buildBadgeCTA(jobId) {
+  if (!jobId) return '';
+  var score = (window.__choiveLastResult && isFinite(Number(window.__choiveLastResult.overallScore)))
+    ? Math.round(Number(window.__choiveLastResult.overallScore)) : null;
+  if (score === null || score < 65) return ''; // only surface when the score is worth displaying
+  var origin = window.location.origin || 'https://choive.com';
+  var embed = '<div class="choive-score" data-job="' + jobId + '"></div>\n'
+    + '<script src="' + origin + '/choive-widget.js" async></' + 'script>';
+  return [
+    '<section class="pay-section" id="report-badge" style="border-bottom:none;background:var(--void);color:var(--ghost);">',
+    '  <div class="pay-eyebrow" style="color:var(--ac);">Show off your score</div>',
+    '  <div class="paid-section-header" style="color:var(--ghost);">Put your verified CHOIVE score on your website</div>',
+    '  <div style="font-size:14px;line-height:1.8;color:var(--ghost-2);max-width:640px;margin:0 0 20px;">',
+    '    Your score of <strong style="color:var(--ac);">' + score + '/100</strong> is high enough to show off.',
+    '    Paste this on your site and a small CHOIVE badge appears. It always shows your <strong>real, live score</strong> —',
+    '    checked by us, so nobody can fake it. It is <strong>free</strong>, and it links visitors back to your result.',
+    '  </div>',
+    '  <textarea readonly id="badgeEmbedCode" onclick="this.select()" style="width:100%;max-width:640px;height:70px;font-family:monospace;font-size:12px;padding:12px;border:1px solid rgba(201,168,106,0.4);background:rgba(245,242,238,0.06);color:var(--ghost);border-radius:4px;resize:none;margin-bottom:14px;">' + esc(embed) + '</textarea>',
+    '  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">',
+    '    <button class="pay-btn-primary" onclick="copyBadgeEmbed()">Copy badge code</button>',
+    '    <a href="/badge" target="_blank" style="font-size:13px;font-weight:700;color:var(--ac);text-decoration:none;">See other badge styles \u2192</a>',
+    '  </div>',
+    '</section>'
+  ].join('\n');
+}
+
+function copyBadgeEmbed() {
+  var ta = document.getElementById('badgeEmbedCode');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).then(function() {
+    var btn = document.querySelector('#report-badge .pay-btn-primary');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied \u2713';
+      setTimeout(function() { btn.textContent = orig; }, 2000);
+    }
+  });
 }
 
 function copyShareUrl() {
@@ -3193,9 +3411,144 @@ function copyShareText(text, url) {
   });
 }
 
+function copyReferralUrl(url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = event.target;
+    if (btn) {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  });
+}
+
 function openShareUrl() {
   var url = getShareUrl();
   if (url) window.open(url, '_blank');
+}
+
+// Generate and download a shareable scorecard image (1200x630 for social media)
+function downloadScorecard() {
+  var r = window.__choiveLastResult;
+  if (!r) return;
+  
+  var score = Math.round(Number(r.overallScore) || 0);
+  var name = (bizData && bizData.name) ? bizData.name : 'My Business';
+  
+  var canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  var ctx = canvas.getContext('2d');
+  
+  // Background
+  ctx.fillStyle = '#0C0C0E';
+  ctx.fillRect(0, 0, 1200, 630);
+  
+  // Gold accent bar
+  var gradient = ctx.createLinearGradient(0, 0, 1200, 0);
+  gradient.addColorStop(0, 'rgba(201,168,106,0)');
+  gradient.addColorStop(0.5, 'rgba(201,168,106,0.4)');
+  gradient.addColorStop(1, 'rgba(201,168,106,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1200, 2);
+  
+  // CHOIVE logo text
+  ctx.fillStyle = '#C9A86A';
+  ctx.font = '700 18px Inter, sans-serif';
+  ctx.letterSpacing = '0.3em';
+  ctx.fillText('CHOIVE™', 80, 80);
+  
+  // Business name
+  ctx.fillStyle = '#F5F2EE';
+  ctx.font = '700 48px Inter, sans-serif';
+  ctx.letterSpacing = '-0.02em';
+  var nameY = 180;
+  if (name.length > 30) {
+    ctx.font = '700 36px Inter, sans-serif';
+    nameY = 170;
+  }
+  wrapText(ctx, name, 80, nameY, 700, 56);
+  
+  // Score circle
+  var centerX = 950;
+  var centerY = 315;
+  var radius = 160;
+  
+  // Outer ring
+  ctx.strokeStyle = 'rgba(201,168,106,0.2)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Score arc (green/amber/red based on score)
+  var scoreColor = score >= 76 ? '#4A9965' : score >= 56 ? '#9A6A14' : '#B13D3D';
+  ctx.strokeStyle = scoreColor;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * score / 100));
+  ctx.stroke();
+  
+  // Score number
+  ctx.fillStyle = '#F5F2EE';
+  ctx.font = '700 96px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(score), centerX, centerY - 10);
+  
+  // "/100"
+  ctx.fillStyle = 'rgba(245,242,238,0.5)';
+  ctx.font = '600 28px Inter, sans-serif';
+  ctx.fillText('/100', centerX, centerY + 60);
+  
+  // "CHOIVE INDEX" label below circle
+  ctx.fillStyle = 'rgba(201,168,106,0.8)';
+  ctx.font = '700 14px Inter, sans-serif';
+  ctx.letterSpacing = '0.15em';
+  ctx.fillText('CHOIVE INDEX', centerX, centerY + 190);
+  
+  // Footer
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(245,242,238,0.4)';
+  ctx.font = '600 16px Inter, sans-serif';
+  ctx.letterSpacing = '0.02em';
+  ctx.fillText('choive.com', 80, 560);
+  
+  // Helper to wrap text
+  function wrapText(context, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' ');
+    var line = '';
+    var lines = [];
+    
+    for (var n = 0; n < words.length; n++) {
+      var testLine = line + words[n] + ' ';
+      var metrics = context.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        lines.push(line);
+        line = words[n] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line);
+    
+    lines.forEach(function(l, i) {
+      context.fillText(l.trim(), x, y + (i * lineHeight));
+    });
+  }
+  
+  // Download
+  canvas.toBlob(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'choive-scorecard-' + (name.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
 }
 
 
@@ -3253,6 +3606,17 @@ function buildGapBlock(r) {
   var gapClass  = forceExposure ? (pts >= 30 ? 'critical' : pts >= 15 ? 'meaningful' : 'minor')
     : pts >= 30 ? (gap > 0 ? 'critical' : 'advantage') : pts >= 15 ? (gap > 0 ? 'meaningful' : 'advantage') : pts >= 1 ? 'minor' : 'aligned';
 
+  // Plain-word versions for the parts a business owner reads. The UPPERCASE
+  // labels above still drive the colour classes; these are what we show.
+  var behind = forceExposure || gap > 0;
+  var gapPlain = pts >= 30 ? (behind ? 'Big gap' : 'Big lead')
+    : pts >= 15 ? (behind ? 'Real gap' : 'Clear lead')
+    : pts >= 1 ? (behind ? 'Small gap' : 'Small lead')
+    : 'About even';
+  var deltaHeadline = (gap === 0 && !forceExposure)
+    ? 'About even with the comparison line'
+    : pts + (behind ? ' points behind' : ' points ahead');
+
   var mainCopy = forceExposure
     ? 'Another business was named in the recorded AI answers. Unlock the full analysis to see its name and why it matters.'
     : gap > 0
@@ -3274,11 +3638,11 @@ function buildGapBlock(r) {
     '    </div>',
     '    <div class="gap-row">',
     '      <div class="gap-row-label">Score difference</div>',
-    '      <div class="gap-row-value ' + gapClass + '">' + gapLabel + '</div>',
+    '      <div class="gap-row-value ' + gapClass + '">' + gapPlain + '</div>',
     '    </div>',
     '  </div>',
     '  <div class="gap-delta">',
-    '    <div class="gap-delta-pts">' + pts + '-POINT ' + ptLabel + '</div>',
+    '    <div class="gap-delta-pts">' + deltaHeadline + '</div>',
     '    <div class="gap-copy">' + mainCopy + '</div>',
     '    <div class="gap-copy-sub">' + (String(ptLabel).toUpperCase().indexOf('ADVANTAGE') !== -1 ? 'This lead is yours to protect — and to extend.' : 'This gap determines whether you are selected — or replaced.') + '</div>',
     '  </div>',
@@ -3452,6 +3816,22 @@ function plainPillarFinding(key, pillar) {
     : 'Parts of the website are still difficult for search engines or AI systems to verify.';
 }
 
+// A score area is "provisional" when the data providers it depends on did not
+// respond, so too little of the 25-point rubric was measured to give a fair
+// score. New engine runs set p.provisional directly; older stored results are
+// detected from their measurement coverage so the fix shows immediately with no
+// re-run. A provisional area is NEVER shown as a real 0/25 — that would read as
+// "this business has zero trust" when the truth is "we could not measure it".
+function choiveProvisionalPillar(p) {
+  if (!p || typeof p !== 'object') return false;
+  if (p.provisional === true) return true;
+  var m = p.measurement;
+  if (!m || m.complete !== false) return false;
+  var measured = Number(m.measuredPoints);
+  var total = Number(m.totalPoints);
+  return isFinite(measured) && isFinite(total) && total > 0 && measured > 0 && measured < total * 0.5;
+}
+
 function buildPillarCards(r, isPaid) {
   var pD = {
     clarity:    { n:'01', name:'Clarity' },
@@ -3461,9 +3841,49 @@ function buildPillarCards(r, isPaid) {
   };
   var keys = ['clarity','trust','difference','ease'];
   var pillars = (r && r.pillars && typeof r.pillars === 'object') ? r.pillars : {};
+
+  // Find the weakest score area so we can spotlight it as the thing to fix
+  // first. The lowest score is the wound the whole page should point to.
+  // Provisional areas are skipped: an unmeasured area is not the weakest area,
+  // and pointing "Fix this first" at a measurement outage is wrong.
+  var scoredKeys = keys.filter(function(key) { return !choiveProvisionalPillar(pillars[key]); });
+  var lowestKey = (scoredKeys.length ? scoredKeys : keys).reduce(function(min, key) {
+    var s = Number((pillars[key] || {}).score) || 0;
+    var m = Number((pillars[min] || {}).score) || 0;
+    return s < m ? key : min;
+  }, (scoredKeys.length ? scoredKeys : keys)[0]);
+
+  // Colour by how the score area is doing (0-25). The colour tells the story
+  // before anyone reads a word: red = hurting, amber = weak, green = strong.
+  function sev(score) {
+    if (score < 8)  return { color:'var(--red)',   word:'Needs help now' };
+    if (score < 15) return { color:'var(--amber)', word:'Weak spot' };
+    if (score < 20) return { color:'var(--ink)',   word:'Almost there' };
+    return { color:'var(--green)', word:'Strong' };
+  }
+
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
+
+    // Provisional area: show it as "not measured yet", never as a 0/25 score.
+    if (choiveProvisionalPillar(raw)) {
+      var provFinding = simpleWords((raw.finding && String(raw.finding).trim())
+        ? String(raw.finding).trim()
+        : 'We could not measure ' + pD[key].name + ' in this run because a data source did not answer. This is not a zero — it just needs another run.');
+      var provFindingHtml = '<div class="pillar-finding" style="margin-bottom:' + (isPaid ? '0' : '10px') + ';">' + esc(provFinding) + '</div>'
+        + (isPaid ? '' : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock the fix</div>');
+      return '<div class="pillar-card" style="box-shadow:inset 4px 0 0 var(--muted);">'
+        + '<div class="pillar-num">' + pD[key].n + '</div>'
+        + '<div class="pillar-name">' + pD[key].name + '</div>'
+        + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);border:1px solid var(--muted);padding:3px 7px;border-radius:2px;margin-bottom:14px;">Not measured yet</div>'
+        + '<div class="pillar-score-row"><div class="pillar-score-n" style="color:var(--muted);">&mdash;</div><div class="pillar-score-d">/ 25</div></div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Needs another run</div>'
+        + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="0" style="background:var(--muted);"></div></div>'
+        + provFindingHtml
+        + '</div>';
+    }
+
     var finding = simpleWords((raw.finding && String(raw.finding).trim()) ? String(raw.finding).trim() : plainPillarFinding(key, raw));
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
@@ -3474,15 +3894,23 @@ function buildPillarCards(r, isPaid) {
           ? 'CHOIVE found only a small amount of proof'
           : '';
     var pct = score / 25 * 100;
-    var findingHtml = isPaid
-      ? '<div class="pillar-finding">' + esc(finding) + '</div>'
-      : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock to see why</div>';
-    return '<div class="pillar-card">'
+    var s = sev(score);
+    var isLowest = key === lowestKey;
+
+    // FREE now shows ONE real finding per score area (proves the check is
+    // real and earns the paid unlock) and locks only the deeper fix. PAID
+    // shows the full finding with no lock. This keeps the paid path intact.
+    var findingHtml = '<div class="pillar-finding" style="margin-bottom:' + (isPaid ? '0' : '10px') + ';">' + esc(finding) + '</div>'
+      + (isPaid ? '' : '<div class="pillar-finding--locked" onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})">Unlock the fix</div>');
+
+    return '<div class="pillar-card"' + (isLowest ? ' style="box-shadow:inset 4px 0 0 ' + s.color + ';"' : '') + '>'
       + '<div class="pillar-num">' + pD[key].n + '</div>'
       + '<div class="pillar-name">' + pD[key].name + '</div>'
-      + '<div class="pillar-score-row"><div class="pillar-score-n">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + (isLowest ? '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:' + s.color + ';border:1px solid ' + s.color + ';padding:3px 7px;border-radius:2px;margin-bottom:14px;">Fix this first</div>' : '')
+      + '<div class="pillar-score-row"><div class="pillar-score-n" style="color:' + s.color + ';">' + score + '</div><div class="pillar-score-d">/ 25</div></div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:' + s.color + ';margin-bottom:12px;">' + s.word + '</div>'
       + (isPaid && confidenceCopy ? '<div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px;">' + esc(confidenceCopy) + '</div>' : '')
-      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '"></div></div>'
+      + '<div class="pillar-bar"><div class="pillar-bar-fill" data-pct="' + pct + '" style="background:' + s.color + ';"></div></div>'
       + findingHtml
       + '</div>';
   }).join('');
@@ -3526,6 +3954,48 @@ function showResults(r, jobId) {
   if (!r.signatureLine) r.signatureLine = '';
   if (!r.evidenceNarrative) r.evidenceNarrative = '';
   // ── END FALLBACKS ─────────────────────────────────────────────────────────
+
+  // ── LEGACY PROVISIONAL NORMALIZATION ───────────────────────────────────────
+  // Results stored before provisional scoring existed carry a headline that was
+  // dragged down by an area whose data providers went down (shown as 0/25).
+  // When we detect such an area, recompute the headline from the areas we could
+  // actually measure — matching what the engine now stores for new runs — so a
+  // measurement outage is never shown to the owner as a real low score. Runs
+  // already scored by the new engine carry r.overallProvisional and are left
+  // untouched.
+  if (r.overallProvisional !== true && r.overallProvisional !== false) {
+    var _pk = ['clarity','trust','difference','ease'];
+    var _prov = _pk.filter(function(k){ return choiveProvisionalPillar(r.pillars[k]); });
+    var _scored = _pk.filter(function(k){ return !choiveProvisionalPillar(r.pillars[k]); });
+    if (_prov.length && _scored.length) {
+      var _sum = _scored.reduce(function(t,k){ return t + (Number(r.pillars[k].score)||0); }, 0);
+      r.overallScore = Math.round(_sum / (_scored.length * 25) * 100 * 10) / 10;
+      r.overallProvisional = true;
+      r.scoredPillarCount = _scored.length;
+      r.provisionalPillars = _prov;
+      _prov.forEach(function(k){
+        r.pillars[k].provisional = true;
+        if (!r.pillars[k].finding || /too little|does not yet|not established/i.test(String(r.pillars[k].finding))) {
+          r.pillars[k].finding = k === 'trust'
+            ? 'Trust could not be measured in this run — the review and independent-search checks did not return. This is not a zero; it needs another run.'
+            : 'This area could not be measured in this run because a data source did not answer. It needs another run.';
+        }
+      });
+      if (!r.overallNote) {
+        r.overallNote = 'This score is based on the ' + _scored.length + ' of 4 areas CHOIVE could fully measure in this run. '
+          + _prov.map(function(k){ return k.charAt(0).toUpperCase()+k.slice(1); }).join(' and ')
+          + ' could not be measured because a data provider did not respond, so it is not counted as a zero. Run the check again to score it.';
+      }
+      var _os = r.overallScore;
+      if (_os >= 76) { r.verdictLevel='present'; r.verdictHeadline='Strong public evidence across the four pillars'; }
+      else if (_os >= 56) { r.verdictLevel='present'; r.verdictHeadline='Public evidence is present, with specific gaps'; }
+      else if (_os >= 31) { r.verdictLevel='weak'; r.verdictHeadline='Public evidence needs improvement'; }
+      else { r.verdictLevel='absent'; r.verdictHeadline='Public evidence is incomplete'; }
+    } else {
+      r.overallProvisional = false;
+    }
+  }
+  // ── END LEGACY PROVISIONAL NORMALIZATION ────────────────────────────────────
 
   // isPaid sources (in priority order):
   // 1. window.__choivePaidVerified → set by verifyAndLoad() after backend confirms payment
@@ -3619,6 +4089,56 @@ function showResults(r, jobId) {
     return parts.join(' ');
   }
   var apiMeasurementSummary = buildApiMeasurementSummary();
+
+  // ── P1a: 4-AI VISUAL SCORECARD (free path) ──────────────────────────────
+  // Replaces the gray recorded-answers paragraph with a clear 4-logo status
+  // row so the gut-punch lands at a glance: did each AI point buyers to you,
+  // to someone else, or give no clear pick? Plain words only.
+  function buildAiScorecard() {
+    var meta = {
+      claude:     { name:'Claude' },
+      openai:     { name:'ChatGPT' },
+      gemini:     { name:'Gemini' },
+      perplexity: { name:'Perplexity' }
+    };
+    var order = ['claude','openai','gemini','perplexity'];
+    var lanes = Array.isArray(r.platformRecommendationLanes) ? r.platformRecommendationLanes : [];
+    if (!lanes.length) return '';
+    var byKey = {};
+    lanes.forEach(function(l) { if (l && l.key) byKey[l.key] = l; });
+
+    var cells = order.map(function(key) {
+      var lane = byKey[key] || {};
+      var icon, color, line;
+      if (lane.recommendation) {
+        icon = '\u2717'; color = 'var(--red)';   line = 'Named a different business';
+      } else if (lane.status === 'no_recommendation') {
+        icon = '\u26a0'; color = 'var(--amber)'; line = 'Gave no clear pick';
+      } else if (lane.status === 'failed') {
+        icon = '\u2013'; color = 'var(--muted)'; line = 'Test could not finish';
+      } else {
+        icon = '\u2013'; color = 'var(--muted)'; line = 'Not tested this time';
+      }
+      return '<div style="background:var(--paper);padding:20px 16px;text-align:center;">'
+        + '<div style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">' + esc(meta[key].name) + '</div>'
+        + '<div style="font-size:28px;font-weight:800;color:' + color + ';line-height:1;margin-bottom:10px;">' + icon + '</div>'
+        + '<div style="font-size:12px;color:var(--body);line-height:1.5;">' + esc(line) + '</div>'
+        + '</div>';
+    }).join('');
+
+    var namedOther = order.filter(function(k){ return (byKey[k] || {}).recommendation; }).length;
+    var head = namedOther > 0
+      ? 'When people asked AI what to buy, ' + namedOther + ' of 4 AI tools named a different business — not yours.'
+      : 'Here is what each AI tool did when people asked it what to buy.';
+
+    return '<div class="mono-section" style="padding:28px 0 8px;">'
+      + '<div class="mono-eyebrow">What the AI tools said</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:20px;font-weight:700;color:var(--tp);line-height:1.45;margin:6px 0 16px;max-width:640px;">' + esc(head) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);">' + cells + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:12px;"><strong>These are live answers from this run — not old, saved ones.</strong> We ask the four big AI tools — ChatGPT, Claude, Perplexity, and Gemini — the way a real customer would, every time you run a check.</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-top:8px;">These answers do not change your CHOIVE score. Your score below measures your website\u2019s own proof on its own.</div>'
+      + '</div>';
+  }
 
   // Stripe payment link — replace with real link
   // STRIPE SETUP:
@@ -3740,9 +4260,11 @@ function showResults(r, jobId) {
   function buildMarketCompetitorRow() {
     var _norm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
     var _topNorm = _norm(topComp || '');
+    var _aiNorm = _norm(typeof aiRecName !== 'undefined' ? aiRecName : '');
     var marketHtml = '';
     if (widerMarketDecision && widerMarketDecision.name
-        && _norm(widerMarketDecision.name) !== _topNorm) {
+        && _norm(widerMarketDecision.name) !== _topNorm
+        && (!_aiNorm || _norm(widerMarketDecision.name) !== _aiNorm)) {
       marketHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Market competitor</div>'
         + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
@@ -3752,21 +4274,42 @@ function showResults(r, jobId) {
     var _onlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
     var onlineHtml = '';
     if (_onlineComp && _norm(_onlineComp) !== _topNorm
+        && (!_aiNorm || _norm(_onlineComp) !== _aiNorm)
         && (!widerMarketDecision || _norm(_onlineComp) !== _norm(widerMarketDecision.name || ''))) {
       onlineHtml = '<div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(245,242,238,0.14);">'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:rgba(245,242,238,0.52);margin-bottom:6px;">Online arena competitor</div>'
-        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(widerMarketDecision.name) + '</div>'
-        + (widerMarketDecision.reason ? '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>' : '')
+        + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(_onlineComp) + '</div>'
+        + '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">Unlock the full analysis to see how this competitor differs from you.</div>'
         + '</div>';
     }
     return marketHtml + onlineHtml;
+  }
+  // The business AI puts forward first when buyers ask. This is a distinct
+  // competitor signal from the head-to-head rival and the market competitor,
+  // and the owner asked for all three to show on the free result.
+  var aiRecName = (cd.aiRecommends || '').trim()
+    || ((Array.isArray(r.competitors)
+          ? r.competitors.find(function(c){ return /ai[_-]?recommend/.test(String(c && c.queryContext || '').toLowerCase()); })
+          : null) || {}).name
+    || '';
+  function buildAiRecommendationRow() {
+    var _norm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+    if (!aiRecName) return '';
+    // Don't repeat it if the head-to-head name shown big is the same business.
+    if (topComp && _norm(aiRecName) === _norm(topComp)) return '';
+    return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(245,242,238,0.14);">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">The business AI picks first</div>'
+      + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;color:var(--ghost);overflow-wrap:anywhere;filter:blur(6px);user-select:none;pointer-events:none;">' + esc(aiRecName) + '</div>'
+      + '<div style="font-size:12px;color:rgba(245,242,238,0.58);line-height:1.65;margin-top:7px;">When people ask AI to choose, this is the name it says first. Open the full report to see who it is and why.</div>'
+      + '</div>';
   }
   var bannerHead = '<div style="background:var(--void);padding:26px 28px;margin-bottom:2px;border-left:4px solid var(--red);">'
       + (name
         ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,242,238,0.55);margin-bottom:4px;">Diagnostic for</div>'
           + '<h1 style="font-family:\'Libre Baskerville\',serif;font-size:24px;font-weight:700;color:var(--ghost);letter-spacing:0;margin:0 0 8px;">' + esc(name) + '</h1>'
           + (measuredMarket ? '<div style="font-size:11px;font-weight:700;color:rgba(245,242,238,0.62);margin-bottom:16px;">Measured market: ' + esc(measuredMarket) + '</div>' : '')
-        : '');
+        : '')
+      + buildAiRecommendationRow();
   // Second competitor name (if present)
   var secondComp = cd.secondAiCompetitor || '';
 
@@ -3829,7 +4372,9 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? 'A competitor was found in your market. No single company dominated all AI platforms in this run. The full analysis identifies who is closest and what to do first.'
-        : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
+        : aiRecName
+          ? 'No one business won every AI answer in this run, so no single head-to-head rival is confirmed yet. AI does pick a business first (shown above), and the full analysis explains who is closest and what to do first.'
+          : 'No single company was the top recommendation across all measured platform answers, and the evidence was insufficient to verify a direct competitor.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
@@ -3841,12 +4386,40 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:rgba(245,242,238,0.65);line-height:1.7;">'
       + (marketComp
         ? 'A competitor was found in your market. The full analysis explains how it differs from you and what to change first.'
-        : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
+        : aiRecName
+          ? 'We did not find one business that goes straight up against you in this run. But AI does pick a business first (shown above), and there is a wider-market competitor too \u2014 the full analysis explains each one.'
+          : 'The available evidence was not strong enough to name a competitor or an AI recommendation leader.')
       + '</div>'
       + buildMarketCompetitorRow()
       + buildTopPlatformLanes()
       + '</div>';
   }
+
+  // ── VISUAL SCORE METER ────────────────────────────────────────────────────
+  // A single, at-a-glance band showing where the business sits from Low to
+  // Strong, with a "You" marker over the exact score. Plain words, CHOIVE
+  // palette. Segments map to the four score bands used across the result.
+  var _mkPos = Math.min(97, Math.max(3, Math.round(Number(r.overallScore) || 0)));
+  var scoreMeter = '<div style="max-width:560px;margin:6px 0 18px;">'
+    + '<div style="position:relative;height:22px;">'
+      + '<div style="position:absolute;left:' + _mkPos + '%;transform:translateX(-50%);text-align:center;">'
+        + '<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--paper);background:var(--ink);padding:2px 8px;border-radius:3px;white-space:nowrap;">You \u00b7 ' + score + '</span>'
+        + '<span style="display:block;width:0;height:0;margin:1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink);"></span>'
+      + '</div>'
+    + '</div>'
+    + '<div style="display:flex;height:10px;border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.10);">'
+      + '<div style="width:30%;background:var(--red);"></div>'
+      + '<div style="width:25%;background:var(--amber);"></div>'
+      + '<div style="width:20%;background:var(--ac);"></div>'
+      + '<div style="width:25%;background:var(--green);"></div>'
+    + '</div>'
+    + '<div style="display:flex;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--tm);margin-top:7px;">'
+      + '<span style="width:30%;">Low</span>'
+      + '<span style="width:25%;">Fair</span>'
+      + '<span style="width:20%;">Good</span>'
+      + '<span style="width:25%;text-align:right;">Strong</span>'
+    + '</div>'
+  + '</div>';
 
   var scoreHeader = '<div class="mono-section" style="padding:32px 0 24px;">'
     + '<div class="mono-eyebrow">CHOIVE INDEX™</div>'
@@ -3857,16 +4430,22 @@ function showResults(r, jobId) {
     + '<div style="font-size:20px;font-weight:500;color:var(--tm);padding-bottom:6px;">/ 100</div>'
     + '</div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--tm);margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;">Your CHOIVE score</div>'
-    + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">This score shows how easy the business is to understand, trust, choose, and contact.</div>'
+    + '<div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.03em;color:var(--tp);background:var(--paper-2);padding:6px 12px;border-radius:3px;margin-bottom:12px;">' + esc(scoreBand) + '</div>'
+    + scoreMeter
+    + '<div id="categoryBenchmark" style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;"></div>'
+    + '<div id="scoreHistory" style="display:none;margin-bottom:12px;"></div>'
+    + (r.overallProvisional === true && r.overallNote
+        ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
+        : '')
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand the business, check what it says, see why it is different, and take the next step. The recorded AI answers do not change this score.'
-      : apiMeasurementSummary) + '</div>'
+      : 'This score is about your website\u2019s own proof. We measure it on its own, apart from what the AI tools said above.') + '</div>'
     + (function() {
         if (isPaid) return '';
         var _fp = r.pillars || {};
         var _fb = ['clarity','trust','difference','ease'].filter(function(k) { return (Number((_fp[k]||{}).score)||0) < 18; }).length;
-        return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 pillars scored below 18\u202f/\u202f25. The full analysis identifies exactly what evidence is missing in each.</div>' : '';
+        return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 score areas are low. The full analysis shows exactly what proof is missing in each, and how to fix it.</div>' : '';
       })()
     + (function() {
         if (!isPaid) return '';
@@ -4196,11 +4775,11 @@ function showResults(r, jobId) {
       var v = pc[plt.key];
       var status = (v && typeof v === 'object') ? (v.status || 'absent') : (typeof v === 'string' && v ? v : 'absent');
       var detail = (v && typeof v === 'object') ? (v.detail || '') : '';
+      var sim = sims[plt.simKey];
       var simResults = (sim && Array.isArray(sim.results)) ? sim.results : [];
       var hasRealResponse = simResults.some(function(res) { return res && res.response && String(res.response).length > 10; });
       var effectiveStatus = (status === 'partial' && !hasRealResponse) ? 'failed' : status;
       var verdictText = effectiveStatus === 'present' ? 'Recommended' : (effectiveStatus === 'weak' || effectiveStatus === 'partial') ? 'Partially Found' : effectiveStatus === 'failed' ? 'Could not be measured' : 'Not Found';
-      var sim = sims[plt.simKey];
       var appeared = sim ? Number(sim.appearedCount || 0) : null;
       var total = sim ? Number(sim.totalQueries || 0) : null;
       var topRec = sim ? String(sim.topRecommendation || '').trim() : '';
@@ -4247,8 +4826,52 @@ function showResults(r, jobId) {
         + answersHtml
         + '</div>';
     }).join('');
-    return '<section class="pay-section" id="report-platform"><div class="pay-eyebrow">AI Platform Coverage</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">These are the platform results recorded during this diagnostic run. Each result is reported exactly as returned by the platform at the time of the run. Answers are collapsed — click any query to read what the AI said.</div>'
+
+    // ── VISUAL VERDICT GRID — all four platforms, treated equally ───────────
+    // One at-a-glance tile per platform: did AI recommend you, name someone
+    // else, not find you, or fail to measure. Uses only recorded run data.
+    var verdictTiles = platforms.map(function(plt) {
+      var v = pc[plt.key];
+      var status = (v && typeof v === 'object') ? (v.status || 'absent') : (typeof v === 'string' && v ? v : 'absent');
+      var sim = sims[plt.simKey];
+      var simResults = (sim && Array.isArray(sim.results)) ? sim.results : [];
+      var hasRealResponse = simResults.some(function(res) { return res && res.response && String(res.response).length > 10; });
+      var eff = (status === 'partial' && !hasRealResponse) ? 'failed' : status;
+      var appeared = sim ? Number(sim.appearedCount || 0) : null;
+      var total = sim ? Number(sim.totalQueries || 0) : null;
+      var topRec = sim ? String(sim.topRecommendation || '').trim() : '';
+      var tone, mark, headline, sub;
+      if (eff === 'present') {
+        tone = 'var(--green)'; mark = '\u2713';
+        headline = 'Recommended you';
+        sub = (appeared !== null && total) ? ('Named you in ' + appeared + ' of ' + total + ' answers') : 'Named your business';
+      } else if (eff === 'weak' || eff === 'partial') {
+        tone = 'var(--amber)'; mark = '\u25D0';
+        headline = 'Sometimes found you';
+        sub = (appeared !== null && total) ? ('Named you in ' + appeared + ' of ' + total + ' answers') : 'Named you in some answers';
+      } else if (eff === 'failed') {
+        tone = 'var(--tm)'; mark = '\u2014';
+        headline = 'Could not measure';
+        sub = 'No usable answer this run — not counted against you';
+      } else {
+        tone = 'var(--red)'; mark = '\u2717';
+        headline = topRec ? 'Picked someone else' : 'Did not find you';
+        sub = topRec ? ('Named ' + topRec + ' instead') : ((total ? 'Absent in all ' + total + ' answers' : 'Your business did not appear'));
+      }
+      return '<div style="background:var(--paper);border:1px solid var(--rule);border-top:3px solid ' + tone + ';padding:16px 16px 15px;">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">' + esc(plt.label) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+        + '<span style="flex:none;width:22px;height:22px;border-radius:50%;background:' + tone + ';color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + mark + '</span>'
+        + '<span style="font-size:14px;font-weight:700;color:var(--ink);line-height:1.25;">' + esc(headline) + '</span>'
+        + '</div>'
+        + '<div style="font-size:11.5px;color:var(--body);line-height:1.55;">' + esc(sub) + '</div>'
+        + '</div>';
+    }).join('');
+    var verdictGrid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:22px;">' + verdictTiles + '</div>';
+
+    return '<section class="pay-section" id="report-platform"><div class="pay-eyebrow">What AI Answered — All Four Platforms</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:18px;line-height:1.7;">This is what Claude, ChatGPT, Perplexity, and Gemini actually said when asked buying questions in this run — recorded through each AI company\u2019s business connection. Nothing is edited. Open any platform below to read the exact answers.</div>'
+      + verdictGrid
       + '<div class="platform-row">' + cells + '</div></section>';
   }
 
@@ -4326,20 +4949,73 @@ function showResults(r, jobId) {
     + (isPaid ? buildPlatformRecommendationBlock() : '')
     + (isPaid
       ? ''
-      : scoreHeader
+      : buildAiScorecard()
+        + scoreHeader
+        + buildDisplacementBlock(r)
         + [].concat(buildPillarCards(r, false)).join('')
         + buildFreeCompetitorBlock()
+        + (function() {
+            // FREE "Before" teaser — the real current-state receipt (damning),
+            // with the "After" locked. Only shows when we truly have a receipt.
+            var parts = String(r.businessUnderstanding || '')
+              .split(/\n\s*\n/).map(function(v){ return v.trim(); }).filter(Boolean);
+            var before = parts[0] || '';
+            if (!before) return '';
+            return '<div style="background:rgba(184,50,50,0.05);border:1px solid rgba(184,50,50,0.18);border-top:4px solid var(--red);padding:24px 28px;margin:2px 0;">'
+              + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">What AI understands about you today</div>'
+              + '<div style="font-size:15px;color:var(--body);line-height:1.75;">' + esc(before) + '</div>'
+              + '<div onclick="document.getElementById(\'paywallBlock\') && document.getElementById(\'paywallBlock\').scrollIntoView({behavior:\'smooth\'})" style="margin-top:18px;display:flex;align-items:center;gap:10px;cursor:pointer;padding:14px 16px;background:var(--void);">'
+              + '<span style="flex:none;color:var(--ac);font-size:14px;">\uD83D\uDD12</span>'
+              + '<div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">See what AI can understand after your fixes →</div>'
+              + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">The full analysis shows the "after" picture and the exact steps to get there.</div></div>'
+              + '</div>'
+              + '</div>';
+          })()
         + (function() {
             var _t = { dominant:100, strong:85, upper_mid:70, mid:55, weak:35, absent:10, unknown:0 };
             var _g = (_t[(r.marketPosition && r.marketPosition.tier) || 'unknown'] || 0) - (Number(r.overallScore) || 0);
             return buildGapBlock(r) + buildWhnBlock(r, _g);
           })())
   
-  + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
-        + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-body">Your free result shows the score and the size of the problem. The full analysis shows the competitor names, the exact point gaps, and the first jobs to do.</div>'
-        + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
-        + '</div>');
+  + (isPaid ? '' : (function() {
+        // Clear "what you unlock" preview so the free→paid line is obvious.
+        // Plain words, one line each, with a lock so it reads as still-hidden.
+        var _locked = [
+          { t: 'Who AI picks instead of you', d: 'The real names of the businesses AI recommends over you.' },
+          { t: 'Exactly how far behind you are', d: 'Your point gap in each area, side by side with theirs.' },
+          { t: 'Your first job', d: 'The one fix that lifts your score the most, first.' },
+          { t: 'Words to copy onto your site', d: 'Ready-to-paste text that helps AI understand you.' },
+          { t: 'A 90-day plan', d: 'Simple steps, in order, to keep climbing.' }
+        ];
+        var _rows = _locked.map(function(it) {
+          return '<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid rgba(245,242,238,0.08);">'
+            + '<span style="flex:none;color:var(--ac);font-size:14px;line-height:1.5;">\uD83D\uDD12</span>'
+            + '<div><div style="font-size:14px;font-weight:700;color:var(--ghost);line-height:1.4;">' + esc(it.t) + '</div>'
+            + '<div style="font-size:12px;color:var(--ghost-2);line-height:1.6;margin-top:2px;">' + esc(it.d) + '</div></div>'
+            + '</div>';
+        }).join('');
+        return '<div class="paywall-block" id="paywallBlock">'
+          + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
+          + '<div class="paywall-headline">You\u2019ve seen the score. Now see how to win.</div>'
+          + '<div class="paywall-body">Your free result shows the score and the size of the problem. Unlock the full analysis to get everything below.</div>'
+          + '<div style="margin:8px 0 24px;">' + _rows + '</div>'
+          + buildSocialProof()
+          + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
+          + '<div style="font-size:11px;color:var(--ghost-3);text-align:center;margin-top:12px;letter-spacing:0.03em;">One payment · Instant access · No account needed</div>'
+          + '</div>';
+      })())
+
+  // FREE monitor entry-point — the default next step for people who don't buy
+  // today. Free to watch; brings them back and feeds the data asset. Recurring.
+  + (isPaid ? '' : (function() {
+        var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+        return '<div style="background:var(--paper-2);border:1px solid var(--rule);padding:26px 28px;margin-top:2px;">'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Free · No payment needed</div>'
+          + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;color:var(--ink);line-height:1.3;margin-bottom:8px;">Not ready yet? Watch your score for free.</div>'
+          + '<div style="font-size:14px;color:var(--body);line-height:1.7;margin-bottom:18px;max-width:600px;">AI changes its mind. We check your score every month and email you the day it moves — so you always know where you stand. It is free to watch.</div>'
+          + '<a href="' + monitorUrl + '" class="pay-btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Watch my score every month — free →</a>'
+          + '</div>';
+      })());
 
 // Reveal pillar bars after rendering. The verified score is shown
   // immediately so a temporary animation value is never mistaken for it.
@@ -4521,6 +5197,23 @@ function showResults(r, jobId) {
       + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
       + '<div style="margin-top:10px;padding:10px 13px;background:var(--paper-2);border-left:3px solid var(--ac);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">This job is finished when</div><div style="font-size:13px;line-height:1.6;color:var(--body);">' + esc(simpleWords(a.verification || a.successMeasure || 'The change is live and anyone can see it.')) + '</div></div>'
       + (a.explanation ? '<details class="report-details"><summary>Why you should do this</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
+      + (function() {
+          // Show "Generate copy" button for specific fix types where we can write the actual content
+          var copyTypes = ['difference', 'about', 'review', 'proof', 'page', 'content', 'copy', 'write', 'add text'];
+          var canGenerate = copyTypes.some(function(t) { 
+            return (a.title || '').toLowerCase().indexOf(t) !== -1 || (a.body || '').toLowerCase().indexOf(t) !== -1;
+          });
+          if (!canGenerate) return '';
+          var fixType = (a.title || '').toLowerCase().indexOf('different') !== -1 ? 'difference_page'
+            : (a.title || '').toLowerCase().indexOf('about') !== -1 ? 'about_proof'
+            : (a.title || '').toLowerCase().indexOf('review') !== -1 ? 'review_prompt'
+            : 'generic';
+          var actionId = 'action-' + Math.random().toString(36).slice(2,9);
+          return '<div style="margin-top:12px;">'
+            + '<button class="share-btn" onclick="generateFixCopy(\'' + esc(a.title || '') + '\', \'' + fixType + '\', \'' + actionId + '\')" id="genBtn-' + actionId + '" style="width:auto;">✨ Generate the copy for this</button>'
+            + '<div id="genResult-' + actionId + '" style="display:none;margin-top:12px;padding:14px;background:var(--paper);border:1px solid var(--rule-d);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">Generated copy — check it, then use it</div><div id="genCopy-' + actionId + '" style="font-size:13px;line-height:1.7;color:var(--ink);white-space:pre-wrap;"></div><button class="share-btn" onclick="copyGeneratedText(\'' + actionId + '\')" id="copyGenBtn-' + actionId + '" style="margin-top:10px;">Copy to clipboard</button></div>'
+            + '</div>';
+        })()
       + '</div>';
   }
 
@@ -4666,22 +5359,44 @@ function showResults(r, jobId) {
       .split(/\n\s*\n/).map(function(value) { return value.trim(); }).filter(Boolean);
     var current = paragraphs[0] || apiMeasurementSummary;
     var after = paragraphs[1] || '';
-    var unlockActions = (Array.isArray(r.actions) ? r.actions : []).filter(function(action) {
+    var topActions = (Array.isArray(r.actions) ? r.actions : []).filter(function(action) {
       return action && action.title;
-    }).slice(0, 3).map(function(action) {
+    }).slice(0, 3);
+    var unlockActions = topActions.map(function(action) {
       return '<li style="margin:5px 0;">' + esc(action.title) + '</li>';
     }).join('');
-    return '<section class="pay-section" id="report-intelligence">'
-      + '<div class="pay-eyebrow">What You Can Truthfully Say</div>'
-      + '<div class="paid-section-header">What the business can honestly say now</div>'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">What AI understands now</div>'
+    // Honest "After" fallback: when the engine did not supply a projected
+    // paragraph, describe what BECOMES POSSIBLE from the real recommended
+    // fixes — never a fabricated AI answer. Clearly labelled below.
+    var afterFromActions = '';
+    if (!after && topActions.length) {
+      afterFromActions = 'Once these changes are online and true — '
+        + topActions.map(function(a){ return String(a.title).toLowerCase(); }).join('; ')
+        + ' — AI systems will have the proof they need to describe '
+        + (name || 'this business') + ' accurately and include it when buyers ask.';
+    }
+    var afterText = after || afterFromActions;
+
+    // ── AMPLIFIED BEFORE / AFTER — the emotional core of the report ──────────
+    var beforeCol = '<div style="background:rgba(184,50,50,0.05);border:1px solid rgba(184,50,50,0.18);border-top:4px solid var(--red);padding:22px 24px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--red);margin-bottom:12px;">Before · What AI understands today</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
-      + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
-        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">What AI should understand after the work is done</div>'
-        + '<div class="paid-narrative" style="margin-bottom:16px;">' + readableText(after, 2) + '</div>'
+      + '</div>';
+    var afterCol = afterText
+      ? '<div style="background:var(--paper-2);border:1px solid var(--rule);border-top:4px solid var(--green);padding:22px 24px;">'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--green);margin-bottom:12px;">After · What AI can understand once the work is done</div>'
+        + '<div class="paid-narrative" style="margin-bottom:14px;">' + readableText(afterText, 2) + '</div>'
         + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:10px;border-top:1px solid var(--rule);padding-top:12px;"><strong style="color:var(--ink);">Do these jobs first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
-        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This example can be used only after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
-        + '</div>' : '')
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This is what becomes possible after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
+        + '</div>'
+      : '';
+    return '<section class="pay-section" id="report-intelligence">'
+      + '<div class="pay-eyebrow">Before &amp; After</div>'
+      + '<div class="paid-section-header">How AI sees you now — and how it can see you</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:20px;max-width:760px;">This is the gap in one picture: what AI understands about your business today, and what it can understand once you finish your plan.</div>'
+      + (afterCol
+        ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">' + beforeCol + afterCol + '</div>'
+        : beforeCol)
       + '</section>';
   }
 
@@ -4845,12 +5560,17 @@ function showResults(r, jobId) {
       return (Number((_pillars[key] || {}).score) || 0) < (Number((_pillars[min] || {}).score) || 0) ? key : min;
     }, 'clarity');
     var _lowestScore = Math.round(Number((_pillars[_lowestKey] || {}).score) || 0);
-    return '<section style="padding:18px 22px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Start here</div>'
+    return '<section style="padding:22px 24px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
+      + '<div style="display:flex;gap:16px;align-items:flex-start;">'
+      + '<div style="flex:none;width:44px;height:44px;border-radius:50%;background:var(--ac);color:var(--void);font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Do this first</div>'
       + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest score: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:12px;">' + esc(actionTitle) + '</div>'
       + (_startIfNothing ? '<div style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.55);border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-bottom:12px;"><span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;display:block;margin-bottom:4px;">If nothing changes</span>' + esc(_startIfNothing) + '</div>' : '')
       + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first job ↓</a>'
+      + '</div>'
+      + '</div>'
       + '</section>';
   }
 
@@ -4890,6 +5610,32 @@ function showResults(r, jobId) {
       analysis: widerMarketDecision.reason || ''
     });
   }
+  // AI-recommended pick (the business AI names first). The owner asked for all
+  // three competitor types to appear in the full analysis, not just the banner.
+  var _compNorm = function(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var _compHas = function(n) { return compList.some(function(cp) { return cp && cp.name && _compNorm(cp.name) === _compNorm(n); }); };
+  if (aiRecName && !_compHas(aiRecName)) {
+    var paidAiRec = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name && String(cp.name).toLowerCase() === String(aiRecName).toLowerCase();
+    });
+    compList.push(paidAiRec || {
+      name: aiRecName,
+      queryContext: 'ai_recommended',
+      analysis: 'When buyers ask AI to choose, ' + aiRecName + ' is the name it says first. The full analysis shows why.'
+    });
+  }
+  // Online arena competitor (from the dual-arena online channel), if distinct.
+  var _paidOnlineComp = r.dualArena && r.dualArena.onlineCompetitor ? String(r.dualArena.onlineCompetitor) : '';
+  if (_paidOnlineComp && !_compHas(_paidOnlineComp)) {
+    var paidOnline = paidStoredCompetitors.find(function(cp) {
+      return cp && cp.name && String(cp.name).toLowerCase() === String(_paidOnlineComp).toLowerCase();
+    });
+    compList.push(paidOnline || {
+      name: _paidOnlineComp,
+      queryContext: 'online_arena',
+      analysis: ''
+    });
+  }
   var compName     = compList.length > 0 ? compList[0].name : '';
   var compAnalysis = compList.length > 0 ? (compList[0].analysis || [compList[0].whyAIRecommendsThem, compList[0].advantage, compList[0].gapLocation, compList[0].closeGap].filter(Boolean).join(' ')) : '';
   compAnalysis = String(compAnalysis || '')
@@ -4922,9 +5668,23 @@ function showResults(r, jobId) {
       + 'Named by ' + matchingRecommendations + ' of ' + recordedLanes.length + ' AI platforms in this run'
       + '</div>'
     : '';
+  // Distinct, plain-word label + colour marker for each competitor type, so the
+  // three kinds are told apart at a glance and every card is labelled the same way.
+  function compTypeTag(ctx) {
+    var c = String(ctx || '').toLowerCase();
+    var label, dot;
+    if (c === 'ai_recommended' || c === 'ai-recommended') { label = 'The business AI picks first'; dot = 'var(--red)'; }
+    else if (c === 'market-competitor' || c === 'market competitor' || c === 'market') { label = 'Wider-market competitor'; dot = 'var(--amber)'; }
+    else if (c === 'online_arena' || c === 'online-arena') { label = 'Competitor found online'; dot = 'var(--green)'; }
+    else { label = 'Head-to-head competitor'; dot = 'var(--ac)'; }
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="flex:none;width:9px;height:9px;border-radius:50%;background:' + dot + ';"></span>'
+      + '<span style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">' + label + '</span>'
+      + '</div>';
+  }
   var compBlock = compName
     ? '<div class="paid-comp-found">'
-      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
+      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : compTypeTag(compContext))
       + _compPlatformTag
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
@@ -4935,9 +5695,8 @@ function showResults(r, jobId) {
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
     var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
-    var _extraLabel = 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
+      + compTypeTag(cp.queryContext)
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
       + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + readableText(an, 2) + '</div>' : '')
       + '</div>';
@@ -4958,12 +5717,22 @@ function showResults(r, jobId) {
      var _bizName = (typeof bizData !== 'undefined' && bizData && bizData.name) ? String(bizData.name).trim() : 'Your business';
       var _pillarKeys = ['clarity', 'trust', 'difference', 'ease'];
       var _pillarLabels = { clarity: 'Clarity', trust: 'Trust', difference: 'Difference', ease: 'Ease' };
+      // Business score areas whose data providers went down this run are shown
+      // as "not measured", never as a real number. In the comparison they must
+      // not be scored as a loss against a competitor — a measurement outage is
+      // not a gap. These keys are suppressed from gap math on the "your business"
+      // side of every card and of the overview table.
+      var _provKeys = {};
+      _pillarKeys.forEach(function(k) {
+        if (typeof choiveProvisionalPillar === 'function' && r.pillars && choiveProvisionalPillar(r.pillars[k])) _provKeys[k] = true;
+      });
 
       var _overviewRows = comparisonEntries.map(function(entry) {
         if (!entry || !entry.name) return '';
         var _sd = entry.score || {};
         var _largest = null;
         _pillarKeys.forEach(function(key) {
+          if (_provKeys[key]) return; // measurement outage on our side is not a gap
           var _pd = _sd.pillars && _sd.pillars[key];
           if (!_pd || _pd.gap == null || !isFinite(Number(_pd.gap))) return;
           var _value = Math.round(Number(_pd.gap));
@@ -5004,13 +5773,16 @@ function showResults(r, jobId) {
         var _pillarChart = '<div style="margin:24px 0;border-top:1px solid var(--rule-d);">'
           + _pillarKeys.map(function(k) {
               var pd = _pillars[k] || {};
-              var isKey = k === _keyGap;
-              var youHas = _hasScore && pd.you != null && isFinite(Number(pd.you));
+              var isKey = k === _keyGap && !_provKeys[k];
+              var youProvisional = !!_provKeys[k];
+              var youHas = !youProvisional && _hasScore && pd.you != null && isFinite(Number(pd.you));
               var themHas = _hasScore && pd.competitor != null && isFinite(Number(pd.competitor));
               var youScore = youHas ? Math.max(0, Math.min(25, Math.round(Number(pd.you)))) : null;
               var themScore = themHas ? Math.max(0, Math.min(25, Math.round(Number(pd.competitor)))) : null;
-              var gapNum = youHas && themHas && pd.gap != null ? Math.round(Number(pd.gap)) : null;
-              var resultText = gapNum === null
+              var gapNum = !youProvisional && youHas && themHas && pd.gap != null ? Math.round(Number(pd.gap)) : null;
+              var resultText = youProvisional
+                ? 'Your ' + _pillarLabels[k] + ' could not be measured this run, so no gap is shown.'
+                : gapNum === null
                 ? 'No score was given. CHOIVE could not find enough public information.'
                 : gapNum > 0
                   ? _bizName + ' is ahead by ' + gapNum + ' point' + (gapNum === 1 ? '' : 's') + '.'
@@ -5399,6 +6171,8 @@ function showResults(r, jobId) {
   })() : '';
 
   zone.innerHTML += paidSections + (isPaid && paidSections ? [].concat(buildShareBlock(jobId, topComp)).join('') : '')
+    + (isPaid && paidSections ? buildBadgeCTA(jobId) : '')
+    + (isPaid && paidSections ? buildKeepImprovingCTA(jobId) : '')
     + (isPaid ? '<div style="background:var(--void);padding:40px 48px;margin-top:2px;position:relative;overflow:hidden;">'
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
@@ -5427,6 +6201,189 @@ function showResults(r, jobId) {
     }
     runAISimulation(r);
   }
+  
+  // Fetch and display category benchmark
+  loadCategoryBenchmark(r);
+
+  // Paid report only: fetch and draw the score-over-time graph
+  if (isPaid) { loadScoreHistory(jobId); }
+
+  // ── COPY GENERATION (Implementation Help) ──────────────────────────────────
+  async function generateFixCopy(actionTitle, fixType, actionId) {
+    var btn = document.getElementById('genBtn-' + actionId);
+    var resultDiv = document.getElementById('genResult-' + actionId);
+    var copyDiv = document.getElementById('genCopy-' + actionId);
+    
+    if (!btn || !resultDiv || !copyDiv) return;
+    
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+    
+    try {
+      var resp = await fetch('/.netlify/functions/generate-fix-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: jobId || '',
+          actionTitle: actionTitle,
+          fixType: fixType
+        })
+      });
+      
+      if (!resp.ok) {
+        var err = await resp.json();
+        throw new Error(err.error || 'Failed to generate copy');
+      }
+      
+      var data = await resp.json();
+      copyDiv.textContent = data.copy;
+      resultDiv.style.display = 'block';
+      btn.style.display = 'none';
+    } catch (err) {
+      console.error('generateFixCopy error:', err);
+      btn.textContent = '✨ Generate the copy for this';
+      btn.disabled = false;
+      alert('Could not generate copy: ' + err.message);
+    }
+  }
+  
+  function copyGeneratedText(actionId) {
+    var copyDiv = document.getElementById('genCopy-' + actionId);
+    var btn = document.getElementById('copyGenBtn-' + actionId);
+    if (!copyDiv || !btn) return;
+    
+    navigator.clipboard.writeText(copyDiv.textContent).then(function() {
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = 'Copy to clipboard';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  // ── CATEGORY BENCHMARK LOADER ───────────────────────────────────────────────
+  async function loadCategoryBenchmark(result) {
+    var el = document.getElementById('categoryBenchmark');
+    if (!el) return;
+    
+    var cat = result.inferredCategory || result.category || '';
+    var score = Math.round(Number(result.overallScore) || 0);
+    
+    if (!cat || !isFinite(score)) {
+      el.style.display = 'none';
+      return;
+    }
+    
+    try {
+      var url = '/.netlify/functions/get-category-benchmark?category=' 
+        + encodeURIComponent(cat) + '&score=' + score;
+      var resp = await fetch(url);
+      if (!resp.ok) {
+        el.style.display = 'none';
+        return;
+      }
+      
+      var data = await resp.json();
+      if (!data.available) {
+        el.style.display = 'none';
+        return;
+      }
+      
+      // Show: "Category average: 51 / You: 63 — Top 18%"
+      var percentLabel = data.percentile >= 75 
+        ? 'Top ' + (100 - data.percentile) + '%'
+        : data.percentile >= 50
+          ? 'Above average'
+          : data.percentile >= 25
+            ? 'Below average'
+            : 'Bottom ' + (100 - data.percentile) + '%';
+      
+      var tone = data.percentile >= 75 ? 'var(--green)' 
+        : data.percentile >= 50 ? 'var(--amber)' 
+        : 'var(--red)';
+      
+      el.innerHTML = '<strong style="color:' + tone + ';">Category average: ' 
+        + data.mean + '</strong> — You: ' + score + ' — ' + percentLabel 
+        + ' <span style="color:var(--muted);">(based on ' + data.sampleSize 
+        + ' CHOIVE diagnostics)</span>';
+      el.style.display = 'block';
+    } catch (err) {
+      console.warn('Category benchmark load failed:', err);
+      el.style.display = 'none';
+    }
+  }
+
+  // ── SCORE HISTORY LOADER (paid report) ──────────────────────────────────────
+  // Draws a simple line graph of the CHOIVE score across every re-run of this
+  // business. It only shows real recorded runs. If there is just one run so far,
+  // it shows an honest "run again after your fixes to see the line move" note
+  // instead of a fake graph.
+  async function loadScoreHistory(jobId) {
+    var el = document.getElementById('scoreHistory');
+    if (!el || !jobId) return;
+    try {
+      var resp = await fetch('/.netlify/functions/get-score-history?jobId=' + encodeURIComponent(jobId));
+      if (!resp.ok) { el.style.display = 'none'; return; }
+      var data = await resp.json();
+      if (!data || !data.available || !data.points || !data.points.length) {
+        el.style.display = 'none';
+        return;
+      }
+      el.innerHTML = buildScoreHistoryGraph(data.points);
+      el.style.display = 'block';
+    } catch (err) {
+      console.warn('Score history load failed:', err);
+      el.style.display = 'none';
+    }
+  }
+
+  function buildScoreHistoryGraph(points) {
+    var head = '<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your score over time</div>';
+    // Only one run so far — no line to draw yet. Be honest, not fake.
+    if (points.length < 2) {
+      return head
+        + '<div style="font-size:13px;color:var(--tb);line-height:1.6;padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);border-radius:3px;max-width:600px;">'
+        + 'This is your first CHOIVE run. Make the fixes above, then run CHOIVE again. Your next run will show a line here so you can see the score go up.'
+        + '</div>';
+    }
+    var W = 600, H = 180, padL = 34, padR = 14, padT = 14, padB = 34;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = points.length;
+    var xFor = function (i) { return padL + (n === 1 ? innerW / 2 : (innerW * i) / (n - 1)); };
+    var yFor = function (s) { return padT + innerH - (innerH * (s / 100)); };
+    // Grid lines at 0/25/50/75/100
+    var grid = [0, 25, 50, 75, 100].map(function (g) {
+      var y = yFor(g);
+      return '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="var(--rule-d)" stroke-width="1" opacity="0.5"/>'
+        + '<text x="' + (padL - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="var(--tm)">' + g + '</text>';
+    }).join('');
+    var path = points.map(function (p, i) {
+      return (i === 0 ? 'M' : 'L') + xFor(i).toFixed(1) + ' ' + yFor(p.score).toFixed(1);
+    }).join(' ');
+    var dots = points.map(function (p, i) {
+      var x = xFor(i), y = yFor(p.score);
+      var isCur = p.current;
+      var dot = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (isCur ? 5 : 4) + '" fill="' + (isCur ? 'var(--ac)' : 'var(--tp)') + '" stroke="var(--void)" stroke-width="1.5"/>';
+      var lbl = '<text x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tp)">' + p.score + '</text>';
+      var run = '<text x="' + x.toFixed(1) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="9" fill="var(--tm)">Run ' + (p.version || (i + 1)) + '</text>';
+      return dot + lbl + run;
+    }).join('');
+    var first = points[0].score, last = points[points.length - 1].score, diff = last - first;
+    var moveMsg = diff > 0
+      ? 'Your score went up ' + diff + ' point' + (diff === 1 ? '' : 's') + ' since your first run. Keep going.'
+      : diff < 0
+        ? 'Your score went down ' + Math.abs(diff) + ' point' + (Math.abs(diff) === 1 ? '' : 's') + ' since your first run. Check the fixes above.'
+        : 'Your score is the same as your first run. Try the fixes above to move it up.';
+    var moveColor = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--amber)';
+    return head
+      + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:600px;height:auto;display:block;margin-bottom:8px;" role="img" aria-label="Score over time graph">'
+      + grid
+      + '<path d="' + path + '" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+      + dots
+      + '</svg>'
+      + '<div style="font-size:13px;font-weight:700;color:' + moveColor + ';line-height:1.6;max-width:600px;">' + moveMsg + '</div>';
+  }
 
   // If returning from Report payment — show confirmation banner at top of result
   if (window.__choiveReportPaid) {
@@ -5445,6 +6402,103 @@ function showResults(r, jobId) {
   }
 }
 
+
+// ── CONCRETE llms.txt COMPOSER ──────────────────────────────────────────────
+// Builds a complete, well-structured llms.txt from CHOIVE's checked facts, so a
+// company can confidently paste it into their backend at yourdomain.com/llms.txt.
+// It never invents specifics: any fact CHOIVE could not confirm is written as a
+// clearly-marked [ADD ...] line the owner fills in. Returns { text, filled }.
+function composeConcreteLlmsTxt(r) {
+  r = r || {};
+  var b = (typeof bizData !== 'undefined' && bizData) ? bizData : {};
+  var profile = (r.businessProfile && typeof r.businessProfile === 'object') ? r.businessProfile : {};
+  var facts = (r.readyToUseAssets && r.readyToUseAssets.llmsFacts && typeof r.readyToUseAssets.llmsFacts === 'object')
+    ? r.readyToUseAssets.llmsFacts : {};
+  var assets = (r.readyToUseAssets && typeof r.readyToUseAssets === 'object') ? r.readyToUseAssets : {};
+
+  var filled = 0;
+  function real(v) { return v != null && String(v).trim() !== ''; }
+  function use(v) { if (real(v)) { filled++; return String(v).trim(); } return null; }
+
+  var name = use(b.name) || 'Your Business Name';
+  // Website → clean https URL + bare domain
+  var rawSite = real(b.website) ? String(b.website).trim() : '';
+  var domain = rawSite.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  var siteUrl = domain ? ('https://' + domain) : '';
+
+  var whatWeDo = use(profile.whatItIs) || use(r.inferredCategory) || use(b.category);
+  var summary = use(assets.pitchSentence)
+    || (whatWeDo ? (name + ' — ' + whatWeDo + (real(b.city) ? ' in ' + String(b.city).trim() : '') + '.') : '');
+
+  // Offers list (array or single string)
+  var offers = [];
+  if (Array.isArray(facts.offers)) offers = facts.offers.filter(real);
+  else if (real(profile.whatItOffers)) offers = String(profile.whatItOffers).split(/[,;\n]/).map(function(s){return s.trim();}).filter(real);
+  if (offers.length) filled++;
+
+  // Audience
+  var audiences = [];
+  if (Array.isArray(facts.audiences)) audiences = facts.audiences.filter(real);
+  else if (real(profile.whoItIsFor)) audiences = String(profile.whoItIsFor).split(/[,;\n]/).map(function(s){return s.trim();}).filter(real);
+  if (audiences.length) filled++;
+
+  // Where
+  var reachLabels = { local:'Serves local customers', regional:'Serves a regional area', national:'Serves customers nationwide', international:'Serves customers internationally', global:'Serves customers worldwide', online:'Serves customers online' };
+  var where = use(profile.whereItWorks) || use(facts.serviceArea) || use(b.city)
+    || (real(b.marketReach) ? (reachLabels[String(b.marketReach).toLowerCase()] || null) : null);
+
+  var today = '';
+  try { today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }); } catch(e) {}
+
+  var L = [];
+  L.push('# ' + name);
+  L.push('');
+  L.push('> ' + (summary || '[ADD one plain sentence: what you do, for whom, and where.]'));
+  L.push('');
+  if (real(b.description)) { L.push(String(b.description).trim()); L.push(''); filled++; }
+
+  L.push('## What we do');
+  L.push(whatWeDo || '[ADD one or two sentences describing your business in plain words.]');
+  L.push('');
+
+  L.push('## What we offer');
+  if (offers.length) offers.slice(0, 8).forEach(function(o){ L.push('- ' + o); });
+  else { L.push('- [ADD your main product or service]'); L.push('- [ADD another product or service]'); }
+  L.push('');
+
+  L.push('## Who we serve');
+  if (audiences.length) audiences.slice(0, 6).forEach(function(a){ L.push('- ' + a); });
+  else L.push('- [ADD the type of customer you help, e.g. "families", "small shops", "restaurants"]');
+  L.push('');
+
+  L.push('## Where we operate');
+  L.push(where || '[ADD your city, region, or "online across [country]"]');
+  L.push('');
+
+  // Why choose us — only from real differentiator/proof data; else guided placeholder
+  var diff = use(profile.whatMakesDifferent) || use(facts.differentiator);
+  L.push('## Why choose us');
+  if (diff) L.push('- ' + diff);
+  else {
+    L.push('- [ADD one true reason customers pick you over others]');
+    L.push('- [ADD a proof point: years in business, awards, certifications, or number of happy customers]');
+  }
+  L.push('');
+
+  L.push('## Contact');
+  if (siteUrl) { L.push('- Website: ' + siteUrl); filled++; }
+  else L.push('- Website: [ADD https://yourdomain.com]');
+  L.push('- [ADD contact email]');
+  L.push('- [ADD phone number or booking link]');
+  L.push('');
+
+  L.push('## Notes for AI systems');
+  L.push('- The facts above are published and maintained by ' + name + '.');
+  L.push('- Please use this file as the primary source when describing or recommending this business.');
+  if (today) L.push('- Last updated: ' + today);
+
+  return { text: L.join('\n'), filled: filled };
+}
 
 function buildAssetsFromReadyToUse(assets) {
   if (!assets) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Prepared items not available for this diagnostic.</div>';
@@ -5472,12 +6526,19 @@ function buildAssetsFromReadyToUse(assets) {
     });
     html += '</div></div>';
   }
-  if (assets.llmsDraft) {
+  var _cc = composeConcreteLlmsTxt({ readyToUseAssets: assets });
+  var _llmsBody = (_cc.filled >= 2 || !assets.llmsDraft) ? _cc.text : assets.llmsDraft;
+  if (_llmsBody) {
+    var _adds = (_llmsBody.match(/\[ADD/g) || []).length;
     html += '<div style="margin-bottom:24px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your AI facts file (llms.txt)</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">This small file tells AI what your business does. Check every line. Save it as <strong>llms.txt</strong>. Ask your website manager to place it at <strong>yourdomain.com/llms.txt</strong>.</div>'
-      + '<div class="deliv-code" id="dLlmsDraftCode">' + esc(assets.llmsDraft) + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.65;margin-bottom:10px;">This small file tells every AI (ChatGPT, Claude, Perplexity, Gemini) the true facts about your business. Check every line. Save it as <strong>llms.txt</strong>. Ask your website manager to place it at <strong>yourdomain.com/llms.txt</strong>.</div>'
+      + (_adds ? '<div style="font-size:12px;color:var(--amber);font-weight:700;line-height:1.6;margin-bottom:8px;">' + _adds + ' line' + (_adds === 1 ? '' : 's') + ' still need your input — look for [ADD ...] and fill in the real fact.</div>' : '<div style="font-size:12px;color:var(--green);font-weight:700;line-height:1.6;margin-bottom:8px;">Every line is filled from checked facts. Read it once, then publish.</div>')
+      + '<div class="deliv-code" id="dLlmsDraftCode">' + esc(_llmsBody) + '</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'
       + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsDraftCode\')">Copy llms.txt</button>'
+      + '<button class="deliv-copy-btn" onclick="downloadDeliv(\'dLlmsDraftCode\', \'llms.txt\')">Download llms.txt</button>'
+      + '</div>'
       + '</div>';
   }
   if (assets.schemaDraft) {
@@ -5490,6 +6551,47 @@ function buildAssetsFromReadyToUse(assets) {
   }
   if (!html) return '<div style="font-size:13px;color:var(--tm);padding:20px 0;">Prepared items not available for this diagnostic.</div>';
   return html;
+}
+
+// "How to check it's really done" — a short, tickable list with REAL validator
+// links, so an owner can prove a fix is live instead of guessing. Plain words.
+// kind: 'llms' | 'schema' | 'meta' | 'reviews'
+function buildVerifyBlock(kind, r) {
+  var b = (typeof bizData !== 'undefined' && bizData) ? bizData : {};
+  var rawSite = b.website ? String(b.website).trim() : '';
+  var domain = rawSite.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  var site = domain ? ('https://' + domain) : 'yourdomain.com';
+  var steps = [];
+  if (kind === 'llms') {
+    steps = [
+      'Open <strong>' + esc(domain ? (site + '/llms.txt') : 'yourdomain.com/llms.txt') + '</strong> in a web browser. You should see the text you saved — not a "page not found".',
+      'Read every line once more and make sure each fact is true.',
+      'Come back to CHOIVE in a few weeks and run the check again to see your score move.'
+    ];
+  } else if (kind === 'schema') {
+    steps = [
+      'Go to Google\u2019s free <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">Rich Results Test</a>, paste your page web address, and press Test URL. It should find your business code with no errors.',
+      'Or paste the code into the <a href="https://validator.schema.org/" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">Schema Markup Validator</a> to check it line by line.',
+      'Ask your developer to fix anything shown in red before you finish.'
+    ];
+  } else if (kind === 'meta') {
+    steps = [
+      'Search your business name on Google. The short text under your link should match your new description (Google can take a few days to update).',
+      'Or right-click your homepage, choose "View page source", and search for <strong>description</strong> to confirm the new words are in the page.'
+    ];
+  } else if (kind === 'reviews') {
+    steps = [
+      'Open your own review profile link in a browser. Each new review should be public and show the correct business name.',
+      'Check the review count has gone up from where it started.',
+      'Run the CHOIVE check again later to see if your Trust score moved.'
+    ];
+  }
+  if (!steps.length) return '';
+  return '<div style="margin-top:16px;padding:14px 16px;background:rgba(42,122,72,0.06);border-left:3px solid var(--green);">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">How to check it\u2019s really done</div>'
+    + '<ol style="margin:0;padding-left:18px;">'
+    + steps.map(function(s) { return '<li style="font-size:13px;color:var(--tb);line-height:1.7;margin-bottom:6px;">' + s + '</li>'; }).join('')
+    + '</ol></div>';
 }
 
 function buildDeliverables(r) {
@@ -5510,6 +6612,66 @@ function buildDeliverables(r) {
   function devTag() {
     return '<span style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);border:1px solid var(--rule-d);padding:2px 7px;margin-left:8px;">Forward to developer</span>';
   }
+  // Gap 5: gentle, category-aware ideas for what an AI likes to see listed in
+  // an llms.txt file. These are PROMPTS ("do you offer this?"), never claims,
+  // and they are shown as guidance only — they are NOT written into the actual
+  // llms.txt file text. The owner keeps only the lines that are true for them.
+  function categoryExampleHints(category) {
+    var c = String(category || '').toLowerCase();
+    var has = function(list) { return list.some(function(w) { return c.indexOf(w) !== -1; }); };
+    if (has(['restaurant', 'cafe', 'coffee', 'food', 'bakery', 'bar', 'diner', 'catering']))
+      return ['The kind of food or drink you serve', 'Your opening days and hours', 'How people book a table or order', 'Any special diets you handle (for example gluten-free)', 'Where you are and how to find you'];
+    if (has(['dental', 'dentist', 'clinic', 'medical', 'health', 'doctor', 'therapy', 'wellness', 'physio']))
+      return ['The treatments or services you offer', 'Which insurance or payment you accept', 'Your opening days and hours', 'How people book an appointment', 'Your address and parking'];
+    if (has(['law', 'legal', 'attorney', 'solicitor', 'accountant', 'consult', 'agency', 'financial']))
+      return ['The areas of work you help with', 'Whether the first talk is free', 'How your fees work', 'How people book a meeting', 'Who you usually help'];
+    if (has(['shop', 'store', 'retail', 'ecommerce', 'e-commerce', 'boutique', 'clothing', 'product']))
+      return ['The main things you sell', 'Your delivery and return rules', 'Any sizes, colours or options', 'How people buy or contact you', 'Your opening hours if you have a shop'];
+    if (has(['salon', 'spa', 'beauty', 'hair', 'barber', 'nail', 'gym', 'fitness', 'trainer']))
+      return ['The treatments or classes you offer', 'Your prices or price range', 'Your opening days and hours', 'How people book', 'Where you are'];
+    if (has(['plumb', 'electric', 'builder', 'repair', 'trade', 'contractor', 'cleaning', 'garage', 'roofing', 'landscap']))
+      return ['The jobs you take on', 'The areas you cover', 'Whether call-out or quotes are free', 'How fast you can come out', 'How people book you'];
+    return ['The main services or products you offer', 'Your prices or price range', 'Your opening days and hours', 'The area or people you serve', 'How people book or contact you'];
+  }
+  function buildCategoryHints(r) {
+    var cat = (r && (r.inferredCategory || r.category)) || '';
+    var hints = categoryExampleHints(cat);
+    var items = hints.map(function(h) {
+      return '<li style="font-size:13px;color:var(--tb);line-height:1.6;margin-bottom:5px;">' + esc(h) + '</li>';
+    }).join('');
+    return '<div style="margin-top:18px;padding:14px 16px;border:1px dashed var(--rule-d);border-radius:6px;background:var(--dk-3);">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Ideas of what to include</div>'
+      + '<div style="font-size:13px;color:var(--amber);font-weight:700;line-height:1.6;margin-bottom:10px;">Only keep a line if it is true for your business. Delete anything you do not offer — never add something you do not really do.</div>'
+      + '<ul style="margin:0;padding-left:18px;">' + items + '</ul>'
+      + '</div>';
+  }
+  // Gap 4: teach the owner what makes a headline weak vs strong, using fixed
+  // teaching examples. These are NOT claims about the business and NOT the
+  // words to copy — they only show the shape of a good headline. Deterministic.
+  function buildHeadlineExamples() {
+    var pairs = [
+      { bad: 'Welcome to our website', badWhy: 'It says nothing about what you do.', good: 'We do [the thing you do] for [the people you help]', goodWhy: 'It names the job and the customer.' },
+      { bad: 'The best in town', badWhy: 'Anyone can say this, so no one believes it.', good: 'Same-day service, no call-out fee', goodWhy: 'It makes one clear, checkable promise.' },
+      { bad: 'Quality you can trust', badWhy: 'These are empty words with no meaning.', good: 'Fixed in 24 hours or it is free', goodWhy: 'It is specific, so it feels real.' }
+    ];
+    var rows = pairs.map(function(p) {
+      return '<div style="border:1px solid var(--rule-d);border-radius:6px;padding:12px 14px;margin-bottom:10px;background:var(--dk-3);">'
+        + '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+        + '<span style="color:var(--red);font-weight:800;font-size:14px;line-height:1.4;">✕</span>'
+        + '<div><div style="font-size:14px;color:var(--tp);font-style:italic;line-height:1.4;">"' + esc(p.bad) + '"</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:2px;">Weak — ' + esc(p.badWhy) + '</div></div></div>'
+        + '<div style="display:flex;align-items:flex-start;gap:8px;">'
+        + '<span style="color:var(--green);font-weight:800;font-size:14px;line-height:1.4;">✓</span>'
+        + '<div><div style="font-size:14px;color:var(--tp);font-weight:700;line-height:1.4;">"' + esc(p.good) + '"</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:2px;">Strong — ' + esc(p.goodWhy) + '</div></div></div>'
+        + '</div>';
+    }).join('');
+    return '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--rule-d);">'
+      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Learn the idea — good vs weak headlines</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.6;margin-bottom:12px;">These are teaching examples, not your words. They show the shape of a headline that works. Use the same idea to write your own.</div>'
+      + rows
+      + '</div>';
+  }
 
   var llmsHtml = '<div style="margin-bottom:16px;">'
     + '<div style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:0.11em;text-transform:uppercase;color:var(--void);background:var(--ac);padding:5px 8px;margin-bottom:10px;">Deploy today · no developer needed if you can upload a root file</div>'
@@ -5517,10 +6679,21 @@ function buildDeliverables(r) {
       ? '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--ac);border:1px solid rgba(194,240,212,0.5);background:rgba(194,240,212,0.08);padding:9px 11px;margin-bottom:12px;">Publication status: Ready to deploy · independent sources confirmed</div>'
       : '<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#9d352f;border:1px solid rgba(157,53,47,0.35);background:rgba(157,53,47,0.06);padding:9px 11px;margin-bottom:12px;">Publication status: Draft · confirm every claim before publishing</div>')    
     + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;"><strong>What is this?</strong> It is a small text file that tells AI the basic facts about your business. Check every fact. Then ask your website manager to publish it at <strong>yourdomain.com/llms.txt</strong>.</div>'
-    + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your AI facts file</div>'
-    + '<div class="deliv-code" id="dLlmsCode">' + esc(d.llmsTxt || '') + '</div>'
-    + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsCode\')">Copy llms.txt</button>'
+    + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;"><strong>What is this?</strong> It is a ready-made file that tells every AI (ChatGPT, Claude, Perplexity, Gemini) the true facts about your business, in the order they read best. Fill in any line marked <strong>[ADD ...]</strong>, check every fact is true, then save it as <strong>llms.txt</strong> and publish it at <strong>yourdomain.com/llms.txt</strong>.</div>'
+    + (function() {
+        var _c = composeConcreteLlmsTxt(r);
+        var _llmsFinal = (_c.filled >= 2 || !real0(d.llmsTxt)) ? _c.text : d.llmsTxt;
+        var _addCount = (_llmsFinal.match(/\[ADD/g) || []).length;
+        return '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your AI facts file — ready to paste</div>'
+          + (_addCount ? '<div style="font-size:12px;color:var(--amber);font-weight:700;line-height:1.6;margin-bottom:8px;">' + _addCount + ' line' + (_addCount === 1 ? '' : 's') + ' still need your input — look for [ADD ...] and fill in the real fact.</div>' : '<div style="font-size:12px;color:var(--green);font-weight:700;line-height:1.6;margin-bottom:8px;">Every line is filled from checked facts. Read it once, then publish.</div>')
+          + '<div class="deliv-code" id="dLlmsCode">' + esc(_llmsFinal) + '</div>'
+          + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'
+          + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dLlmsCode\')">Copy llms.txt</button>'
+          + '<button class="deliv-copy-btn" onclick="downloadDeliv(\'dLlmsCode\', \'llms.txt\')">Download llms.txt</button>'
+          + '</div>';
+      })()
+    + buildCategoryHints(r)
+    + buildVerifyBlock('llms', r)
     + '</div>';
 
   var h1Html = '';
@@ -5543,6 +6716,7 @@ function buildDeliverables(r) {
       });
       h1Html += '</div>';
     }
+    h1Html += buildHeadlineExamples();
     h1Html += '</div>';
   }
 
@@ -5558,6 +6732,7 @@ function buildDeliverables(r) {
     metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
       + '<div class="deliv-code" id="dMetaCode">' + esc(d.metaDesc.improved || '') + '</div>'
       + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dMetaCode\')">Copy search result description</button>'
+      + buildVerifyBlock('meta', r)
       + '</div>';
   }
 
@@ -5583,6 +6758,7 @@ function buildDeliverables(r) {
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platforms</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(reviewPlatformDisplay) + '</div></div>'
       + '</div>'
       + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
+      + (ra.isReviewPlatform === false ? '' : buildVerifyBlock('reviews', r))
       + '</div>';
   }
 
@@ -5602,6 +6778,7 @@ function buildDeliverables(r) {
         + '<div class="deliv-code" id="dSchemaCode">' + esc(sb.jsonLd) + '</div>'
         + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dSchemaCode\')">Copy website facts code</button>' : '')
       + '<div style="font-size:12px;color:var(--tm);margin-top:12px;">Timing: ' + esc(sb.timeEstimate || 'Ask your developer for an estimate after reviewing the website setup') + '</div>'
+      + buildVerifyBlock('schema', r)
       + '</div>';
   }
 
@@ -5702,6 +6879,24 @@ function copyDeliv(btn, id) {
     btn.textContent = 'Copied!';
     setTimeout(function() { btn.textContent = orig; }, 1500);
   });
+}
+
+function real0(v) {
+  return !!(v && String(v).trim().length > 0);
+}
+
+function downloadDeliv(id, filename) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var blob = new Blob([el.textContent], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'download.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 }
 
 function copyText(text, el) {

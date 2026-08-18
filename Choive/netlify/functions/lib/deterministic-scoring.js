@@ -333,7 +333,9 @@ function reconcileNarrativeWithLedger(result, audits) {
   }
   trust.evidence = auditEvidenceText(audits.trust);
 
-  result.pillars.difference.analysis = 'The Difference score uses only the distinctions, named client or partner proof, category position, and measurable outcomes shown in the ledger below.';
+  result.pillars.difference.analysis = 'Difference answers one question: can a buyer quickly see why to pick this business instead of another? '
+    + 'The score below only counts proof that is actually on the website — a clear "what makes us different" statement, a named client or partner, a niche you own, and a real result you can point to. '
+    + 'The strongest fix is to say plainly, in your own words, what you do that your competitors do not, and give it its own page so both people and AI can find it.';
   result.pillars.difference.evidence = auditEvidenceText(audits.difference);
 }
 
@@ -405,12 +407,45 @@ function applyDeterministicScoring(evidence, result) {
     result.pillars[key].score = score(audits[key]);
     result.pillars[key].confidence = confidence(audits[key]);
     result.pillars[key].measurement = measurementCoverage(audits[key]);
+    // A pillar measured below the extrapolation floor has too little public
+    // data to earn a fair 0–25 score. It is marked provisional so a broken
+    // measurement run — an outage on the review or independent-search
+    // provider — is never shown to the owner as a real, earned zero. A pillar
+    // that WAS fully checked and simply found nothing (measured points cover
+    // most of the rubric) is a genuine low score and stays as-is.
+    var cover = result.pillars[key].measurement;
+    var coverageRatio = cover.totalPoints ? cover.measuredPoints / cover.totalPoints : 0;
+    result.pillars[key].provisional = cover.measuredPoints > 0
+      && !cover.complete
+      && coverageRatio < MIN_EXTRAPOLATION_COVERAGE;
   });
   reconcileNarrativeWithLedger(result, audits);
   reconcileActionsWithLedger(result, audits);
-  result.overallScore = Math.round(keys.reduce(function(total, key) {
-    return total + Number(result.pillars[key].score || 0);
-  }, 0) * 10) / 10;
+  // Only the pillars we could actually measure define the headline score. When
+  // a pillar is provisional (its providers did not respond), we average the
+  // measured pillars and rescale to 100. This keeps one failed measurement leg
+  // from dragging the overall score down as if the business had genuinely
+  // scored zero there. When nothing is provisional the score is the plain sum
+  // of the four pillars (each 0–25), exactly as before.
+  var scoredKeys = keys.filter(function(key) { return !result.pillars[key].provisional; });
+  var provisionalKeys = keys.filter(function(key) { return result.pillars[key].provisional; });
+  result.scoredPillarCount = scoredKeys.length;
+  result.provisionalPillars = provisionalKeys;
+  if (provisionalKeys.length && scoredKeys.length) {
+    var scoredSum = scoredKeys.reduce(function(total, key) {
+      return total + Number(result.pillars[key].score || 0);
+    }, 0);
+    result.overallScore = Math.round(scoredSum / (scoredKeys.length * 25) * 100 * 10) / 10;
+    result.overallProvisional = true;
+    result.overallNote = 'This score is based on the ' + scoredKeys.length + ' of 4 areas CHOIVE could fully measure in this run. '
+      + provisionalKeys.map(function(k) { return k.charAt(0).toUpperCase() + k.slice(1); }).join(' and ')
+      + ' could not be measured because a data provider did not respond, so it is not counted as a zero. Run the check again to score it.';
+  } else {
+    result.overallScore = Math.round(keys.reduce(function(total, key) {
+      return total + Number(result.pillars[key].score || 0);
+    }, 0) * 10) / 10;
+    result.overallProvisional = false;
+  }
   var clarityAudit = audits.clarity;
   var trustAudit = audits.trust;
   var differenceAudit = audits.difference;
@@ -428,12 +463,16 @@ function applyDeterministicScoring(evidence, result) {
       ? 'Offer and audience are clearly explained'
       : 'Core offer is only partly explained';
   }
-  result.pillars.trust.finding = result.pillars.trust.score >= 18
-    ? 'Independent sources give buyers strong reasons to trust this business'
-    : 'CHOIVE found too little independent proof from reviews, press, or customer results';
-  result.pillars.difference.finding = result.pillars.difference.score >= 18
-    ? 'The business clearly proves why a customer should choose it'
-    : 'The website does not yet prove why a customer should choose this business over another';
+  result.pillars.trust.finding = result.pillars.trust.provisional
+    ? 'Trust could not be measured in this run — the review and independent-search checks did not return. This is not a zero; it needs another run.'
+    : result.pillars.trust.score >= 18
+      ? 'Independent sources give buyers strong reasons to trust this business'
+      : 'CHOIVE found too little independent proof from reviews, press, or customer results';
+  result.pillars.difference.finding = result.pillars.difference.provisional
+    ? 'Difference could not be measured in this run. This is not a zero; it needs another run.'
+    : result.pillars.difference.score >= 18
+      ? 'The business clearly proves why a customer should choose it'
+      : 'The website does not yet say clearly what makes this business different from its competitors';
   result.pillars.ease.finding = result.pillars.ease.score >= 20
     ? 'The website is easy for search engines and AI systems to read'
     : 'Parts of the website are still difficult for search engines or AI systems to verify';

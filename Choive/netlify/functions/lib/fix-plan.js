@@ -42,6 +42,28 @@ var EFFORT = {
   'external-evidence': 'Harder — you need proof on other websites (like reviews, news stories, or listings).'
 };
 
+// Difference is scored on your own website copy, so most of its checks are
+// self-serve: you write, in plain words, what makes you different and put it on
+// a page. Only a named client/partner needs someone outside to confirm it.
+// Trust's checks stay external because they depend on reviews and press.
+var RULE_CLOSABILITY = {
+  'DI-01': 'self-serve',
+  'DI-03': 'self-serve',
+  'DI-04': 'self-serve',
+  'DI-02': 'external-evidence'
+};
+
+// Concrete, plain-language fix used when the model did not author a matching
+// action. These tell the owner exactly what to write and where to put it —
+// including a dedicated "What makes us different" page — instead of a generic
+// "improve your differentiation" line.
+var DEFAULT_HOW = {
+  'DI-01': 'Write one clear sentence that says what you do that other businesses in your space do not. Put it near the top of your homepage and on its own "What makes us different" page, in plain words a first-time visitor understands.',
+  'DI-03': 'Say plainly which niche or type of customer you focus on best. Add it to your homepage and your "What makes us different" page so both people and AI can see the exact space you own.',
+  'DI-04': 'Show one real, checkable result you have delivered — a number, a before-and-after, or a named outcome. Put it on your "What makes us different" page as proof, not just a claim.',
+  'DI-02': 'Name a real client or partner you have worked with (with their permission) and link to something that confirms it. A named, checkable client is far stronger proof than "trusted by many".'
+};
+
 function num(v) {
   var n = Number(v);
   return isFinite(n) ? n : 0;
@@ -111,6 +133,7 @@ function fixesFromAudits(pillar, rules, actions) {
     var label = clean(rule.label || rule.ruleId || 'Missing proof', 120);
     var action = matchAction(actions, pillar, label);
     var af = actionFields(action);
+    var closability = RULE_CLOSABILITY[rule.ruleId] || CLOSABILITY[pillar];
     out.push({
       id: String(rule.ruleId || (pillar + '-' + label)).slice(0, 80),
       pillar: pillar,
@@ -120,10 +143,10 @@ function fixesFromAudits(pillar, rules, actions) {
       pointImpact: round(gap),
       maxPoints: round(max),
       currentPoints: round(got),
-      closability: CLOSABILITY[pillar],
-      effort: EFFORT[CLOSABILITY[pillar]],
+      closability: closability,
+      effort: EFFORT[closability],
       verificationType: verification,
-      how: af.how,
+      how: af.how || DEFAULT_HOW[rule.ruleId] || '',
       verify: af.verify,
       ifNothing: af.ifNothing,
       basis: 'ledger'
