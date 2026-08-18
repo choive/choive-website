@@ -4252,7 +4252,6 @@ function showResults(r, jobId) {
     + (r.overallProvisional === true && r.overallNote
         ? '<div style="font-size:12px;color:var(--tb);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:var(--paper-2);border-left:3px solid var(--amber);border-radius:3px;max-width:600px;">' + esc(r.overallNote) + '</div>'
         : '')
-    + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;">This score shows how easy the business is to understand, trust, choose, and contact.</div>'
     + '<div style="font-size:13px;color:var(--tm);font-weight:500;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">' + esc(scoreLabel) + '</div>'
     + '<div style="font-size:14px;color:var(--tb);line-height:1.7;max-width:600px;">' + esc(isPaid
       ? 'This score shows how easy it is to understand the business, check what it says, see why it is different, and take the next step. The recorded AI answers do not change this score.'
@@ -5387,9 +5386,23 @@ function showResults(r, jobId) {
       + 'Named by ' + matchingRecommendations + ' of ' + recordedLanes.length + ' AI platforms in this run'
       + '</div>'
     : '';
+  // Distinct, plain-word label + colour marker for each competitor type, so the
+  // three kinds are told apart at a glance and every card is labelled the same way.
+  function compTypeTag(ctx) {
+    var c = String(ctx || '').toLowerCase();
+    var label, dot;
+    if (c === 'ai_recommended' || c === 'ai-recommended') { label = 'The business AI picks first'; dot = 'var(--red)'; }
+    else if (c === 'market-competitor' || c === 'market competitor' || c === 'market') { label = 'Wider-market competitor'; dot = 'var(--amber)'; }
+    else if (c === 'online_arena' || c === 'online-arena') { label = 'Competitor found online'; dot = 'var(--green)'; }
+    else { label = 'Head-to-head competitor'; dot = 'var(--ac)'; }
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="flex:none;width:9px;height:9px;border-radius:50%;background:' + dot + ';"></span>'
+      + '<span style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">' + label + '</span>'
+      + '</div>';
+  }
   var compBlock = compName
     ? '<div class="paid-comp-found">'
-      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : '')
+      + (isCatBased ? '<div style="font-size:10px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-d);">Category analysis</div>' : compTypeTag(compContext))
       + _compPlatformTag
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
@@ -5400,16 +5413,8 @@ function showResults(r, jobId) {
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
     var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
-    var _extraCtx = String(cp.queryContext || '').toLowerCase();
-    var _extraLabel = (_extraCtx === 'ai_recommended' || _extraCtx === 'ai-recommended')
-      ? 'The business AI picks first'
-      : (_extraCtx === 'online_arena' || _extraCtx === 'online-arena')
-        ? 'Online arena competitor'
-        : (_extraCtx === 'head-to-head')
-          ? 'Head-to-head competitor'
-          : 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
-      + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
+      + compTypeTag(cp.queryContext)
       + '<div class="paid-comp-name" style="font-size:15px;">' + esc(cp.name) + '</div>'
       + (an ? '<div class="paid-comp-analysis" style="font-size:13px;">' + readableText(an, 2) + '</div>' : '')
       + '</div>';
