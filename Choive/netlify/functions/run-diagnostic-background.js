@@ -3,7 +3,7 @@
 // Stage 1: collect evidence — Stage 2: score — Stage 3: save
 // ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, ANTHROPIC_API_KEY
 // Optional second-platform measurement: OPENAI_API_KEY, OPENAI_MODEL
-const { updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
+const { claimDiagnostic, updateStatus, saveEvidence, saveResult, saveError, buildFingerprint, getPreviousResult } = require('./lib/supabase');
 const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOfficialSite, normalizeUrl, verifyRecommendationEntity } = require('./lib/serper');
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, selectBestFitCompetitors } = require('./lib/claude');
@@ -17,6 +17,7 @@ const { majorityRecommendation, normalizeName: normalizeRecommendationName } = r
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
+const { websiteIdentityMatches } = require('./lib/website-identity');
 const simulationLib = require('./lib/simulation');
 const runBeforeSimulation = typeof simulationLib.runBeforeSimulation === 'function'
   ? simulationLib.runBeforeSimulation
@@ -371,7 +372,13 @@ exports.handler = async function (event) {
   try {
     const body  = JSON.parse(event.body || '{}');
     jobId       = safeStr(body.jobId);
-    const input = body.input && typeof body.input === 'object' ? body.input : {};
+    if (!jobId) throw new Error('Missing jobId');
+    const claim = await claimDiagnostic(jobId);
+    if (!claim.claimed) {
+      console.log('[' + jobId + '] Duplicate background delivery ignored; current status: ' + claim.status);
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true, jobId, duplicate: true, status: claim.status }) };
+    }
+    const input = claim.input && typeof claim.input === 'object' ? claim.input : {};
     const name             = safeStr(input.name);
     const category         = safeStr(input.category);
     const city             = safeStr(input.city);
@@ -386,19 +393,16 @@ exports.handler = async function (event) {
       ? safeStr(input.subjectType) : 'business';
     var isSubjectRecommendation = buildSubjectRecommendationMatcher(name, website);
     const languagePref     = (['de','es','fr','it','nl','pt','pl','tr','sv','da','ja','ko','zh','en','ar','ru','hi','id'].indexOf(safeStr(input.language).toLowerCase()) !== -1) ? safeStr(input.language).toLowerCase() : '';
-    if (!jobId)                      throw new Error('Missing jobId');
     // New diagnostics require marketReach at entry. Older paid diagnostics can
     // still be re-run; simulation.js falls back to evidence-based scope
     // inference when their stored input predates this field.
     if (!name || !category || !city) throw new Error('Missing required input fields');
-    await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
     // Every diagnostic is a fresh measurement. Historical jobs remain stored
     // for audit and progress comparison, but their evidence, provider answers,
     // and competitor decisions are never used as the input to this run.
     const fingerprint = buildFingerprint({ name, category, city, website, subjectType, marketReach });
     let evidence = null;
     if (!evidence) {
-      await updateStatus(jobId, 'collecting_evidence', 'collecting_evidence').catch(() => {});
       // ── STAGE 1: PARALLEL EVIDENCE COLLECTION ────────────────────────────────
       let serperPayload  = { results: [], knowledgeGraph: null, searchText: '', kgText: '',
         measurement: { status: 'unavailable', totalQueries: 0, completedQueries: 0, failedQueries: 0 } };
@@ -460,13 +464,12 @@ exports.handler = async function (event) {
       if (websiteText && inferredSite) {
         var titleText   = (websiteSignals && websiteSignals.titleText) || '';
         var h1Text      = (websiteSignals && websiteSignals.h1Text)    || '';
-        var pageContent = (titleText + ' ' + h1Text).toLowerCase();
-        // Extract meaningful tokens from the business name (3+ chars, not numbers alone)
-        var bizTokens = name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-          .filter(function(w) { return w.length >= 3 && !/^\d+$/.test(w); });
-        var pageMatchesName = bizTokens.length === 0 || bizTokens.some(function(tok) {
-          return pageContent.indexOf(tok) !== -1;
-        });
+        var pageMatchesName = websiteIdentityMatches(
+          name,
+          website,
+          inferredSite,
+          titleText + ' ' + h1Text
+        );
         if (!pageMatchesName) {
           console.warn('[' + jobId + '] Website identity mismatch: "' + titleText + '" does not match business "' + name + '" — switching to inferred site: ' + inferredSite);
           var correctedResult = await fetchWebsiteText(inferredSite).catch(function() {
@@ -1680,7 +1683,8 @@ exports.handler = async function (event) {
         };
       };
       finalResult['measurementManifest'] = {
-        methodologyVersion: 'evidence-rubric-v2',
+        standardVersion: finalResult.measurementStandard && finalResult.measurementStandard.version || null,
+        methodologyVersion: finalResult.scoreMethod && finalResult.scoreMethod.version || null,
         collectedAt: evidence.collectedAt || null,
         providers: {
           claude: manifestForRun(measuredClaude, 'Claude'),
