@@ -38,8 +38,8 @@ var CLOSABILITY = {
 };
 
 var EFFORT = {
-  'self-serve': 'Low — a website or copy change you can make yourself.',
-  'external-evidence': 'Higher — needs independently verifiable proof (reviews, press, third-party listings).'
+  'self-serve': 'Easy — a change you can make on your own website.',
+  'external-evidence': 'Harder — you need proof on other websites (like reviews, news stories, or listings).'
 };
 
 function num(v) {

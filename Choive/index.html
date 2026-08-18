@@ -3338,7 +3338,8 @@ function buildWhnBlock(r, gap) {
 
 
 function simpleWords(value) {
-  return String(value || '')
+  var out = String(value || '')
+    // ── Phrases first (so their sub-words don't get swapped early) ──
     .replace(/independently verifiable evidence/gi, 'proof from other public websites')
     .replace(/independent evidence/gi, 'proof from other public websites')
     .replace(/public evidence/gi, 'public proof')
@@ -3348,6 +3349,7 @@ function simpleWords(value) {
     .replace(/verification criteria/gi, 'how to check the work')
     .replace(/verification/gi, 'check')
     .replace(/verified/gi, 'checked')
+    .replace(/verifiable/gi, 'able to be checked')
     .replace(/confirmation/gi, 'proof')
     .replace(/confirmed/gi, 'checked')
     .replace(/pillars/gi, 'score areas')
@@ -3358,7 +3360,66 @@ function simpleWords(value) {
     .replace(/structured data/gi, 'website facts code')
     .replace(/metadata/gi, 'page information')
     .replace(/differentiation/gi, 'what makes the business different')
-    .replace(/visibility/gi, 'being found');
+    .replace(/differentiators?/gi, 'reasons to be picked')
+    .replace(/\bdifferentiate\b/gi, 'stand out')
+    .replace(/visibility/gi, 'being found')
+    // ── Common business jargon → plain words (whole words only) ──
+    .replace(/\bmethodology\b/gi, 'checking method')
+    .replace(/\bcredibility\b/gi, 'trust')
+    .replace(/\bauthoritative\b/gi, 'trusted')
+    .replace(/\bauthority\b/gi, 'trust')
+    .replace(/\bpositioning\b/gi, 'the way the business is described')
+    .replace(/\bleverages\b/gi, 'uses')
+    .replace(/\bleverage\b/gi, 'use')
+    .replace(/\butili[sz]es\b/gi, 'uses')
+    .replace(/\butili[sz]e\b/gi, 'use')
+    .replace(/\boptimi[sz]es\b/gi, 'improves')
+    .replace(/\boptimi[sz]e\b/gi, 'improve')
+    .replace(/\bensures\b/gi, 'makes sure')
+    .replace(/\bensure\b/gi, 'make sure')
+    .replace(/\bcomprehensive\b/gi, 'full')
+    .replace(/\brobust\b/gi, 'strong')
+    .replace(/\bfacilitates\b/gi, 'helps')
+    .replace(/\bfacilitate\b/gi, 'help')
+    .replace(/\baggregate\b/gi, 'total')
+    .replace(/\bcriteria\b/gi, 'checks')
+    .replace(/\bthresholds\b/gi, 'targets')
+    .replace(/\bthreshold\b/gi, 'target')
+    .replace(/\bacquires\b/gi, 'gets')
+    .replace(/\bacquire\b/gi, 'get')
+    .replace(/\bobtains\b/gi, 'gets')
+    .replace(/\bobtain\b/gi, 'get')
+    .replace(/\bdemonstrates\b/gi, 'shows')
+    .replace(/\bdemonstrated\b/gi, 'showed')
+    .replace(/\bdemonstrate\b/gi, 'show')
+    .replace(/\bindicates\b/gi, 'shows')
+    .replace(/\bindicated\b/gi, 'showed')
+    .replace(/\bindicate\b/gi, 'show')
+    .replace(/\benhances\b/gi, 'improves')
+    .replace(/\benhanced\b/gi, 'improved')
+    .replace(/\benhance\b/gi, 'improve')
+    .replace(/\bestablishes\b/gi, 'sets up')
+    .replace(/\bestablish\b/gi, 'set up')
+    .replace(/\bprioriti[sz]es\b/gi, 'does first')
+    .replace(/\bprioriti[sz]e\b/gi, 'do first')
+    .replace(/\bsubsequently\b/gi, 'then')
+    .replace(/\bfurthermore\b/gi, 'also')
+    .replace(/\bmoreover\b/gi, 'also')
+    .replace(/\badditionally\b/gi, 'also')
+    .replace(/\bhowever\b/gi, 'but')
+    .replace(/\btherefore\b/gi, 'so')
+    .replace(/\bapproximately\b/gi, 'about')
+    .replace(/\bsufficient\b/gi, 'enough')
+    .replace(/\bnumerous\b/gi, 'many')
+    .replace(/\bsignificant\b/gi, 'big')
+    .replace(/\bsubstantial\b/gi, 'big');
+
+  // Keep the sentence's first letter capital if it started that way — the
+  // word swaps above can lowercase a leading word (e.g. "Evidence" -> "proof").
+  if (/^[A-Z]/.test(String(value || '')) && /^[a-z]/.test(out)) {
+    out = out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  return out;
 }
 
 function plainPillarFinding(key, pillar) {
@@ -4374,13 +4435,13 @@ function showResults(r, jobId) {
     var plan = r.fixPlan;
     if (!plan || !plan.available || !Array.isArray(plan.fixes) || !plan.fixes.length) return '';
     var s = plan.summary || {};
-    var closeLabel = { 'self-serve': 'You can do this yourself', 'external-evidence': 'Needs outside proof' };
+    var closeLabel = { 'self-serve': 'You can do this yourself', 'external-evidence': 'You need proof on other websites' };
     var closeColor = { 'self-serve': 'var(--ac)', 'external-evidence': '#C98B42' };
 
-    var summaryLine = 'Your score is ' + plan.overallScore + ' / 100. '
-      + 'Across the checks that cost you points, there are about <strong>' + s.totalRecoverable + ' points</strong> you could recover'
+    var summaryLine = 'Your score is ' + plan.overallScore + ' out of 100. '
+      + 'If you fix the checks below, you could win back about <strong>' + s.totalRecoverable + ' points</strong>'
       + (s.quickWinPoints > 0
-          ? ', including <strong>' + s.quickWinPoints + ' point' + (s.quickWinPoints === 1 ? '' : 's') + '</strong> from ' + s.quickWinCount + ' change' + (s.quickWinCount === 1 ? '' : 's') + ' you can make on your own website.'
+          ? ' — and <strong>' + s.quickWinPoints + ' point' + (s.quickWinPoints === 1 ? '' : 's') + '</strong> of that comes from ' + s.quickWinCount + ' easy fix' + (s.quickWinCount === 1 ? '' : 'es') + ' you can make on your own website.'
           : '.');
 
     var rows = plan.fixes.map(function(f) {
@@ -4393,7 +4454,7 @@ function showResults(r, jobId) {
         + '<span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:' + color + ';border:1px solid ' + color + ';padding:2px 7px;border-radius:2px;">' + esc(f.pillarLabel) + '</span>'
         + '<span style="font-size:15px;font-weight:700;color:var(--ink);">' + esc(simpleWords(f.title)) + '</span>'
         + '</div>'
-        + '<span style="font-size:15px;font-weight:800;color:var(--ac-d);white-space:nowrap;" title="Estimated points you could recover if this check passes on re-measurement">' + impact + '</span>'
+        + '<span style="font-size:15px;font-weight:800;color:var(--ac-d);white-space:nowrap;" title="The most points you could win back if this check passes next time">' + impact + '</span>'
         + '</div>'
         + (f.observed ? '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px;"><strong style="color:var(--tb);">Why you lost points:</strong> ' + esc(simpleWords(f.observed)) + '</div>' : '')
         + (f.how ? '<div style="font-size:13px;color:var(--ink);line-height:1.65;margin-top:8px;"><strong>What to do:</strong> ' + esc(simpleWords(f.how)) + '</div>' : '')
@@ -4405,7 +4466,7 @@ function showResults(r, jobId) {
     return '<section class="pay-section" id="report-fixplan"><div class="pay-eyebrow">Your Priority Fix Plan</div>'
       + '<div class="paid-section-header">The fastest points first</div>'
       + '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:8px;max-width:800px;">' + summaryLine + '</div>'
-      + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:20px;max-width:800px;">Point impact is an <em>estimate</em> based on the checks that reduced your score. It shows the most you could recover if that check passes when CHOIVE re-measures. It is not a guarantee \u2014 actual movement depends on the new evidence being publicly verifiable.</div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:20px;max-width:800px;">The points are our best guess, not a promise. Each number is the most you could win back if that check passes the next time CHOIVE looks. You will only win the points back when the new proof is real and other websites can see it too.</div>'
       + rows
       + '<div style="margin-top:14px;"><a href="#report-actions" style="font-size:12px;font-weight:800;color:var(--ac-d);">See the full step-by-step actions \u2193</a></div>'
       + '</section>';

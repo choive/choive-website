@@ -52,18 +52,18 @@ async function sendConfirmation(sub) {
   const url = site() + '/.netlify/functions/monitor-confirm?token=' + encodeURIComponent(sub.confirmToken);
   const name = sub.businessName || 'your business';
   const inner = [
-    '<h1 style="font-family:Georgia,serif;font-size:24px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;">Confirm your score monitoring.</h1>',
-    '<p style="font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 24px;">You asked CHOIVE to watch the AI selection score for <strong>' + esc(name) + '</strong> and alert you when it moves by ' + sub.threshold + ' points or more (' + esc(sub.frequency) + ' checks). Confirm to start monitoring:</p>',
-    button(url, 'Confirm monitoring →'),
-    '<p style="font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;">If you didn\'t request this, you can ignore this email — no monitoring will start.</p>'
+    '<h1 style="font-family:Georgia,serif;font-size:24px;font-weight:400;font-style:italic;margin:0 0 16px;line-height:1.3;">One more tap to start.</h1>',
+    '<p style="font-size:14px;line-height:1.8;color:#6E6E76;margin:0 0 24px;">You asked CHOIVE to keep an eye on the score for <strong>' + esc(name) + '</strong> and email you when it moves by ' + sub.threshold + ' points or more (we check ' + esc(sub.frequency) + '). Tap below to start:</p>',
+    button(url, 'Yes, start watching →'),
+    '<p style="font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;">If this wasn\'t you, just ignore this email — nothing will start.</p>'
   ].join('');
-  return send(sub.email, 'Confirm your CHOIVE score monitoring', shell(inner));
+  return send(sub.email, 'One tap to start watching your CHOIVE Score', shell(inner));
 }
 
 // Alert when the score moves beyond the threshold.
 async function sendAlert(sub, opts) {
   const delta = opts.newScore - opts.previousScore;
-  const dir = delta > 0 ? 'increased' : 'decreased';
+  const dir = delta > 0 ? 'went up' : 'went down';
   const arrow = delta > 0 ? '▲' : '▼';
   const color = delta > 0 ? '#10b981' : '#ef4444';
   const resultUrl = site() + '/result?jobId=' + encodeURIComponent(opts.jobId || sub.job_id);
@@ -77,7 +77,7 @@ async function sendAlert(sub, opts) {
     '<div style="font-size:14px;color:' + color + ';font-weight:600;">' + arrow + ' ' + Math.abs(delta) + ' points<br><span style="color:#BBBBC2;font-weight:400;">was ' + opts.previousScore + '</span></div>',
     '</div>',
     button(resultUrl, 'View the full result →'),
-    '<p style="font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;">You\'re receiving this because you monitor this business with CHOIVE. <a href="' + unsubUrl + '" style="color:#C9A86A;">Stop monitoring</a>.</p>'
+    '<p style="font-size:12px;color:#BBBBC2;margin-top:40px;line-height:1.7;">You get this email because you asked CHOIVE to watch this business. <a href="' + unsubUrl + '" style="color:#C9A86A;">Stop watching</a>.</p>'
   ].join('');
   return send(sub.email, 'CHOIVE Score ' + dir + ' ' + arrow + ' ' + Math.abs(delta) + ' pts — ' + name, shell(inner));
 }
