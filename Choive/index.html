@@ -3325,6 +3325,30 @@ function buildWhnBlock(r, gap) {
 }
 
 
+function simpleWords(value) {
+  return String(value || '')
+    .replace(/independently verifiable evidence/gi, 'proof from other public websites')
+    .replace(/independent evidence/gi, 'proof from other public websites')
+    .replace(/public evidence/gi, 'public proof')
+    .replace(/evidence base/gi, 'proof found')
+    .replace(/supporting evidence/gi, 'proof')
+    .replace(/evidence/gi, 'proof')
+    .replace(/verification criteria/gi, 'how to check the work')
+    .replace(/verification/gi, 'check')
+    .replace(/verified/gi, 'checked')
+    .replace(/confirmation/gi, 'proof')
+    .replace(/confirmed/gi, 'checked')
+    .replace(/pillars/gi, 'score areas')
+    .replace(/pillar/gi, 'score area')
+    .replace(/diagnostic/gi, 'CHOIVE check')
+    .replace(/implementation/gi, 'work')
+    .replace(/schema markup/gi, 'website facts code')
+    .replace(/structured data/gi, 'website facts code')
+    .replace(/metadata/gi, 'page information')
+    .replace(/differentiation/gi, 'what makes the business different')
+    .replace(/visibility/gi, 'being found');
+}
+
 function plainPillarFinding(key, pillar) {
   var p = pillar && typeof pillar === 'object' ? pillar : {};
   var score = Number(p.score) || 0;
@@ -3367,7 +3391,7 @@ function buildPillarCards(r, isPaid) {
   var cards = keys.map(function(key) {
     var raw = pillars[key] && typeof pillars[key] === 'object' ? pillars[key] : {};
     var score = Math.round(Math.max(0, Math.min(25, Number(raw.score) || 0)));
-    var finding = (raw.finding && String(raw.finding).trim()) ? String(raw.finding).trim() : plainPillarFinding(key, raw);
+    var finding = simpleWords((raw.finding && String(raw.finding).trim()) ? String(raw.finding).trim() : plainPillarFinding(key, raw));
     var confidence = raw.confidence && raw.confidence.level ? String(raw.confidence.level) : '';
     var confidenceCopy = confidence === 'high'
       ? 'CHOIVE found strong public proof'
@@ -4202,14 +4226,14 @@ function showResults(r, jobId) {
         + '<a href="' + platform.url + '" target="_blank" rel="noopener" style="font-size:10px;font-weight:800;color:var(--ac);">Open app ↗</a></div>'
         + '<textarea id="consumerTranscript-' + platform.key + '" rows="6" placeholder="Paste the complete answer from ' + platform.label + '" style="box-sizing:border-box;width:100%;resize:vertical;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:12px;font:12px/1.6 Inter,sans-serif;margin-bottom:10px;"></textarea>'
         + '<label for="consumerName-' + platform.key + '" style="display:block;font-size:10px;font-weight:800;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Which business did the AI recommend?</label>'
-        + '<input id="consumerName-' + platform.key + '" type="text" maxlength="180" placeholder="Confirm the exact name" style="box-sizing:border-box;width:100%;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:11px;font:13px Inter,sans-serif;margin-bottom:10px;" />'
+        + '<input id="consumerName-' + platform.key + '" type="text" maxlength="180" placeholder="Type the exact name you saw" style="box-sizing:border-box;width:100%;border:1px solid var(--rule-d);background:var(--paper);color:var(--ink);padding:11px;font:13px Inter,sans-serif;margin-bottom:10px;" />'
         + '<button type="button" onclick="saveConsumerVerification(\'' + platform.key + '\')" style="width:100%;border:0;background:var(--ink);color:var(--paper);padding:11px;font-size:11px;font-weight:800;cursor:pointer;">Save consumer-app record</button>'
         + '<div id="consumerMsg-' + platform.key + '" style="font-size:11px;line-height:1.5;color:var(--muted);margin-top:8px;"></div></div>';
     }).join('');
     return '<section id="consumer-verification" style="padding:24px 28px;background:var(--paper);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);">'
       + '<details class="report-details"><summary style="font-size:13px;">Optional: save what your personal AI accounts display</summary><div class="report-details-body" style="padding-top:18px;">'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Personal-account verification</div>'
-      + '<h2 style="font-family:\'Libre Baskerville\',serif;font-size:22px;line-height:1.3;letter-spacing:0;margin:0 0 9px;color:var(--ink);">Compare the provider measurements with your own AI accounts.</h2>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--ac);margin-bottom:7px;">Optional check in your own AI apps</div>'
+      + '<h2 style="font-family:\'Libre Baskerville\',serif;font-size:22px;line-height:1.3;letter-spacing:0;margin:0 0 9px;color:var(--ink);">Compare CHOIVE\'s saved answers with the answers you see.</h2>'
       + '<p style="font-size:13px;line-height:1.7;color:var(--body);max-width:760px;margin:0 0 16px;"><strong>Optional check in your own AI apps.</strong> CHOIVE records answers through each AI company\'s business connection. The public ChatGPT, Claude, Perplexity, and Gemini apps may answer differently. Use this section to save what your own account showed. These saved answers do not change your score.</p>'
       + '<div style="background:var(--paper-2);border-left:3px solid var(--ac);padding:14px 16px;margin-bottom:18px;">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Ask this exact question</div>'
@@ -4240,7 +4264,7 @@ function showResults(r, jobId) {
   
   + (isPaid ? '' : '<div class="paywall-block" id="paywallBlock">'
         + '<div class="paywall-eyebrow">CHOIVE™ Analysis — $99</div>'
-        + '<div class="paywall-body">Your free result shows the score and the size of the problem. The full analysis reveals the competitor names, shows the exact evidence gaps, and tells you what to fix first.</div>'
+        + '<div class="paywall-body">Your free result shows the score and the size of the problem. The full analysis shows the competitor names, the exact point gaps, and the first jobs to do.</div>'
         + '<button onclick=\"initiateCheckout(\'' + (jobId||'') + '\')\" class=\"pay-btn-primary\" style=\"display:block;width:100%;margin-top:20px;border:none;cursor:pointer;padding:18px 32px;font-size:16px;\" id=\"checkoutBtn\">Unlock full CHOIVE™ Analysis — $99 →</button>'
         + '</div>');
 
@@ -4274,15 +4298,15 @@ function showResults(r, jobId) {
     var audit = r.signalAudit && Array.isArray(r.signalAudit[key]) ? r.signalAudit[key] : [];
     var scoreRules = r.scoreMethod && r.scoreMethod.audits && Array.isArray(r.scoreMethod.audits[key])
       ? r.scoreMethod.audits[key] : [];
-    var confidence = p.confidence && p.confidence.level ? String(p.confidence.level) : 'not established';
+    var confidence = p.confidence && p.confidence.level ? String(p.confidence.level) : 'not known';
     var measurement = p.measurement && typeof p.measurement === 'object' ? p.measurement : null;
     var confidenceSummary = confidence === 'high'
-      ? 'most points came from confirmed public facts'
+      ? 'most points came from public facts CHOIVE checked'
       : confidence === 'medium'
-        ? 'points came from confirmed facts and assessed signals'
+        ? 'points came from checked facts and other information CHOIVE read'
         : confidence === 'low'
-          ? 'some signals need more public confirmation'
-          : 'the evidence basis was not established';
+          ? 'some facts still need public proof'
+          : 'CHOIVE could not tell how much proof was available';
     function pointValue(value) {
       var number = Number(value);
       if (!isFinite(number)) return '0';
@@ -4294,29 +4318,29 @@ function showResults(r, jobId) {
         var sources = Array.isArray(rule.source) ? rule.source : (rule.source ? [rule.source] : []);
         var verificationLabels = {
           mechanical: 'CHOIVE checked this directly',
-          independent: 'Another public source confirmed this',
+          independent: 'Another public website showed this',
           model_assessed: 'CHOIVE assessed the proof it collected',
           unmeasured: 'This check did not run'
         };
         var verificationLabel = verificationLabels[rule.verification] || 'CHOIVE could not tell how this was checked';
         return '<div style="padding:10px 0;border-bottom:1px solid var(--rule);">'
-          + '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;"><span><strong>' + esc(rule.ruleId || '') + '</strong> · ' + esc(rule.label || '') + '</span><strong>' + (rule.verification === 'unmeasured' ? 'Check did not run · no points removed' : pointValue(rule.points) + ' / ' + pointValue(rule.maxPoints)) + '</strong></div>'
-          + '<div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;">' + esc(rule.observed || '') + ' · ' + esc(verificationLabel) + '</div>'
+          + '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;"><span><strong>' + esc(rule.ruleId || '') + '</strong> · ' + esc(simpleWords(rule.label || '')) + '</span><strong>' + (rule.verification === 'unmeasured' ? 'Check did not run · no points removed' : pointValue(rule.points) + ' / ' + pointValue(rule.maxPoints)) + '</strong></div>'
+          + '<div style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;">' + esc(simpleWords(rule.observed || '')) + ' · ' + esc(verificationLabel) + '</div>'
           + (sources.length ? '<div style="font-size:10px;line-height:1.5;margin-top:4px;overflow-wrap:anywhere;">' + sources.slice(0,3).map(function(source) {
               return /^https?:\/\//i.test(String(source || '')) ? '<a href="' + esc(source) + '" target="_blank" rel="noopener" style="color:var(--ac-d);">' + esc(source) + '</a>' : esc(source);
             }).join('<br>') + '</div>' : '')
           + '</div>';
       }).join('') + '</div></details>' : '';
-    var auditHtml = audit.length ? '<div class="signal-audit" aria-label="' + esc(label) + ' evidence checks">'
+    var auditHtml = audit.length ? '<div class="signal-audit" aria-label="' + esc(label) + ' proof checks">'
       + audit.map(function(signal) {
         var rawStatus = String(signal && signal.status || '').toLowerCase();
         var status = ['pass','fail','partial'].indexOf(rawStatus) !== -1 ? rawStatus : 'partial';
-        var statusLabel = rawStatus === 'unmeasured' ? 'Not verified'
-          : status === 'pass' ? 'Confirmed' : status === 'fail' ? 'Missing' : 'Partially confirmed';
+        var statusLabel = rawStatus === 'unmeasured' ? 'We could not check this'
+          : status === 'pass' ? 'We found this' : status === 'fail' ? 'We did not find this' : 'We found only part of this';
         return '<div class="signal-row signal-' + status + '">'
           + '<span class="signal-status-dot" aria-hidden="true"></span>'
-      + '<span class="signal-name">' + esc(signal && signal.name || 'Proof check') + '</span>'
-          + '<span class="signal-detail"><strong>' + statusLabel + ':</strong> ' + esc(signal && signal.detail || 'No detail was returned.') + '</span>'
+      + '<span class="signal-name">' + esc(simpleWords(signal && signal.name || 'Proof check')) + '</span>'
+          + '<span class="signal-detail"><strong>' + statusLabel + ':</strong> ' + esc(simpleWords(signal && signal.detail || 'CHOIVE found no details.')) + '</span>'
           + '</div>';
       }).join('') + '</div>' : '';
     return '<div class="paid-pillar">'
@@ -4326,7 +4350,7 @@ function showResults(r, jobId) {
       + '<div style="height:100%;width:' + pct + '%;background:var(--ac);border-radius:2px;transition:width 1.4s var(--settle,cubic-bezier(0.16,1,0.3,1));"></div></div>'
       + (measurement && measurement.complete === false ? '<div style="font-size:12px;line-height:1.65;color:var(--body);padding:11px 13px;background:var(--paper-2);border-left:3px solid #C98B42;margin-bottom:12px;"><strong style="color:var(--ink);">These checks did not work and did not lower the score:</strong> ' + esc((measurement.unavailableChecks || []).join(', ')) + '. CHOIVE used only the checks that worked.</div>' : '')
       + (p.analysis ? '<div class="paid-pillar-analysis">' + readableText(p.analysis, 1) + '</div>' : '')
-      + (p.evidence ? '<details class="report-details"><summary>See the proof CHOIVE found</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(p.evidence) + '</div></div></details>' : '')
+      + (p.evidence ? '<details class="report-details"><summary>See the proof CHOIVE found</summary><div class="report-details-body"><div class="paid-pillar-evidence">' + esc(simpleWords(p.evidence)) + '</div></div></details>' : '')
       + scoreRuleHtml
       + auditHtml
       + '</div>';
@@ -4344,7 +4368,7 @@ function showResults(r, jobId) {
   }
 
   function readableText(value, sentencesPerBlock) {
-    var text = String(value || '')
+    var text = simpleWords(value)
       .replace(/,([A-Z])/g, ', $1')
       .replace(/\s+/g, ' ')
       .trim();
@@ -4371,16 +4395,16 @@ function showResults(r, jobId) {
     var actionOwner = a.owner === 'developer' ? 'Your website developer' : 'You or your team';
     var actionTime = a.timeEstimate || a.time || 'CHOIVE did not calculate the time needed.';
     return '<div class="paid-action paid-action-' + (a.priority || 'medium') + '">'
-      + '<div class="paid-action-priority">' + (a.priority || '').toUpperCase() + arenaTagHtml + gainBadge + '</div>'
-      + '<div class="paid-action-title">' + esc(a.title || '') + '</div>'
+      + '<div class="paid-action-priority">' + ((a.priority || '').toLowerCase() === 'high' ? 'DO THIS FIRST' : (a.priority || '').toUpperCase()) + arenaTagHtml + gainBadge + '</div>'
+      + '<div class="paid-action-title">' + esc(simpleWords(a.title || '')) + '</div>'
       + '<div class="paid-action-body">' + readableText(a.body, 1) + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;margin-top:16px;background:var(--rule-d);border:1px solid var(--rule-d);">'
       + '<div style="background:var(--paper-2);padding:12px 14px;"><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:5px;">Who does this</div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + esc(actionOwner) + '</div></div>'
       + '<div style="background:var(--paper-2);padding:12px 14px;"><div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:5px;">Time needed</div><div style="font-size:13px;font-weight:700;color:var(--ink);">' + esc(actionTime) + '</div></div>'
       + '</div>'
       + (a.if_nothing ? '<div style="margin-top:12px;padding:11px 14px;background:var(--paper-2);border-left:3px solid #C98B42;"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;margin-bottom:5px;">If nothing changes</div><div style="font-size:13px;line-height:1.65;color:var(--body);">' + esc(String(a.if_nothing)) + '</div></div>' : '')
-      + '<div style="margin-top:10px;padding:10px 13px;background:var(--paper-2);border-left:3px solid var(--ac);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">This job is finished when</div><div style="font-size:13px;line-height:1.6;color:var(--body);">' + esc(String(a.verification || a.successMeasure || 'The change is live and anyone can see it.')) + '</div></div>'
-      + (a.explanation ? '<details class="report-details"><summary>Why this matters</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
+      + '<div style="margin-top:10px;padding:10px 13px;background:var(--paper-2);border-left:3px solid var(--ac);"><div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">This job is finished when</div><div style="font-size:13px;line-height:1.6;color:var(--body);">' + esc(simpleWords(a.verification || a.successMeasure || 'The change is live and anyone can see it.')) + '</div></div>'
+      + (a.explanation ? '<details class="report-details"><summary>Why you should do this</summary><div class="report-details-body"><div class="paid-action-explanation">' + readableText(a.explanation, 2) + '</div></div></details>' : '')
       + '</div>';
   }
 
@@ -4414,21 +4438,21 @@ function showResults(r, jobId) {
     });
     var diagnosis = completed
       ? esc(name || 'This business') + ' appeared in ' + appeared + ' of ' + completed
-        + ' recorded answers to buying questions that did not name the business, across ' + completedPlatforms + ' AI provider'
+        + ' answers to buying questions that did not name the business, across ' + completedPlatforms + ' AI tool'
         + (completedPlatforms === 1 ? '' : 's') + '. '
         + (appeared === completed
           ? 'Every completed buyer answer named the business.'
           : appeared === 0
             ? 'None of the completed buyer answers named the business.'
-            : 'The business appeared in some buying contexts but was absent from others.')
-      : 'No buying-question test without the business name completed, so this run did not establish whether AI would mention the business.';
+            : 'Some answers named the business. Other answers did not.')
+      : 'No buying question without the business name finished. CHOIVE cannot say whether AI would name the business.';
     var implication = completed
       ? (appeared === completed
-        ? 'The immediate task is to preserve this coverage and verify it again after model or website changes.'
+        ? 'Keep the helpful information online. Run CHOIVE again after changing the website.'
         : 'The sections below show the exact questions that left out the business, the companies named instead, and the public proof the business must add.')
-      : 'Run the diagnostic again before making a visibility claim.';
+      : 'Run CHOIVE again before saying that AI can or cannot find the business.';
     return '<section class="pay-section" id="report-diagnosis">'
-      + '<div class="pay-eyebrow">Executive Diagnosis</div>'
+      + '<div class="pay-eyebrow">What CHOIVE Found</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.45;color:var(--ink);max-width:850px;margin-bottom:16px;">' + diagnosis + '</div>'
       + '<div class="paid-narrative">' + implication + '</div>'
       + '</section>';
@@ -4507,17 +4531,17 @@ function showResults(r, jobId) {
       ? esc(name || 'This business') + ' scored ' + _cs + ' on the CHOIVE Index and appeared in '
         + appeared + ' of ' + completed + ' recorded buying answers without its name being given. '
         + (appeared === completed
-          ? 'Every tested platform surfaced this business. The task now is to preserve that coverage and verify it after changes.'
+          ? 'Every AI tool found this business. Keep the helpful information online and run CHOIVE again after making changes.'
           : _cs >= 62
-            ? 'The evidence base is above the threshold — the barrier is placement, not foundation. The priority actions close the specific gaps identified in this run.'
-            : 'The score explains the result. The evidence is not yet complete enough for consistent discovery. The priority actions address the specific gaps found.')
-      : 'This run did not complete enough buying-question tests without the business name to support a conclusion. Run the diagnostic again before making recommendation-specific changes.';
+            ? 'CHOIVE found useful proof, but some AI tools still missed the business. Do the jobs below to make the business easier to find.'
+            : 'The score shows why AI missed the business. Do the jobs below to add the missing proof.')
+      : 'Not enough AI questions finished. Run CHOIVE again before changing the business because of this result.';
       var _sigLine = (r.signatureLine && String(r.signatureLine).trim()) ? String(r.signatureLine).trim() : '';
     return '<section class="pay-section" id="report-conclusion">'
       + '<div class="pay-eyebrow">What This Business Now Knows</div>'
       + (_sigLine ? '<div style="font-size:13px;font-weight:600;color:var(--tm);letter-spacing:0.03em;margin-bottom:14px;line-height:1.6;">' + esc(_sigLine) + '</div>' : '')
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:24px;line-height:1.5;color:var(--ink);max-width:880px;">' + statement + '</div>'
-      + (completed ? '<div style="margin-top:22px;padding:16px 18px;background:var(--paper-2);border-left:3px solid var(--ac);font-size:13px;line-height:1.7;color:var(--body);"><strong style="color:var(--ink);">Verified finish line:</strong> publish the approved changes, rerun these same questions, and confirm whether the business appears in more than ' + appeared + ' of ' + completed + ' completed answers. CHOIVE does not predict the future answer.</div>' : '')
+      + (completed ? '<div style="margin-top:22px;padding:16px 18px;background:var(--paper-2);border-left:3px solid var(--ac);font-size:13px;line-height:1.7;color:var(--body);"><strong style="color:var(--ink);">How to know the work helped:</strong> put the changes online, ask CHOIVE the same questions again, and see whether the business appears in more than ' + appeared + ' of ' + completed + ' answers. CHOIVE cannot know the next answer before the next check.</div>' : '')
       + '</section>';
   }
 
@@ -4533,14 +4557,14 @@ function showResults(r, jobId) {
     }).join('');
     return '<section class="pay-section" id="report-intelligence">'
       + '<div class="pay-eyebrow">What You Can Truthfully Say</div>'
-      + '<div class="paid-section-header">What the evidence supports now</div>'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Current AI understanding of this business</div>'
+      + '<div class="paid-section-header">What the business can honestly say now</div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">What AI understands now</div>'
       + '<div class="paid-narrative">' + readableText(current, 2) + '</div>'
       + (after ? '<div style="margin-top:26px;padding:22px;background:var(--paper-2);border-left:4px solid var(--ac);">'
-        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">Target AI understanding — once fixes are applied</div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">What AI should understand after the work is done</div>'
         + '<div class="paid-narrative" style="margin-bottom:16px;">' + readableText(after, 2) + '</div>'
-        + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:10px;border-top:1px solid var(--rule);padding-top:12px;"><strong style="color:var(--ink);">Complete and verify these first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
-        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This is an example of what could be stated only after the listed facts and changes are publicly verified. It is not an answer returned by ChatGPT, Claude, Perplexity, or Gemini.</div>'
+        + (unlockActions ? '<div style="font-size:12px;color:var(--body);line-height:1.6;margin-bottom:10px;border-top:1px solid var(--rule);padding-top:12px;"><strong style="color:var(--ink);">Do these jobs first:</strong><ul style="margin:7px 0 0 18px;padding:0;">' + unlockActions + '</ul></div>' : '')
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.6;">This example can be used only after the facts are true and the changes are online. It is not a real answer from ChatGPT, Claude, Perplexity, or Gemini.</div>'
         + '</div>' : '')
       + '</section>';
   }
@@ -4620,9 +4644,9 @@ function showResults(r, jobId) {
       : '';
     var verdictTitle = probeCompleted && _aiHeadline
       ? esc(_aiHeadline)
-      : esc(_countLine || _aiHeadline || 'Not enough AI answers were completed to give a reliable visibility result.');
+      : esc(_countLine || _aiHeadline || 'Not enough AI answers finished. CHOIVE cannot say whether AI finds this business.');
     var _totalScore = Math.round(Number(r.overallScore) || 0);
-    var verdictLead = (topComp ? topComp + ' is the closest company that CHOIVE checked and confirmed. ' : '')
+    var verdictLead = (topComp ? topComp + ' is the closest company CHOIVE found and checked. ' : '')
       + (probeCompleted
         ? (_totalScore >= 62
             ? (probeAppeared < probeCompleted
@@ -4635,10 +4659,10 @@ function showResults(r, jobId) {
         === String(topComp || '').toLowerCase().replace(/[^a-z0-9]/g, '')) marketName = '';
     var competitorCopy = topComp
       ? 'Offers a similar solution to the same type of customer. A customer could compare both businesses before choosing'
-      : 'CHOIVE could not verify a business offering a close replacement';
+      : 'CHOIVE could not find and check a business that offers a close replacement';
     var marketCopy = marketName
       ? 'Competes for the same customers or budget, but does not offer an exact replacement'
-      : 'CHOIVE could not verify a separate competitor in the wider market';
+      : 'CHOIVE could not find and check a different competitor in the wider market';
     var pillarKeys = [
       { key:'clarity', label:'Clarity' },
       { key:'trust', label:'Trust' },
@@ -4650,19 +4674,19 @@ function showResults(r, jobId) {
       return '<div class="executive-pillar">'
         + '<div class="executive-pillar-name">' + item.label + '</div>'
         + '<div class="executive-pillar-score">' + Math.round(Number(p.score) || 0) + '<span> / 25</span></div>'
-        + '<div class="executive-pillar-finding">' + esc((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(item.key, p)) + '</div>'
+        + '<div class="executive-pillar-finding">' + esc(simpleWords((p.finding && String(p.finding).trim()) ? String(p.finding).trim() : plainPillarFinding(item.key, p))) + '</div>'
         + '</div>';
     }).join('');
     return '<section class="executive-verdict" id="report-verdict">'
       + '<div class="pay-eyebrow">Your Result</div>'
-      + (probeCompleted ? '<div class="verdict-headline-label">Found by ' + probePlatformsAppeared + ' of ' + completedPlatforms + ' AI providers tested</div>' : '')
+      + (probeCompleted ? '<div class="verdict-headline-label">Found by ' + probePlatformsAppeared + ' of ' + completedPlatforms + ' AI tools checked</div>' : '')
       + '<h2 class="executive-verdict-title">' + verdictTitle + '</h2>'
       + (probeCompleted && _aiHeadline && _countLine ? '<div style="font-size:14px;color:var(--tm);margin-top:8px;margin-bottom:0;line-height:1.6;">' + esc(_countLine) + '</div>' : '')
       + '<div class="executive-verdict-lead">' + verdictLead + '</div>'
       + '<div class="executive-facts">'
       + '<div class="executive-fact"><div class="executive-fact-label">Did AI name this business?</div><div class="executive-fact-value">' + (probeCompleted ? probeAppeared + ' of ' + probeCompleted + ' completed answers named it' : 'The AI checks did not finish') + '</div><div class="executive-fact-copy">These are answers from the AI companies\' business tools. The public chat apps may answer differently.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Head-to-head competitor</div><div class="executive-fact-value">' + esc(topComp || 'Not confirmed') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
-      + '<div class="executive-fact"><div class="executive-fact-label">Market competitor</div><div class="executive-fact-value">' + esc(marketName || 'Not separately confirmed') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Closest direct competitor</div><div class="executive-fact-value">' + esc(topComp || 'CHOIVE could not find one') + '</div><div class="executive-fact-copy">' + esc(competitorCopy) + '.</div></div>'
+      + '<div class="executive-fact"><div class="executive-fact-label">Competitor in the wider market</div><div class="executive-fact-value">' + esc(marketName || 'CHOIVE could not find a different one') + '</div><div class="executive-fact-copy">' + esc(marketCopy) + '.</div></div>'
       + '</div><div class="executive-pillars">' + pillarHtml + '</div>'
       + '</section>';
   }
@@ -4671,7 +4695,7 @@ function showResults(r, jobId) {
     var firstAction = Array.isArray(r.actions) && r.actions.length ? r.actions[0] : null;
     var actionTitle = firstAction && firstAction.title
       ? firstAction.title
-      : 'Review the priority actions and complete the first confirmed improvement.';
+      : 'Read the jobs below and do the first one.';
     var _startIfNothing = (firstAction && firstAction.if_nothing && String(firstAction.if_nothing).trim()) ? String(firstAction.if_nothing).trim() : '';
     var _pillars = r.pillars || {};
     var _pNames = { clarity:'Clarity', trust:'Trust', difference:'Difference', ease:'Ease' };
@@ -4681,10 +4705,10 @@ function showResults(r, jobId) {
     var _lowestScore = Math.round(Number((_pillars[_lowestKey] || {}).score) || 0);
     return '<section style="padding:18px 22px;background:var(--ink);color:var(--paper);border-left:4px solid var(--ac);">'
       + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Start here</div>'
-      + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest pillar: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:7px;letter-spacing:0.04em;">Lowest score: ' + esc(_pNames[_lowestKey]) + ' — ' + _lowestScore + ' / 25</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:19px;line-height:1.4;margin-bottom:12px;">' + esc(actionTitle) + '</div>'
       + (_startIfNothing ? '<div style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.55);border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-bottom:12px;"><span style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#C98B42;display:block;margin-bottom:4px;">If nothing changes</span>' + esc(_startIfNothing) + '</div>' : '')
-      + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first priority action ↓</a>'
+      + '<a href="#report-actions" style="font-size:11px;font-weight:800;color:var(--paper);text-decoration:underline;text-underline-offset:3px;">Go to the first job ↓</a>'
       + '</section>';
   }
 
@@ -4693,8 +4717,8 @@ function showResults(r, jobId) {
       + '<div class="pay-eyebrow">What Each Label Means</div>'
       + '<div class="integrity-summary">'
       + '<div class="integrity-cell"><div class="integrity-label">AI answer</div><div class="integrity-copy">The exact answer returned by Claude, ChatGPT, Perplexity, or Gemini during this run.</div></div>'
-      + '<div class="integrity-cell"><div class="integrity-label">Confirmed fact</div><div class="integrity-copy">CHOIVE found public proof that supports this statement.</div></div>'
-      + '<div class="integrity-cell"><div class="integrity-label">Estimate</div><div class="integrity-copy">CHOIVE calculated this number. It is not a fact checked on the competitor.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Fact we checked</div><div class="integrity-copy">CHOIVE found public proof for this sentence.</div></div>'
+      + '<div class="integrity-cell"><div class="integrity-label">Number we worked out</div><div class="integrity-copy">CHOIVE worked out this number. It is not a fact found on the competitor\'s website.</div></div>'
       + '<div class="integrity-cell"><div class="integrity-label">What to do</div><div class="integrity-copy">A clear job based on what CHOIVE found.</div></div>'
       + '</div></section>';
   }
@@ -4762,18 +4786,13 @@ function showResults(r, jobId) {
       + _compPlatformTag
       + '<div class="paid-comp-name">' + esc(compName) + '</div>'
       + (compAnalysis ? '<div class="paid-comp-analysis">' + readableText(compAnalysis, 2) + '</div>' : '')
-      + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(compEvidence) + '</div>' : '')
+      + (compEvidence ? '<div class="paid-pillar-evidence">' + esc(simpleWords(compEvidence)) + '</div>' : '')
       + '</div>'
-    : '<div class="paid-comp-none">This run did not find enough evidence to verify a direct competitor. CHOIVE therefore does not name one.</div>';
+    : '<div class="paid-comp-none">CHOIVE did not find enough proof to check a direct competitor, so it does not name one.</div>';
 
   var extraCompsHtml = compList.slice(1).map(function(cp, idx) {
     if (!cp || !cp.name) return '';
     var an = cp.analysis || [cp.whyAIRecommendsThem, cp.advantage, cp.gapLocation, cp.closeGap].filter(Boolean).join(' ');
-    // For online-arena competitors that were merged in server-side without Claude analysis,
-    // fall back to the arena scoring's priorityAction as the descriptor.
-    if (!an && cp.queryContext === 'online-arena' && r.arenaScores && r.arenaScores.online) {
-      an = r.arenaScores.online.priorityAction || '';
-    }
     var _extraLabel = 'Market competitor';
     return '<div class="paid-comp-found" style="padding:16px 24px;margin-top:2px;">'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">' + _extraLabel + '</div>'
@@ -4801,17 +4820,25 @@ function showResults(r, jobId) {
       var _overviewRows = comparisonEntries.map(function(entry) {
         if (!entry || !entry.name) return '';
         var _sd = entry.score || {};
-        var _kg = _sd.keyGap || '';
-        var _kgLabel = _kg ? (_kg.charAt(0).toUpperCase() + _kg.slice(1)) : '';
-        var _kgVal = (_kg && _sd.pillars && _sd.pillars[_kg]) ? Math.abs(_sd.pillars[_kg].gap) : null;
-        var _gapCell = (_kgLabel && _kgVal != null) ? (_kgLabel + ': ' + _kgVal + ' points') : 'No point gap was found';
-        var _pa = _sd.priorityAction || '';
-        var _priority = _pa ? (_pa.length > 44 ? _pa.slice(0, 44).replace(/\s\S+$/, '') + '\u2026' : _pa) : 'CHOIVE did not find one clear first step';
+        var _largest = null;
+        _pillarKeys.forEach(function(key) {
+          var _pd = _sd.pillars && _sd.pillars[key];
+          if (!_pd || _pd.gap == null || !isFinite(Number(_pd.gap))) return;
+          var _value = Math.round(Number(_pd.gap));
+          if (_largest === null || Math.abs(_value) > Math.abs(_largest.gap)) {
+            _largest = { key: key, gap: _value };
+          }
+        });
+        var _gapCell = 'No score difference was found';
+        if (_largest) {
+          var _leader = _largest.gap > 0 ? _bizName : _largest.gap < 0 ? entry.name : 'Same score';
+          _gapCell = _pillarLabels[_largest.key] + ': '
+            + (_largest.gap === 0 ? 'same score' : _leader + ' leads by ' + Math.abs(_largest.gap) + ' point' + (Math.abs(_largest.gap) === 1 ? '' : 's'));
+        }
         return '<tr>'
-          + '<td style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;border-bottom:1px solid var(--rule-d);">' + esc(entry.roleLabel || '') + '</td>'
+          + '<td style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;border-bottom:1px solid var(--rule-d);">' + esc(entry.role === 'head_to_head' ? 'Closest direct competitor' : entry.role === 'market' ? 'Wider-market competitor' : entry.role === 'online_arena' ? 'Competitor found online' : entry.role === 'ai_recommended' ? 'Company named by AI' : entry.role === 'global_benchmark' ? 'Large global competitor' : (entry.roleLabel || 'Competitor')) + '</td>'
           + '<td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--tp);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(entry.name) + '</td>'
           + '<td style="padding:10px 14px;font-size:13px;color:var(--tb);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(_gapCell) + '</td>'
-          + '<td style="padding:10px 14px;font-size:13px;color:var(--tb);line-height:1.5;border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">' + esc(_priority) + '</td>'
           + '</tr>';
       }).join('');
 
@@ -4820,16 +4847,18 @@ function showResults(r, jobId) {
         if (!entry || !entry.name) {
           return '<div style="background:var(--dk-2);border:1px solid var(--rule-d);padding:28px 24px;margin-bottom:2px;">'
             + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(roleLabel) + '</div>'
-            + '<div style="font-size:14px;color:var(--muted);">No comparison is shown because CHOIVE could not confirm the company name.</div>'
+            + '<div style="font-size:14px;color:var(--muted);">CHOIVE could not check the company name, so no comparison is shown.</div>'
             + '</div>';
         }
         var _cn = entry.reason || '';
         var _sd = entry.score || {};
         var _pillars = _sd.pillars || {};
-        var _priorityAction = _sd.priorityAction || '';
         var _keyGap = _sd.keyGap || '';
-        var _keyGapLabel = _keyGap ? (_keyGap.charAt(0).toUpperCase() + _keyGap.slice(1)) : '';
         var _hasScore = !!_sd.pillars;
+        var _businessTotal = Number(r.score);
+        var _competitorTotal = Number(_sd.competitorOverallScore != null ? _sd.competitorOverallScore : _sd.score);
+        var _businessTotalText = isFinite(_businessTotal) ? Math.round(_businessTotal) + '/100' : 'Check did not finish';
+        var _competitorTotalText = isFinite(_competitorTotal) ? Math.round(_competitorTotal) + '/100' : 'Check did not finish';
         var _pillarChart = '<div style="margin:24px 0;border-top:1px solid var(--rule-d);">'
           + _pillarKeys.map(function(k) {
               var pd = _pillars[k] || {};
@@ -4849,7 +4878,7 @@ function showResults(r, jobId) {
               var resultColor = gapNum === null ? 'var(--tm)' : gapNum < 0 ? '#F07A7A' : gapNum > 0 ? '#7FD6A3' : 'var(--tm)';
               return '<div style="padding:20px 0;border-bottom:1px solid var(--rule-d);' + (isKey ? 'background:rgba(201,168,106,0.06);margin:0 -14px;padding-left:14px;padding-right:14px;' : '') + '">'
                 + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;">'
-                + '<div style="font-size:14px;font-weight:800;color:' + (isKey ? 'var(--ac)' : 'var(--tp)') + ';">' + _pillarLabels[k] + (isKey ? ' <span style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-left:6px;">Biggest gap</span>' : '') + '</div>'
+                + '<div style="font-size:14px;font-weight:800;color:' + (isKey ? 'var(--ac)' : 'var(--tp)') + ';">' + _pillarLabels[k] + (isKey ? ' <span style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-left:6px;">Biggest point gap</span>' : '') + '</div>'
                 + '<div style="font-size:12px;font-weight:700;line-height:1.45;text-align:right;color:' + resultColor + ';">' + esc(resultText) + '</div></div>'
                 + '<div style="display:grid;grid-template-columns:minmax(90px,150px) minmax(120px,1fr) 44px;gap:10px;align-items:center;margin-bottom:10px;">'
                 + '<div style="font-size:11px;font-weight:800;color:var(--ac);overflow-wrap:anywhere;">Your business</div>'
@@ -4865,37 +4894,29 @@ function showResults(r, jobId) {
         return '<div style="background:var(--dk-2);border:1px solid var(--rule-d);padding:clamp(22px,4vw,36px);margin-bottom:16px;">'
           + '<div style="font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">' + esc(roleLabel) + '</div>'
           + '<div style="display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center;padding:18px 0;border-top:1px solid var(--rule-d);border-bottom:1px solid var(--rule-d);">'
-          + '<div><div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your business</div><div style="font-family:\'Libre Baskerville\',serif;font-size:clamp(17px,2.4vw,23px);font-weight:700;color:var(--tp);overflow-wrap:anywhere;">' + esc(_bizName) + '</div></div>'
+          + '<div><div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">Your business</div><div style="font-family:\'Libre Baskerville\',serif;font-size:clamp(17px,2.4vw,23px);font-weight:700;color:var(--tp);overflow-wrap:anywhere;">' + esc(_bizName) + '</div><div style="font-size:13px;font-weight:800;color:var(--ac);margin-top:7px;">CHOIVE score: ' + esc(_businessTotalText) + '</div></div>'
           + '<div style="width:34px;height:34px;border:1px solid var(--rule-d);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--tm);">VS</div>'
-          + '<div style="text-align:right;"><div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Competitor</div><div style="font-family:\'Libre Baskerville\',serif;font-size:clamp(17px,2.4vw,23px);font-weight:700;color:var(--tp);overflow-wrap:anywhere;">' + esc(entry.name) + '</div></div></div>'
+          + '<div style="text-align:right;"><div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Competitor</div><div style="font-family:\'Libre Baskerville\',serif;font-size:clamp(17px,2.4vw,23px);font-weight:700;color:var(--tp);overflow-wrap:anywhere;">' + esc(entry.name) + '</div><div style="font-size:13px;font-weight:800;color:var(--tb);margin-top:7px;">CHOIVE score: ' + esc(_competitorTotalText) + '</div></div></div>'
           + (_cn ? '<div style="font-size:13px;color:var(--tb);line-height:1.75;margin-top:12px;">' + readableText(_cn, 3) + '</div>' : '')
           + (entry.message ? '<div style="font-size:12px;color:var(--tb);line-height:1.65;margin-top:12px;padding:10px 12px;border-left:3px solid var(--ac);">' + esc(entry.message) + '</div>' : '')
           + '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:18px;font-size:11px;color:var(--tb);"><span><strong style="color:var(--ac);">Gold bar</strong> = your business</span><span><strong style="color:#A7A7A7;">Grey striped bar</strong> = competitor</span></div>'
           + _pillarChart
-          + (_priorityAction
-              ? '<div style="padding:16px 18px;background:var(--ink);border-left:4px solid var(--ac);">'
-                + '<div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--ac);margin-bottom:8px;">'
-                + (_keyGapLabel ? _keyGapLabel + ' \u00b7 ' : '') + 'First thing to fix</div>'
-                + '<div style="font-size:13px;color:var(--paper);line-height:1.65;">' + esc(_priorityAction) + '</div>'
-                + '</div>'
-              : '')
           + '</div>';
       }
       var _overviewTable = _overviewRows
         ? '<div style="margin-bottom:28px;overflow-x:auto;">'
           + '<table style="width:100%;border-collapse:collapse;border:1px solid var(--rule-d);">'
           + '<thead><tr>'
-          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);">Why it is compared</th>'
+          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);">Why this company is here</th>'
           + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Competitor</th>'
           + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">Biggest score gap</th>'
-          + '<th style="padding:10px 14px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);text-align:left;background:var(--dk-3);border-bottom:1px solid var(--rule-d);border-left:1px solid var(--rule-d);">First thing to fix</th>'
           + '</tr></thead>'
           + '<tbody>' + _overviewRows + '</tbody>'
           + '</table></div>'
         : '';
       competitorComparisonBlock = '<section class="pay-section" id="report-arena"><div class="pay-eyebrow">Your Business Beside Each Competitor</div>'
-        + '<div class="paid-section-header">See who is ahead, where they are ahead, and what to fix first</div>'
-        + '<div style="font-size:13px;color:var(--tm);margin-bottom:24px;line-height:1.7;">Every company below sells to the same kind of buyer and solves the same need. CHOIVE checked each company separately. A missing check did not become a zero.</div>'
+        + '<div class="paid-section-header">See who has more points in each score</div>'
+        + '<div style="font-size:13px;color:var(--tm);margin-bottom:24px;line-height:1.7;">CHOIVE checked each company separately using its own website and public proof. Every card shows all four score areas. Each line says whether your business leads, the competitor leads, or both have the same score. A check that did not finish is shown as “Check did not finish,” never as zero.</div>'
         + _overviewTable
         + comparisonEntries.map(comparisonCard).join('') + '</section>';
     }
@@ -4941,7 +4962,7 @@ function showResults(r, jobId) {
         var _compHasData = _keys.some(function(k) { return Number(_p[k] && _p[k].competitor) > 0; });
         var _arenaScore = (_yourSum + _compSum) > 0 ? Math.round(_yourSum / (_yourSum + _compSum) * 100) : 50;
         var _arenaScoreColor = !_compHasData ? 'var(--muted)' : (_arenaScore >= 55 ? 'var(--ac)' : (_arenaScore <= 45 ? '#C97A6A' : 'var(--body)'));
-        var _arenaScoreLabel = !_compHasData ? 'Competitor not yet measured' : (_arenaScore >= 55 ? 'Competitive advantage' : (_arenaScore <= 45 ? 'Competitive gap' : 'Competitive parity'));
+        var _arenaScoreLabel = !_compHasData ? 'Competitor check did not finish' : (_arenaScore >= 55 ? 'Your business has more points' : (_arenaScore <= 45 ? 'The competitor has more points' : 'The points are close'));
 
         return '<div style="background:var(--paper-2);padding:24px 20px;">'
           + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
@@ -4953,13 +4974,12 @@ function showResults(r, jobId) {
           + '</div>'
           + '<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">' + esc(subtitle) + '</div>'
           + '<div style="font-size:13px;font-weight:600;color:var(--ink);padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule);">vs ' + esc(competitorName) + '</div>'
-          + '<div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>Pillar</span><span>Your score · competitor score</span></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;"><span>Score</span><span>Your points · their points</span></div>'
           + _keys.map(_pRow).join('')
-          + (arenaData.keyGap || arenaData.priorityAction
+          + (arenaData.keyGap
             ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
-              + (arenaData.keyGap ? '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Key gap in this arena</div>'
-                + '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;text-transform:capitalize;">' + esc(arenaData.keyGap) + '</div>' : '')
-              + (arenaData.priorityAction ? '<div style="font-size:12px;color:var(--body);line-height:1.7;">' + esc(arenaData.priorityAction) + '</div>' : '')
+              + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Biggest score difference</div>'
+              + '<div style="font-size:13px;font-weight:600;color:var(--ink);text-transform:capitalize;">' + esc(arenaData.keyGap) + '</div>'
               + '</div>'
             : '')
           + '</div>';
@@ -4985,8 +5005,8 @@ function showResults(r, jobId) {
         var _dualColor = _dual >= 55 ? 'var(--ac)' : (_dual <= 45 ? '#C97A6A' : 'var(--body)');
         _combinedHtml = '<div style="background:var(--paper-3);padding:16px 20px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
           + '<div>'
-          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Combined Arena Score</div>'
-          + '<div style="font-size:12px;color:var(--body);">Average competitive position across both arenas</div>'
+          + '<div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Both comparisons together</div>'
+          + '<div style="font-size:12px;color:var(--body);">The middle number from both comparisons</div>'
           + '</div>'
           + '<div style="display:flex;gap:20px;align-items:center;">'
           + '<div style="text-align:center;">'
@@ -5009,9 +5029,9 @@ function showResults(r, jobId) {
 
       if (_brandCard || _onlineCard) {
         dualArenaBlock = '<div class="pay-section">'
-          + '<div class="pay-eyebrow">Competitive Arenas</div>'
+          + '<div class="pay-eyebrow">Two Ways This Business Competes</div>'
           + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">'
-          + 'This business competes in two distinct arenas — each with different buyers, different decision criteria, and a different competitor.'
+          + 'This business sells in two different ways. Each way has different buyers and a different competitor.'
           + '</div>'
           + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;">'
           + _brandCard + _onlineCard
@@ -5023,39 +5043,9 @@ function showResults(r, jobId) {
   } catch(e) { console.warn('[CHOIVE] dual-arena display failed:', e.message); }
   // ── END DUAL-ARENA BLOCK ───────────────────────────────────────────────────
 
-  // ── MERGED ACTIONS (with arena tags when dual-arena active) ───────────────
+  // Customer actions come only from the business diagnostic. Competitor
+  // comparison data must never create work items for the customer.
   var mergedActions = Array.isArray(r.actions) ? r.actions.slice() : [];
-  try {
-    if (r.dualArena && r.dualArena.detected && r.arenaScores) {
-      var _as2 = r.arenaScores;
-      var _da2 = r.dualArena;
-      if (_as2.brand && _as2.brand.priorityAction) {
-        mergedActions.push({
-          priority:   'high',
-          arenaTag:   'Brand Arena',
-          title:      _as2.brand.keyGap
-            ? 'Close the ' + _as2.brand.keyGap + ' gap vs ' + (_da2.brandCompetitor || 'brand competitor')
-            : 'Brand arena priority action',
-          body:       _as2.brand.priorityAction,
-          explanation: '',
-          if_nothing:  ''
-        });
-      }
-      if (_as2.online && _as2.online.priorityAction) {
-        mergedActions.push({
-          priority:   'high',
-          arenaTag:   'Online Arena',
-          title:      _as2.online.keyGap
-            ? 'Close the ' + _as2.online.keyGap + ' gap vs ' + (_da2.onlineCompetitor || 'online competitor')
-            : 'Online arena priority action',
-          body:       _as2.online.priorityAction,
-          explanation: '',
-          if_nothing:  ''
-        });
-      }
-    }
-  } catch(e) {}
-  // ── END MERGED ACTIONS ────────────────────────────────────────────────────
 
   function buildMeasurementIntegrity() {
     var laneOrder = [
@@ -5083,7 +5073,7 @@ function showResults(r, jobId) {
         + '<div class="integrity-row-value"><strong>' + esc(status) + '</strong>'
         + (recommendation ? ' · Top recommendation: ' + esc(recommendation) : '')
         + noConsensusExplanation
-        + (query ? '<br>Measured question: “' + esc(query) + '”' : '')
+        + (query ? '<br>Question CHOIVE asked: “' + esc(query) + '”' : '')
         + '</div></div>';
     }).join('');
     var evidenceCount = ['clarity','trust','difference','ease'].filter(function(key) {
@@ -5093,12 +5083,12 @@ function showResults(r, jobId) {
     var roleMarketKey = String(widerMarketDecision && widerMarketDecision.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     var verifiedRoles = (roleDirectKey ? 1 : 0) + (roleMarketKey && roleMarketKey !== roleDirectKey ? 1 : 0);
     var confidence = completed === 4 && evidenceCount === 4 && verifiedRoles > 0
-      ? 'Highly complete'
+      ? 'All main checks finished'
       : completed >= 3 && evidenceCount >= 3
-        ? 'Mostly complete'
-        : 'Incomplete';
+        ? 'Most checks finished'
+        : 'Some checks did not finish';
     var limitations = [];
-    if (completed < 4) limitations.push((4 - completed) + ' platform measurement' + (4 - completed === 1 ? ' was' : 's were') + ' unavailable or did not establish a named recommendation.');
+    if (completed < 4) limitations.push((4 - completed) + ' AI check' + (4 - completed === 1 ? ' did' : 's did') + ' not finish or did not name one company most often.');
     if (!topComp) limitations.push('CHOIVE did not find enough proof to name a direct competitor.');
     if (!widerMarketDecision || !widerMarketDecision.name) limitations.push('CHOIVE did not find enough proof to name a separate wider-market competitor.');
     limitations.push('CHOIVE recorded these answers from each AI company\'s business system. The public AI apps may answer differently.');
@@ -5115,7 +5105,7 @@ function showResults(r, jobId) {
       + '<details class="report-details"><summary>How CHOIVE checked this result</summary><div class="report-details-body">'
       + '<div class="paid-narrative">CHOIVE asks each AI tool separately and saves every answer. The CHOIVE score comes from Clarity, Trust, Difference, and Ease. CHOIVE names a competitor only after checking that it sells to the same buyer and solves the same need.</div>'
       + '<ul class="limitation-list">' + limitationsHtml + '</ul>'
-      + '<div style="margin-top:14px;"><a href="/methodology" style="font-size:12px;font-weight:700;color:var(--ink);">Read the complete methodology →</a></div>'
+      + '<div style="margin-top:14px;"><a href="/methodology" style="font-size:12px;font-weight:700;color:var(--ink);">See exactly how CHOIVE works →</a></div>'
       + '</div></details></section>';
   }
 
@@ -5124,11 +5114,11 @@ function showResults(r, jobId) {
     function _weekBlock(weekLabel, title, body, verify, consequence) {
       return '<div class="roadmap-phase">'
         + '<div class="roadmap-day">' + weekLabel + '</div>'
-        + '<div class="roadmap-title">' + esc(title) + '</div>'
+        + '<div class="roadmap-title">' + esc(simpleWords(title)) + '</div>'
         + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 5px;">Do this</div>'
-        + '<div class="roadmap-copy">' + esc(body) + '</div>'
-        + '<div class="roadmap-check"><strong>This week is finished when:</strong> ' + esc(verify) + '</div>'
-        + (consequence ? '<div style="margin-top:10px;padding:9px 11px;background:var(--paper-2);border-left:2px solid var(--amber);font-size:12px;color:var(--body);line-height:1.6;"><strong style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);display:block;margin-bottom:3px;">If you skip this</strong>' + esc(consequence) + '</div>' : '')
+        + '<div class="roadmap-copy">' + esc(simpleWords(body)) + '</div>'
+        + '<div class="roadmap-check"><strong>This week is finished when:</strong> ' + esc(simpleWords(verify)) + '</div>'
+        + (consequence ? '<div style="margin-top:10px;padding:9px 11px;background:var(--paper-2);border-left:2px solid var(--amber);font-size:12px;color:var(--body);line-height:1.6;"><strong style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);display:block;margin-bottom:3px;">If you skip this</strong>' + esc(simpleWords(consequence)) + '</div>' : '')
         + '</div>';
     }
     function _actionBlock(weekRange, action) {
@@ -5137,7 +5127,7 @@ function showResults(r, jobId) {
         weekRange,
         action.title,
         action.body || action.explanation || 'Complete the steps described in this action.',
-        action.verification || action.successMeasure || 'Confirm the change is live and the evidence is publicly visible.',
+        action.verification || action.successMeasure || 'Check that the change is online and anyone can see it.',
         consequence
       );
     }
@@ -5151,15 +5141,15 @@ function showResults(r, jobId) {
       ''
     ));
     // Weeks 2–3 — First priority action
-    if (_allActions[0]) _rows.push(_actionBlock('Weeks 2\u20133 \u00b7 Priority 1', _allActions[0]));
+    if (_allActions[0]) _rows.push(_actionBlock('Weeks 2\u20133 \u00b7 Job 1', _allActions[0]));
     // Weeks 4–5 — Second priority action
-    if (_allActions[1]) _rows.push(_actionBlock('Weeks 4\u20135 \u00b7 Priority 2', _allActions[1]));
+    if (_allActions[1]) _rows.push(_actionBlock('Weeks 4\u20135 \u00b7 Job 2', _allActions[1]));
     // Weeks 6–7 — Third priority action
-    if (_allActions[2]) _rows.push(_actionBlock('Weeks 6\u20137 \u00b7 Priority 3', _allActions[2]));
+    if (_allActions[2]) _rows.push(_actionBlock('Weeks 6\u20137 \u00b7 Job 3', _allActions[2]));
     // Weeks 8–9 — Fourth action if available
-    if (_allActions[3]) _rows.push(_actionBlock('Weeks 8\u20139 \u00b7 Priority 4', _allActions[3]));
+    if (_allActions[3]) _rows.push(_actionBlock('Weeks 8\u20139 \u00b7 Job 4', _allActions[3]));
     // Weeks 10–11 — Fifth action if available
-    if (_allActions[4]) _rows.push(_actionBlock('Weeks 10\u201311 \u00b7 Priority 5', _allActions[4]));
+    if (_allActions[4]) _rows.push(_actionBlock('Weeks 10\u201311 \u00b7 Job 5', _allActions[4]));
     // Week 12 — Rerun diagnostic
     _rows.push(_weekBlock(
       'Week 12 \u00b7 Recheck',
@@ -5216,7 +5206,7 @@ function showResults(r, jobId) {
     if (!question) return '';
     return '<section class="pay-section" id="report-customer-question">'
       + '<div class="pay-eyebrow">The Question You Asked CHOIVE to Test</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">CHOIVE asked this exact question separately on all four AI tools. Their answers are shown without editing. CHOIVE treats a claim as true only when other public proof confirms it.</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:12px;">CHOIVE asked this exact question separately on all four AI tools. Their answers are shown without editing. CHOIVE says a claim is true only when it finds public proof.</div>'
       + '<div class="customer-question-prompt">“' + esc(question) + '”</div>'
       + '<div class="customer-question-grid">' + cards + '</div>'
       + '</section>';
@@ -5232,7 +5222,7 @@ function showResults(r, jobId) {
       + buildPlatformCoverageSection()
       + buildQueryCoverageMap()
       + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Proof Behind Your CHOIVE Result</div>'
-      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This diagnosis comes from website checks, public sources, and AI answers recorded during this run.</div>'
+      + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This result comes from website checks, other public websites, and the AI answers saved during this run.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">What to Fix First</div><div class="paid-section-header">Do these jobs in this order</div><div class="paid-actions">'
@@ -5249,7 +5239,7 @@ function showResults(r, jobId) {
       + buildOrganicDiscoveryGap()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">What Each AI Tool Said</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section shows the exact questions and answers CHOIVE recorded from each AI provider. Open the detailed answers only when you want to check the evidence.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:block;margin-top:10px;padding:9px 12px;border-left:3px solid var(--ac);background:var(--paper-2);color:var(--tb);font-size:11px;font-weight:600;\">The questions were asked in ' + L[lg] + ' to match the market language recorded for this diagnostic.</span>' : ''; })() + '</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section shows the exact questions CHOIVE asked and the exact answers each AI tool gave. Open an answer when you want to read it.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:block;margin-top:10px;padding:9px 12px;border-left:3px solid var(--ac);background:var(--paper-2);color:var(--tb);font-size:11px;font-weight:600;\">CHOIVE asked the questions in ' + L[lg] + ' because that is the language used in this market.</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Loading the recorded AI answers for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + buildCustomerQuestionReport()
@@ -5259,7 +5249,7 @@ function showResults(r, jobId) {
       + buildMeasurementIntegrity()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
       + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your analysis</div>'
-      + '<div class="pay-cta-body">Download a concise PDF summary of this online analysis. The separate CHOIVE Report is the complete board-ready deliverable.</div>'
+      + '<div class="pay-cta-body">Download a short PDF of this analysis. The separate CHOIVE Report contains the full result in a PDF you can share.</div>'
       + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">'
       + '<button class="pay-btn-primary" onclick="exportPDF()">Download Analysis Summary</button>'
       + '</div></div></section>';
@@ -5270,7 +5260,7 @@ function showResults(r, jobId) {
       + '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:0.3;"></div>'
       + '<div style="font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--ac);margin-bottom:12px;">CHOIVE\u00b7 Report</div>'
       + '<div style="font-family:\'Libre Baskerville\',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--ghost);margin-bottom:10px;line-height:1.2;">Get the complete branded PDF report.</div>'
-      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis — designed as a premium PDF you can share with your team, agency, or board. Usually emailed within a few minutes after payment is confirmed.</div>'
+      + '<div style="font-size:13px;color:var(--ghost-2);line-height:1.8;margin-bottom:24px;max-width:440px;">Everything in your analysis, placed in a clear PDF you can share with your team. It is usually emailed a few minutes after payment.</div>'
       + '<button onclick=\"initiateReportCheckout(\'' + (jobId||'') + '\')\" id=\"reportCheckoutBtn\" style=\"background:var(--ac);color:var(--void);border:none;font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;padding:16px 28px;cursor:pointer;min-height:52px;\">Get Full Report — $499 →</button>'
       + '<div style=\"font-size:11px;color:var(--ghost-3);margin-top:12px;\">One-time payment · PDF usually emailed within a few minutes after payment confirmation</div>'
       + '</div>' : '')
@@ -5445,7 +5435,7 @@ function buildDeliverables(r) {
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
       + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:12px;">The target below is a practical working target for this category, not a guaranteed threshold for AI recommendations.</div>'
       + '<div style="display:flex;gap:24px;margin-bottom:14px;padding:16px;background:var(--dk-3);">'
-      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Reviews CHOIVE could confirm</div><div style="font-size:' + (reviewChecksUnavailable ? '13' : '28') + 'px;font-weight:700;line-height:1.45;color:var(--tp);">' + (reviewChecksUnavailable ? 'The review check did not work. No points were removed.' : (ra.currentCount || 0)) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Reviews CHOIVE found</div><div style="font-size:' + (reviewChecksUnavailable ? '13' : '28') + 'px;font-weight:700;line-height:1.45;color:var(--tp);">' + (reviewChecksUnavailable ? 'The review check did not work. No points were removed.' : (ra.currentCount || 0)) + '</div></div>'
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Working target</div><div style="font-size:16px;font-weight:700;line-height:1.45;color:var(--ac);">' + esc(reviewTargetDisplay) + '</div></div>'
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platforms</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(reviewPlatformDisplay) + '</div></div>'
       + '</div>'
@@ -5510,7 +5500,7 @@ function buildDeliverables(r) {
     var gd = d.gbpDesc;
     gbpHtml = '<div style="margin-bottom:16px;">'
       + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">What to do' + ownerTag() + '</div>'
-      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy this description and paste it into your Google Business Profile. In your GBP dashboard: Edit profile \u2192 Business information \u2192 Description. Confirm every factual claim matches your live business before saving.</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">Copy this description and paste it into your Google Business Profile. Open: Edit profile \u2192 Business information \u2192 Description. Check that every sentence is true before saving it.</div>'
       + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Your GBP description (' + gd.charCount + '\u202f/\u202f' + gd.maxChars + ' characters)</div>'
       + '<div class="deliv-code" id="dGBPCode">' + esc(gd.text || '') + '</div>'
       + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dGBPCode\')">Copy GBP Description</button>'
