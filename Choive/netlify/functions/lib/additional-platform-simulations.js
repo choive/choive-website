@@ -163,7 +163,7 @@ async function requestPerplexity(source) {
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS);
   try {
-    var response = await fetch('https://api.perplexity.ai/v1/sonar', {
+    var response = await fetch('https://api.perplexity.ai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.PERPLEXITY_API_KEY },
       body: JSON.stringify({
