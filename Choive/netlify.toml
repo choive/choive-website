@@ -18,6 +18,13 @@
 [functions."generate-report-background"]
   timeout = 120
 
+# Score monitoring worker — checks due subscriptions and emails alerts.
+# Runs daily at 08:00 UTC; it only acts on subscriptions whose next_check_at
+# has passed, so weekly/monthly cadences are honoured per-subscriber.
+[functions."monitor-run"]
+  schedule = "0 8 * * *"
+  timeout = 120
+
 [[redirects]]
   from = "/result"
   to = "/index.html"

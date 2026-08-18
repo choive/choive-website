@@ -126,9 +126,9 @@ Set up automated monitoring of your CHOIVE Score. We'll re-run your diagnostic o
 
 <form id="monitor-form">
 <div class="form-group">
-<label for="business">Business Identifier</label>
-<input type="text" id="business" name="business" required placeholder="acme-corp">
-<div class="helper-text">The same ID you used when running your diagnostic</div>
+<label for="jobId">Diagnostic ID or Result Link</label>
+<input type="text" id="jobId" name="jobId" required placeholder="Paste your result link or diagnostic ID">
+<div class="helper-text">Open your completed CHOIVE result and paste the full link (or just the ID from it). We monitor that exact diagnostic — so your baseline is a real, verified score.</div>
 </div>
 
 <div class="form-group">
@@ -261,25 +261,55 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
   // Disable button
   submitBtn.disabled = true;
   submitBtn.textContent = 'Setting up...';
-  
+
+  // Accept either a raw diagnostic ID or a full result link, and extract the
+  // job id from it. We look for ?job=/&job= first, then id=, then fall back to
+  // the last path segment, then the raw trimmed value.
+  function extractJobId(raw) {
+    const val = String(raw || '').trim();
+    if (!val) return '';
+    try {
+      const u = new URL(val);
+      const q = u.searchParams.get('job') || u.searchParams.get('jobId') || u.searchParams.get('id');
+      if (q) return q.trim();
+      const seg = u.pathname.split('/').filter(Boolean).pop();
+      if (seg) return decodeURIComponent(seg).trim();
+    } catch (_) {
+      // Not a URL — maybe a bare query fragment like "?job=abc" or "job=abc"
+      const m = val.match(/(?:[?&]|^)(?:job|jobId|id)=([^&\s]+)/i);
+      if (m) return decodeURIComponent(m[1]).trim();
+    }
+    return val;
+  }
+
+  const jobId = extractJobId(document.getElementById('jobId').value);
+  const emailVal = document.getElementById('email').value;
+  const thresholdVal = parseInt(document.getElementById('threshold').value, 10);
+
   const formData = {
-    business: document.getElementById('business').value,
-    email: document.getElementById('email').value,
+    jobId: jobId,
+    email: emailVal,
     frequency: document.getElementById('frequency').value,
-    threshold: parseInt(document.getElementById('threshold').value, 10)
+    threshold: thresholdVal
   };
-  
+
   try {
     const response = await fetch('/.netlify/functions/monitor-subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
     });
-    
+
     const data = await response.json();
-    
-    if (response.ok) {
-      successMsg.textContent = `✓ Monitoring set up successfully! Next check: ${data.subscription.nextCheck}. We'll email you at ${formData.email} if your score changes by ${formData.threshold}+ points.`;
+
+    if (response.ok && data.ok) {
+      if (data.status === 'already_active') {
+        successMsg.textContent = `✓ Monitoring is already active for this diagnostic. We'll keep emailing ${emailVal} whenever your score moves by ${thresholdVal}+ points.`;
+      } else {
+        const sub = data.subscription || {};
+        const base = (sub.baselineScore !== undefined && sub.baselineScore !== null) ? ` Your baseline score is ${sub.baselineScore}.` : '';
+        successMsg.textContent = `✓ Almost done — check your inbox! We've emailed ${emailVal} a confirmation link. Click it to start monitoring.${base} After that we'll re-check ${data.subscription && data.subscription.frequency ? data.subscription.frequency : formData.frequency} and alert you on ${thresholdVal}+ point changes.`;
+      }
       successMsg.style.display = 'block';
       e.target.reset();
     } else {

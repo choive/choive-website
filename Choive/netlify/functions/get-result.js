@@ -6,6 +6,7 @@
 
 const { getDiagnostic } = require('./lib/supabase');
 const { buildPublicResult } = require('./lib/public-result');
+const { buildFixPlan } = require('./lib/fix-plan');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,13 +54,28 @@ exports.handler = async function (event) {
       };
     }
 
+    // For paid results, attach a Priority Fix Plan derived from the real
+    // deterministic scoring ledger. Never leak it into the free/public result
+    // (the fix plan depends on paid-only fields like actions + the audit
+    // ledger, which buildPublicResult strips). Failure here is non-fatal.
+    let paidResult = diagnostic.result;
+    if (diagnostic.paid === true) {
+      try {
+        const fixPlan = buildFixPlan(diagnostic.result);
+        paidResult = Object.assign({}, diagnostic.result, { fixPlan });
+      } catch (planErr) {
+        console.error('CHOIVE fix-plan error:', planErr.message);
+        paidResult = diagnostic.result;
+      }
+    }
+
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: 'complete',
         result: diagnostic.paid === true
-          ? diagnostic.result
+          ? paidResult
           : buildPublicResult(diagnostic.result),
         // Real, server-verified payment status — read directly from Supabase,
         // not trusted from anything client-side. Without this, reopening a
