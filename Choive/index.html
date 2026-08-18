@@ -6407,6 +6407,47 @@ function buildAssetsFromReadyToUse(assets) {
   return html;
 }
 
+// "How to check it's really done" — a short, tickable list with REAL validator
+// links, so an owner can prove a fix is live instead of guessing. Plain words.
+// kind: 'llms' | 'schema' | 'meta' | 'reviews'
+function buildVerifyBlock(kind, r) {
+  var b = (typeof bizData !== 'undefined' && bizData) ? bizData : {};
+  var rawSite = b.website ? String(b.website).trim() : '';
+  var domain = rawSite.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  var site = domain ? ('https://' + domain) : 'yourdomain.com';
+  var steps = [];
+  if (kind === 'llms') {
+    steps = [
+      'Open <strong>' + esc(domain ? (site + '/llms.txt') : 'yourdomain.com/llms.txt') + '</strong> in a web browser. You should see the text you saved — not a "page not found".',
+      'Read every line once more and make sure each fact is true.',
+      'Come back to CHOIVE in a few weeks and run the check again to see your score move.'
+    ];
+  } else if (kind === 'schema') {
+    steps = [
+      'Go to Google\u2019s free <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">Rich Results Test</a>, paste your page web address, and press Test URL. It should find your business code with no errors.',
+      'Or paste the code into the <a href="https://validator.schema.org/" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">Schema Markup Validator</a> to check it line by line.',
+      'Ask your developer to fix anything shown in red before you finish.'
+    ];
+  } else if (kind === 'meta') {
+    steps = [
+      'Search your business name on Google. The short text under your link should match your new description (Google can take a few days to update).',
+      'Or right-click your homepage, choose "View page source", and search for <strong>description</strong> to confirm the new words are in the page.'
+    ];
+  } else if (kind === 'reviews') {
+    steps = [
+      'Open your own review profile link in a browser. Each new review should be public and show the correct business name.',
+      'Check the review count has gone up from where it started.',
+      'Run the CHOIVE check again later to see if your Trust score moved.'
+    ];
+  }
+  if (!steps.length) return '';
+  return '<div style="margin-top:16px;padding:14px 16px;background:rgba(42,122,72,0.06);border-left:3px solid var(--green);">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">How to check it\u2019s really done</div>'
+    + '<ol style="margin:0;padding-left:18px;">'
+    + steps.map(function(s) { return '<li style="font-size:13px;color:var(--tb);line-height:1.7;margin-bottom:6px;">' + s + '</li>'; }).join('')
+    + '</ol></div>';
+}
+
 function buildDeliverables(r) {
   var d = r.deliverables;
   if (!d && r.readyToUseAssets) return buildAssetsFromReadyToUse(r.readyToUseAssets);
@@ -6445,6 +6486,7 @@ function buildDeliverables(r) {
           + '<button class="deliv-copy-btn" onclick="downloadDeliv(\'dLlmsCode\', \'llms.txt\')">Download llms.txt</button>'
           + '</div>';
       })()
+    + buildVerifyBlock('llms', r)
     + '</div>';
 
   var h1Html = '';
@@ -6482,6 +6524,7 @@ function buildDeliverables(r) {
     metaHtml += '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:8px;">Improved version</div>'
       + '<div class="deliv-code" id="dMetaCode">' + esc(d.metaDesc.improved || '') + '</div>'
       + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dMetaCode\')">Copy search result description</button>'
+      + buildVerifyBlock('meta', r)
       + '</div>';
   }
 
@@ -6507,6 +6550,7 @@ function buildDeliverables(r) {
       + '<div><div style="font-size:10px;color:var(--tm);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Platforms</div><div style="font-size:18px;font-weight:700;color:var(--tp);">' + esc(reviewPlatformDisplay) + '</div></div>'
       + '</div>'
       + '<div style="font-size:14px;color:var(--tb);line-height:1.75;">' + esc(ra.instruction || '') + '</div>'
+      + (ra.isReviewPlatform === false ? '' : buildVerifyBlock('reviews', r))
       + '</div>';
   }
 
@@ -6526,6 +6570,7 @@ function buildDeliverables(r) {
         + '<div class="deliv-code" id="dSchemaCode">' + esc(sb.jsonLd) + '</div>'
         + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dSchemaCode\')">Copy website facts code</button>' : '')
       + '<div style="font-size:12px;color:var(--tm);margin-top:12px;">Timing: ' + esc(sb.timeEstimate || 'Ask your developer for an estimate after reviewing the website setup') + '</div>'
+      + buildVerifyBlock('schema', r)
       + '</div>';
   }
 
