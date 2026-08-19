@@ -4969,9 +4969,9 @@ function showResults(r, jobId) {
     };
     return '<div class="report-glance">'
       + cell('CHOIVE score', sc + '<small> / 100</small>', esc(scoreBand))
-      + cell('Did AI name you?', (completed ? appeared + '<small> of ' + completed + '</small>' : '—'), completed ? 'Completed AI answers that named the business' : 'AI checks did not finish')
-      + cell('Score areas that are low', lowPillars + '<small> of 4</small>', lowPillars ? 'Places where proof is missing' : 'No weak areas found')
-      + cell('Closest competitor', (topComp ? '<span style="font-size:15px;font-family:Inter,sans-serif;font-weight:700;">' + esc(topComp) + '</span>' : '—'), topComp ? 'The nearest business CHOIVE checked' : 'CHOIVE could not find one')
+      + cell('Did AI name you?', (completed ? appeared + '<small> of ' + completed + '</small>' : '—'), completed ? 'AI answers that named you' : 'AI checks did not finish')
+      + cell('Low score areas', lowPillars + '<small> of 4</small>', lowPillars ? 'Parts where you need more proof' : 'No weak areas found')
+      + cell('Closest competitor', (topComp ? '<span style="font-size:15px;font-family:Inter,sans-serif;font-weight:700;">' + esc(topComp) + '</span>' : '—'), topComp ? 'The closest business CHOIVE checked' : 'CHOIVE could not find one')
       + '</div>';
   }
   // ── Premium table of contents ──────────────────────────────────────────
@@ -6384,25 +6384,25 @@ function showResults(r, jobId) {
     var competitorSection = competitorComparisonBlock || ('<section class="pay-section" id="report-competitors"><div class="pay-eyebrow">Who Competes With You</div>'
       + compBlock + extraCompsHtml + '</section>');
     // ── PART 1 — How AI sees you now ────────────────────────────────────
-    return reportChapter(1, 'How AI sees you now', 'The basic facts AI has about your business, and how it reads you today \u2014 next to how it can read you after your fixes.', 'chapter-1')
+    return reportChapter(1, 'How AI sees you now', 'The basic facts AI has about your business, and how AI reads you today \u2014 and how it can read you after you fix things.', 'chapter-1')
       + buildBusinessProfile()
       + buildBusinessIntelligence()
       + buildPlatformRecommendationBlock()
       // ── PART 2 — Where you stand vs rivals ─────────────────────────────
-      + reportChapter(2, 'Where you stand vs rivals', 'The businesses you compete with, how you compare point by point, and the biggest gap to close first.', 'chapter-2')
+      + reportChapter(2, 'Where you stand vs rivals', 'The businesses you compete with, how you compare to them, and the biggest gap to close.', 'chapter-2')
       + competitorSection
       + dualArenaBlock
       + buildCompetitorStrategySection()
       + buildEvidenceGapSummary()
       // ── PART 3 — Why you got this score ────────────────────────────────
-      + reportChapter(3, 'Why you got this score', 'Every point is tied to a fact CHOIVE checked. Here is the proof behind each of your four scores.', 'chapter-3')
+      + reportChapter(3, 'Why you got this score', 'Every point comes from a fact CHOIVE checked. Here is the proof for each of your four scores.', 'chapter-3')
       + buildPaidPillarEvidence()
       + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Proof Behind Your CHOIVE Result</div>'
       + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This result comes from website checks, other public websites, and the AI answers saved during this run.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
       // ── PART 4 — What to do next ───────────────────────────────────────
-      + reportChapter(4, 'What to do next', 'The exact jobs to do, in the best order \u2014 plus the money math and your 90-day plan.', 'chapter-4')
+      + reportChapter(4, 'What to do next', 'The exact jobs to do, in the best order \u2014 plus how much you can gain and your first 90 days.', 'chapter-4')
       + buildPriorityFixPlan()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">What to Fix First</div><div class="paid-section-header">Do these jobs in this order</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('')
@@ -6412,7 +6412,7 @@ function showResults(r, jobId) {
       + buildMilestonePlan()
       + buildOperatingRoadmap()
       // ── PART 5 — Work ready to use ─────────────────────────────────────
-      + reportChapter(5, 'Work ready to use', 'CHOIVE has already written these for you. Check the facts, copy them, and publish. Your Verified Kit is here too.', 'chapter-5')
+      + reportChapter(5, 'Work ready to use', 'CHOIVE wrote these for you. Check the facts, copy them, and put them live. Your Verified Kit is here too.', 'chapter-5')
       + '<section class="pay-section deliv-section" id="report-assets">'
       + '<div class="pay-eyebrow">Work Ready for ' + esc(bizData.name || 'Your Business') + '</div>'
       + '<div class="paid-section-header">CHOIVE has already written this work</div>'
@@ -6422,7 +6422,7 @@ function showResults(r, jobId) {
       + '<div id="delivContent"></div></section>'
       + buildVisualAssetsSection()
       // ── PART 6 — The receipts (AI answers + method) ────────────────────
-      + reportChapter(6, 'The receipts', 'The exact questions CHOIVE asked and the exact answers each AI tool gave. Nothing edited. This is your proof.', 'chapter-6')
+      + reportChapter(6, 'The receipts', 'The exact questions CHOIVE asked and the exact answers each AI gave. Nothing changed. This is your proof.', 'chapter-6')
       + buildPlatformCoverageSection()
       + buildQueryCoverageMap()
       + '<section class="pay-section sim-section" id="simSection">'
@@ -6436,7 +6436,7 @@ function showResults(r, jobId) {
       + buildEvidenceLegend()
       + buildMeasurementIntegrity()
       // ── PART 7 — Keep improving ────────────────────────────────────────
-      + reportChapter(7, 'Keep improving', 'How to lock in your progress and prove your score went up next time.', 'chapter-7')
+      + reportChapter(7, 'Keep improving', 'How to keep your progress and prove your score went up next time.', 'chapter-7')
       + buildIncludedMonitoring()
       + buildClosingConclusion()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
