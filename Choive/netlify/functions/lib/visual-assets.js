@@ -272,6 +272,40 @@ function certificateSvg(score, businessName, opts, result) {
   // QR code (right side)
   const qrX = 940, qrY = 1040, qrSize = 130;
 
+  // ── UNIQUE CENTREPIECE: the CHOIVE Score RING built from the 4 pillars ──
+  // Nobody else's certificate is a data-visualisation. The overall score sits
+  // in the middle; the ring around it is split into four arcs — Clarity, Trust,
+  // Difference, Ease — each arc filling to its own sub-score. The layout IS the
+  // CHOIVE framework, so the certificate is unmistakably, unfakeably CHOIVE.
+  const pillars = readPillars(result);
+  const ringCx = cx, ringCy = 1000, ringR = 210, ringSW = 34;
+  const polar = function (r, deg) { const a = deg * Math.PI / 180; return [ringCx + r * Math.cos(a), ringCy + r * Math.sin(a)]; };
+  const arcPath = function (r, a0, a1) { const p0 = polar(r, a0), p1 = polar(r, a1); const large = (a1 - a0) > 180 ? 1 : 0; return 'M ' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2); };
+  // four quadrants, top-right / bottom-right / bottom-left / top-left, 6deg gaps
+  const quads = [{ a0: -87, a1: -3, mid: -45 }, { a0: 3, a1: 87, mid: 45 }, { a0: 93, a1: 177, mid: 135 }, { a0: 183, a1: 267, mid: 225 }];
+  let ringSegs = '';
+  for (let pi = 0; pi < 4; pi++) {
+    const q = quads[pi];
+    const p = pillars[pi];
+    const span = q.a1 - q.a0;
+    // faint track for the whole quadrant
+    ringSegs += '<path d="' + arcPath(ringR, q.a0, q.a1) + '" fill="none" stroke="' + BRAND.track + '" stroke-width="' + ringSW + '" stroke-linecap="round"/>';
+    if (p) {
+      const frac = Math.max(0, Math.min(1, p.score / 25));
+      const pcol = scoreColor(p.score * 4);
+      if (frac > 0) ringSegs += '<path d="' + arcPath(ringR, q.a0, q.a0 + span * frac) + '" fill="none" stroke="' + pcol + '" stroke-width="' + ringSW + '" stroke-linecap="round"/>';
+      const lp = polar(ringR + 74, q.mid);
+      ringSegs += '<text x="' + lp[0].toFixed(0) + '" y="' + (lp[1] - 4).toFixed(0) + '" font-family="' + SANS + '" font-size="26" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">' + xml(p.label) + '</text>';
+      ringSegs += '<text x="' + lp[0].toFixed(0) + '" y="' + (lp[1] + 26).toFixed(0) + '" font-family="' + SANS + '" font-size="22" font-weight="700" fill="' + pcol + '" text-anchor="middle">' + p.score + '/25</text>';
+    }
+  }
+  const certRing = '<g>' + ringSegs
+    + '<text x="' + ringCx + '" y="' + (ringCy - 44) + '" font-family="' + SANS + '" font-size="22" letter-spacing="5" fill="' + BRAND.muted + '" text-anchor="middle">CHOIVE SCORE</text>'
+    + '<text x="' + ringCx + '" y="' + (ringCy + 40) + '" font-family="' + SERIF + '" font-size="120" font-weight="700" fill="' + col + '" text-anchor="middle">' + score + '</text>'
+    + '<text x="' + ringCx + '" y="' + (ringCy + 76) + '" font-family="' + SANS + '" font-size="22" fill="' + BRAND.muted + '" text-anchor="middle">out of 100</text>'
+    + '<text x="' + ringCx + '" y="' + (ringCy + 122) + '" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + word.toUpperCase() + '</text>'
+    + '</g>';
+
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE certificate for ' + name + '">'
     + '<defs><radialGradient id="certFoil" cx="38%" cy="32%" r="75%">'
     + '<stop offset="0" stop-color="' + BRAND.goldLight + '"/><stop offset="0.45" stop-color="' + BRAND.gold + '"/>'
@@ -296,32 +330,24 @@ function certificateSvg(score, businessName, opts, result) {
     + '<line x1="' + (cx - 280) + '" y1="380" x2="' + (cx - 20) + '" y2="380" stroke="' + BRAND.gold + '" stroke-width="1"/>'
     + '<line x1="' + (cx + 20) + '" y1="380" x2="' + (cx + 280) + '" y2="380" stroke="' + BRAND.gold + '" stroke-width="1"/>'
     // "Presented to"
-    + '<text x="' + cx + '" y="450" font-family="' + SANS + '" font-size="22" fill="' + BRAND.muted + '" text-anchor="middle">Presented to</text>'
+    + '<text x="' + cx + '" y="440" font-family="' + SANS + '" font-size="22" fill="' + BRAND.muted + '" text-anchor="middle">Presented to</text>'
     // Business name in brackets
-    + '<text x="' + cx + '" y="540" font-family="' + SERIF + '" font-size="68" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">[ ' + shownName + ' ]</text>'
-    + '<line x1="' + (cx - 360) + '" y1="570" x2="' + (cx + 360) + '" y2="570" stroke="' + BRAND.gold + '" stroke-width="1"/>'
-    // Recognition text
-    + '<text x="' + cx + '" y="640" font-family="' + SANS + '" font-size="20" fill="' + BRAND.muted + '" text-anchor="middle">In recognition of your commitment to measurable AI visibility</text>'
-    + '<text x="' + cx + '" y="674" font-family="' + SANS + '" font-size="20" fill="' + BRAND.muted + '" text-anchor="middle">and for completing the CHOIVE Full Report.</text>'
-    // Gold diamond separator
-    + '<path d="M ' + (cx - 8) + ' 720 L ' + cx + ' 710 L ' + (cx + 8) + ' 720 L ' + cx + ' 730 Z" fill="' + BRAND.gold + '"/>'
-    + '<line x1="' + (cx - 280) + '" y1="720" x2="' + (cx - 20) + '" y2="720" stroke="' + BRAND.gold + '" stroke-width="1"/>'
-    + '<line x1="' + (cx + 20) + '" y1="720" x2="' + (cx + 280) + '" y2="720" stroke="' + BRAND.gold + '" stroke-width="1"/>'
-    // CRITICAL: CHOIVE SCORE prominently displayed (clean, non-overlapping layout)
-    + '<text x="' + cx + '" y="800" font-family="' + SANS + '" font-size="26" font-weight="700" letter-spacing="10" fill="' + BRAND.gold + '" text-anchor="middle">CHOIVE FULL REPORT RECIPIENT</text>'
-    + '<text x="' + cx + '" y="875" font-family="' + SANS + '" font-size="24" letter-spacing="2" fill="' + BRAND.muted + '" text-anchor="middle">CHOIVE SCORE</text>'
-    + '<text x="' + cx + '" y="965" font-family="' + SERIF + '" font-size="80" font-weight="700" fill="' + col + '" text-anchor="middle">' + score + '<tspan font-family="' + SANS + '" font-size="30" fill="' + BRAND.muted + '"> / 100</tspan></text>'
-    + '<text x="' + cx + '" y="1015" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + word.toUpperCase() + '</text>'
-    // Report ID and Date (spread wide so they never collide)
-    + '<text x="' + (cx - 260) + '" y="1085" font-family="' + SANS + '" font-size="18" letter-spacing="1" fill="' + BRAND.muted + '" text-anchor="start">REPORT ID: ' + (opts && opts.jobId ? xml(opts.jobId.substring(0, 12).toUpperCase()) : 'CH-000000') + '</text>'
-    + '<text x="' + cx + '" y="1085" font-family="' + SANS + '" font-size="18" fill="' + BRAND.gold + '" text-anchor="middle">\u2666</text>'
-    + '<text x="' + (cx + 260) + '" y="1085" font-family="' + SANS + '" font-size="18" letter-spacing="1" fill="' + BRAND.muted + '" text-anchor="end">DATE: ' + issued + '</text>'
+    + '<text x="' + cx + '" y="524" font-family="' + SERIF + '" font-size="64" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">[ ' + shownName + ' ]</text>'
+    + '<line x1="' + (cx - 360) + '" y1="556" x2="' + (cx + 360) + '" y2="556" stroke="' + BRAND.gold + '" stroke-width="1"/>'
+    // One concise recognition line (no "report recipient" framing)
+    + '<text x="' + cx + '" y="612" font-family="' + SANS + '" font-size="20" fill="' + BRAND.muted + '" text-anchor="middle">A verified measurement of how AI sees this business.</text>'
+    // UNIQUE CENTREPIECE: the pillar ring with the score at its heart
+    + certRing
     // Gold seal (left)
     + certSeal
     // QR code (right) with label
     + '<rect x="' + qrX + '" y="' + qrY + '" width="' + qrSize + '" height="' + qrSize + '" rx="8" fill="' + BRAND.paper + '" stroke="' + BRAND.gold + '" stroke-width="2"/>'
     + qrSvg(verifyUrl(opts), qrX + 10, qrY + 10, qrSize - 20, { dark: BRAND.ink })
     + '<text x="' + (qrX + qrSize / 2) + '" y="' + (qrY + qrSize + 26) + '" font-family="' + SANS + '" font-size="14" fill="' + BRAND.muted + '" text-anchor="middle">Scan to verify</text>'
+    // Report ID and Date (below the ring, spread wide so they never collide)
+    + '<text x="' + (cx - 260) + '" y="1310" font-family="' + SANS + '" font-size="18" letter-spacing="1" fill="' + BRAND.muted + '" text-anchor="start">REPORT ID: ' + (opts && opts.jobId ? xml(opts.jobId.substring(0, 12).toUpperCase()) : 'CH-000000') + '</text>'
+    + '<text x="' + cx + '" y="1310" font-family="' + SANS + '" font-size="18" fill="' + BRAND.gold + '" text-anchor="middle">\u2666</text>'
+    + '<text x="' + (cx + 260) + '" y="1310" font-family="' + SANS + '" font-size="18" letter-spacing="1" fill="' + BRAND.muted + '" text-anchor="end">DATE: ' + issued + '</text>'
     // Signature line
     + sigMark
     + '<line x1="420" y1="1530" x2="820" y2="1530" stroke="' + BRAND.ink + '" stroke-width="1"/>'

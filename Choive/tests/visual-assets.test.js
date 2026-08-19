@@ -139,6 +139,29 @@ test('cert: carries an embossed gold-foil verification seal', () => {
   assert.ok(a.certificate.indexOf('VERIFIED') !== -1, 'seal reads VERIFIED');
 });
 
+test('cert: centrepiece is the CHOIVE pillar ring (unique data-viz), not a plain diploma', () => {
+  const a = buildVisualAssets(
+    { overallScore: 78, pillars: { clarity: { score: 20 }, trust: { score: 19 }, difference: { score: 18 }, ease: { score: 21 } } },
+    { name: 'Bright Smile Dental' },
+    { jobId: 'CH-8A2F91' }
+  );
+  const c = a.certificate;
+  // four pillar labels ring the score
+  ['Clarity', 'Trust', 'Difference', 'Ease'].forEach(function (p) {
+    assert.ok(c.indexOf('>' + p + '<') !== -1, 'ring shows pillar label ' + p);
+  });
+  // each pillar sub-score out of 25 is drawn
+  ['20/25', '19/25', '18/25', '21/25'].forEach(function (s) {
+    assert.ok(c.indexOf(s) !== -1, 'ring shows pillar sub-score ' + s);
+  });
+  // ring is built from SVG arc paths (the data-visualisation), and the overall
+  // score sits at its heart labelled "out of 100"
+  assert.ok(/<path d="M [\d.]+ [\d.]+ A 210 210/.test(c), 'ring is drawn with arc paths');
+  assert.ok(c.indexOf('out of 100') !== -1, 'overall score is centred with "out of 100"');
+  // the old generic "report recipient" framing is gone
+  assert.ok(c.indexOf('CHOIVE FULL REPORT RECIPIENT') === -1, 'no generic report-recipient label');
+});
+
 // ── Seal (embossed medallion) tests ─────────────────────────────────────────
 test('seal: is an embossed gold-foil medallion (metallic gradient + beaded edge)', () => {
   const a = buildVisualAssets(fullResult(82), { name: 'Bright Smile Dental' }, { jobId: 'Z' });
