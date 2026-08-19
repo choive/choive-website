@@ -78,7 +78,16 @@ exports.handler = async function (event) {
       catch (e) { console.error('CHOIVE keyword-strategy error:', e.message); }
       try { extras.implementationPlan = buildImplementationPlan(diagnostic.result); }
       catch (e) { console.error('CHOIVE implementation-plan error:', e.message); }
-      try { extras.visualAssets = buildVisualAssets(diagnostic.result, diagnostic.input); }
+      try {
+        // The QR codes on the downloadable marks must resolve to the canonical
+        // public site (they travel outside Netlify preview URLs), so we point
+        // them at the production origin and this exact result's job id.
+        const publicOrigin = process.env.CHOIVE_PUBLIC_ORIGIN || 'https://choive.com';
+        extras.visualAssets = buildVisualAssets(diagnostic.result, diagnostic.input, {
+          origin: publicOrigin,
+          jobId: jobId
+        });
+      }
       catch (e) { console.error('CHOIVE visual-assets error:', e.message); }
       paidResult = Object.assign({}, diagnostic.result, extras);
     }

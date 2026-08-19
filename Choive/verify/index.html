@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify a CHOIVE Score — Real, Checked, Not Faked</title>
+<meta name="description" content="Check that a CHOIVE Score is real. Every CHOIVE badge links here so anyone can confirm the score was truly measured by CHOIVE and has not been changed.">
+<link rel="canonical" href="https://choive.com/verify">
+<meta name="robots" content="noindex, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Verify a CHOIVE Score">
+<meta property="og:description" content="Confirm a CHOIVE Score is real and checked by CHOIVE.">
+<meta property="og:url" content="https://choive.com/verify">
+<meta property="og:image" content="https://choive.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+:root{--ink:#101012;--muted:#68686f;--paper:#f5f2ee;--paper2:#e9e5df;--void:#0c0c0e;--gold:#c9a86a;--rule:#d6d1c9;--green:#4a9965;--amber:#b98a2e;--red:#b13d3d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:var(--paper);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased}
+header{background:var(--void);color:#f5f2ee;padding:20px 32px;position:sticky;top:0;z-index:2}
+.nav{max-width:1040px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{color:#f5f2ee;text-decoration:none;font-weight:700;letter-spacing:.08em}.brand span{color:var(--gold)}
+.nav a:last-child{color:var(--gold);font-size:13px;text-decoration:none}
+main{max-width:720px;margin:auto;padding:56px 24px 96px}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;color:#8b6d38;letter-spacing:.16em;text-align:center;margin-bottom:14px}
+h1{font-family:"Libre Baskerville",serif;font-size:clamp(30px,5vw,46px);line-height:1.1;text-align:center;margin-bottom:14px}
+.sub{font-size:16px;color:#4f4f56;text-align:center;max-width:560px;margin:0 auto 40px}
+.card{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,.04);text-align:center}
+.state{min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.spinner{width:34px;height:34px;border:3px solid var(--paper2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vstamp{display:inline-flex;align-items:center;gap:9px;background:rgba(74,153,101,.1);color:var(--green);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;padding:9px 18px;border-radius:999px;border:1px solid rgba(74,153,101,.3);margin-bottom:26px}
+.vstamp svg{width:16px;height:16px}
+.dialwrap{position:relative;width:220px;height:220px;margin:8px auto 6px}
+.dialwrap svg{width:100%;height:100%}
+.dialscore{position:absolute;top:50%;left:50%;transform:translate(-50%,-54%);font-family:"Libre Baskerville",serif;font-size:66px;font-weight:700;color:var(--ink)}
+.dialout{position:absolute;top:50%;left:50%;transform:translate(-50%,44px);font-size:12px;letter-spacing:.14em;color:var(--muted)}
+.band{font-size:15px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:6px 0 22px}
+.bizname{font-family:"Libre Baskerville",serif;font-size:26px;font-weight:700;margin-bottom:4px}
+.bizmeta{font-size:14px;color:var(--muted);margin-bottom:26px}
+.pillars{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;max-width:440px;margin:0 auto 28px;text-align:left}
+.pil{}
+.pil .lab{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px}
+.pil .lab b{color:var(--muted);font-weight:700}
+.track{height:8px;background:var(--paper2);border-radius:5px;overflow:hidden}
+.fill{height:100%;border-radius:5px}
+.meta{font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:20px;margin-top:8px}
+.meta b{color:var(--ink)}
+.btn{display:inline-block;background:var(--gold);color:var(--void);padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;margin-top:22px}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--rule);margin-left:8px}
+.err{color:var(--red);font-weight:600;font-size:16px}
+.errsub{color:var(--muted);font-size:14px;margin-top:8px}
+.explain{font-size:13px;color:var(--muted);text-align:center;max-width:560px;margin:34px auto 0;line-height:1.8}
+.explain b{color:var(--ink)}
+footer{background:var(--void);color:#9ca3af;padding:40px 32px;font-size:13px;text-align:center;margin-top:40px}
+footer a{color:#9ca3af;text-decoration:none}footer a:hover{color:var(--gold)}
+.tagline{font-family:"Libre Baskerville",serif;font-style:italic;color:var(--gold);font-size:15px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="/" class="brand">CHOIVE<span>.</span></a>
+    <a href="/">Run Diagnostic →</a>
+  </div>
+</header>
+<main>
+  <div class="eyebrow">CHOIVE Score Check</div>
+  <h1>Is this score real?</h1>
+  <p class="sub">Every CHOIVE badge sends you here. This page reads the score straight from CHOIVE, so you can be sure it is real and has not been changed.</p>
+
+  <div class="card">
+    <div id="state" class="state">
+      <div class="spinner" aria-label="Checking"></div>
+    </div>
+  </div>
+
+  <p class="explain">
+    <b>Why you can trust this:</b> the number above is read live from CHOIVE for this exact business.
+    Nobody can type in their own score. If a badge shows a score, this page will always show the same real one.
+  </p>
+</main>
+<footer>
+  <div class="tagline">Be the answer. Not the alternative.</div>
+  <a href="/">choive.com</a> &nbsp;·&nbsp; <a href="/methodology">How we measure</a> &nbsp;·&nbsp; <a href="/badge">Get a badge</a>
+</footer>
+
+<script>
+(function(){
+  var GREEN='#4a9965', AMBER='#b98a2e', RED='#b13d3d';
+  function bandColor(s){ return s>=76?GREEN:s>=56?AMBER:RED; }
+  function bandWord(s){ return s>=76?'Strong':s>=56?'Building':'At risk'; }
+  function esc(t){ var d=document.createElement('div'); d.textContent=(t==null?'':String(t)); return d.innerHTML; }
+
+  function getJobId(){
+    var p = new URLSearchParams(window.location.search);
+    return p.get('j') || p.get('jobId') || p.get('job') || '';
+  }
+
+  function fmtDate(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return '';
+    var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return d.getUTCDate()+' '+m[d.getUTCMonth()]+' '+d.getUTCFullYear();
+  }
+
+  function dialSvg(score){
+    var r=95, c=2*Math.PI*r, frac=Math.max(0,Math.min(1,score/100));
+    var dash=(c*frac).toFixed(1), gap=(c*(1-frac)).toFixed(1), col=bandColor(score);
+    return '<svg viewBox="0 0 220 220" role="img" aria-label="CHOIVE score">'
+      + '<circle cx="110" cy="110" r="'+r+'" fill="none" stroke="#e9e5df" stroke-width="18"/>'
+      + '<circle cx="110" cy="110" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="18" stroke-linecap="round" stroke-dasharray="'+dash+' '+gap+'" transform="rotate(-90 110 110)"/>'
+      + '</svg>';
+  }
+
+  function pillarRow(label, val){
+    var pct=Math.max(0,Math.min(100,(val/25)*100));
+    return '<div class="pil"><div class="lab"><span>'+esc(label)+'</span><b>'+val+'/25</b></div>'
+      + '<div class="track"><div class="fill" style="width:'+pct+'%;background:'+bandColor(val*4)+'"></div></div></div>';
+  }
+
+  function render(data){
+    var el=document.getElementById('state');
+    var score=Math.round(Number(data.score));
+    var col=bandColor(score);
+    var pillars=data.pillars||{};
+    var order=[['clarity','Clarity'],['trust','Trust'],['difference','Difference'],['ease','Ease']];
+    var pillarHtml='';
+    var have=order.every(function(p){ return pillars[p[0]] && isFinite(Number(pillars[p[0]].score)); });
+    if(have){
+      pillarHtml='<div class="pillars">'+order.map(function(p){
+        return pillarRow(p[1], Math.round(Number(pillars[p[0]].score)));
+      }).join('')+'</div>';
+    }
+    var checkSvg='<svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="'+GREEN+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    el.classList.remove('state'); el.style.minHeight='0';
+    el.innerHTML =
+        '<div class="vstamp">'+checkSvg+' Verified by CHOIVE</div>'
+      + '<div class="dialwrap">'+dialSvg(score)
+      +   '<div class="dialscore">'+score+'</div><div class="dialout">OUT OF 100</div></div>'
+      + '<div class="band" style="color:'+col+'">'+bandWord(score)+'</div>'
+      + '<div class="bizname">'+esc(data.name||'This business')+'</div>'
+      + (data.category||data.city ? '<div class="bizmeta">'+esc([data.category,data.city].filter(Boolean).join(' · '))+'</div>' : '<div style="height:8px"></div>')
+      + pillarHtml
+      + '<div class="meta">This is the real CHOIVE Score for this business'
+      +   (data.date ? ', first measured on <b>'+esc(data.date)+'</b>' : '') + '.'
+      +   '<br>A CHOIVE Score can change over time as a business improves.</div>'
+      + '<a class="btn" href="/?jobId='+encodeURIComponent(data.jobId)+'">See the full result →</a>'
+      + '<a class="btn sec" href="/">Check your own business</a>';
+  }
+
+  function showError(title, sub){
+    var el=document.getElementById('state');
+    el.classList.remove('state'); el.style.minHeight='0';
+    el.innerHTML='<div class="err">'+esc(title)+'</div><div class="errsub">'+esc(sub)+'</div>'
+      + '<a class="btn" href="/" style="margin-top:20px">Run a CHOIVE diagnostic →</a>';
+  }
+
+  var jobId=getJobId();
+  if(!jobId){
+    showError('No score to check', 'This link is missing its code. Open the link from a CHOIVE badge, or run your own diagnostic.');
+    return;
+  }
+
+  fetch('/.netlify/functions/get-result?jobId='+encodeURIComponent(jobId))
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(!j){ showError('We could not check this score', 'Please try again in a moment.'); return; }
+      if(j.status!=='complete' || !j.result){ showError('This score is not ready yet', 'The diagnostic for this business has not finished.'); return; }
+      var s=Math.round(Number(j.result.overallScore));
+      if(!(s>=0 && s<=100)){ showError('We could not read this score', 'The score for this business is not available.'); return; }
+      render({
+        jobId: jobId,
+        score: s,
+        pillars: j.result.pillars || {},
+        name: (j.input && j.input.name) || '',
+        category: (j.input && j.input.category) || '',
+        city: (j.input && j.input.city) || '',
+        date: fmtDate(j.createdAt)
+      });
+    })
+    .catch(function(){ showError('We could not check this score', 'Please check your connection and try again.'); });
+})();
+</script>
+</body>
+</html>

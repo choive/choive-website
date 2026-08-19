@@ -6252,30 +6252,40 @@ function showResults(r, jobId) {
     var va = r.visualAssets;
     if (!va || !va.available) return '';
     var safeName = String(bizData.name || 'choive').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'choive';
-    function assetCard(domId, fileBase, title, note, svg, isWide) {
+    function assetCard(domId, fileBase, title, note, svg, maxW) {
       if (!svg) return '';
       return '<div style="border:1px solid var(--rule);border-radius:12px;padding:18px;background:var(--paper);margin-bottom:16px;">'
         + '<div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">' + esc(title) + '</div>'
         + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:14px;">' + esc(simpleWords(note)) + '</div>'
         + '<div id="' + domId + '" style="display:flex;justify-content:center;align-items:center;background:var(--paper-2);border-radius:8px;padding:16px;overflow:auto;">'
-        + '<div style="width:100%;max-width:' + (isWide ? '640px' : '280px') + ';">' + svg + '</div>'
+        + '<div style="width:100%;max-width:' + (maxW || '280px') + ';">' + svg + '</div>'
         + '</div>'
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'
         + '<button type="button" onclick="choiveDownloadPng(\'' + domId + '\',\'' + safeName + '-' + fileBase + '.png\')" class="pay-btn-primary" style="border:none;cursor:pointer;padding:11px 20px;font-size:13px;">Download picture (PNG)</button>'
         + '<button type="button" onclick="choiveDownloadSvg(\'' + domId + '\',\'' + safeName + '-' + fileBase + '.svg\')" class="pay-btn-secondary" style="cursor:pointer;padding:11px 20px;font-size:13px;">Download sharp file (SVG)</button>'
         + '</div></div>';
     }
-    var cards = ''
-      + assetCard('choiveAssetCert', 'certificate', 'Signed certificate', 'A framed certificate with your real score, the date, and the CHOIVE founder\u2019s signature. Print it or put it on your wall.', va.certificate, true)
-      + assetCard('choiveAssetCard', 'score-card', 'Shareable score card', 'A wide picture with your score and all four areas. Good for posts and slides.', va.scoreCard, true)
-      + assetCard('choiveAssetDial', 'score-dial', 'Score dial', 'A round picture of your one CHOIVE score. Good for a website or email.', va.scoreDial, false)
-      + assetCard('choiveAssetBars', 'pillar-chart', 'Four-area chart', 'A simple bar picture showing how you did in each of the four areas.', va.pillarBars, false);
-    if (!cards) return '';
+    // The Verified Kit — the branded marks that each carry a QR that scans to
+    // your live result page, so anyone can check the score is real.
+    var kit = ''
+      + assetCard('choiveAssetCert', 'certificate', 'Signed certificate', 'A certificate with your real score, the date, and the CHOIVE founder\u2019s signature. It has a QR code people can scan to check it is real. Print it or put it on your wall.', va.certificate, '420px')
+      + assetCard('choiveAssetSeal', 'verified-seal', 'Verified seal', 'A round badge with your score in the middle. Great for a profile picture or a website corner.', va.seal, '400px')
+      + assetCard('choiveAssetSocial', 'social-card', 'Social card (square)', 'A square picture with your score, all four areas, and a QR code to check it. Best for Instagram and LinkedIn posts.', va.card, '420px')
+      + assetCard('choiveAssetStory', 'story', 'Story (tall)', 'A tall picture that fits a phone screen story. Has a QR code people can scan.', va.story, '300px')
+      + assetCard('choiveAssetChipLight', 'badge-light', 'Small badge (light)', 'A tiny wide badge for the bottom of an email or a light web page.', va.chipLight, '420px')
+      + assetCard('choiveAssetChipDark', 'badge-dark', 'Small badge (dark)', 'The same tiny badge in dark colours, for a dark email or web page.', va.chipDark, '420px');
+    // Extra utility graphics (no QR) that are handy inside the report.
+    var extras = ''
+      + assetCard('choiveAssetCard', 'wide-card', 'Wide link card', 'A wide picture with your score and all four areas. Best as a link preview or a slide.', va.scoreCard, '640px')
+      + assetCard('choiveAssetDial', 'score-dial', 'Score dial', 'A round picture of your one CHOIVE score. Good for a website or email.', va.scoreDial, '280px')
+      + assetCard('choiveAssetBars', 'pillar-chart', 'Four-area chart', 'A simple bar picture showing how you did in each of the four areas.', va.pillarBars, '460px');
+    if (!kit && !extras) return '';
     return '<section class="pay-section" id="report-visuals">'
-      + '<div class="pay-eyebrow">Your Branded CHOIVE Graphics</div>'
+      + '<div class="pay-eyebrow">Your CHOIVE Verified Kit</div>'
       + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.6;">Ready-made pictures of your score, in CHOIVE colours.</div>'
-      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">These pictures use only your real score. Download one and use it on your website, in emails, or in a post. PNG is a normal picture. SVG stays sharp at any size.</div>'
-      + cards
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">These pictures use only your real score. Each one in the kit has a QR code. When someone scans it, they land on your CHOIVE result page and can see the score is real. Download one and use it on your website, in emails, or in a post. PNG is a normal picture. SVG stays sharp at any size.</div>'
+      + kit
+      + (extras ? '<div style="font-size:13px;font-weight:700;color:var(--ink);margin:24px 0 12px;">More simple graphics</div>' + extras : '')
       + '</section>';
   }
 

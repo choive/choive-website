@@ -11,8 +11,26 @@
 // variables, no webfonts) — the file must render correctly on any background.
 //
 // The graphics NEVER add a label, rating, or claim that was not measured.
+//
+// The "Verified Kit" marks (seal, card, story, certificate, chip) each carry a
+// real QR code that points to the live verification page for THIS result, so a
+// scan always resolves to the genuine, current score. The QR is drawn straight
+// into the SVG (see lib/qr.js) — no webfont, no network, no canvas.
 
 'use strict';
+
+const { qrSvg } = require('./qr.js');
+
+// Build the verification URL a QR should encode for this result. It points at
+// the dedicated /verify page, which reads the job id and shows the real score.
+// Never a fabricated link — falls back to the generic /verify page.
+function verifyUrl(opts) {
+  if (opts && opts.verifyUrl) return String(opts.verifyUrl);
+  const origin = ((opts && opts.origin) || 'https://choive.com').replace(/\/+$/, '');
+  const jobId = opts && opts.jobId ? String(opts.jobId) : '';
+  const base = origin + '/verify';
+  return jobId ? base + '?j=' + encodeURIComponent(jobId) : base;
+}
 
 // Brand palette (literal — these files travel outside the site).
 const BRAND = {
@@ -24,6 +42,8 @@ const BRAND = {
   track: '#DED8CE',
   trackDark: '#26262A',
   muted: '#8A8579',
+  ghost: '#B8B2A6',
+  goldDark: '#A8863F',
   green: '#4A9965',
   amber: '#9A6A14',
   red: '#B13D3D'
@@ -89,6 +109,30 @@ function readPillars(result) {
     out.push({ key: key, label: PILLAR_LABELS[key], score: val });
   });
   return out;
+}
+
+// Shared: two concentric arcs forming a progress dial (track + filled portion).
+function dialArcs(cx, cy, r, sw, score, track, col) {
+  const C = 2 * Math.PI * r;
+  const frac = Math.max(0, Math.min(1, score / 100));
+  const dash = (C * frac).toFixed(1);
+  const gap = (C * (1 - frac)).toFixed(1);
+  return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + track + '" stroke-width="' + sw + '"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw
+    + '" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + gap + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>';
+}
+
+// Trim a business name so it never overflows its mark.
+function fit(name, max) {
+  return name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
+}
+
+// Truncate the RAW name first, THEN XML-escape — so truncation can never cut
+// through an escaped entity (e.g. "&gt;") and produce invalid markup.
+function clipName(raw, max, fallback) {
+  const s = String(raw == null ? '' : raw);
+  if (!s) return fallback || '';
+  return xml(fit(s, max));
 }
 
 // ── Asset 1: circular score dial ───────────────────────────────────────────
@@ -179,75 +223,176 @@ function scoreCardSvg(score, pillars, businessName) {
     + '</svg>';
 }
 
-// ── Asset 4: signed certificate of AI visibility ────────────────────────────
-// A formal, framed certificate built ONLY from the real recorded score and a
-// real issue date. It states the measured result and nothing more — no ranking,
-// no "best", no promise. Signed by the founder. If a real signature image is
-// supplied (opts.signatureDataUri, a PNG/SVG data URI) it is embedded; otherwise
-// the founder's name is rendered in a script style.
+// ── Asset 4: signed certificate of AI visibility (modern portrait) ──────────
+// A clean, printable portrait certificate built ONLY from the real recorded
+// score and a real issue date. It states the measured result and nothing more
+// — no ranking, no "best", no promise. Signed by the founder. If a real
+// signature image is supplied (opts.signatureDataUri) it is embedded; otherwise
+// the founder's name is rendered in a script style. Carries a QR that scans to
+// the live verification page for this exact result.
 function certificateSvg(score, businessName, opts, result) {
-  const W = 1200, H = 848;
+  const W = 1240, H = 1600;
   const col = scoreColor(score);
   const word = scoreWord(score);
   const name = businessName ? xml(businessName) : 'This Business';
-  const shownName = name.length > 40 ? name.slice(0, 39) + '\u2026' : name;
+  const shownName = clipName(businessName, 40, 'This Business');
   const issued = xml(formatIssueDate(opts, result));
   const cx = W / 2;
+  const vurl = xml(verifyUrl(opts));
   const sigDataUri = opts && opts.signatureDataUri ? String(opts.signatureDataUri) : '';
   // Signature: real image if provided, otherwise script-style name.
   const sigMark = sigDataUri
-    ? '<image href="' + xml(sigDataUri) + '" x="185" y="612" width="230" height="60" preserveAspectRatio="xMidYMax meet"/>'
-    : '<text x="300" y="662" font-family="' + SCRIPT + '" font-size="34" font-style="italic" fill="' + BRAND.ink + '" text-anchor="middle" textLength="210" lengthAdjust="spacingAndGlyphs">' + xml(FOUNDER_NAME) + '</text>';
-
-  // Gold verification seal (concentric rings + star), bottom-centre.
-  const seal = '<g transform="translate(' + cx + ',690)">'
-    + '<circle r="62" fill="none" stroke="' + BRAND.gold + '" stroke-width="2.5"/>'
-    + '<circle r="50" fill="none" stroke="' + BRAND.gold + '" stroke-width="1"/>'
-    + '<circle r="50" fill="' + BRAND.gold + '" opacity="0.06"/>'
-    + '<polygon points="0,-20 5.9,-6.2 20,-6.2 8.8,2.4 12.9,16 0,7.6 -12.9,16 -8.8,2.4 -20,-6.2 -5.9,-6.2" fill="' + BRAND.gold + '"/>'
-    + '<text x="0" y="34" font-family="' + SANS + '" font-size="10" font-weight="700" letter-spacing="2" fill="' + BRAND.gold + '" text-anchor="middle">VERIFIED</text>'
-    + '<text x="0" y="-38" font-family="' + SANS + '" font-size="9" font-weight="700" letter-spacing="3" fill="' + BRAND.gold + '" text-anchor="middle">CHOIVE</text>'
-    + '</g>';
+    ? '<image href="' + xml(sigDataUri) + '" x="180" y="1252" width="300" height="60" preserveAspectRatio="xMidYMax meet"/>'
+    : '<text x="330" y="1300" font-family="' + SCRIPT + '" font-size="46" font-style="italic" fill="' + BRAND.ink + '" text-anchor="middle" textLength="300" lengthAdjust="spacingAndGlyphs">' + xml(FOUNDER_NAME) + '</text>';
 
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE certificate for ' + name + '">'
     + '<rect width="' + W + '" height="' + H + '" fill="' + BRAND.paper + '"/>'
-    // double gold frame
-    + '<rect x="24" y="24" width="' + (W - 48) + '" height="' + (H - 48) + '" fill="none" stroke="' + BRAND.gold + '" stroke-width="3"/>'
-    + '<rect x="38" y="38" width="' + (W - 76) + '" height="' + (H - 76) + '" fill="none" stroke="' + BRAND.gold + '" stroke-width="1"/>'
+    + '<rect x="0" y="0" width="' + W + '" height="14" fill="' + BRAND.gold + '"/>'
+    + '<rect x="0" y="' + (H - 14) + '" width="' + W + '" height="14" fill="' + BRAND.gold + '"/>'
     // header
-    + '<text x="' + cx + '" y="110" font-family="' + SERIF + '" font-size="34" font-weight="700" letter-spacing="3" fill="' + BRAND.ink + '" text-anchor="middle">CHOIVE</text>'
-    + '<text x="' + cx + '" y="134" font-family="' + SANS + '" font-size="12" letter-spacing="4" fill="' + BRAND.muted + '" text-anchor="middle">AI SELECTION INDEX</text>'
+    + '<text x="' + cx + '" y="150" font-family="' + SERIF + '" font-size="40" font-weight="700" letter-spacing="6" fill="' + BRAND.ink + '" text-anchor="middle">CHOIVE</text>'
+    + '<text x="' + cx + '" y="188" font-family="' + SANS + '" font-size="20" letter-spacing="6" fill="' + BRAND.muted + '" text-anchor="middle">AI SELECTION INDEX</text>'
     // title
-    + '<text x="' + cx + '" y="212" font-family="' + SERIF + '" font-size="46" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">Certificate of AI Visibility</text>'
-    + '<line x1="' + (cx - 130) + '" y1="240" x2="' + (cx + 130) + '" y2="240" stroke="' + BRAND.gold + '" stroke-width="2"/>'
+    + '<text x="' + cx + '" y="360" font-family="' + SANS + '" font-size="26" letter-spacing="8" fill="' + BRAND.muted + '" text-anchor="middle">CERTIFICATE OF AI VISIBILITY</text>'
+    + '<line x1="' + (cx - 90) + '" y1="400" x2="' + (cx + 90) + '" y2="400" stroke="' + BRAND.gold + '" stroke-width="3"/>'
     // recipient
-    + '<text x="' + cx + '" y="300" font-family="' + SANS + '" font-size="15" letter-spacing="1" fill="' + BRAND.muted + '" text-anchor="middle">This certifies that</text>'
-    + '<text x="' + cx + '" y="352" font-family="' + SERIF + '" font-size="40" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">' + shownName + '</text>'
-    + '<text x="' + cx + '" y="398" font-family="' + SANS + '" font-size="15" fill="' + BRAND.muted + '" text-anchor="middle">completed the CHOIVE diagnostic and achieved a verified</text>'
-    + '<text x="' + cx + '" y="420" font-family="' + SANS + '" font-size="15" fill="' + BRAND.muted + '" text-anchor="middle">AI Visibility Score of</text>'
-    // the real score
-    + '<text x="' + cx + '" y="500" font-family="' + SERIF + '" font-size="88" font-weight="700" fill="' + col + '" text-anchor="middle">' + score + '<tspan font-size="40" fill="' + BRAND.muted + '"> / 100</tspan></text>'
-    + '<text x="' + cx + '" y="536" font-family="' + SANS + '" font-size="16" font-weight="700" letter-spacing="2" fill="' + col + '" text-anchor="middle">' + word.toUpperCase() + '</text>'
-    // seal
-    + seal
+    + '<text x="' + cx + '" y="480" font-family="' + SANS + '" font-size="24" fill="' + BRAND.muted + '" text-anchor="middle">This certifies that</text>'
+    + '<text x="' + cx + '" y="560" font-family="' + SERIF + '" font-size="64" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">' + shownName + '</text>'
+    + '<text x="' + cx + '" y="620" font-family="' + SANS + '" font-size="24" fill="' + BRAND.muted + '" text-anchor="middle">achieved a verified AI Visibility Score of</text>'
+    // the real score, on a dial
+    + dialArcs(cx, 860, 175, 22, score, BRAND.paper2, col)
+    + '<text x="' + cx + '" y="845" font-family="' + SERIF + '" font-size="180" font-weight="700" fill="' + col + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="' + cx + '" y="960" font-family="' + SANS + '" font-size="24" letter-spacing="4" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
+    + '<text x="' + cx + '" y="1090" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + word.toUpperCase() + '</text>'
     // signature (left) and date (right)
     + sigMark
-    + '<line x1="185" y1="678" x2="415" y2="678" stroke="' + BRAND.ink + '" stroke-width="1"/>'
-    + '<text x="300" y="700" font-family="' + SANS + '" font-size="13" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">' + xml(FOUNDER_NAME) + '</text>'
-    + '<text x="300" y="718" font-family="' + SANS + '" font-size="11" fill="' + BRAND.muted + '" text-anchor="middle">' + xml(FOUNDER_TITLE) + '</text>'
-    + '<text x="900" y="662" font-family="' + SERIF + '" font-size="20" fill="' + BRAND.ink + '" text-anchor="middle">' + issued + '</text>'
-    + '<line x1="785" y1="678" x2="1015" y2="678" stroke="' + BRAND.ink + '" stroke-width="1"/>'
-    + '<text x="900" y="700" font-family="' + SANS + '" font-size="13" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">Date issued</text>'
-    // footer
-    + '<text x="' + cx + '" y="792" font-family="' + SERIF + '" font-size="16" font-style="italic" fill="' + BRAND.gold + '" text-anchor="middle">Be the answer. Not the alternative.  \u00b7  choive.com</text>'
+    + '<line x1="180" y1="1330" x2="480" y2="1330" stroke="' + BRAND.ink + '" stroke-width="1"/>'
+    + '<text x="330" y="1362" font-family="' + SANS + '" font-size="20" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">' + xml(FOUNDER_NAME) + '</text>'
+    + '<text x="330" y="1388" font-family="' + SANS + '" font-size="17" fill="' + BRAND.muted + '" text-anchor="middle">' + xml(FOUNDER_TITLE) + '</text>'
+    + '<text x="910" y="1310" font-family="' + SERIF + '" font-size="26" fill="' + BRAND.ink + '" text-anchor="middle">' + issued + '</text>'
+    + '<line x1="760" y1="1330" x2="1060" y2="1330" stroke="' + BRAND.ink + '" stroke-width="1"/>'
+    + '<text x="910" y="1362" font-family="' + SANS + '" font-size="20" font-weight="700" fill="' + BRAND.ink + '" text-anchor="middle">Date issued</text>'
+    // QR to the live verification page
+    + '<rect x="' + (cx - 45) + '" y="1420" width="90" height="90" rx="6" fill="' + BRAND.paper + '" stroke="' + BRAND.paper2 + '" stroke-width="1"/>'
+    + qrSvg(verifyUrl(opts), cx - 37, 1428, 74, { dark: BRAND.ink })
+    + '<text x="' + cx + '" y="1545" font-family="' + SANS + '" font-size="18" fill="' + BRAND.muted + '" text-anchor="middle">Scan to verify \u00b7 ' + vurl.replace(/^https?:\/\//, '') + '</text>'
+    + '</svg>';
+}
+
+// ── Kit 1: "The Seal" — circular verified emblem, square social (1080) ──────
+function sealSvg(score, businessName, opts) {
+  const W = 1080, H = 1080, cx = 540, cy = 540;
+  const col = scoreColor(score);
+  const shownName = clipName(businessName, 34, 'Your Business');
+  const tr = 430;
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE verified seal">'
+    + '<rect width="' + W + '" height="' + H + '" fill="' + BRAND.void + '"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="500" fill="none" stroke="' + BRAND.gold + '" stroke-width="2" opacity="0.4"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="470" fill="none" stroke="' + BRAND.gold + '" stroke-width="1" opacity="0.25"/>'
+    + '<defs><path id="cta" d="M ' + (cx - tr) + ' ' + cy + ' a ' + tr + ' ' + tr + ' 0 1 1 ' + (2 * tr) + ' 0"/>'
+    + '<path id="ctb" d="M ' + (cx - tr + 18) + ' ' + cy + ' a ' + (tr - 18) + ' ' + (tr - 18) + ' 0 1 0 ' + (2 * (tr - 18)) + ' 0"/></defs>'
+    + '<text font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="8" fill="' + BRAND.gold + '"><textPath href="#cta" startOffset="50%" text-anchor="middle">VERIFIED  AI  VISIBILITY</textPath></text>'
+    + '<text font-family="' + SANS + '" font-size="22" font-weight="600" letter-spacing="6" fill="' + BRAND.muted + '"><textPath href="#ctb" startOffset="50%" text-anchor="middle">CHOIVE  \u00b7  AI  SELECTION  INDEX</textPath></text>'
+    + dialArcs(cx, cy, 300, 30, score, BRAND.trackDark, col)
+    + '<text x="' + cx + '" y="' + (cy - 40) + '" font-family="' + SERIF + '" font-size="220" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 120) + '" font-family="' + SANS + '" font-size="30" letter-spacing="8" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
+    + '<text x="' + cx + '" y="' + (cy + 185) + '" font-family="' + SANS + '" font-size="34" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + scoreWord(score).toUpperCase() + '</text>'
+    + '<text x="' + cx + '" y="' + (H - 70) + '" font-family="' + SERIF + '" font-size="40" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle">' + shownName + '</text>'
+    + '</svg>';
+}
+
+// ── Kit 2: "The Card" — modern square social card with QR (1080) ────────────
+function cardSvg(score, pillars, businessName, opts) {
+  const W = 1080, H = 1080;
+  const col = scoreColor(score);
+  const name = businessName ? xml(businessName) : 'Your Business';
+  const bx = 120, by = 660, bw = 840, rowh = 64;
+  var bars = pillars.map(function (p, i) {
+    const y = by + i * rowh;
+    const f = Math.max(0, Math.min(1, p.score / 25));
+    return '<text x="' + bx + '" y="' + (y - 6) + '" font-family="' + SANS + '" font-size="26" font-weight="700" fill="' + BRAND.paper + '">' + xml(p.label) + '</text>'
+      + '<text x="' + (bx + bw) + '" y="' + (y - 6) + '" font-family="' + SANS + '" font-size="24" font-weight="700" fill="' + BRAND.gold + '" text-anchor="end">' + p.score + '/25</text>'
+      + '<rect x="' + bx + '" y="' + y + '" width="' + bw + '" height="14" rx="7" fill="' + BRAND.trackDark + '"/>'
+      + '<rect x="' + bx + '" y="' + y + '" width="' + (bw * f).toFixed(0) + '" height="14" rx="7" fill="' + scoreColor(p.score * 4) + '"/>';
+  }).join('');
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE score card for ' + name + '">'
+    + '<rect width="' + W + '" height="' + H + '" fill="' + BRAND.void + '"/>'
+    + '<rect x="0" y="0" width="' + W + '" height="8" fill="' + BRAND.gold + '"/>'
+    + '<text x="120" y="130" font-family="' + SERIF + '" font-size="46" font-weight="700" letter-spacing="4" fill="' + BRAND.paper + '">CHOIVE</text>'
+    + '<text x="120" y="168" font-family="' + SANS + '" font-size="22" letter-spacing="5" fill="' + BRAND.muted + '">AI SELECTION INDEX</text>'
+    + '<text x="' + (W - 120) + '" y="150" font-family="' + SANS + '" font-size="24" font-weight="700" letter-spacing="3" fill="' + BRAND.gold + '" text-anchor="end">\u2713 VERIFIED</text>'
+    + dialArcs(300, 400, 150, 26, score, BRAND.trackDark, col)
+    + '<text x="300" y="385" font-family="' + SERIF + '" font-size="130" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="300" y="470" font-family="' + SANS + '" font-size="22" letter-spacing="4" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
+    + '<text x="560" y="320" font-family="' + SERIF + '" font-size="52" font-weight="700" fill="' + BRAND.paper + '">' + clipName(businessName, 22, 'Your Business') + '</text>'
+    + '<text x="560" y="372" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="4" fill="' + col + '">' + scoreWord(score).toUpperCase() + '</text>'
+    + '<text x="560" y="418" font-family="' + SANS + '" font-size="24" fill="' + BRAND.ghost + '">AI Visibility Score</text>'
+    + bars
+    + '<line x1="120" y1="930" x2="' + (W - 120) + '" y2="930" stroke="' + BRAND.trackDark + '" stroke-width="1"/>'
+    + '<rect x="120" y="960" width="90" height="90" rx="6" fill="' + BRAND.paper + '"/>'
+    + qrSvg(verifyUrl(opts), 128, 968, 74, { dark: BRAND.ink })
+    + '<text x="235" y="995" font-family="' + SANS + '" font-size="22" font-weight="700" fill="' + BRAND.paper + '">Scan to verify this score is real</text>'
+    + '<text x="235" y="1028" font-family="' + SANS + '" font-size="20" fill="' + BRAND.muted + '">choive.com/verify \u00b7 Be the answer. Not the alternative.</text>'
+    + '</svg>';
+}
+
+// ── Kit 3: "The Story" — 9:16 vertical for IG/LinkedIn stories (1080x1920) ──
+function storySvg(score, businessName, opts) {
+  const W = 1080, H = 1920;
+  const col = scoreColor(score);
+  const name = businessName ? xml(businessName) : 'Your Business';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE verified story">'
+    + '<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#141417"/><stop offset="1" stop-color="' + BRAND.void + '"/></linearGradient></defs>'
+    + '<rect width="' + W + '" height="' + H + '" fill="url(#bg)"/>'
+    + '<rect x="0" y="0" width="' + W + '" height="10" fill="' + BRAND.gold + '"/>'
+    + '<text x="' + (W / 2) + '" y="260" font-family="' + SERIF + '" font-size="60" font-weight="700" letter-spacing="6" fill="' + BRAND.paper + '" text-anchor="middle">CHOIVE</text>'
+    + '<text x="' + (W / 2) + '" y="308" font-family="' + SANS + '" font-size="26" letter-spacing="7" fill="' + BRAND.muted + '" text-anchor="middle">AI SELECTION INDEX</text>'
+    + '<text x="' + (W / 2) + '" y="470" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="4" fill="' + BRAND.gold + '" text-anchor="middle">\u2713  VERIFIED SCORE</text>'
+    + dialArcs(W / 2, 900, 320, 34, score, BRAND.trackDark, col)
+    + '<text x="' + (W / 2) + '" y="880" font-family="' + SERIF + '" font-size="260" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="' + (W / 2) + '" y="1010" font-family="' + SANS + '" font-size="30" letter-spacing="6" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
+    + '<text x="' + (W / 2) + '" y="1300" font-family="' + SANS + '" font-size="40" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + scoreWord(score).toUpperCase() + '</text>'
+    + '<text x="' + (W / 2) + '" y="1400" font-family="' + SERIF + '" font-size="56" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle">' + clipName(businessName, 30, 'Your Business') + '</text>'
+    + '<text x="' + (W / 2) + '" y="1455" font-family="' + SANS + '" font-size="30" fill="' + BRAND.ghost + '" text-anchor="middle">AI Visibility Score</text>'
+    + '<rect x="' + (W / 2 - 55) + '" y="1600" width="110" height="110" rx="8" fill="' + BRAND.paper + '"/>'
+    + qrSvg(verifyUrl(opts), W / 2 - 46, 1609, 92, { dark: BRAND.ink })
+    + '<text x="' + (W / 2) + '" y="1770" font-family="' + SANS + '" font-size="26" fill="' + BRAND.muted + '" text-anchor="middle">Scan to verify \u00b7 choive.com/verify</text>'
+    + '<text x="' + (W / 2) + '" y="1840" font-family="' + SERIF + '" font-size="34" font-style="italic" fill="' + BRAND.gold + '" text-anchor="middle">Be the answer. Not the alternative.</text>'
+    + '</svg>';
+}
+
+// ── Kit 4: "The Chip" — tiny horizontal badge for email/footer (light/dark) ─
+function chipSvg(score, businessName, variant) {
+  const W = 520, H = 150;
+  const col = scoreColor(score);
+  const name = businessName ? xml(businessName) : 'Your Business';
+  const dark = variant === 'dark';
+  const bg = dark ? BRAND.void : BRAND.paper;
+  const fg = dark ? BRAND.paper : BRAND.ink;
+  const sub = dark ? BRAND.ghost : BRAND.muted;
+  const track = dark ? BRAND.trackDark : BRAND.paper2;
+  const wordTitle = scoreWord(score); // "Strong" / "Building" / "At risk"
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE verified chip">'
+    + '<rect width="' + W + '" height="' + H + '" rx="16" fill="' + bg + '" stroke="' + BRAND.gold + '" stroke-width="1.5"/>'
+    + dialArcs(90, 75, 52, 12, score, track, col)
+    + '<text x="90" y="70" font-family="' + SERIF + '" font-size="44" font-weight="700" fill="' + fg + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="90" y="118" font-family="' + SANS + '" font-size="13" letter-spacing="2" fill="' + sub + '" text-anchor="middle">/ 100</text>'
+    + '<text x="180" y="55" font-family="' + SANS + '" font-size="15" font-weight="700" letter-spacing="2" fill="' + BRAND.gold + '">\u2713 VERIFIED BY CHOIVE</text>'
+    + '<text x="180" y="86" font-family="' + SERIF + '" font-size="24" font-weight="700" fill="' + fg + '">' + clipName(businessName, 22, 'Your Business') + '</text>'
+    + '<text x="180" y="112" font-family="' + SANS + '" font-size="15" fill="' + sub + '">AI Visibility Score \u00b7 ' + wordTitle + '</text>'
     + '</svg>';
 }
 
 function buildVisualAssets(result, input, opts) {
-  const unavailable = { available: false, scoreDial: null, pillarBars: null, scoreCard: null, certificate: null };
+  const unavailable = {
+    available: false,
+    scoreDial: null, pillarBars: null, scoreCard: null, certificate: null,
+    seal: null, card: null, story: null, chipLight: null, chipDark: null
+  };
   if (!result || typeof result !== 'object') return unavailable;
   const score = clampScore(result.overallScore, 100);
   if (score === null) return unavailable;
+  const o = opts || {};
   const pillars = readPillars(result);
   const businessName = (input && input.name) || (result.businessUnderstanding && result.businessUnderstanding.name) || '';
 
@@ -255,18 +400,28 @@ function buildVisualAssets(result, input, opts) {
     available: true,
     score: score,
     businessName: businessName || '',
+    verifyUrl: verifyUrl(o),
+    // Utility assets (used inside the report UI).
     scoreDial: scoreDialSvg(score, businessName),
-    certificate: certificateSvg(score, businessName, opts || {}, result)
+    // The Verified Kit — branded, shareable marks that each scan back to the
+    // live verification page for this exact result.
+    certificate: certificateSvg(score, businessName, o, result),
+    seal: sealSvg(score, businessName, o),
+    story: storySvg(score, businessName, o),
+    chipLight: chipSvg(score, businessName, 'light'),
+    chipDark: chipSvg(score, businessName, 'dark')
   };
-  // Pillar-based assets only render when we actually have pillar scores.
+  // Pillar-based assets only render when we actually have all four pillar scores.
   if (pillars.length === 4) {
     assets.pillarBars = pillarBarsSvg(pillars);
     assets.scoreCard = scoreCardSvg(score, pillars, businessName);
+    assets.card = cardSvg(score, pillars, businessName, o);
   } else {
     assets.pillarBars = null;
     assets.scoreCard = null;
+    assets.card = null;
   }
   return assets;
 }
 
-module.exports = { buildVisualAssets, scoreColor, scoreWord, FOUNDER_NAME };
+module.exports = { buildVisualAssets, scoreColor, scoreWord, FOUNDER_NAME, verifyUrl };

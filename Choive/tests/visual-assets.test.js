@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { buildVisualAssets, scoreColor, scoreWord } = require('../netlify/functions/lib/visual-assets');
+const { buildVisualAssets, scoreColor, scoreWord, verifyUrl } = require('../netlify/functions/lib/visual-assets');
 
 function fullResult(score) {
   return {
@@ -126,4 +126,68 @@ test('cert: never promises a higher score or makes ranking claims', () => {
 test('cert: uses a real issued date when supplied', () => {
   const a = buildVisualAssets(fullResult(60), { name: 'X' }, { issuedDate: '2026-08-19T00:00:00Z' });
   assert.ok(a.certificate.indexOf('19 August 2026') !== -1, 'shows the supplied issue date');
+});
+
+// ── Verified Kit tests ──────────────────────────────────────────────────────
+test('kit: verifyUrl builds a /verify link with the job id', () => {
+  assert.strictEqual(verifyUrl({ origin: 'https://choive.com', jobId: '8F3K2A' }), 'https://choive.com/verify?j=8F3K2A');
+  assert.strictEqual(verifyUrl({}), 'https://choive.com/verify');
+  assert.strictEqual(verifyUrl({ verifyUrl: 'https://x.test/v?j=1' }), 'https://x.test/v?j=1');
+  // origin trailing slashes are trimmed
+  assert.strictEqual(verifyUrl({ origin: 'https://choive.com/', jobId: 'A' }), 'https://choive.com/verify?j=A');
+});
+
+test('kit: all kit marks are built when a score + 4 pillars exist', () => {
+  const a = buildVisualAssets(fullResult(82), { name: 'Bright & Co' }, { origin: 'https://choive.com', jobId: '8F3K2A' });
+  ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark'].forEach(function (k) {
+    assert.ok(a[k] && a[k].startsWith('<svg'), k + ' should be an svg');
+  });
+  assert.strictEqual(a.verifyUrl, 'https://choive.com/verify?j=8F3K2A');
+});
+
+test('kit: dial-only marks still render without full pillars (card needs pillars)', () => {
+  const a = buildVisualAssets({ overallScore: 60, pillars: { clarity: { score: 10 } } }, { name: 'X' });
+  assert.ok(a.seal.startsWith('<svg'), 'seal needs only a score');
+  assert.ok(a.story.startsWith('<svg'), 'story needs only a score');
+  assert.ok(a.chipLight.startsWith('<svg') && a.chipDark.startsWith('<svg'), 'chips need only a score');
+  assert.ok(a.certificate.startsWith('<svg'), 'certificate needs only a score');
+  assert.strictEqual(a.card, null, 'square social card needs 4 pillars');
+});
+
+test('kit: every QR-bearing mark carries a real QR (many module rects)', () => {
+  const a = buildVisualAssets(fullResult(82), { name: 'X' }, { origin: 'https://choive.com', jobId: '8F3K2A' });
+  ['certificate', 'card', 'story'].forEach(function (k) {
+    const rects = (a[k].match(/<rect/g) || []).length;
+    assert.ok(rects > 80, k + ' should embed a QR made of many rects, got ' + rects);
+    assert.ok(a[k].indexOf('Scan to verify') !== -1, k + ' invites a scan');
+  });
+});
+
+test('kit: the real score appears on each kit mark', () => {
+  const a = buildVisualAssets(fullResult(47), { name: 'X' }, { origin: 'https://choive.com', jobId: 'Z' });
+  ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark'].forEach(function (k) {
+    assert.ok(a[k].indexOf('>47<') !== -1, k + ' shows the real score');
+  });
+});
+
+test('kit: business name is XML-escaped on every kit mark', () => {
+  const a = buildVisualAssets(fullResult(60), { name: 'Bright & <Co>' }, { jobId: 'Z' });
+  ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark'].forEach(function (k) {
+    assert.ok(a[k].indexOf('Bright &amp; &lt;Co&gt;') !== -1, k + ' escapes the name');
+    assert.ok(a[k].indexOf('Bright & <Co>') === -1, k + ' has no raw name');
+  });
+});
+
+test('kit: no kit mark makes a ranking or promise claim', () => {
+  const a = buildVisualAssets(fullResult(90), { name: 'X' }, { jobId: 'Z' });
+  const blob = ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark']
+    .map(function (k) { return a[k]; }).join(' ').toLowerCase();
+  assert.ok(!/\bbest\b|no\.?\s*1|number one|top rated|guarantee|will (increase|improve|rise)/.test(blob),
+    'kit marks must not make ranking or promise claims');
+});
+
+test('kit: chips come in a light and a dark variant', () => {
+  const a = buildVisualAssets(fullResult(82), { name: 'X' }, { jobId: 'Z' });
+  assert.ok(a.chipLight.indexOf('#F5F2EE') !== -1, 'light chip uses the paper background');
+  assert.ok(a.chipDark.indexOf('#0C0C0E') !== -1, 'dark chip uses the void background');
 });
