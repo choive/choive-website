@@ -44,6 +44,8 @@ const BRAND = {
   muted: '#8A8579',
   ghost: '#B8B2A6',
   goldDark: '#A8863F',
+  goldLight: '#EAD59B',
+  goldDeep: '#7E6224',
   green: '#4A9965',
   amber: '#9A6A14',
   red: '#B13D3D'
@@ -244,8 +246,22 @@ function certificateSvg(score, businessName, opts, result) {
   const sigMark = sigDataUri
     ? '<image href="' + xml(sigDataUri) + '" x="180" y="1252" width="300" height="60" preserveAspectRatio="xMidYMax meet"/>'
     : '<text x="330" y="1300" font-family="' + SCRIPT + '" font-size="46" font-style="italic" fill="' + BRAND.ink + '" text-anchor="middle" textLength="300" lengthAdjust="spacingAndGlyphs">' + xml(FOUNDER_NAME) + '</text>';
+  // Compact embossed gold foil seal — centred between the score word and the signature row (official look)
+  const sealCx = cx, sealCy = 1190, sealR = 62;
+  const certSeal = '<g>'
+    + (function () { var out = '', N = 40, R = sealR + 8; for (var i = 0; i < N; i++) { var a = (i / N) * Math.PI * 2; out += '<circle cx="' + (sealCx + R * Math.cos(a)).toFixed(1) + '" cy="' + (sealCy + R * Math.sin(a)).toFixed(1) + '" r="4.5" fill="url(#certFoil)"/>'; } return out; })()
+    + '<circle cx="' + sealCx + '" cy="' + sealCy + '" r="' + sealR + '" fill="url(#certFoil)"/>'
+    + '<circle cx="' + sealCx + '" cy="' + sealCy + '" r="' + (sealR - 6) + '" fill="none" stroke="' + BRAND.goldDeep + '" stroke-width="1.5" opacity="0.6"/>'
+    + '<circle cx="' + sealCx + '" cy="' + sealCy + '" r="' + (sealR - 20) + '" fill="none" stroke="' + BRAND.goldLight + '" stroke-width="1" opacity="0.5"/>'
+    + '<text x="' + sealCx + '" y="' + (sealCy - 16) + '" font-family="' + SANS + '" font-size="28" font-weight="700" fill="' + BRAND.void + '" text-anchor="middle" dominant-baseline="central">\u2713</text>'
+    + '<text x="' + sealCx + '" y="' + (sealCy + 14) + '" font-family="' + SANS + '" font-size="15" font-weight="700" letter-spacing="3" fill="' + BRAND.void + '" text-anchor="middle">VERIFIED</text>'
+    + '<text x="' + sealCx + '" y="' + (sealCy + 34) + '" font-family="' + SANS + '" font-size="9" font-weight="600" letter-spacing="0.5" fill="' + BRAND.goldDeep + '" text-anchor="middle">AI VISIBILITY</text>'
+    + '</g>';
 
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE certificate for ' + name + '">'
+    + '<defs><radialGradient id="certFoil" cx="38%" cy="32%" r="75%">'
+    + '<stop offset="0" stop-color="' + BRAND.goldLight + '"/><stop offset="0.45" stop-color="' + BRAND.gold + '"/>'
+    + '<stop offset="0.8" stop-color="' + BRAND.goldDark + '"/><stop offset="1" stop-color="' + BRAND.goldDeep + '"/></radialGradient></defs>'
     + '<rect width="' + W + '" height="' + H + '" fill="' + BRAND.paper + '"/>'
     + '<rect x="0" y="0" width="' + W + '" height="14" fill="' + BRAND.gold + '"/>'
     + '<rect x="0" y="' + (H - 14) + '" width="' + W + '" height="14" fill="' + BRAND.gold + '"/>'
@@ -264,6 +280,8 @@ function certificateSvg(score, businessName, opts, result) {
     + '<text x="' + cx + '" y="845" font-family="' + SERIF + '" font-size="180" font-weight="700" fill="' + col + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
     + '<text x="' + cx + '" y="960" font-family="' + SANS + '" font-size="24" letter-spacing="4" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
     + '<text x="' + cx + '" y="1090" font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + word.toUpperCase() + '</text>'
+    // embossed gold verification seal
+    + certSeal
     // signature (left) and date (right)
     + sigMark
     + '<line x1="180" y1="1330" x2="480" y2="1330" stroke="' + BRAND.ink + '" stroke-width="1"/>'
@@ -283,21 +301,64 @@ function certificateSvg(score, businessName, opts, result) {
 function sealSvg(score, businessName, opts) {
   const W = 1080, H = 1080, cx = 540, cy = 540;
   const col = scoreColor(score);
-  const shownName = clipName(businessName, 34, 'Your Business');
-  const tr = 430;
+  const shownName = clipName(businessName, 30, 'Your Business');
+  const tr = 424;
+  // Scalloped foil edge — small beads around the perimeter (classic notary/foil-seal look)
+  const beads = (function () {
+    var out = '', N = 60, R = 492;
+    for (var i = 0; i < N; i++) {
+      var a = (i / N) * Math.PI * 2;
+      var bx = cx + R * Math.cos(a), by = cy + R * Math.sin(a);
+      out += '<circle cx="' + bx.toFixed(1) + '" cy="' + by.toFixed(1) + '" r="11" fill="url(#foil)"/>';
+    }
+    return out;
+  })();
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="CHOIVE verified seal">'
+    + '<defs>'
+    // metallic gold foil: light sheen top-left, deep gold bottom-right
+    + '<radialGradient id="foil" cx="38%" cy="32%" r="75%">'
+    + '<stop offset="0" stop-color="' + BRAND.goldLight + '"/><stop offset="0.45" stop-color="' + BRAND.gold + '"/>'
+    + '<stop offset="0.8" stop-color="' + BRAND.goldDark + '"/><stop offset="1" stop-color="' + BRAND.goldDeep + '"/></radialGradient>'
+    // recessed inner field (embossed-in look)
+    + '<radialGradient id="field" cx="50%" cy="42%" r="70%">'
+    + '<stop offset="0" stop-color="#1A1A1E"/><stop offset="1" stop-color="' + BRAND.void + '"/></radialGradient>'
+    // soft outer drop shadow
+    + '<filter id="sealShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000" flood-opacity="0.55"/></filter>'
+    // top rim highlight arc + bottom shading for the metal ring
+    + '<linearGradient id="ring" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + BRAND.goldLight + '"/><stop offset="0.5" stop-color="' + BRAND.gold + '"/><stop offset="1" stop-color="' + BRAND.goldDeep + '"/></linearGradient>'
+    + '<path id="cta" d="M ' + (cx - tr) + ' ' + cy + ' a ' + tr + ' ' + tr + ' 0 1 1 ' + (2 * tr) + ' 0"/>'
+    + '<path id="ctb" d="M ' + (cx - tr + 20) + ' ' + cy + ' a ' + (tr - 20) + ' ' + (tr - 20) + ' 0 1 0 ' + (2 * (tr - 20)) + ' 0"/>'
+    + '</defs>'
     + '<rect width="' + W + '" height="' + H + '" fill="' + BRAND.void + '"/>'
-    + '<circle cx="' + cx + '" cy="' + cy + '" r="500" fill="none" stroke="' + BRAND.gold + '" stroke-width="2" opacity="0.4"/>'
-    + '<circle cx="' + cx + '" cy="' + cy + '" r="470" fill="none" stroke="' + BRAND.gold + '" stroke-width="1" opacity="0.25"/>'
-    + '<defs><path id="cta" d="M ' + (cx - tr) + ' ' + cy + ' a ' + tr + ' ' + tr + ' 0 1 1 ' + (2 * tr) + ' 0"/>'
-    + '<path id="ctb" d="M ' + (cx - tr + 18) + ' ' + cy + ' a ' + (tr - 18) + ' ' + (tr - 18) + ' 0 1 0 ' + (2 * (tr - 18)) + ' 0"/></defs>'
-    + '<text font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="8" fill="' + BRAND.gold + '"><textPath href="#cta" startOffset="50%" text-anchor="middle">VERIFIED  AI  VISIBILITY</textPath></text>'
-    + '<text font-family="' + SANS + '" font-size="22" font-weight="600" letter-spacing="6" fill="' + BRAND.muted + '"><textPath href="#ctb" startOffset="50%" text-anchor="middle">CHOIVE  \u00b7  AI  SELECTION  INDEX</textPath></text>'
-    + dialArcs(cx, cy, 300, 30, score, BRAND.trackDark, col)
-    + '<text x="' + cx + '" y="' + (cy - 40) + '" font-family="' + SERIF + '" font-size="220" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
-    + '<text x="' + cx + '" y="' + (cy + 120) + '" font-family="' + SANS + '" font-size="30" letter-spacing="8" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
-    + '<text x="' + cx + '" y="' + (cy + 185) + '" font-family="' + SANS + '" font-size="34" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + scoreWord(score).toUpperCase() + '</text>'
-    + '<text x="' + cx + '" y="' + (H - 70) + '" font-family="' + SERIF + '" font-size="40" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle">' + shownName + '</text>'
+    + '<g filter="url(#sealShadow)">'
+    + beads
+    // outer metal medallion
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="478" fill="url(#foil)"/>'
+    // embossed groove rings
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="474" fill="none" stroke="' + BRAND.goldDeep + '" stroke-width="2" opacity="0.6"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="452" fill="none" stroke="url(#ring)" stroke-width="6"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="438" fill="none" stroke="' + BRAND.goldDeep + '" stroke-width="2" opacity="0.5"/>'
+    // recessed dark field
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="360" fill="url(#field)"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="360" fill="none" stroke="' + BRAND.goldDeep + '" stroke-width="4" opacity="0.7"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="354" fill="none" stroke="' + BRAND.goldLight + '" stroke-width="1" opacity="0.25"/>'
+    + '</g>'
+    // curved embossed text on the gold ring (shadow layer + highlight layer)
+    + '<text font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="8" fill="' + BRAND.goldDeep + '" opacity="0.55"><textPath href="#cta" startOffset="50.3%" text-anchor="middle">VERIFIED  AI  VISIBILITY</textPath></text>'
+    + '<text font-family="' + SANS + '" font-size="30" font-weight="700" letter-spacing="8" fill="' + BRAND.void + '"><textPath href="#cta" startOffset="50%" text-anchor="middle">VERIFIED  AI  VISIBILITY</textPath></text>'
+    + '<text font-family="' + SANS + '" font-size="21" font-weight="600" letter-spacing="6" fill="' + BRAND.goldDeep + '"><textPath href="#ctb" startOffset="50%" text-anchor="middle">CHOIVE  \u00b7  AI  SELECTION  INDEX</textPath></text>'
+    // score dial + embossed number on the recessed field
+    + dialArcs(cx, cy - 30, 250, 26, score, BRAND.trackDark, col)
+    + '<text x="' + cx + '" y="' + (cy - 62) + '" font-family="' + SERIF + '" font-size="190" font-weight="700" fill="' + BRAND.paper + '" text-anchor="middle" dominant-baseline="central">' + score + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 66) + '" font-family="' + SANS + '" font-size="26" letter-spacing="8" fill="' + BRAND.muted + '" text-anchor="middle">OUT OF 100</text>'
+    + '<text x="' + cx + '" y="' + (cy + 132) + '" font-family="' + SANS + '" font-size="34" font-weight="700" letter-spacing="6" fill="' + col + '" text-anchor="middle">' + scoreWord(score).toUpperCase() + '</text>'
+    // gold ribbon banner with the business name
+    + '<g filter="url(#sealShadow)">'
+    + '<path d="M 250 ' + (cy + 236) + ' L 830 ' + (cy + 236) + ' L 830 ' + (cy + 300) + ' L 250 ' + (cy + 300) + ' Z" fill="url(#ring)"/>'
+    + '<path d="M 220 ' + (cy + 248) + ' L 250 ' + (cy + 236) + ' L 250 ' + (cy + 300) + ' L 220 ' + (cy + 312) + ' Z" fill="' + BRAND.goldDeep + '"/>'
+    + '<path d="M 860 ' + (cy + 248) + ' L 830 ' + (cy + 236) + ' L 830 ' + (cy + 300) + ' L 860 ' + (cy + 312) + ' Z" fill="' + BRAND.goldDeep + '"/>'
+    + '</g>'
+    + '<text x="' + cx + '" y="' + (cy + 270) + '" font-family="' + SERIF + '" font-size="34" font-weight="700" fill="' + BRAND.void + '" text-anchor="middle" dominant-baseline="central">' + shownName + '</text>'
     + '</svg>';
 }
 

@@ -128,6 +128,23 @@ test('cert: uses a real issued date when supplied', () => {
   assert.ok(a.certificate.indexOf('19 August 2026') !== -1, 'shows the supplied issue date');
 });
 
+test('cert: carries an embossed gold-foil verification seal', () => {
+  const a = buildVisualAssets(fullResult(72), { name: 'X' });
+  assert.ok(a.certificate.indexOf('certFoil') !== -1, 'certificate defines the foil gradient');
+  assert.ok(a.certificate.indexOf('url(#certFoil)') !== -1, 'seal is filled with the foil gradient');
+  assert.ok(a.certificate.indexOf('VERIFIED') !== -1, 'seal reads VERIFIED');
+});
+
+// ── Seal (embossed medallion) tests ─────────────────────────────────────────
+test('seal: is an embossed gold-foil medallion (metallic gradient + beaded edge)', () => {
+  const a = buildVisualAssets(fullResult(82), { name: 'Bright Smile Dental' }, { jobId: 'Z' });
+  assert.ok(a.seal.indexOf('radialGradient') !== -1, 'seal uses a metallic radial gradient for foil sheen');
+  const beads = (a.seal.match(/<circle/g) || []).length;
+  assert.ok(beads > 40, 'seal has a beaded foil edge (many circles), got ' + beads);
+  assert.ok(/VERIFIED\s+AI\s+VISIBILITY/.test(a.seal), 'seal carries the verified wording');
+  assert.ok(a.seal.indexOf('Bright Smile Dental') !== -1, 'seal names the business');
+});
+
 // ── Verified Kit tests ──────────────────────────────────────────────────────
 test('kit: verifyUrl builds a /verify link with the job id', () => {
   assert.strictEqual(verifyUrl({ origin: 'https://choive.com', jobId: '8F3K2A' }), 'https://choive.com/verify?j=8F3K2A');
