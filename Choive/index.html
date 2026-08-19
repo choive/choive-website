@@ -6187,6 +6187,64 @@ function showResults(r, jobId) {
       + _rows.join('')
       + '</div></section>';
   }
+  // ── 30/60/90-DAY MILESTONE PLAN (Phase 3) ──────────────────────────────────
+  // A high-level, three-step summary that sits above the detailed 12-week plan.
+  // Built ONLY from r.implementationPlan (grounded in the real recorded jobs).
+  // Renders nothing if the server did not attach an available plan.
+  function buildMilestonePlan() {
+    var plan = r.implementationPlan;
+    if (!plan || !plan.available || !Array.isArray(plan.milestones) || !plan.milestones.length) return '';
+    var cards = plan.milestones.map(function(m) {
+      var stepsHtml = (Array.isArray(m.steps) ? m.steps : []).map(function(s) {
+        return '<li style="margin-bottom:7px;">' + esc(simpleWords(s)) + '</li>';
+      }).join('');
+      var monitorLine = (m.monitor && m.monitor.note)
+        ? '<div class="roadmap-check"><strong>' + esc(m.monitor.label || 'Score check') + ':</strong> ' + esc(simpleWords(m.monitor.note)) + '</div>'
+        : '';
+      return '<div class="roadmap-phase">'
+        + '<div class="roadmap-day">' + esc(m.window) + '</div>'
+        + '<div class="roadmap-title">' + esc(simpleWords(m.heading)) + '</div>'
+        + '<div style="font-size:13px;color:var(--tm);line-height:1.6;margin-bottom:12px;">' + esc(simpleWords(m.goal)) + '</div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Steps</div>'
+        + '<ul class="roadmap-copy" style="margin:0;padding-left:18px;">' + stepsHtml + '</ul>'
+        + monitorLine
+        + '</div>';
+    }).join('');
+    return '<section class="pay-section" id="report-milestones">'
+      + '<div class="pay-eyebrow">Your 90-Day Milestones</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.6;">Three simple stages. Day 30, day 60, and day 90.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">This is the short version. The full week-by-week plan is right below it. CHOIVE watches your score at the end of each stage — that watching is included with your report.</div>'
+      + '<div class="roadmap">'
+      + cards
+      + '</div></section>';
+  }
+
+  // ── INCLUDED 90-DAY MONITORING (Phase 3) ───────────────────────────────────
+  // Presents the free score-watching benefit as included and pre-scheduled with
+  // the Complete Report. Honest: it does not claim exclusivity or promise gains.
+  function buildIncludedMonitoring() {
+    var plan = r.implementationPlan;
+    var mon = plan && plan.monitoring;
+    if (!mon || !mon.included) return '';
+    var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+    var stepsHtml = (Array.isArray(mon.howItWorks) ? mon.howItWorks : []).map(function(s) {
+      return '<li style="margin-bottom:8px;">' + esc(simpleWords(s)) + '</li>';
+    }).join('');
+    var chips = (Array.isArray(mon.checkpoints) ? mon.checkpoints : []).map(function(d) {
+      return '<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--paper-2);border:1px solid var(--rule);border-radius:999px;font-size:12px;font-weight:700;color:var(--ink);">'
+        + '<span style="width:7px;height:7px;border-radius:50%;background:var(--green);"></span>Day ' + esc(String(d)) + '</span>';
+    }).join('');
+    return '<section class="pay-section" id="report-included-monitoring">'
+      + '<div class="pay-eyebrow">Included: 90 Days of Score Watching</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.6;">' + esc(simpleWords(mon.summary || '')) + '</div>'
+      + (chips ? '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 18px;">' + chips + '</div>' : '')
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">How it works</div>'
+      + '<ul style="font-size:14px;color:var(--body);line-height:1.7;margin:0 0 18px;padding-left:20px;">' + stepsHtml + '</ul>'
+      + (mon.note ? '<div style="font-size:12px;color:var(--tm);padding:11px 14px;background:var(--paper-2);border-left:2px solid var(--amber);line-height:1.6;margin-bottom:18px;">' + esc(simpleWords(mon.note)) + '</div>' : '')
+      + '<a href="' + monitorUrl + '" class="pay-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Turn on my 90-day watch →</a>'
+      + '</section>';
+  }
+
   function hasCustomerQuestionResult() {
     var runs = r.platformSimulations || {};
     return ['claude','openai','perplexity','gemini'].some(function(key) {
@@ -6260,7 +6318,9 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Do not publish a name, number, place, or promise until you know it is true. Send all website code to your developer before it goes live.</div>'
       + '<div style="font-size:13px;font-weight:700;color:var(--ink);padding:14px 16px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;"><strong>Start here:</strong> open the first item. It is a small text file that helps AI tools read the basic facts about your business.</div>'
       + '<div id="delivContent"></div></section>'
+      + buildMilestonePlan()
       + buildOperatingRoadmap()
+      + buildIncludedMonitoring()
       + buildOrganicDiscoveryGap()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">What Each AI Tool Said</div>'
