@@ -18,6 +18,7 @@ const { majorityRecommendation, normalizeName: normalizeRecommendationName } = r
 const { fetchSocialEvidence, buildSocialText } = require('./lib/social');
 const { fetchApifyEvidence }   = require('./lib/apify');
 const { generateDeliverables } = require('./lib/deliverables');
+const { classifyBusinessArchetype, getArchetypeProfile } = require('./lib/business-archetype');
 const { websiteIdentityMatches } = require('./lib/website-identity');
 const simulationLib = require('./lib/simulation');
 const runBeforeSimulation = typeof simulationLib.runBeforeSimulation === 'function'
@@ -1392,6 +1393,16 @@ exports.handler = async function (event) {
       }
     }
     const finalResult = applyDeterministicScoring(evidence, buildSafeOutput(rawOutput));
+    // ── BUSINESS-TYPE (ARCHETYPE) TAGGING ───────────────────────────────────────────────
+    // Classify what KIND of business this is from the same evidence, and attach
+    // it + its profile so the fix plan, report and marketing kit can prioritise
+    // and explain honestly. Never fails the diagnostic if classification errors.
+    try {
+      finalResult.archetype = classifyBusinessArchetype(evidence);
+      finalResult.archetypeProfile = getArchetypeProfile(finalResult.archetype);
+    } catch (archErr) {
+      console.warn('[archetype] classification failed:', archErr && archErr.message);
+    }
     // ── V5 COMPETITOR CONFIRMATION ─────────────────────────────────────────────────────
     // scoreWithClaude calls selectDominantCompetitor v5 which writes directly to
     // evidence.competitorDecision (JS object passed by reference). After scoreWithClaude
