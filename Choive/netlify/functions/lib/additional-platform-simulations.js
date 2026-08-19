@@ -200,11 +200,12 @@ async function requestPerplexity(source) {
     });
     clearTimeout(timer);
     if (!response.ok) {
-      // Capture the response body so the real reason (e.g. "invalid model",
-      // "unauthorized") is visible in logs instead of a bare status code.
-      var errBody = '';
-      try { errBody = (await response.text() || '').slice(0, 300); } catch (_) {}
-      throw new Error('Perplexity HTTP ' + response.status + (errBody ? ' | ' + errBody : ''));
+      var errorBody = '';
+      try {
+        var errorData = await response.json();
+        errorBody = ' | ' + JSON.stringify(errorData);
+      } catch (e) {}
+      throw new Error('Perplexity HTTP ' + response.status + errorBody);
     }
     var data = await response.json();
     return data.choices && data.choices[0] && data.choices[0].message
@@ -235,16 +236,37 @@ async function runProvider(provider, input, requestFn, configured) {
     }
   });
   var settled;
-  if (provider === 'gemini') {
+  if (provider === 'gemini' || provider === 'perplexity') {
     // Avoid sending all grounded searches to a model that may
     // temporarily throttle burst traffic. Two-at-a-time preserves reasonable
     // latency without turning capacity spikes into partial diagnostics.
+    // Perplexity has strict rate limits and returns HTTP 429 when exceeded.
     settled = [];
     for (var batchStart = 0; batchStart < jobs.length; batchStart += 2) {
       var batch = await Promise.allSettled(jobs.slice(batchStart, batchStart + 2).map(function(job) {
         return requestFn(job.source);
       }));
       settled = settled.concat(batch);
+      // If we hit a rate limit, stop trying more batches — all future requests will fail too
+      if (provider === 'perplexity') {
+        var rateLimited = batch.some(function(outcome) {
+          return outcome.status === 'rejected'
+            && outcome.reason
+            && (outcome.reason.message || '').indexOf('429') !== -1;
+        });
+        if (rateLimited) {
+          console.warn('[perplexity-simulation] Rate limit hit — stopping early to avoid wasting time');
+          // Fill remaining jobs with the same rate-limit error
+          var remaining = jobs.length - settled.length;
+          for (var i = 0; i < remaining; i++) {
+            settled.push({
+              status: 'rejected',
+              reason: new Error('Perplexity HTTP 429 (stopped early after rate limit)')
+            });
+          }
+          break;
+        }
+      }
     }
   } else {
     settled = await Promise.allSettled(jobs.map(function(job) { return requestFn(job.source); }));
