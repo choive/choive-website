@@ -8,6 +8,7 @@ const { searchSerper, searchCompetitors, searchOnlineChannelCompetitor, inferOff
 const { fetchWebsiteText, fetchCompetitorText, fetchReviewPages, buildReviewText } = require('./lib/fetchWebsite');
 const { scoreWithClaude, inferCategory, selectChannelCompetitor, selectBestFitCompetitors } = require('./lib/claude');
 const { scoreCompetitor } = require('./lib/score-competitor');
+const { scoreCompetitorLight } = require('./lib/score-competitor-light');
 const { runOpenAISimulation } = require('./lib/openai-simulation');
 const { runGeminiSimulation, runPerplexitySimulation } = require('./lib/additional-platform-simulations');
 const { hasValidShape, buildSafeOutput } = require('./lib/validators');
@@ -1366,7 +1367,10 @@ exports.handler = async function (event) {
     await updateStatus(jobId, 'scoring', 'scoring').catch(() => {});
     let rawOutput;
     try {
+      var scoringStart = Date.now();
+      console.log('[' + jobId + '] Starting main business scoring...');
       rawOutput = await scoreWithClaude(evidence);
+      console.log('[' + jobId + '] Main business scoring complete (' + Math.round((Date.now() - scoringStart) / 1000) + 's)');
     } catch (err) {
       console.error('[' + jobId + '] Claude scoring failed:', err.message);
       await saveError(jobId, 'Scoring failed: ' + err.message).catch(() => {});
@@ -2082,14 +2086,17 @@ exports.handler = async function (event) {
           reason: 'Global benchmark identified by the verified competitor research stage.'
         });
       }
+      console.log('[' + jobId + '] Starting competitor comparison scoring (' + roleCandidates.length + ' competitors)...');
+      var competitorScoringStart = Date.now();
       var roleScores = await Promise.allSettled(roleCandidates.map(function(candidate) {
-        return scoreCompetitor(candidate, {
+        return scoreCompetitorLight(candidate, {
           category: evidence['inferredCategory'] || category,
           city: city,
           subjectType: subjectType,
           marketReach: marketReach
         }, finalResult);
       }));
+      console.log('[' + jobId + '] Competitor comparison scoring complete (' + Math.round((Date.now() - competitorScoringStart) / 1000) + 's)');
       finalResult['competitorComparison'] = {
         entries: roleCandidates.map(function(candidate, index) {
           var scoreResult = roleScores[index];
