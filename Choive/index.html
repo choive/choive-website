@@ -5169,6 +5169,92 @@ function showResults(r, jobId) {
       + '</section>';
   }
 
+  // ── Premium: honest value example (owner types their own numbers) ──────────
+  function buildRoiSection() {
+    var m = r.roiModel;
+    if (!m || !m.available) return '';
+    var scenarioBtns = (m.scenarios || []).map(function(s) {
+      return '<button type="button" class="roi-scenario" data-extra="' + Number(s.exampleExtraCustomers) + '" '
+        + 'onclick="choiveRoiPick(this)" '
+        + 'style="border:1px solid var(--rule);background:var(--paper-2);padding:10px 14px;border-radius:2px;cursor:pointer;font-family:Inter,sans-serif;font-size:12px;font-weight:700;color:var(--ink);">'
+        + esc(s.label) + '<span style="display:block;font-size:11px;font-weight:500;color:var(--tm);margin-top:4px;">' + esc(String(s.exampleExtraCustomers)) + ' more/mo</span>'
+        + '</button>';
+    }).join('');
+    var inputs = (m.inputs || []).map(function(inp) {
+      return '<label style="display:block;margin-bottom:14px;">'
+        + '<span style="display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;">' + esc(simpleWords(inp.label)) + '</span>'
+        + '<span style="display:block;font-size:12px;color:var(--tm);margin-bottom:6px;line-height:1.6;">' + esc(simpleWords(inp.help)) + '</span>'
+        + '<input type="number" min="0" id="' + esc(inp.id) + '" placeholder="' + esc(inp.placeholder || '') + '" oninput="choiveRoiCalc()" '
+        + 'style="width:100%;max-width:220px;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;font-family:Inter,sans-serif;font-size:15px;color:var(--ink);background:#fff;" />'
+        + '</label>';
+    }).join('');
+    return '<section class="pay-section" id="report-roi"><div class="pay-eyebrow">What Fixing This Could Be Worth</div>'
+      + '<div class="paid-section-header">A simple what-if, using your own numbers</div>'
+      + '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:14px;max-width:800px;">' + esc(simpleWords(m.howItWorks)) + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);margin-bottom:14px;">Pick an example to start, then change the numbers to match your business:</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">' + scenarioBtns + '</div>'
+      + '<div style="max-width:480px;">' + inputs + '</div>'
+      + '<div id="roiResult" style="font-size:16px;font-weight:800;color:var(--ac-d);margin:6px 0 14px;min-height:24px;"></div>'
+      + '<div style="font-size:12px;color:var(--tm);line-height:1.7;padding:12px 14px;background:var(--paper-2);border-left:3px solid var(--ac);max-width:800px;border-radius:2px;"><strong style="color:var(--ink);">Please read:</strong> ' + esc(simpleWords(m.disclaimer)) + '</div>'
+      + '</section>';
+  }
+
+  // ── Premium: how to win against the businesses AI names instead ────────────
+  function buildCompetitorStrategySection() {
+    var cs = r.competitorStrategy;
+    if (!cs || !cs.available) return '';
+    var html = '<section class="pay-section" id="report-comp-strategy"><div class="pay-eyebrow">How To Win Against Your Rivals</div>'
+      + '<div class="paid-section-header">Where they beat you — and how to close it</div>'
+      + (cs.summary ? '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:18px;max-width:800px;">' + esc(simpleWords(cs.summary)) + '</div>' : '');
+    if (cs.namedByAI && cs.namedByAI.name) {
+      html += '<div style="border:1px solid var(--rule);border-left:4px solid #C98B42;padding:16px 18px;margin-bottom:14px;background:var(--paper-2);border-radius:2px;">'
+        + '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;">AI named this business instead: ' + esc(cs.namedByAI.name) + '</div>'
+        + (cs.namedByAI.why ? '<div style="font-size:13px;color:var(--tb);line-height:1.65;"><strong>The reason it gave:</strong> ' + esc(simpleWords(cs.namedByAI.why)) + '</div>' : '')
+        + '</div>';
+    }
+    if (Array.isArray(cs.alsoSeen) && cs.alsoSeen.length) {
+      html += '<div style="font-size:13px;font-weight:700;color:var(--ink);margin:8px 0 8px;">Others showing up in the same searches:</div>'
+        + '<ul style="margin:0 0 18px;padding-left:20px;">'
+        + cs.alsoSeen.map(function(a) {
+            return '<li style="font-size:13px;color:var(--tb);line-height:1.7;margin-bottom:4px;"><strong>' + esc(a.domain) + '</strong>' + (a.note ? ' — ' + esc(simpleWords(a.note)) : '') + '</li>';
+          }).join('')
+        + '</ul>';
+    }
+    if (Array.isArray(cs.winMoves) && cs.winMoves.length) {
+      html += '<div style="font-size:15px;font-weight:800;color:var(--ink);margin:6px 0 12px;">Start here to get ahead:</div>';
+      html += cs.winMoves.map(function(w) {
+        return '<div style="border:1px solid var(--rule);border-left:4px solid var(--ac);padding:14px 16px;margin-bottom:10px;background:var(--paper-2);border-radius:2px;">'
+          + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--ac);margin-bottom:6px;">' + esc(w.pillarLabel) + ' · your score ' + Number(w.currentScore) + '/25</div>'
+          + (w.observed ? '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:6px;"><strong style="color:var(--tb);">What we saw:</strong> ' + esc(simpleWords(w.observed)) + '</div>' : '')
+          + '<div style="font-size:13px;color:var(--ink);line-height:1.65;"><strong>Do this:</strong> ' + esc(simpleWords(w.move)) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+    html += '</section>';
+    return html;
+  }
+
+  // ── Premium: the exact phrases buyers type (no invented volumes) ───────────
+  function buildKeywordSection() {
+    var k = r.keywordStrategy;
+    if (!k || !k.available || !Array.isArray(k.groups) || !k.groups.length) return '';
+    var groups = k.groups.map(function(g) {
+      var chips = (g.phrases || []).map(function(p) {
+        return '<span style="display:inline-block;font-size:13px;color:var(--ink);background:#fff;border:1px solid var(--rule);padding:6px 12px;border-radius:14px;margin:0 6px 8px 0;">' + esc(p) + '</span>';
+      }).join('');
+      return '<div style="margin-bottom:20px;">'
+        + '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:4px;">' + esc(g.title) + '</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;max-width:760px;">' + esc(simpleWords(g.why)) + '</div>'
+        + '<div>' + chips + '</div>'
+        + '</div>';
+    }).join('');
+    return '<section class="pay-section" id="report-keywords"><div class="pay-eyebrow">The Words Your Buyers Actually Use</div>'
+      + '<div class="paid-section-header">Make sure AI can answer these about you</div>'
+      + '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:18px;max-width:800px;">' + esc(simpleWords(k.howToUse)) + '</div>'
+      + groups
+      + '</section>';
+  }
+
   function buildPaidPillarEvidence() {
     return '<section class="pay-section" id="report-pillars"><div class="pay-eyebrow">Why You Got This Score</div>'
       + '<div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;max-width:760px;font-weight:700;">Every point comes from something CHOIVE found and checked.</div>'
@@ -6152,9 +6238,12 @@ function showResults(r, jobId) {
       + compBlock + extraCompsHtml + '</section>');
     return competitorSection
       + dualArenaBlock
+      + buildCompetitorStrategySection()
       + buildEvidenceGapSummary()
       + buildPaidPillarEvidence()
       + buildPriorityFixPlan()
+      + buildRoiSection()
+      + buildKeywordSection()
       + buildPlatformCoverageSection()
       + buildQueryCoverageMap()
       + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Proof Behind Your CHOIVE Result</div>'
@@ -6324,10 +6413,34 @@ function showResults(r, jobId) {
         : data.percentile >= 50 ? 'var(--amber)' 
         : 'var(--red)';
       
-      el.innerHTML = '<strong style="color:' + tone + ';">Category average: ' 
+      var html = '<strong style="color:' + tone + ';">Category average: ' 
         + data.mean + '</strong> — You: ' + score + ' — ' + percentLabel 
         + ' <span style="color:var(--muted);">(based on ' + data.sampleSize 
         + ' CHOIVE diagnostics)</span>';
+
+      // Per-pillar benchmark — only shown for pillars that have a real category
+      // median (≥5 samples) AND a real score for this business. Nothing invented.
+      var pm = data.pillarMedians || {};
+      var pillars = result.pillars || {};
+      var PL = { clarity: 'Being clear', trust: 'Being trusted', difference: 'Being different', ease: 'Being easy to choose' };
+      var pillarRows = ['clarity','trust','difference','ease'].map(function(k) {
+        var median = pm[k];
+        var mine = pillars[k] && typeof pillars[k].score === 'number' ? Math.round(pillars[k].score) : null;
+        if (typeof median !== 'number' || mine === null) return '';
+        var better = mine >= median;
+        var c = better ? 'var(--green)' : 'var(--red)';
+        var word = better ? 'at or above' : 'below';
+        return '<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--rule);">'
+          + '<span style="color:var(--tb);">' + esc(PL[k]) + '</span>'
+          + '<span style="color:' + c + ';font-weight:700;">You ' + mine + '/25 · ' + word + ' the ' + median + '/25 average</span>'
+          + '</div>';
+      }).join('');
+      if (pillarRows) {
+        html += '<div style="margin-top:12px;">'
+          + '<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--tm);margin-bottom:4px;">How you compare, area by area</div>'
+          + pillarRows + '</div>';
+      }
+      el.innerHTML = html;
       el.style.display = 'block';
     } catch (err) {
       console.warn('Category benchmark load failed:', err);
@@ -7022,6 +7135,41 @@ function buildDeliverables(r) {
     html += '<div class="deliv-panel' + (i === 0 ? ' active' : '') + '" id="' + tab.id + '">' + tab.content + '</div>';
   });
   return html;
+}
+
+// ── Premium ROI what-if calculator (honest, owner-driven) ───────────────────
+// Picks an example number of extra customers into the input, then recalculates.
+function choiveRoiPick(btn) {
+  if (!btn) return;
+  var extra = Number(btn.getAttribute('data-extra')) || 0;
+  var el = document.getElementById('roiCustomers');
+  if (el) { el.value = extra; }
+  document.querySelectorAll('.roi-scenario').forEach(function(b) {
+    b.style.borderColor = 'var(--rule)';
+    b.style.background = 'var(--paper-2)';
+  });
+  btn.style.borderColor = 'var(--ac)';
+  btn.style.background = '#fff';
+  choiveRoiCalc();
+}
+
+// money a month = (extra customers a month) × (value of one customer).
+// Only computes from what the owner typed; never shows a made-up figure.
+function choiveRoiCalc() {
+  var out = document.getElementById('roiResult');
+  if (!out) return;
+  var vEl = document.getElementById('roiValue');
+  var cEl = document.getElementById('roiCustomers');
+  var value = vEl ? Number(vEl.value) : NaN;
+  var customers = cEl ? Number(cEl.value) : NaN;
+  if (!isFinite(value) || !isFinite(customers) || value <= 0 || customers <= 0) {
+    out.textContent = '';
+    return;
+  }
+  var perMonth = Math.round(value * customers);
+  var perYear = perMonth * 12;
+  out.innerHTML = 'Using your numbers: about <span style="color:var(--ac-d)">' + perMonth.toLocaleString() + '</span> a month'
+    + ' (' + perYear.toLocaleString() + ' a year). This is your own what-if, not a promise.';
 }
 
 function switchDelivTab(id, btn) {
