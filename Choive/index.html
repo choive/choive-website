@@ -6187,6 +6187,97 @@ function showResults(r, jobId) {
       + _rows.join('')
       + '</div></section>';
   }
+  // ── 30/60/90-DAY MILESTONE PLAN (Phase 3) ──────────────────────────────────
+  // A high-level, three-step summary that sits above the detailed 12-week plan.
+  // Built ONLY from r.implementationPlan (grounded in the real recorded jobs).
+  // Renders nothing if the server did not attach an available plan.
+  function buildMilestonePlan() {
+    var plan = r.implementationPlan;
+    if (!plan || !plan.available || !Array.isArray(plan.milestones) || !plan.milestones.length) return '';
+    var cards = plan.milestones.map(function(m) {
+      var stepsHtml = (Array.isArray(m.steps) ? m.steps : []).map(function(s) {
+        return '<li style="margin-bottom:7px;">' + esc(simpleWords(s)) + '</li>';
+      }).join('');
+      var monitorLine = (m.monitor && m.monitor.note)
+        ? '<div class="roadmap-check"><strong>' + esc(m.monitor.label || 'Score check') + ':</strong> ' + esc(simpleWords(m.monitor.note)) + '</div>'
+        : '';
+      return '<div class="roadmap-phase">'
+        + '<div class="roadmap-day">' + esc(m.window) + '</div>'
+        + '<div class="roadmap-title">' + esc(simpleWords(m.heading)) + '</div>'
+        + '<div style="font-size:13px;color:var(--tm);line-height:1.6;margin-bottom:12px;">' + esc(simpleWords(m.goal)) + '</div>'
+        + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Steps</div>'
+        + '<ul class="roadmap-copy" style="margin:0;padding-left:18px;">' + stepsHtml + '</ul>'
+        + monitorLine
+        + '</div>';
+    }).join('');
+    return '<section class="pay-section" id="report-milestones">'
+      + '<div class="pay-eyebrow">Your 90-Day Milestones</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.6;">Three simple stages. Day 30, day 60, and day 90.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">This is the short version. The full week-by-week plan is right below it. CHOIVE watches your score at the end of each stage — that watching is included with your report.</div>'
+      + '<div class="roadmap">'
+      + cards
+      + '</div></section>';
+  }
+
+  // ── INCLUDED 90-DAY MONITORING (Phase 3) ───────────────────────────────────
+  // Presents the free score-watching benefit as included and pre-scheduled with
+  // the Complete Report. Honest: it does not claim exclusivity or promise gains.
+  function buildIncludedMonitoring() {
+    var plan = r.implementationPlan;
+    var mon = plan && plan.monitoring;
+    if (!mon || !mon.included) return '';
+    var monitorUrl = '/monitor' + (jobId ? '?jobId=' + encodeURIComponent(jobId) : '');
+    var stepsHtml = (Array.isArray(mon.howItWorks) ? mon.howItWorks : []).map(function(s) {
+      return '<li style="margin-bottom:8px;">' + esc(simpleWords(s)) + '</li>';
+    }).join('');
+    var chips = (Array.isArray(mon.checkpoints) ? mon.checkpoints : []).map(function(d) {
+      return '<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--paper-2);border:1px solid var(--rule);border-radius:999px;font-size:12px;font-weight:700;color:var(--ink);">'
+        + '<span style="width:7px;height:7px;border-radius:50%;background:var(--green);"></span>Day ' + esc(String(d)) + '</span>';
+    }).join('');
+    return '<section class="pay-section" id="report-included-monitoring">'
+      + '<div class="pay-eyebrow">Included: 90 Days of Score Watching</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.6;">' + esc(simpleWords(mon.summary || '')) + '</div>'
+      + (chips ? '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 18px;">' + chips + '</div>' : '')
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">How it works</div>'
+      + '<ul style="font-size:14px;color:var(--body);line-height:1.7;margin:0 0 18px;padding-left:20px;">' + stepsHtml + '</ul>'
+      + (mon.note ? '<div style="font-size:12px;color:var(--tm);padding:11px 14px;background:var(--paper-2);border-left:2px solid var(--amber);line-height:1.6;margin-bottom:18px;">' + esc(simpleWords(mon.note)) + '</div>' : '')
+      + '<a href="' + monitorUrl + '" class="pay-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Turn on my 90-day watch →</a>'
+      + '</section>';
+  }
+
+  // ── BRANDED VISUAL ASSETS (Phase 4) ─────────────────────────────────────────
+  // Shows the branded SVG graphics the server built from the real score, and lets
+  // the owner download each as an SVG or PNG. Renders nothing if unavailable.
+  function buildVisualAssetsSection() {
+    var va = r.visualAssets;
+    if (!va || !va.available) return '';
+    var safeName = String(bizData.name || 'choive').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'choive';
+    function assetCard(domId, fileBase, title, note, svg, isWide) {
+      if (!svg) return '';
+      return '<div style="border:1px solid var(--rule);border-radius:12px;padding:18px;background:var(--paper);margin-bottom:16px;">'
+        + '<div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">' + esc(title) + '</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:14px;">' + esc(simpleWords(note)) + '</div>'
+        + '<div id="' + domId + '" style="display:flex;justify-content:center;align-items:center;background:var(--paper-2);border-radius:8px;padding:16px;overflow:auto;">'
+        + '<div style="width:100%;max-width:' + (isWide ? '640px' : '280px') + ';">' + svg + '</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'
+        + '<button type="button" onclick="choiveDownloadPng(\'' + domId + '\',\'' + safeName + '-' + fileBase + '.png\')" class="pay-btn-primary" style="border:none;cursor:pointer;padding:11px 20px;font-size:13px;">Download picture (PNG)</button>'
+        + '<button type="button" onclick="choiveDownloadSvg(\'' + domId + '\',\'' + safeName + '-' + fileBase + '.svg\')" class="pay-btn-secondary" style="cursor:pointer;padding:11px 20px;font-size:13px;">Download sharp file (SVG)</button>'
+        + '</div></div>';
+    }
+    var cards = ''
+      + assetCard('choiveAssetCard', 'score-card', 'Shareable score card', 'A wide picture with your score and all four areas. Good for posts and slides.', va.scoreCard, true)
+      + assetCard('choiveAssetDial', 'score-dial', 'Score dial', 'A round picture of your one CHOIVE score. Good for a website or email.', va.scoreDial, false)
+      + assetCard('choiveAssetBars', 'pillar-chart', 'Four-area chart', 'A simple bar picture showing how you did in each of the four areas.', va.pillarBars, false);
+    if (!cards) return '';
+    return '<section class="pay-section" id="report-visuals">'
+      + '<div class="pay-eyebrow">Your Branded CHOIVE Graphics</div>'
+      + '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.6;">Ready-made pictures of your score, in CHOIVE colours.</div>'
+      + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">These pictures use only your real score. Download one and use it on your website, in emails, or in a post. PNG is a normal picture. SVG stays sharp at any size.</div>'
+      + cards
+      + '</section>';
+  }
+
   function hasCustomerQuestionResult() {
     var runs = r.platformSimulations || {};
     return ['claude','openai','perplexity','gemini'].some(function(key) {
@@ -6260,7 +6351,10 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:20px;line-height:1.7;">Do not publish a name, number, place, or promise until you know it is true. Send all website code to your developer before it goes live.</div>'
       + '<div style="font-size:13px;font-weight:700;color:var(--ink);padding:14px 16px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;"><strong>Start here:</strong> open the first item. It is a small text file that helps AI tools read the basic facts about your business.</div>'
       + '<div id="delivContent"></div></section>'
+      + buildVisualAssetsSection()
+      + buildMilestonePlan()
       + buildOperatingRoadmap()
+      + buildIncludedMonitoring()
       + buildOrganicDiscoveryGap()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">What Each AI Tool Said</div>'
@@ -7170,6 +7264,54 @@ function choiveRoiCalc() {
   var perYear = perMonth * 12;
   out.innerHTML = 'Using your numbers: about <span style="color:var(--ac-d)">' + perMonth.toLocaleString() + '</span> a month'
     + ' (' + perYear.toLocaleString() + ' a year). This is your own what-if, not a promise.';
+}
+
+// ── Branded visual asset downloads (Phase 4) ────────────────────────────────
+// The SVG lives inline inside a container div; these helpers serialize it and
+// offer it as a downloadable .svg or a rasterised .png. No data is added — they
+// only save the graphic already shown on screen.
+function choiveDownloadSvg(id, filename) {
+  var el = document.getElementById(id);
+  var svg = el && el.querySelector('svg');
+  if (!svg) return;
+  var data = new XMLSerializer().serializeToString(svg);
+  if (!/^<\?xml/.test(data)) data = '<?xml version="1.0" encoding="UTF-8"?>\n' + data;
+  var blob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+}
+function choiveDownloadPng(id, filename) {
+  var el = document.getElementById(id);
+  var svg = el && el.querySelector('svg');
+  if (!svg) return;
+  var w = parseInt(svg.getAttribute('width'), 10) || (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) || 600;
+  var h = parseInt(svg.getAttribute('height'), 10) || (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height) || 400;
+  var data = new XMLSerializer().serializeToString(svg);
+  var svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+  var url = URL.createObjectURL(svgBlob);
+  var img = new Image();
+  img.onload = function() {
+    var scale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = w * scale; canvas.height = h * scale;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(function(blob) {
+      if (!blob) return;
+      var purl = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = purl; a.download = filename; document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(purl); }, 1500);
+    }, 'image/png');
+  };
+  img.onerror = function() { URL.revokeObjectURL(url); };
+  img.src = url;
 }
 
 function switchDelivTab(id, btn) {

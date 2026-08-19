@@ -10,6 +10,8 @@ const { buildFixPlan } = require('./lib/fix-plan');
 const { buildRoiModel } = require('./lib/roi-projection');
 const { buildCompetitorStrategy } = require('./lib/competitor-strategy');
 const { buildKeywordStrategy } = require('./lib/seo-keywords');
+const { buildImplementationPlan } = require('./lib/implementation-plan');
+const { buildVisualAssets } = require('./lib/visual-assets');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +76,10 @@ exports.handler = async function (event) {
       catch (e) { console.error('CHOIVE competitor-strategy error:', e.message); }
       try { extras.keywordStrategy = buildKeywordStrategy(diagnostic.result, diagnostic.input); }
       catch (e) { console.error('CHOIVE keyword-strategy error:', e.message); }
+      try { extras.implementationPlan = buildImplementationPlan(diagnostic.result); }
+      catch (e) { console.error('CHOIVE implementation-plan error:', e.message); }
+      try { extras.visualAssets = buildVisualAssets(diagnostic.result, diagnostic.input); }
+      catch (e) { console.error('CHOIVE visual-assets error:', e.message); }
       paidResult = Object.assign({}, diagnostic.result, extras);
     }
 
