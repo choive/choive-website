@@ -950,6 +950,26 @@ nav {
 .pay-section { padding:44px 0; border-bottom:1px solid var(--rule); }
 .pay-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:22px; padding-bottom:12px; border-bottom:1px solid var(--rule); display:flex; align-items:center; gap:12px; }
 .pay-eyebrow::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--rule), transparent); }
+/* ── Premium chapter dividers (report redesign) ───────────────────────── */
+.report-chapter { margin:0; padding:52px 0 28px; border-top:1px solid var(--rule); position:relative; }
+.report-chapter::before { content:''; position:absolute; top:-1px; left:0; width:72px; height:3px; background:linear-gradient(90deg, var(--gold, #C9A86A), transparent); }
+.report-chapter-num { font-family:'Libre Baskerville', serif; font-size:12px; font-weight:700; letter-spacing:0.32em; text-transform:uppercase; color:var(--gold, #C9A86A); margin-bottom:10px; }
+.report-chapter-title { font-family:'Libre Baskerville', serif; font-size:clamp(26px, 4vw, 38px); font-weight:700; line-height:1.12; color:var(--ink); margin:0 0 12px; letter-spacing:-0.01em; }
+.report-chapter-sub { font-size:15px; line-height:1.7; color:var(--tm); max-width:620px; margin:0; }
+.report-toc { padding:34px 0 6px; }
+.report-toc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); }
+.report-toc-item { display:flex; gap:12px; align-items:baseline; padding:16px 18px; background:var(--paper); text-decoration:none; transition:background 0.15s; }
+.report-toc-item:hover { background:var(--paper-2); }
+.report-toc-item .n { font-family:'Libre Baskerville', serif; font-size:14px; font-weight:700; color:var(--gold, #C9A86A); flex:none; }
+.report-toc-item .t { font-size:13px; font-weight:600; color:var(--ink); line-height:1.4; }
+/* At-a-glance summary strip */
+.report-glance { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); margin:20px 0 4px; }
+.report-glance-cell { background:var(--paper); padding:18px 18px 16px; }
+.report-glance-cell .lbl { font-size:10px; font-weight:800; letter-spacing:0.13em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.report-glance-cell .val { font-family:'Libre Baskerville', serif; font-size:26px; font-weight:700; color:var(--ink); line-height:1; }
+.report-glance-cell .val small { font-size:13px; font-weight:400; color:var(--muted); }
+.report-glance-cell .sub { font-size:11px; color:var(--tm); line-height:1.5; margin-top:7px; }
+@media (max-width:640px){ .report-chapter { padding:40px 24px 22px; } .report-toc, .report-glance { margin-left:24px; margin-right:24px; } }
 .paid-narrative { font-size:15px; font-weight:400; color:var(--body); line-height:1.9; border-left:2px solid var(--ink); padding-left:18px; }
 .paid-pillars { display:flex; flex-direction:column; gap:1px; }
 .paid-pillar { padding:22px 24px; background:var(--paper-2); border-bottom:1px solid var(--rule); border-left:3px solid transparent; transition:background 0.15s, border-left-color 0.2s, box-shadow 0.2s; }
@@ -4457,34 +4477,9 @@ function showResults(r, jobId) {
         var _fb = ['clarity','trust','difference','ease'].filter(function(k) { return (Number((_fp[k]||{}).score)||0) < 18; }).length;
         return _fb ? '<div style="margin-top:12px;font-size:13px;font-weight:700;color:var(--ink);">' + _fb + ' of 4 score areas are low. The full analysis shows exactly what proof is missing in each, and how to fix it.</div>' : '';
       })()
-    + (function() {
-        if (!isPaid) return '';
-        var appeared = 0; var total = 0;
-        measuredPlatformRuns().forEach(function(item) {
-          var results = completedUnbrandedResults(item.run);
-          var organic = results.find(function(res) { return String(res.label || '').toLowerCase().indexOf('organic category') !== -1; }) || results[0];
-          if (organic) { total++; if (organic.appeared) appeared++; }
-        });
-        if (!total) return '';
-        var tone = appeared === 0 ? 'var(--red)' : appeared < total ? 'var(--amber)' : 'var(--green)';
-        var verdict = appeared === 0
-          ? 'No AI platform found this business on unprompted category searches.'
-          : appeared === total
-            ? 'Every AI platform tested found this business without being given its name.'
-            : 'Only ' + appeared + ' of ' + total + ' AI platforms found this business on unprompted category searches. The others did not surface it without the business name.';
-        var totalScore = Math.round(Number(r.overallScore) || 0);
-        var contextLine = appeared === total
-          ? 'This score and this discovery result are aligned. The evidence is present and all platforms tested are surfacing it.'
-          : (totalScore >= 62
-            ? 'A score of ' + totalScore + ' means the evidence exists. Not all platforms are surfacing it yet — that is a placement gap, not an evidence gap.'
-            : 'A score of ' + totalScore + ' explains this result. The evidence base is not yet strong enough for consistent AI discovery. Improving the score closes this gap.');
-        return '<div style="margin-top:16px;padding:16px 18px;border-left:3px solid ' + tone + ';background:var(--paper-2);">'
-          + '<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">AI Discovery Without Your Name</div>'
-          + '<div style="font-size:14px;font-weight:600;color:' + tone + ';line-height:1.5;">' + esc(verdict) + '</div>'
-          + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-top:8px;">' + esc(contextLine) + '</div>'
-          + '</div>';
-      })()
     + '</div>';
+  // NOTE: the "AI Discovery Without Your Name" verdict now lives once, in buildExecutiveVerdict(),
+  // instead of being repeated here in the score header (de-duplicated in the report redesign).
 
   // ── VERIFICATION BLOCK — provable progress since the last run ───────────
   function buildProgressDelta(r) {
@@ -4948,15 +4943,65 @@ function showResults(r, jobId) {
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;">' + cards + '</div></div></details></section>';
   }
 
+  // ── Premium chapter divider (report redesign) ─────────────────────────
+  function reportChapter(num, title, sub, anchorId) {
+    return '<div class="report-chapter"' + (anchorId ? ' id="' + anchorId + '"' : '') + '>'
+      + '<div class="report-chapter-num">Part ' + esc(String(num)) + '</div>'
+      + '<h2 class="report-chapter-title">' + esc(title) + '</h2>'
+      + (sub ? '<p class="report-chapter-sub">' + esc(sub) + '</p>' : '')
+      + '</div>';
+  }
+  // ── At-a-glance strip — the whole report in five numbers ───────────────
+  function buildReportGlance() {
+    var appeared = 0, completed = 0;
+    measuredPlatformRuns().forEach(function(item) {
+      var results = completedUnbrandedResults(item.run);
+      completed += results.length;
+      appeared += results.filter(function(res){ return res.appeared; }).length;
+    });
+    var lowPillars = ['clarity','trust','difference','ease'].filter(function(k){
+      return (Number(((r.pillars||{})[k]||{}).score)||0) < 18;
+    }).length;
+    var sc = Math.round(Number(r.overallScore) || 0);
+    var cell = function(lbl, val, sub) {
+      return '<div class="report-glance-cell"><div class="lbl">' + lbl + '</div>'
+        + '<div class="val">' + val + '</div>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>';
+    };
+    return '<div class="report-glance">'
+      + cell('CHOIVE score', sc + '<small> / 100</small>', esc(scoreBand))
+      + cell('Did AI name you?', (completed ? appeared + '<small> of ' + completed + '</small>' : '—'), completed ? 'Completed AI answers that named the business' : 'AI checks did not finish')
+      + cell('Score areas that are low', lowPillars + '<small> of 4</small>', lowPillars ? 'Places where proof is missing' : 'No weak areas found')
+      + cell('Closest competitor', (topComp ? '<span style="font-size:15px;font-family:Inter,sans-serif;font-weight:700;">' + esc(topComp) + '</span>' : '—'), topComp ? 'The nearest business CHOIVE checked' : 'CHOIVE could not find one')
+      + '</div>';
+  }
+  // ── Premium table of contents ──────────────────────────────────────────
+  function buildReportToc() {
+    var parts = [
+      { n:'1', t:'How AI sees you now', a:'chapter-1' },
+      { n:'2', t:'Where you stand vs rivals', a:'chapter-2' },
+      { n:'3', t:'Why you got this score', a:'chapter-3' },
+      { n:'4', t:'What to do next', a:'chapter-4' },
+      { n:'5', t:'Work ready to use', a:'chapter-5' },
+      { n:'6', t:'The receipts (AI answers)', a:'chapter-6' },
+      { n:'7', t:'Keep improving', a:'chapter-7' }
+    ];
+    return '<div class="report-toc"><div class="report-toc-grid">'
+      + parts.map(function(p){ return '<a class="report-toc-item" href="#' + p.a + '"><span class="n">' + p.n + '</span><span class="t">' + esc(p.t) + '</span></a>'; }).join('')
+      + '</div></div>';
+  }
+
   zone.innerHTML =
     (isPaid
-      ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>' + buildExecutiveVerdict() + buildBusinessProfile() + buildStartHere() + buildBusinessIntelligence()
+      ? '<div id="report-score">' + scoreHeader + buildProgressDelta(r) + '</div>'
+        + buildExecutiveVerdict()
+        + buildReportGlance()
+        + buildStartHere()
+        + buildReportToc()
       : competitorBanner)
     + (isPaid ? '<nav class="result-nav" aria-label="Analysis sections"><div class="result-nav-inner">'
-      + '<a href="#report-score">Verdict</a><a href="#report-competitors">Competitors</a><a href="#report-pillars">Why this score</a><a href="#report-fixplan">Fix plan</a><a href="#report-actions">Actions</a>'
-      + '<a href="#report-assets">Prepared assets</a><a href="#report-roadmap">90-day plan</a><a href="#report-organic-gap">AI answers</a><a href="#report-download">Download</a>'
+      + '<a href="#report-score">Verdict</a><a href="#chapter-1">How AI sees you</a><a href="#chapter-2">Competitors</a><a href="#chapter-3">Why this score</a><a href="#chapter-4">What to do</a>'
+      + '<a href="#chapter-5">Assets</a><a href="#chapter-6">AI answers</a><a href="#report-download">Download</a>'
       + '</div></nav>' : '')
-    + (isPaid ? buildPlatformRecommendationBlock() : '')
     + (isPaid
       ? ''
       : buildAiScorecard()
@@ -6338,23 +6383,36 @@ function showResults(r, jobId) {
   var paidSections = isPaid ? (function() {
     var competitorSection = competitorComparisonBlock || ('<section class="pay-section" id="report-competitors"><div class="pay-eyebrow">Who Competes With You</div>'
       + compBlock + extraCompsHtml + '</section>');
-    return competitorSection
+    // ── PART 1 — How AI sees you now ────────────────────────────────────
+    return reportChapter(1, 'How AI sees you now', 'The basic facts AI has about your business, and how it reads you today \u2014 next to how it can read you after your fixes.', 'chapter-1')
+      + buildBusinessProfile()
+      + buildBusinessIntelligence()
+      + buildPlatformRecommendationBlock()
+      // ── PART 2 — Where you stand vs rivals ─────────────────────────────
+      + reportChapter(2, 'Where you stand vs rivals', 'The businesses you compete with, how you compare point by point, and the biggest gap to close first.', 'chapter-2')
+      + competitorSection
       + dualArenaBlock
       + buildCompetitorStrategySection()
       + buildEvidenceGapSummary()
+      // ── PART 3 — Why you got this score ────────────────────────────────
+      + reportChapter(3, 'Why you got this score', 'Every point is tied to a fact CHOIVE checked. Here is the proof behind each of your four scores.', 'chapter-3')
       + buildPaidPillarEvidence()
-      + buildPriorityFixPlan()
-      + buildRoiSection()
-      + buildKeywordSection()
-      + buildPlatformCoverageSection()
-      + buildQueryCoverageMap()
       + (r.evidenceNarrative ? '<section class="pay-section" id="report-evidence"><div class="pay-eyebrow">The Proof Behind Your CHOIVE Result</div>'
       + '<div style="font-size:13px;color:var(--tm);line-height:1.7;margin-bottom:14px;">This result comes from website checks, other public websites, and the AI answers saved during this run.</div>'
       + '<div class="paid-narrative">' + readableText(r.evidenceNarrative || '', 2) + '</div></section>' : '')
       + buildCommunityEvidence()
+      // ── PART 4 — What to do next ───────────────────────────────────────
+      + reportChapter(4, 'What to do next', 'The exact jobs to do, in the best order \u2014 plus the money math and your 90-day plan.', 'chapter-4')
+      + buildPriorityFixPlan()
       + '<section class="pay-section" id="report-actions"><div class="pay-eyebrow">What to Fix First</div><div class="paid-section-header">Do these jobs in this order</div><div class="paid-actions">'
       + mergedActions.map(actionItem).join('')
       + '</div></section>'
+      + buildRoiSection()
+      + buildKeywordSection()
+      + buildMilestonePlan()
+      + buildOperatingRoadmap()
+      // ── PART 5 — Work ready to use ─────────────────────────────────────
+      + reportChapter(5, 'Work ready to use', 'CHOIVE has already written these for you. Check the facts, copy them, and publish. Your Verified Kit is here too.', 'chapter-5')
       + '<section class="pay-section deliv-section" id="report-assets">'
       + '<div class="pay-eyebrow">Work Ready for ' + esc(bizData.name || 'Your Business') + '</div>'
       + '<div class="paid-section-header">CHOIVE has already written this work</div>'
@@ -6363,20 +6421,24 @@ function showResults(r, jobId) {
       + '<div style="font-size:13px;font-weight:700;color:var(--ink);padding:14px 16px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;"><strong>Start here:</strong> open the first item. It is a small text file that helps AI tools read the basic facts about your business.</div>'
       + '<div id="delivContent"></div></section>'
       + buildVisualAssetsSection()
-      + buildMilestonePlan()
-      + buildOperatingRoadmap()
-      + buildIncludedMonitoring()
-      + buildOrganicDiscoveryGap()
+      // ── PART 6 — The receipts (AI answers + method) ────────────────────
+      + reportChapter(6, 'The receipts', 'The exact questions CHOIVE asked and the exact answers each AI tool gave. Nothing edited. This is your proof.', 'chapter-6')
+      + buildPlatformCoverageSection()
+      + buildQueryCoverageMap()
       + '<section class="pay-section sim-section" id="simSection">'
       + '<div class="pay-eyebrow">What Each AI Tool Said</div>'
       + '<div style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.7;">This section shows the exact questions CHOIVE asked and the exact answers each AI tool gave. Open an answer when you want to read it.' + (function(){ var L = { de:'German', es:'Spanish', fr:'French', it:'Italian', nl:'Dutch', pt:'Portuguese', pl:'Polish', tr:'Turkish', sv:'Swedish', da:'Danish', ja:'Japanese', ko:'Korean', zh:'Chinese', ar:'Arabic', ru:'Russian', hi:'Hindi', id:'Indonesian' }; var lg = r.aiSimulation && r.aiSimulation.before && r.aiSimulation.before.language; return (lg && L[lg]) ? '<span style=\"display:block;margin-top:10px;padding:9px 12px;border-left:3px solid var(--ac);background:var(--paper-2);color:var(--tb);font-size:11px;font-weight:600;\">CHOIVE asked the questions in ' + L[lg] + ' because that is the language used in this market.</span>' : ''; })() + '</div>'
       + '<div class="sim-loading" id="simLoading"><div class="sim-spinner"></div><span>Loading the recorded AI answers for ' + esc(bizData.name || '') + '...</span></div>'
       + '<div class="sim-results" id="simResults" style="display:none;"></div></section>'
       + buildCustomerQuestionReport()
-      + buildEvidenceLegend()
+      + buildOrganicDiscoveryGap()
       + buildConsumerVerificationBlock()
-      + buildClosingConclusion()
+      + buildEvidenceLegend()
       + buildMeasurementIntegrity()
+      // ── PART 7 — Keep improving ────────────────────────────────────────
+      + reportChapter(7, 'Keep improving', 'How to lock in your progress and prove your score went up next time.', 'chapter-7')
+      + buildIncludedMonitoring()
+      + buildClosingConclusion()
       + '<section class="pay-section" id="report-download" style="border-bottom:none;"><div class="pay-eyebrow">Analysis Summary</div>'
       + '<div class="pay-cta-block"><div class="pay-cta-headline">Save your analysis</div>'
       + '<div class="pay-cta-body">Download a short PDF of this analysis. The separate CHOIVE Report contains the full result in a PDF you can share.</div>'
