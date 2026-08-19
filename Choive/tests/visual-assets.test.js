@@ -104,9 +104,11 @@ test('cert: shows the real score, band word and business name', () => {
   assert.ok(a.certificate.indexOf('Bright &amp; Co Cafe') !== -1, 'business name is XML-escaped');
 });
 
-test('cert: carries the founder signature and title', () => {
+test('cert: carries the founder handwritten signature and title', () => {
   const a = buildVisualAssets(fullResult(80), { name: 'X' });
-  assert.ok(a.certificate.indexOf('Blessing Ashionye Ebogu') !== -1, 'founder signature present');
+  assert.ok(a.certificate.indexOf('<image') !== -1, 'signature is embedded as an image');
+  assert.ok(a.certificate.indexOf('data:image/png;base64') !== -1, 'signature contains the founder handwritten PNG');
+  assert.ok(a.certificate.indexOf('Blessing Ashionye Ebogu') !== -1, 'founder name present');
   assert.ok(a.certificate.indexOf('Founder, CHOIVE') !== -1, 'founder title present');
 });
 
@@ -118,7 +120,9 @@ test('cert: embeds a real signature image when one is supplied', () => {
 });
 
 test('cert: never promises a higher score or makes ranking claims', () => {
-  const svg = buildVisualAssets(fullResult(90), { name: 'X' }).certificate.toLowerCase();
+  let svg = buildVisualAssets(fullResult(90), { name: 'X' }).certificate;
+  // Remove embedded base64 signature before checking (it may contain random matching patterns)
+  svg = svg.replace(/data:image\/png;base64,[^"]+/g, '').toLowerCase();
   assert.ok(!/best|no\.?\s*1|number one|top rated|guarantee|will (increase|improve|rise)/.test(svg),
     'certificate must not make ranking or promise claims');
 });
@@ -197,8 +201,10 @@ test('kit: business name is XML-escaped on every kit mark', () => {
 
 test('kit: no kit mark makes a ranking or promise claim', () => {
   const a = buildVisualAssets(fullResult(90), { name: 'X' }, { jobId: 'Z' });
-  const blob = ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark']
-    .map(function (k) { return a[k]; }).join(' ').toLowerCase();
+  let blob = ['certificate', 'seal', 'card', 'story', 'chipLight', 'chipDark']
+    .map(function (k) { return a[k]; }).join(' ');
+  // Remove embedded base64 signature before checking (it may contain random matching patterns)
+  blob = blob.replace(/data:image\/png;base64,[^"]+/g, '').toLowerCase();
   assert.ok(!/\bbest\b|no\.?\s*1|number one|top rated|guarantee|will (increase|improve|rise)/.test(blob),
     'kit marks must not make ranking or promise claims');
 });
