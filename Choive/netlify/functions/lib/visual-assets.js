@@ -287,9 +287,10 @@ function certificateSvg(score, businessName, opts, result) {
     + corner(W - 120, H - 120, false)
     // Header: REAL CHOIVE logo (CD icon + wordmark) embedded
     + '<image href="' + xml(CHOIVE_LOGO) + '" x="' + (cx - 190) + '" y="90" width="380" height="95" preserveAspectRatio="xMidYMid meet"/>'
-    // Title: CERTIFICATE OF BUSINESS VISIBILITY
-    + '<text x="' + cx + '" y="280" font-family="' + SERIF + '" font-size="44" font-weight="400" letter-spacing="6" fill="' + BRAND.ink + '" text-anchor="middle">CERTIFICATE OF</text>'
-    + '<text x="' + cx + '" y="340" font-family="' + SERIF + '" font-size="44" font-weight="400" letter-spacing="6" fill="' + BRAND.ink + '" text-anchor="middle">BUSINESS VISIBILITY</text>'
+    // Title: CHOIVE SCORE CERTIFICATE — proves their measured result
+    + '<text x="' + cx + '" y="250" font-family="' + SERIF + '" font-size="52" font-weight="700" letter-spacing="10" fill="' + BRAND.gold + '" text-anchor="middle">CHOIVE™ SCORE</text>'
+    + '<text x="' + cx + '" y="300" font-family="' + SERIF + '" font-size="38" font-weight="400" letter-spacing="6" fill="' + BRAND.ink + '" text-anchor="middle">CERTIFICATE</text>'
+    + '<text x="' + cx + '" y="340" font-family="' + SANS + '" font-size="20" font-weight="400" letter-spacing="3" fill="' + BRAND.muted + '" text-anchor="middle">AI VISIBILITY VERIFICATION</text>'
     // Gold diamond separator
     + '<path d="M ' + (cx - 8) + ' 380 L ' + cx + ' 370 L ' + (cx + 8) + ' 380 L ' + cx + ' 390 Z" fill="' + BRAND.gold + '"/>'
     + '<line x1="' + (cx - 280) + '" y1="380" x2="' + (cx - 20) + '" y2="380" stroke="' + BRAND.gold + '" stroke-width="1"/>'
