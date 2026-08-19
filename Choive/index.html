@@ -5149,8 +5149,19 @@ function showResults(r, jobId) {
         + '</div>';
     }).join('');
 
+    var emphasis = plan.archetypeEmphasis;
+    var emphasisBanner = (emphasis && emphasis.note)
+      ? '<div style="font-size:13px;color:var(--ink);line-height:1.7;padding:14px 16px;background:var(--paper-2);border-left:3px solid var(--ac);margin-bottom:18px;max-width:800px;border-radius:2px;">'
+          + '<strong style="color:var(--ink);">How we judged a business like yours'
+          + (emphasis.label ? ' (' + esc(emphasis.label) + ')' : '') + ':</strong> '
+          + esc(simpleWords(emphasis.note))
+          + ' So we put the fixes that matter most for you at the top.'
+          + '</div>'
+      : '';
+
     return '<section class="pay-section" id="report-fixplan"><div class="pay-eyebrow">Your Priority Fix Plan</div>'
       + '<div class="paid-section-header">The fastest points first</div>'
+      + emphasisBanner
       + '<div style="font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:8px;max-width:800px;">' + summaryLine + '</div>'
       + '<div style="font-size:12px;color:var(--tm);line-height:1.65;margin-bottom:20px;max-width:800px;">The points are our best guess, not a promise. Each number is the most you could win back if that check passes the next time CHOIVE looks. You will only win the points back when the new proof is real and other websites can see it too.</div>'
       + rows

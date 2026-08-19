@@ -17,6 +17,14 @@
 //
 // Pure, dependency-free, and safe against partial/missing fields so it can run
 // server-side (get-result) and be unit-tested with `node --test`.
+//
+// Business-type awareness: when the result carries an archetype profile (see
+// lib/business-archetype.js), the fix list is ORDERED so the fixes that matter
+// most for THAT kind of business come first (e.g. reviews for a local shop,
+// clarity for a software company). The point impact of each fix is never
+// changed — only the order — so the honest 0-100 score stays intact.
+
+var { getArchetypeProfile } = require('./business-archetype');
 
 var PILLARS = ['clarity', 'trust', 'difference', 'ease'];
 
@@ -217,11 +225,25 @@ function fixFromPillarGap(pillar, pillarObj, signalRows, actions, used) {
   };
 }
 
-// Rank: biggest point impact first; on ties, quick self-serve wins come first
-// (fast points), then by pillar order for stability.
-function rankFixes(fixes) {
+// Rank: biggest WEIGHTED point impact first; on ties, quick self-serve wins
+// come first (fast points), then by pillar order for stability.
+//
+// emphasis is an optional { clarity, trust, difference, ease } map of 1–3
+// weights from the business's archetype profile. A fix's sort key is
+// pointImpact × pillar weight, so the fixes that matter most for THIS type of
+// business rise to the top. When no emphasis is supplied every weight is 1, so
+// behaviour is identical to plain "biggest impact first". The pointImpact value
+// shown to the owner is never altered — only the order.
+function rankFixes(fixes, emphasis) {
   var pillarOrder = { clarity: 0, ease: 1, difference: 2, trust: 3 };
+  var w = function (pillar) {
+    var v = emphasis && emphasis[pillar];
+    return typeof v === 'number' && v > 0 ? v : 1;
+  };
   return fixes.slice().sort(function (a, b) {
+    var aKey = a.pointImpact * w(a.pillar);
+    var bKey = b.pointImpact * w(b.pillar);
+    if (bKey !== aKey) return bKey - aKey;
     if (b.pointImpact !== a.pointImpact) return b.pointImpact - a.pointImpact;
     var ac = a.closability === 'self-serve' ? 0 : 1;
     var bc = b.closability === 'self-serve' ? 0 : 1;
@@ -267,7 +289,18 @@ function buildFixPlan(result) {
     }
   });
 
-  fixes = rankFixes(fixes);
+  // Business-type awareness: order the fixes by what matters most for THIS
+  // kind of business. Prefer an archetype profile already attached to the
+  // result; fall back to looking it up from result.archetype; else no emphasis.
+  var profile = null;
+  if (r.archetypeProfile && r.archetypeProfile.pillarEmphasis) {
+    profile = r.archetypeProfile;
+  } else if (r.archetype) {
+    try { profile = getArchetypeProfile(r.archetype); } catch (e) { profile = null; }
+  }
+  var emphasis = profile && profile.pillarEmphasis ? profile.pillarEmphasis : null;
+
+  fixes = rankFixes(fixes, emphasis);
   fixes.forEach(function (f, i) { f.rank = i + 1; });
 
   var totalRecoverable = fixes.reduce(function (acc, f) { return acc + f.pointImpact; }, 0);
@@ -287,6 +320,13 @@ function buildFixPlan(result) {
     available: fixes.length > 0,
     overallScore: overallScore,
     headroom: Math.max(0, 100 - overallScore),
+    // Plain-language note explaining what we weighted most for a business like
+    // this one. null when the result has no archetype (older results).
+    archetypeEmphasis: profile ? {
+      archetype: r.archetype || null,
+      label: profile.label,
+      note: profile.emphasisNote
+    } : null,
     fixes: fixes,
     summary: {
       totalRecoverable: round(totalRecoverable),
