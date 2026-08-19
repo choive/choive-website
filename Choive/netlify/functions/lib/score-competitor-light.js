@@ -9,7 +9,7 @@ const { searchSerper, inferOfficialSite } = require('./serper');
 const { fetchWebsiteText, fetchReviewPages, buildReviewText } = require('./fetchWebsite');
 const { fetchSocialEvidence, buildSocialText } = require('./social');
 const { fetchApifyEvidence } = require('./apify');
-const { logAnthropicUsage } = require('./anthropic-logging');
+const { logAnthropicUsage } = require('./anthropic-usage');
 
 const PILLARS = ['clarity', 'trust', 'difference', 'ease'];
 
