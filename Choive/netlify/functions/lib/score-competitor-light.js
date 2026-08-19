@@ -162,7 +162,7 @@ async function scoreCompetitorLight(candidate, context, subjectResult) {
   var suppliedWebsite = asUrl(candidate.website || candidate.domain);
   var officialWebsite = suppliedWebsite || asUrl(inferOfficialSite('', searchPayload, name));
   if (!officialWebsite) {
-    return unavailable(candidate, role, 'CHOIVE could not verify the competitor's official website.', '');
+    return unavailable(candidate, role, 'CHOIVE could not verify the competitor\'s official website.', '');
   }
 
   var websiteResult;
@@ -175,7 +175,7 @@ async function scoreCompetitorLight(candidate, context, subjectResult) {
   var websiteText = text(websiteResult && websiteResult.text);
   var websiteSignals = websiteResult && websiteResult.signals || {};
   if (!websiteText || websiteSignals.fetchFailed === true) {
-    return unavailable(candidate, role, 'The competitor's website could not be read. Its score was not measured.', officialWebsite);
+    return unavailable(candidate, role, 'The competitor\'s website could not be read. Its score was not measured.', officialWebsite);
   }
   if (!websiteMatchesName(name, websiteSignals, websiteText)) {
     return unavailable(candidate, role, 'The website found does not clearly belong to this competitor.', officialWebsite);
@@ -328,7 +328,7 @@ async function scoreCompetitorLight(candidate, context, subjectResult) {
     roleLabel: text(candidate.roleLabel) || role,
     website: officialWebsite,
     status: 'complete',
-    reason: 'Scored from the competitor's own recorded evidence.',
+    reason: 'Scored from the competitor\'s own recorded evidence.',
     score: totalScore,
     competitorOverallScore: totalScore,
     keyGap: keyGap,
