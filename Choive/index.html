@@ -6890,6 +6890,101 @@ function buildDeliverables(r) {
       + '</div>';
   }
   
+  // NEW: Business-type-aware marketing kit (channel strategy, ad copy,
+  // 30-day content calendar, email sequence). Each renders only if present.
+  var mk = d.marketingKit || null;
+  var mkBlock = 0;
+  var channelStrategyHtml = '', adCopyHtml = '', contentCalendarHtml = '', emailSeqHtml = '';
+
+  if (mk && mk.channelStrategy) {
+    var cs = mk.channelStrategy;
+    channelStrategyHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Your marketing playbook' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:10px;">Detected business type: <strong>' + esc(mk.archetypeLabel) + '</strong>. This is how a business like yours actually wins customers — the channels below are ordered by what matters most for you.</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(cs.summary) + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);margin-bottom:12px;"><strong>Suggested rhythm:</strong> ' + esc(cs.cadence) + '</div>';
+    (cs.priorities || []).forEach(function(p, idx) {
+      channelStrategyHtml += '<div style="margin-bottom:10px;padding:10px 12px;background:var(--cardBg,rgba(0,0,0,0.02));border-radius:8px;">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--tb);">' + (idx + 1) + '. ' + esc(p.channel) + '</div>'
+        + '<div style="font-size:13px;color:var(--tm);line-height:1.6;">' + esc(p.why) + '</div>'
+        + '</div>';
+    });
+    channelStrategyHtml += '</div>';
+    mkBlock++;
+  }
+
+  if (mk && mk.adCopy && mk.adCopy.groups && mk.adCopy.groups.length) {
+    adCopyHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Ready-to-run ad copy' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(mk.adCopy.intro) + '</div>';
+    mk.adCopy.groups.forEach(function(g, gi) {
+      adCopyHtml += '<div style="margin-bottom:18px;">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--tb);margin-bottom:4px;">' + esc(g.platform) + '</div>'
+        + '<div style="font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:8px;">' + esc(g.note) + '</div>';
+      var adId = 'dAdCopy' + gi;
+      var body = '';
+      if (g.headlines) body += 'HEADLINES:\n' + g.headlines.map(function(h, i) { return (i + 1) + '. ' + h; }).join('\n') + '\n\n';
+      if (g.descriptions) body += 'DESCRIPTIONS:\n' + g.descriptions.map(function(h, i) { return (i + 1) + '. ' + h; }).join('\n') + '\n\n';
+      if (g.primaryText) body += 'PRIMARY TEXT:\n' + g.primaryText.map(function(h, i) { return (i + 1) + '. ' + h; }).join('\n') + '\n\n';
+      if (g.introText) body += 'INTRO TEXT:\n' + g.introText.map(function(h, i) { return (i + 1) + '. ' + h; }).join('\n') + '\n\n';
+      if (g.headline) body += 'HEADLINE: ' + g.headline + '\n';
+      if (g.title) body += 'TITLE: ' + g.title + '\n';
+      if (g.description) body += 'DESCRIPTION: ' + g.description + '\n';
+      if (g.cta) body += 'CALL TO ACTION: ' + g.cta + '\n';
+      adCopyHtml += '<div class="deliv-code" id="' + adId + '" style="white-space:pre-wrap;">' + esc(body.trim()) + '</div>'
+        + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'' + adId + '\')">Copy ' + esc(g.platform.split(' ')[0]) + ' ads</button>'
+        + '</div>';
+    });
+    adCopyHtml += '</div>';
+    mkBlock++;
+  }
+
+  if (mk && mk.contentCalendar && mk.contentCalendar.weeks && mk.contentCalendar.weeks.length) {
+    var cc = mk.contentCalendar;
+    contentCalendarHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">30-day content calendar' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:8px;">' + esc(cc.intro) + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);margin-bottom:6px;"><strong>Channels:</strong> ' + esc((cc.channels || []).join(', ')) + '</div>'
+      + '<div style="font-size:12px;color:var(--tm);margin-bottom:14px;"><strong>Cadence:</strong> ' + esc(cc.cadence) + '</div>';
+    var ccBody = '';
+    cc.weeks.forEach(function(wk) {
+      contentCalendarHtml += '<div style="margin-bottom:14px;">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--tb);margin-bottom:6px;">Week ' + wk.week + ' — ' + esc(wk.focus) + '</div>';
+      ccBody += 'WEEK ' + wk.week + ' — ' + wk.focus + '\n';
+      (wk.posts || []).forEach(function(post) {
+        contentCalendarHtml += '<div style="margin-bottom:6px;padding:8px 10px;background:var(--cardBg,rgba(0,0,0,0.02));border-radius:6px;">'
+          + '<span style="font-size:11px;font-weight:700;color:var(--tm);">' + esc(post.day) + ' · ' + esc(post.format) + '</span>'
+          + '<div style="font-size:13px;color:var(--tb);line-height:1.6;">' + esc(post.idea) + '</div>'
+          + '</div>';
+        ccBody += '  ' + post.day + ' (' + post.format + '): ' + post.idea + '\n';
+      });
+      contentCalendarHtml += '</div>';
+      ccBody += '\n';
+    });
+    contentCalendarHtml += '<div class="deliv-code" id="dContentCal" style="display:none;">' + esc(ccBody.trim()) + '</div>'
+      + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'dContentCal\')">Copy full calendar</button>'
+      + '</div>';
+    mkBlock++;
+  }
+
+  if (mk && mk.emailSequence && mk.emailSequence.emails && mk.emailSequence.emails.length) {
+    var es = mk.emailSequence;
+    emailSeqHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:6px;">Email marketing sequence' + ownerTag() + '</div>'
+      + '<div style="font-size:14px;color:var(--tb);line-height:1.7;margin-bottom:14px;">' + esc(es.intro) + '</div>';
+    es.emails.forEach(function(em, ei) {
+      var emId = 'dEmailSeq' + ei;
+      var emBody = 'SUBJECT: ' + em.subject + '\n\n' + em.body;
+      emailSeqHtml += '<div style="margin-bottom:14px;">'
+        + '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);margin-bottom:4px;">Email ' + (ei + 1) + ' — ' + esc(em.purpose) + '</div>'
+        + '<div class="deliv-code" id="' + emId + '" style="white-space:pre-wrap;">' + esc(emBody) + '</div>'
+        + '<button class="deliv-copy-btn" onclick="copyDeliv(this, \'' + emId + '\')">Copy email ' + (ei + 1) + '</button>'
+        + '</div>';
+    });
+    emailSeqHtml += '</div>';
+    mkBlock++;
+  }
+
   var tabs = [
     { id: 'dLlms',   label: 'AI information file', content: llmsHtml },
     { id: 'dH1',     label: 'Homepage headline', content: h1Html },
@@ -6897,6 +6992,10 @@ function buildDeliverables(r) {
     { id: 'dDiff',   label: 'What makes us different', content: differencePageHtml, skip: !differencePageHtml },
     { id: 'dSocial', label: 'Social posts', content: socialPostsHtml, skip: !socialPostsHtml },
     { id: 'dAbout',  label: 'About page', content: aboutSectionHtml, skip: !aboutSectionHtml },
+    { id: 'dPlaybook', label: 'Marketing playbook', content: channelStrategyHtml, skip: !channelStrategyHtml },
+    { id: 'dAds',    label: 'Ad copy', content: adCopyHtml, skip: !adCopyHtml },
+    { id: 'dCalendar', label: 'Content calendar', content: contentCalendarHtml, skip: !contentCalendarHtml },
+    { id: 'dEmailSeq', label: 'Email sequence', content: emailSeqHtml, skip: !emailSeqHtml },
     { id: 'dReview', label: d.reviewAction && d.reviewAction.isReviewPlatform === false ? 'Customer proof' : 'Customer reviews', content: reviewHtml },
     { id: 'dGBP',    label: 'Google profile', content: gbpHtml, skip: !gbpHtml },
     { id: 'dEmail',  label: 'Review email', content: reviewEmailHtml, skip: !reviewEmailHtml },

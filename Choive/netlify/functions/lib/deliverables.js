@@ -1,5 +1,7 @@
 // lib/deliverables.js — v3 cityDisplay scope fix
 
+var { generateMarketingKit } = require('./marketing-content');
+
 // Helper: capitalise city name
 function firstSentence(s) {
   var t = String(s || '').trim();
@@ -691,6 +693,35 @@ function generateSocialPosts(evidence, result) {
   return posts.slice(0, 5);
 }
 
+// Assemble the verified-facts bundle the marketing kit consumes. Everything
+// here is already validated CHOIVE evidence — offers/audiences/distinctions are
+// the review-passed llmsFacts, the differentiator is the safe one, reviews come
+// from confirmed signals. No new claims are introduced.
+function buildMarketingFacts(evidence, result) {
+  var verified = verifiedReadyAssets(evidence, result);
+  var modelFacts = verified.llmsFacts || {};
+  var signals = (evidence && evidence.websiteSignals) || {};
+  var website = (evidence && evidence.website || evidence && evidence.inferredOfficialSite || '').trim();
+  var siteUrl = website ? (website.startsWith('http') ? website : 'https://' + website) : '';
+  return {
+    name: (evidence && evidence.name || '').trim(),
+    category: cleanAssetText(result && result.inferredCategory || evidence && evidence.category || '', 120),
+    differentiator: safeDifferentiator(evidence, result),
+    summary: factualSummary(evidence, result, 240),
+    description: (evidence && evidence.description || '').trim(),
+    subjectType: (evidence && evidence.subjectType || 'business'),
+    marketReach: (evidence && evidence.marketReach || ''),
+    place: marketLabel(evidence),
+    siteUrl: siteUrl,
+    offers: Array.isArray(modelFacts.offers) ? modelFacts.offers : [],
+    audiences: Array.isArray(modelFacts.audiences) ? modelFacts.audiences : [],
+    distinctions: Array.isArray(modelFacts.distinctions) ? modelFacts.distinctions : [],
+    googleRating: signals.googleRating || '',
+    googleReviewCount: signals.googleReviewCount || '',
+    trustpilotRating: signals.trustpilotRating || ''
+  };
+}
+
 // Generate an "About" page section — factual company/organization description
 function generateAboutSection(evidence, result) {
   var name = (evidence && evidence.name || '').trim();
@@ -911,7 +942,16 @@ function generateDeliverables(evidence, result) {
   delivs.differencePage = generateDifferencePage(evidence, result);
   delivs.socialPosts    = generateSocialPosts(evidence, result);
   delivs.aboutSection   = generateAboutSection(evidence, result);
-  
+
+  // NEW: Business-type-aware marketing kit (ad copy, content calendar, email
+  // sequence, channel strategy). Built ONLY from verified facts already
+  // collected; the archetype selects the right channels/formats per business.
+  try {
+    delivs.marketingKit = generateMarketingKit(buildMarketingFacts(evidence, result));
+  } catch (mkErr) {
+    delivs.marketingKit = null;
+  }
+
   delivs.actionPlan = generateActionPlan(evidence, Object.assign({}, result, { deliverables: delivs }));
   return delivs;
 }
