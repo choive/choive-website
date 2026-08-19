@@ -86,3 +86,44 @@ test('visual: never promises the score will rise', () => {
   const blob = (a.scoreDial + a.pillarBars + a.scoreCard).toLowerCase();
   assert.ok(!/\bguarantee\b|will increase|will improve your score/.test(blob));
 });
+
+// ── Certificate tests ───────────────────────────────────────────────────────
+test('cert: built whenever a score exists (even without full pillars)', () => {
+  const a = buildVisualAssets({ overallScore: 50, pillars: { clarity: { score: 10 } } }, { name: 'X' });
+  assert.ok(a.certificate && a.certificate.startsWith('<svg'), 'certificate needs only a score');
+});
+
+test('cert: unavailable when there is no score', () => {
+  assert.strictEqual(buildVisualAssets({}, {}).certificate, null);
+});
+
+test('cert: shows the real score, band word and business name', () => {
+  const a = buildVisualAssets(fullResult(68), { name: 'Bright & Co Cafe' });
+  assert.ok(a.certificate.indexOf('>68<') !== -1, 'certificate shows the real score');
+  assert.ok(a.certificate.indexOf('BUILDING') !== -1, 'certificate shows the score band word');
+  assert.ok(a.certificate.indexOf('Bright &amp; Co Cafe') !== -1, 'business name is XML-escaped');
+});
+
+test('cert: carries the founder signature and title', () => {
+  const a = buildVisualAssets(fullResult(80), { name: 'X' });
+  assert.ok(a.certificate.indexOf('Blessing Ashionye Ebogu') !== -1, 'founder signature present');
+  assert.ok(a.certificate.indexOf('Founder, CHOIVE') !== -1, 'founder title present');
+});
+
+test('cert: embeds a real signature image when one is supplied', () => {
+  const dataUri = 'data:image/png;base64,AAAA';
+  const a = buildVisualAssets(fullResult(72), { name: 'X' }, { signatureDataUri: dataUri });
+  assert.ok(a.certificate.indexOf('<image') !== -1, 'uses an image element for a real signature');
+  assert.ok(a.certificate.indexOf(dataUri) !== -1, 'embeds the supplied signature data URI');
+});
+
+test('cert: never promises a higher score or makes ranking claims', () => {
+  const svg = buildVisualAssets(fullResult(90), { name: 'X' }).certificate.toLowerCase();
+  assert.ok(!/best|no\.?\s*1|number one|top rated|guarantee|will (increase|improve|rise)/.test(svg),
+    'certificate must not make ranking or promise claims');
+});
+
+test('cert: uses a real issued date when supplied', () => {
+  const a = buildVisualAssets(fullResult(60), { name: 'X' }, { issuedDate: '2026-08-19T00:00:00Z' });
+  assert.ok(a.certificate.indexOf('19 August 2026') !== -1, 'shows the supplied issue date');
+});
