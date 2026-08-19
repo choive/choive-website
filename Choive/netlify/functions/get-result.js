@@ -7,6 +7,9 @@
 const { getDiagnostic } = require('./lib/supabase');
 const { buildPublicResult } = require('./lib/public-result');
 const { buildFixPlan } = require('./lib/fix-plan');
+const { buildRoiModel } = require('./lib/roi-projection');
+const { buildCompetitorStrategy } = require('./lib/competitor-strategy');
+const { buildKeywordStrategy } = require('./lib/seo-keywords');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,13 +63,18 @@ exports.handler = async function (event) {
     // ledger, which buildPublicResult strips). Failure here is non-fatal.
     let paidResult = diagnostic.result;
     if (diagnostic.paid === true) {
-      try {
-        const fixPlan = buildFixPlan(diagnostic.result);
-        paidResult = Object.assign({}, diagnostic.result, { fixPlan });
-      } catch (planErr) {
-        console.error('CHOIVE fix-plan error:', planErr.message);
-        paidResult = diagnostic.result;
-      }
+      const extras = {};
+      // Each premium section is computed independently and each failure is
+      // non-fatal: a broken add-on must never take down the whole paid report.
+      try { extras.fixPlan = buildFixPlan(diagnostic.result); }
+      catch (e) { console.error('CHOIVE fix-plan error:', e.message); }
+      try { extras.roiModel = buildRoiModel(diagnostic.result); }
+      catch (e) { console.error('CHOIVE roi-model error:', e.message); }
+      try { extras.competitorStrategy = buildCompetitorStrategy(diagnostic.result); }
+      catch (e) { console.error('CHOIVE competitor-strategy error:', e.message); }
+      try { extras.keywordStrategy = buildKeywordStrategy(diagnostic.result, diagnostic.input); }
+      catch (e) { console.error('CHOIVE keyword-strategy error:', e.message); }
+      paidResult = Object.assign({}, diagnostic.result, extras);
     }
 
     return {

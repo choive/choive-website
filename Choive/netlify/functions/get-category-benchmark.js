@@ -46,9 +46,13 @@ async function buildCategoryCache() {
     return {};
   }
   
-  // Group scores by normalized category
+  // Group scores by normalized category. We also collect each of the four
+  // pillar scores so the report can show a per-pillar benchmark (e.g. "your
+  // Trust is below the average for your category"). Every number here comes
+  // from real, completed, paid diagnostics — nothing is invented.
   const byCategory = {};
-  
+  const PILLAR_KEYS = ['clarity', 'trust', 'difference', 'ease'];
+
   data.forEach(row => {
     if (!row.result || typeof row.result !== 'object') return;
     const r = row.result;
@@ -57,28 +61,53 @@ async function buildCategoryCache() {
     
     if (!cat || !isFinite(score) || score < 0 || score > 100) return;
     
-    if (!byCategory[cat]) byCategory[cat] = [];
-    byCategory[cat].push(score);
+    if (!byCategory[cat]) byCategory[cat] = { overall: [], pillars: { clarity: [], trust: [], difference: [], ease: [] } };
+    byCategory[cat].overall.push(score);
+
+    // Collect pillar scores when present and valid (0–25). Missing pillars are
+    // simply skipped, never filled with a guess.
+    const p = r.pillars && typeof r.pillars === 'object' ? r.pillars : null;
+    if (p) {
+      PILLAR_KEYS.forEach(k => {
+        const ps = p[k] && typeof p[k].score === 'number' ? Number(p[k].score) : null;
+        if (ps !== null && isFinite(ps) && ps >= 0 && ps <= 25) byCategory[cat].pillars[k].push(ps);
+      });
+    }
   });
   
   // Compute stats for each category (only if ≥5 data points for statistical validity)
   const cache = {};
   const MIN_SAMPLE_SIZE = 5;
-  
+
+  const medianOf = (arr) => {
+    const s = arr.slice().sort((a, b) => a - b);
+    if (!s.length) return null;
+    return s.length % 2 === 0
+      ? (s[s.length / 2 - 1] + s[s.length / 2]) / 2
+      : s[Math.floor(s.length / 2)];
+  };
+
   Object.keys(byCategory).forEach(cat => {
-    const scores = byCategory[cat].sort((a, b) => a - b);
+    const scores = byCategory[cat].overall.sort((a, b) => a - b);
     if (scores.length < MIN_SAMPLE_SIZE) return; // Skip categories with <5 diagnostics
     
     const mean = scores.reduce((sum, s) => sum + s, 0) / scores.length;
-    const median = scores.length % 2 === 0
-      ? (scores[scores.length / 2 - 1] + scores[scores.length / 2]) / 2
-      : scores[Math.floor(scores.length / 2)];
-    
+    const median = medianOf(scores);
+
+    // Per-pillar medians — only reported when that pillar also has ≥5 samples,
+    // so we never publish a benchmark thinner than the overall one.
+    const pillarMedians = {};
+    PILLAR_KEYS.forEach(k => {
+      const arr = byCategory[cat].pillars[k];
+      if (arr.length >= MIN_SAMPLE_SIZE) pillarMedians[k] = Math.round(medianOf(arr));
+    });
+
     cache[cat] = {
       median: Math.round(median),
       mean: Math.round(mean),
       count: scores.length,
       scores, // Keep sorted scores for percentile calculation
+      pillarMedians, // { clarity, trust, difference, ease } — may be partial/empty
       updatedAt: Date.now()
     };
   });
@@ -119,6 +148,9 @@ async function getCategoryStats(category, userScore) {
     mean: stats.mean,
     sampleSize: stats.count,
     percentile,
+    // Per-pillar category medians (may be empty if a pillar had <5 samples).
+    // The report compares the business's own pillar scores against these.
+    pillarMedians: stats.pillarMedians || {},
     updatedAt: stats.updatedAt
   };
 }
